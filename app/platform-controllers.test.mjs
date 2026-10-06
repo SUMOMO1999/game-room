@@ -189,3 +189,15 @@ test('audio activation keeps a restoring tap audible and disposed controls ignor
   assert.equal(f.calls.length,calls);
   assert.equal(f.calls.filter(call => call==='unbind-preview').length,1);
 });
+
+test('explicit exit requires literal left true and keeps one retry body through absent or non-boolean acknowledgements',async()=>{
+  const f=sessionFixture();let reply,forgotten=0,left=0,failures=0,stopped=0;const bodies=[];
+  const client={membership:{},epoch:()=>({}),request:async(_path,options)=>{bodies.push(options.body);return reply;},stop:()=>{stopped++;},connect(){}};f.setClient(client);
+  const exit=createRoomExit({session:f.session,roomCode:'123456',getClient:f.client,getView:()=>({revision:3,selfId:'self'}),requireAcknowledgement:true,
+    requestId:()=> 'one-strict-leave',forgetMembership:()=>{forgotten++;},onLeft:()=>{left++;},onFailure:()=>{failures++;}});
+  for(reply of [undefined,null,{}, {left:false},{left:'false'},{left:1}]){
+    assert.equal(await exit.run(),false);assert.equal(forgotten,0);assert.equal(left,0);assert.equal(stopped,0);
+  }
+  reply={left:true};assert.equal(await exit.run(),true);assert.equal(failures,6);assert.equal(forgotten,1);assert.equal(left,1);assert.equal(stopped,1);
+  assert.ok(bodies.every(body=>body===bodies[0]));assert.deepEqual(bodies[0],{type:'leave',requestId:'one-strict-leave',expectedRevision:3});
+});

@@ -18,6 +18,7 @@ import { randomUUID } from 'node:crypto';
 import { loginHref } from './account-client.mjs';
 import { roomHref } from './game-routing.mjs';
 import { publicAssetPaths } from '../server/public-assets.mjs';
+import { replacePracticeWithLobby, mountPracticeExit } from './platform/practice-navigation.mjs';
 import { createGameAudio } from './game-audio.mjs';
 import { createServer } from './server.mjs';
 import { once } from 'node:events';
@@ -87,19 +88,23 @@ function fakeDom() {
   const document = new EventTarget(); document.hidden = false; document.body = new Node('body');
   const root = new Node(); root.id = 'flying-root'; document.body.append(root);
   document.getElementById = id => ids.get(id) ?? null; document.createElement = tag => new Node(tag);
+  document.querySelectorAll = selector => selector.split(',').flatMap(part => document.body.querySelectorAll(part.trim()));
   return { document, root, node: id => ids.get(id) };
 }
 
-async function page(t, options = {}) {
-  const dom = fakeDom(), window = new EventTarget(), cues = [], timers = new Map();
+async function page(t, options = {}, browser = {}) {
+  const dom = fakeDom(), window = new EventTarget(), cues = [], timers = new Map(), animations = [];
+  const motion = new EventTarget(); motion.matches = Boolean(browser.reducedMotion);
+  window.matchMedia = () => motion;
   let timerId = 0;
   window.innerWidth = 844; window.innerHeight = 390; window.scrollTo = () => {}; window.visualViewport = new EventTarget();
   const audio = { play: (kind, flags) => { cues.push({ kind, flags }); },
     phaseCue: createGameAudio({ storage: null, AudioContext: null, document: null, window: null }).phaseCue, close() {} };
+  const navigation = { href: 'http://127.0.0.1/flying.html?code=123456', replaced: [], replace(value) { this.replaced.push(value); } };
   const context = vm.createContext({ ...art, SIDES, ...presentation, ...roomPresentation, gameViewport,
-    document: dom.document, window, location: { href: 'http://127.0.0.1/flying.html?code=123456' },
+    document: dom.document, window, location: navigation,
     navigator: {}, console, Event, Number, Object, Promise,
-    mountRoomSettings, roomChatMarkup, createGameAudio: () => audio, mountRoomAudioControls: () => ({ destroy() {} }),
+    mountRoomSettings, roomChatMarkup, replacePracticeWithLobby, mountPracticeExit, createGameAudio: () => audio, mountRoomAudioControls: () => ({ destroy() {} }),
     createRoomClock: callbacks => createRoomClock({ ...callbacks, now: () => 1000,
       setInterval: callback => { const id = ++timerId; timers.set(id, callback); return id; }, clearInterval: id => timers.delete(id) }),
     mountGameViewport: callbacks => mountGameViewport({ ...callbacks, setTimeout: () => ++timerId, clearTimeout() {} }),
@@ -110,7 +115,11 @@ async function page(t, options = {}) {
     filename: 'actual-flying-page-ui.mjs', importModuleDynamically: () => Promise.reject(new Error('app shell is tested separately')),
   });
   const ui = mount(options); t.after(() => ui.destroy());
-  return { ...dom, ui, cues, window, timers };
+  dom.node('flying-die').animate = (frames, timing) => {
+    const animation = { frames, timing, cancelled: false, cancel() { this.cancelled = true; } };
+    animations.push(animation); return animation;
+  };
+  return { ...dom, ui, cues, window, timers, animations, motion, navigation };
 }
 
 function projected({ pending = true, phase = 'playing', self = 'self', revision = 4, role = 'player' } = {}) {
@@ -123,6 +132,77 @@ function projected({ pending = true, phase = 'playing', self = 'self', revision 
   view.game = role === 'spectator' ? adapter.spectatorView(game, { phase }) : adapter.privateView(game, self, { phase });
   return view;
 }
+
+test('saved roll animates once for a player or spectator; duplicate projections and UI updates do not replay it', async t => {
+  for (const role of ['player', 'spectator']) {
+    const f = await page(t); f.ui.setConnection('online');
+    const identity = { role, self: role === 'spectator' ? 'observer' : 'self' };
+    f.ui.applyView(projected({ ...identity, pending: false }), { baseline: true });
+    const saved = projected(identity); f.ui.applyView(saved);
+    assert.equal(f.animations.length, 1);
+    assert.equal(f.node('flying-die').getAttribute('aria-label'), '本次 6 点');
+    assert.deepEqual(f.ui.view(), saved, 'animation cannot write a result or sample a new die');
+    f.ui.applyView(saved); f.ui.applyView({ ...saved, revision: saved.revision + 1 });
+    f.node('flying-options').click(); f.node('flying-settings-close').click();
+    assert.equal(f.animations.length, 1);
+    assert.equal(f.node('flying-confirm').disabled, true);
+    if (role === 'player') {
+      f.node('flying-plane-grid').children[0].click();
+      assert.equal(f.node('flying-confirm').disabled, false, 'animation does not lock an already saved legal choice');
+    }
+  }
+});
+
+test('dice animation stays quiet on recovery or reduced motion, and is cancelled by hiding, disconnection and disposal', async t => {
+  const reduced = await page(t, {}, { reducedMotion: true }); reduced.ui.setConnection('online');
+  reduced.ui.applyView(projected({ pending: false }), { baseline: true }); reduced.ui.applyView(projected());
+  assert.equal(reduced.animations.length, 0); assert.equal(reduced.node('flying-die').getAttribute('aria-label'), '本次 6 点');
+  for (const stop of ['hidden', 'pagehide', 'offline', 'conceal', 'reduce', 'destroy']) {
+    const f = await page(t); f.ui.setConnection('online');
+    f.ui.applyView(projected({ pending: false }), { baseline: true }); f.ui.applyView(projected());
+    assert.equal(f.animations.length, 1);
+    if (stop === 'hidden') { f.document.hidden = true; f.document.dispatchEvent(new Event('visibilitychange')); }
+    if (stop === 'pagehide') f.window.dispatchEvent(new Event('pagehide'));
+    if (stop === 'offline') f.ui.setConnection('offline');
+    if (stop === 'conceal') f.ui.conceal();
+    if (stop === 'reduce') { f.motion.matches = true; f.motion.dispatchEvent(new Event('change')); }
+    if (stop === 'destroy') f.ui.destroy();
+    assert.equal(f.animations[0].cancelled, true, stop);
+    if (stop !== 'destroy') { f.document.hidden = false; f.ui.setConnection('online'); f.ui.applyView(projected(), { baseline: true }); }
+    assert.equal(f.animations.length, 1, 'a recovery baseline never replays an earlier throw');
+  }
+});
+
+test('explicit practice exit replaces its history entry without discarding the saved game', async t => {
+  let disposals = 0, writes = 0;
+  const session = { subscribe: () => () => {}, destroy() { disposals++; }, restart() { writes++; } };
+  const f = await page(t, { mode: 'practice', session });
+  const saved = { ...projected(), storageAvailable: true };
+  f.ui.applyView(saved, { baseline: true });
+  f.node('flying-exit').click();
+  assert.match(f.node('flying-leave-description').textContent, /进度已保存/);
+  f.node('flying-leave-confirm').click(); await settle();
+  assert.deepEqual(f.navigation.replaced, ['./']);
+  assert.equal(disposals, 1); assert.equal(writes, 0);
+  assert.deepEqual(f.ui.view(), saved);
+});
+
+test('practice restart requires one confirmation panel, keeps original progress on cancel and reports storage failure in that panel', async t => {
+  let writes = 0;
+  const session = { subscribe: () => () => {}, destroy() {}, restart() { writes++; throw new Error('练习无法保存，请重试。'); } };
+  const f = await page(t, { mode: 'practice', session });
+  const saved = { ...projected(), storageAvailable: true };
+  f.ui.applyView(saved, { baseline: true }); f.node('flying-options').click();
+  f.node('flying-restart').click();
+  assert.equal(f.node('flying-options-dialog').open, false); assert.equal(f.node('flying-restart-dialog').open, true);
+  assert.equal(writes, 0); assert.deepEqual(f.ui.view(), saved);
+  f.node('flying-restart-dialog').querySelectorAll('[data-close]')[0].click();
+  assert.equal(writes, 0); assert.equal(f.node('flying-restart-dialog').open, false);
+  f.node('flying-options').click(); f.node('flying-restart').click(); f.node('flying-confirm-restart').click(); await settle();
+  assert.equal(writes, 1); assert.equal(f.node('flying-restart-dialog').open, true);
+  assert.match(f.node('flying-restart-status').textContent, /无法保存/);
+  assert.deepEqual(f.ui.view(), saved);
+});
 
 test('actual page mounts both rule modes and shows every rule paragraph without executing business actions', async t => {
   for (const practice of [false, true]) {

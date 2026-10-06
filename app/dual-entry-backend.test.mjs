@@ -144,7 +144,7 @@ test('mounted begin and logout recover after clearing a foreign transaction cook
     assert.equal(denied.status,401,route);
     const cleared=denied.headers.getSetCookie();
     assert.ok(cleared.some(value=>value.startsWith('game-room-agora-transaction=;') && value.includes('Max-Age=0')),route+' clears current transaction cookie');
-    assert.ok(cleared.some(value=>value.startsWith('game-room-agora-session=;') && value.includes('Max-Age=0')),route+' clears only current entry session cookie');
+    assert.ok(cleared.every(value=>!value.startsWith('game-room-agora-session=')),route+' cannot clear a newer current-entry session cookie after an old failure');
     assert.ok(cleared.every(value=>!value.startsWith(f.settings.transactionCookieName+'=')),route+' never clears foreign entry cookie');
     assert.equal((await f.runtime.storage.get('transactions',transactionId)).phase,'pending',route+' never consumes/cancels foreign transaction');
     const recovered=await f.login('agora','a');assert.equal(recovered.state.authenticated,true,route+' recovers after browser cookie clear');

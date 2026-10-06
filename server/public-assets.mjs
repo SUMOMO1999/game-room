@@ -7,7 +7,7 @@ const platformAssets = Object.freeze(['index.html', 'lobby.mjs', 'lobby-model.mj
   'sw.js', 'offline.html', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',
   'games/catalog.mjs', 'games/types.mjs', 'platform/room-presentation.mjs', 'platform/room-clock.mjs',
   'platform/room-session.mjs', 'platform/room-audio-controls.mjs', 'platform/room-viewport.mjs',
-  'platform/room-action-intent.mjs', 'platform/room-settings.mjs', 'platform/room-settings.css']);
+  'platform/room-action-intent.mjs', 'platform/room-settings.mjs', 'platform/room-settings.css', 'platform/practice-navigation.mjs']);
 
 // This remains an explicit allow-list, not a recursive publication of app/.
 export function publicAssetPaths(games = gamePresentations(), shared = platformAssets) {

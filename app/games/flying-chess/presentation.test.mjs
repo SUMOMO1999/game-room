@@ -211,3 +211,10 @@ test('rule pages reflect the agreed friend rules, practise distinction and isola
   pages[0][0].text = 'changed'; assert.notEqual(flyingRulePages()[0][0].text, 'changed');
   assert.equal(flyingSideLabel('red'), '红圆'); assert.equal(flyingSideLabel('unknown'), '未分阵营');
 });
+
+test('a departed winner remains named by the original public roster while current room names take precedence',()=>{
+  const input=view();input.phase='finished';input.game.status='finished';input.game.result={winnerIds:['bob']};
+  input.matchPlayers=[{id:'alice',name:'原参赛甲'},{id:'bob',name:'优胜伙伴'}];input.players=input.players.filter(player=>player.id!=='bob');
+  assert.equal(flyingModel(input).resultText,'优胜伙伴的四架飞机全部完成，赢得本局。');
+  input.players.push({id:'bob',name:'当前名字'});assert.equal(flyingModel(input).resultText,'当前名字的四架飞机全部完成，赢得本局。');
+});

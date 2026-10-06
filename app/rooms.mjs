@@ -195,6 +195,9 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
       ...adapterFor(room).roomView(room),
       hostCanTakeOver: selfRole==='player' && !!context.hostCanTakeOver, expiresAt: expiry(room),
       matchId: room.matchId ?? null,
+      // Saved participants remain public after departure; account ownership and
+      // history keys stay server-only. Never spread a match participant here.
+      matchPlayers: (room.matchParticipants ?? []).map(({ playerId, name }) => ({ id: playerId, name })),
       // Only the owning member sees its bounded receipts. A newer room revision
       // alone cannot prove that a missing response committed this user's intent.
       ...(adapterFor(room).usesActionIntents ? { actionReceipts: [...player.requests].map(([requestId, receipt]) => ({

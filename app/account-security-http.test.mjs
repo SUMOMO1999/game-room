@@ -80,7 +80,7 @@ test('E3 every private read checks again before output and a rejected result nev
   f.provider.failOn=(_,count)=>count===before+2?401:200;
   const denied=await f.request(`/api/rooms/${room.roomCode}`,a);
   assert.equal(denied.response.status,401);assert.equal(denied.body.view,undefined);
-  assert.ok(denied.response.headers.get('set-cookie').includes('Max-Age=0'));
+  assert.equal(denied.response.headers.get('set-cookie'),null,'an old 401 must not clear a newly rotated browser session cookie');
   f.provider.failOn=null;
   assert.equal((await f.request(`/api/rooms/${room.roomCode}`,a)).response.status,401);
   const restored=await f.login('a');

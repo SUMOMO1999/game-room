@@ -100,13 +100,13 @@ function roomView(user=USER) {
     game:{rack:practice.rack,board:practice.board,opened:true,round:2,revision:1,status:'playing',turnPlayerId:self,ruleVersion:'friends-v2',copies:2,jokerCount:2,poolCount:69,
       players:[{id:self,rackCount:14},{id:'friend',rackCount:14}]}};
 }
-async function fixture(t,{page='room',query='',state=AUTH,history}={}) {
+async function fixture(t,{page='room',query='',state=AUTH,history,firstRoom=null}={}) {
   const document=dom(await readFile(new URL(page==='room'?'room.html':'index.html',import.meta.url),'utf8'));
   if(page==='lobby') document.getElementById('create-game').value='rummikub';
   const window=new EventTarget(),timers=clock(),sessionStorage=storage(),localStorage=storage();
   const location={hostname:'127.0.0.1',search:page==='room'?`?code=${CODE}${query}`:query,href:`http://127.0.0.1/${page==='room'?`room.html?code=${CODE}`:''}${query}`,
     replace(url){this.replaced=url;},assign(url){this.assigned=url;}};
-  const calls=[],streams=[],watchers=[];let nextState=state,stateResponse=null,roomResponse=null,entryResponse=null;
+  const calls=[],streams=[],watchers=[];let nextState=state,stateResponse=null,roomResponse=firstRoom,entryResponse=null,actionResponse=null;
   const fetch=async(url,options={})=>{
     calls.push({url,options});
     if(options.method==='POST' && (url==='/api/rooms' || /\/api\/rooms\/\d{6}\/join$/.test(url)) && entryResponse) return entryResponse().then(response=>response.clone());
@@ -120,6 +120,7 @@ async function fixture(t,{page='room',query='',state=AUTH,history}={}) {
     }
     if(url.includes('/chat'))return json({roomId:'synthetic-room',messages:[],hasOlder:false});
     if(url===`/api/rooms/${CODE}`)return roomResponse?roomResponse.promise.then(response=>response.clone()):json({view:roomView(nextState.userKey)});
+    if(url.endsWith('/actions'))return actionResponse?actionResponse(options):json({view:roomView(nextState.userKey)});
     if(url==='/auth/logout')return json({ok:true});
     throw new Error(`Unexpected synthetic request: ${url}`);
   };
@@ -143,6 +144,7 @@ async function fixture(t,{page='room',query='',state=AUTH,history}={}) {
   return {account,document,window,timers,sessionStorage,calls,streams,pageAPI,location,
     setState(value){nextState=value;stateResponse=null;},deferState(value){stateResponse=()=>value.promise;},
     deferRoom(value){roomResponse=value;},
+    setAction(value){actionResponse=value;},
     deferEntry(value){entryResponse=()=>value.promise;},
     get(id){return document.getElementById(id);}};
 }
@@ -465,4 +467,70 @@ test('retired Rummikub source cannot apply its private view, disconnect label or
   assert.equal(f.pageAPI.client(),current);assert.deepEqual(current.view,currentView);
   assert.equal(f.get('connection-label').textContent,label);assert.equal(f.get('room-play').hidden,false);
   assert.equal(current.stopped,false);assert.ok(f.get('rack').children.length);
+});
+
+test('actual Rummikub exit requires an explicit acknowledgement and retries the same leave after an incomplete response',async t=>{
+  const f=await fixture(t);f.setAction(()=>json({view:roomView(USER)}));const original=f.location.href;
+  f.get('leave-room').dispatchEvent(new Event('click'));f.get('confirm-leave-room').dispatchEvent(new Event('click'));await settle();
+  assert.equal(f.location.href,original);assert.match(f.get('leave-room-status').textContent,/无法确认/);assert.equal(f.get('confirm-leave-room').disabled,false);
+  f.setAction(()=>json({left:true}));f.get('confirm-leave-room').dispatchEvent(new Event('click'));await settle();
+  const writes=f.calls.filter(call=>call.url.endsWith('/actions'));assert.equal(writes.length,2);
+  assert.deepEqual(JSON.parse(writes[0].options.body),JSON.parse(writes[1].options.body));assert.equal(f.location.href,'./');
+});
+test('actual Rummikub hung write releases its controls after ten seconds through a read-only reconciliation',async t=>{
+  const f=await fixture(t),pending=deferred();f.setAction(()=>pending.promise);f.get('draw').dispatchEvent(new Event('click'));await settle();
+  assert.equal(f.get('leave-room').disabled,true);const first=f.calls.find(call=>call.url.endsWith('/actions'));
+  assert.equal(first.options.signal.aborted,false);f.timers.tick(10000);await settle();
+  assert.equal(first.options.signal.aborted,true);assert.equal(f.get('leave-room').disabled,false);assert.equal(f.account.accountState().verification,'verified');
+  assert.equal(f.calls.filter(call=>call.url.endsWith('/actions')).length,1);assert.equal(f.calls.at(-1).options.method,'GET');
+  assert.match(f.get('toast').textContent,/操作结果未确认/);f.get('leave-room').dispatchEvent(new Event('click'));assert.equal(f.get('confirm-leave-room').disabled,false);
+  pending.resolve(json({view:{...roomView(USER),revision:99}}));await settle();assert.equal(f.pageAPI.client().view.revision,1);
+  f.pageAPI.client()?.stop();
+});
+
+test('the actual first room fetch has a ten-second limit, offers read-only recovery and rejects a retired late401',async t=>{
+  const pending=deferred(),f=await fixture(t,{firstRoom:pending});assert.equal(f.pageAPI.client(),null);
+  const initial=f.calls.find(call=>call.url===`/api/rooms/${CODE}`);assert.ok(initial);assert.equal(initial.options.signal.aborted,false);
+  f.timers.tick(10000);await settle();assert.equal(initial.options.signal.aborted,true);assert.equal(f.pageAPI.client(),null);
+  assert.equal(f.account.accountState().failureStatus,503);assert.equal(f.get('room-account-recover').hidden,false);
+  f.deferRoom({promise:Promise.resolve(json({view:roomView(USER)}))});f.setState(AUTH);f.timers.tick(15000);await settle();
+  const restored=f.pageAPI.client();assert.ok(restored);assert.equal(restored.view.selfId,'self');assert.equal(f.get('board').children.length>0,true);
+  pending.resolve(json({error:'retired unauthorized'},401));await settle();assert.equal(f.pageAPI.client(),restored);assert.equal(f.account.accountState().authenticated,true);
+  assert.equal(f.account.accountState().failureStatus,null);assert.ok(f.calls.every(call=>(call.options.method??'GET')==='GET'));restored.stop();
+});
+test('the actual first room JSON body shares the fetch deadline and can recover without a business write',async t=>{
+  const response=new Response(new ReadableStream({start(){}}),{headers:{'Content-Type':'application/json'}});
+  const f=await fixture(t,{firstRoom:{promise:Promise.resolve(response)}});const initial=f.calls.find(call=>call.url===`/api/rooms/${CODE}`);
+  assert.equal(f.pageAPI.client(),null);f.timers.tick(10000);await settle();assert.equal(initial.options.signal.aborted,true);
+  assert.equal(f.account.accountState().failureStatus,503);assert.equal(f.get('room-account-recover').hidden,false);
+  f.deferRoom({promise:Promise.resolve(json({view:roomView(USER)}))});f.setState(AUTH);f.timers.tick(15000);await settle();
+  assert.ok(f.pageAPI.client());assert.equal(f.account.accountState().authenticated,true);assert.ok(f.calls.every(call=>(call.options.method??'GET')==='GET'));f.pageAPI.client().stop();
+});
+test('actual create and join timeouts unlock only their own buttons and preserve the original intent for an explicit retry',async t=>{
+  for(const join of [false,true]){
+    const f=await fixture(t,{page:'lobby'}),form=f.get(join?'join-form':'create-form'),button=form.querySelector('button[type=submit]'),pending=deferred();
+    if(join){f.get('join-code').value=CODE;f.get('join-role').value='player';}
+    f.deferEntry(pending);form.dispatchEvent(new Event('submit'));await settle();const id=form.requestId,first=f.calls.find(call=>call.options.method==='POST');
+    assert.equal(button.disabled,true);f.timers.tick(9999);await settle();assert.equal(button.disabled,true);
+    f.timers.tick(1);await settle();assert.equal(button.disabled,false);assert.equal(first.options.signal.aborted,true);assert.equal(form.requestId,id);
+    assert.equal(f.account.accountState().verification,'verified');assert.equal(f.calls.filter(call=>call.options.method==='POST').length,1);assert.match(f.get('lobby-notice').textContent,/尚未确认/);
+    f.deferEntry({promise:Promise.resolve(json({roomCode:CODE,playerId:'self',view:roomView(USER)}))});form.dispatchEvent(new Event('submit'));await settle();
+    const writes=f.calls.filter(call=>call.options.method==='POST');assert.equal(writes.length,2);assert.deepEqual(JSON.parse(writes[1].options.body),JSON.parse(writes[0].options.body));
+    assert.equal(button.disabled,true);assert.match(f.location.href,/room\.html\?code=123456$/);
+    pending.resolve(json({error:'late unauthorized'},401));await settle();assert.equal(f.account.accountState().authenticated,true);assert.equal(f.account.accountState().failureStatus,null);
+  }
+});
+
+test('actual Rummikub preserves known401 or503 from a stalled action body and immediately applies the matching private draft policy at the deadline',async t=>{
+  for(const status of [401,503]){
+    const f=await fixture(t),pending=deferred();f.pageAPI.move(f.pageAPI.draft().rack[0].id);const draft=f.pageAPI.draft();
+    f.setAction(()=>({ok:false,status,json:()=>pending.promise}));f.get('draw').dispatchEvent(new Event('click'));await settle();
+    assert.ok(f.get('rack').children.length>0);f.timers.tick(10000);await settle();
+    assert.equal(f.get('rack').children.length,0);assert.equal(f.get('board').children.length,0);assert.equal(f.pageAPI.client(),null);assert.equal(f.streams[0].signal.aborted,true);
+    assert.equal(f.account.accountState().failureStatus,status);assert.equal(f.get('room-account-recover').hidden,false);
+    const saved=[...f.sessionStorage.values.keys()].some(key=>key.startsWith(`game-room.private-draft.${USER}.`));assert.equal(saved,status===503);
+    assert.equal(f.calls.filter(call=>call.options.method==='POST').length,1);
+    if(status===503){f.setState(AUTH);f.timers.tick(15000);await settle();assert.deepEqual(f.pageAPI.draft(),draft);f.pageAPI.client()?.stop();}
+    pending.resolve({error:'retired action body'});await settle();assert.equal(f.calls.filter(call=>call.options.method==='POST').length,1);
+  }
 });

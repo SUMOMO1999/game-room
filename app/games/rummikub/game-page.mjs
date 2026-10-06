@@ -54,6 +54,7 @@ let needsRoomBaseline = true;
 let leavingRoom = false;
 
 const roomExit = createRoomExit({ session: roomSession, roomCode, getClient: () => roomClient, getView: () => roomView, forgetMembership,
+  requireAcknowledgement: true,
   onPending: () => { leavingRoom=true; busy=true; renderRoomMeta(); $('leave-room-status').textContent='正在确认退出…'; },
   onFailure: error => { leavingRoom=false; busy=false; $('leave-room-status').textContent=gameErrorMessage(error); renderRoomMeta(); render(); },
   onLeft: () => { clearRoomPrivate(); location.href='./'; },

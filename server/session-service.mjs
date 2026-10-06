@@ -46,6 +46,13 @@ export class SessionService {
     await this.store.remove('sessions', id);
     this.notify(id, session, status);
   }
+  async invalidateCurrent(id, record, status = 401) {
+    // A policy/expiry result belongs to the version that was checked. A newer
+    // touch may have renewed idle while this authorization waited online.
+    if (!await this.store.remove('sessions', id, record.version)) return false;
+    this.notify(id, record.value, status);
+    return true;
+  }
   checkedIdentity(identity, user) {
     if (!user || user.sub !== identity.sub) throw new IdentityFailure();
     if (this.settings.mode !== 'cognito') return identity;
@@ -96,7 +103,10 @@ export class SessionService {
       const session = record.value; const now = this.now();
       const before = { expiresAt: session.expiresAt, authTime: session.authTime, clientId: session.clientId };
       if (!recordMatchesEntry(session, entryFor(request, this.settings)) || session.phase !== 'active') throw new IdentityFailure();
-      if (session.expiresAt <= now || session.idleUntil <= now) { await deadline.wait(() => this.invalidate(id, session)); throw new IdentityFailure(); }
+      if (session.expiresAt <= now || session.idleUntil <= now) {
+        if (await deadline.wait(() => this.invalidateCurrent(id, record))) throw new IdentityFailure();
+        continue;
+      }
       {
         try {
           const user = await deadline.wait(() => this.provider.check(identityFields(session), { signal: deadline.signal }));
@@ -106,11 +116,14 @@ export class SessionService {
           if (this.settings.mode === 'cognito') { session.authTime = verified.authTime; session.clientId = verified.clientId; }
         } catch (error) {
           const status = error instanceof IdentityFailure && error.status === 401 ? 401 : 503;
-          if (status === 401) await deadline.wait(() => this.invalidate(id, session));
+          if (status === 401 && !await deadline.wait(() => this.invalidateCurrent(id, record))) continue;
           throw new IdentityFailure(status);
         }
         // The online call may complete after either expiry or a concurrent logout.
-        if (session.expiresAt <= this.now() || session.idleUntil <= this.now()) { await deadline.wait(() => this.invalidate(id, session)); throw new IdentityFailure(); }
+        if (session.expiresAt <= this.now() || session.idleUntil <= this.now()) {
+          if (await deadline.wait(() => this.invalidateCurrent(id, record))) throw new IdentityFailure();
+          continue;
+        }
         session.lastIdentityCheck = this.now();
       }
       session.idleUntil = Math.min(session.expiresAt, session.idleUntil);
@@ -121,12 +134,17 @@ export class SessionService {
         if (!current) { this.notify(id, session, 401); throw new IdentityFailure(); }
         if (current.version !== record.version) continue; // A changed session must acquire a new policy check.
         deadline.assert();
-        if (session.expiresAt <= this.now() || session.idleUntil <= this.now()) { await deadline.wait(() => this.invalidate(id, session)); throw new IdentityFailure(); }
+        if (session.expiresAt <= this.now() || session.idleUntil <= this.now()) {
+          if (await deadline.wait(() => this.invalidateCurrent(id, record))) throw new IdentityFailure();
+          continue;
+        }
         return this.publicSession(id, session);
       }
       if (touch) session.idleUntil = Math.min(session.expiresAt, this.now() + this.settings.idleMs);
       if (await deadline.wait(() => this.writeSession(id, record, session, deadline))) {
-        if (session.expiresAt <= this.now() || session.idleUntil <= this.now()) { await deadline.wait(() => this.invalidate(id, session)); throw new IdentityFailure(); }
+        // The successful CAS has a new version. Re-read on a late expiry instead
+        // of deleting a concurrently renewed record with this older snapshot.
+        if (session.expiresAt <= this.now() || session.idleUntil <= this.now()) continue;
         return this.publicSession(id, session);
       }
       // CAS failure never authorizes a stale result: reread the live record and recheck online.
@@ -282,8 +300,9 @@ export class SessionService {
       const status = error instanceof IdentityFailure ? error.status : 503;
       const headers = { 'cache-control': 'no-store' };
       if (routePath === '/auth/callback') headers['set-cookie'] = [this.clearTransactionCookie(request)];
-      if (status === 401) headers['set-cookie'] = [...(headers['set-cookie'] || []), this.clearSessionCookie(request),
-        ...(routePath === '/auth/callback' ? [] : [this.clearTransactionCookie(request)])];
+      // A failed old request cannot know whether the browser already received
+      // a newer session Cookie. Only explicit logout clears that Cookie.
+      if (status === 401 && routePath !== '/auth/callback') headers['set-cookie'] = [this.clearTransactionCookie(request)];
       return { status, headers, body: { error: error instanceof IdentityFailure ? error.code : 'identity_unavailable',
         ...(routePath === '/auth/callback' && error.returnTo ? { returnTo: entryReturnTo(error.returnTo, entryFor(request, this.settings)) } : {}) } };
     }

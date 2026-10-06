@@ -6,7 +6,8 @@ const sideById = new Map(SIDES.map(side => [side.id, side]));
 const validDie = value => Number.isInteger(value) && value >= 1 && value <= 6;
 const list = value => Array.isArray(value) ? value : [];
 const sameMember = (view, id) => list(view?.players).find(player => player?.id === id);
-const playerName = (view, id) => sameMember(view, id)?.name || (id === view?.selfId ? '你' : '朋友');
+const playerName = (view, id) => sameMember(view, id)?.name
+  || list(view?.matchPlayers).find(player => player?.id === id)?.name || (id === view?.selfId ? '你' : '朋友');
 
 export function flyingSideLabel(side) { return sideById.get(side)?.label || '未分阵营'; }
 

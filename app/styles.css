@@ -1060,6 +1060,17 @@ body.game-screen {
   .game-screen .shell:not(.lobby-shell) .turn-actions .primary-button, .game-screen .shell:not(.lobby-shell) .turn-actions .secondary-button { padding: 7px 7px; }
 }
 
+/* Rummikub turn controls retain a full touch target when the table is compact. */
+.game-screen:not(.army-screen) .shell:not(.lobby-shell) .turn-actions > button { min-width: 44px; min-height: 44px; }
+@media (max-height: 500px) and (orientation: landscape) {
+  .game-screen:not([data-mode="room"]):not(.army-screen) .shell > main,
+  .game-screen:not(.army-screen):not(.rummi-spectator) .shell:not(.lobby-shell) #room-play { grid-template-rows: 21px minmax(0, 1fr) auto 44px; }
+}
+@media (max-width: 700px) and (orientation: portrait) {
+  .game-screen:not([data-mode="room"]):not(.army-screen) .shell > main,
+  .game-screen:not(.army-screen):not(.rummi-spectator) .shell:not(.lobby-shell) #room-play { grid-template-rows: 23px minmax(0, 1fr) auto 73px; }
+}
+
 /* The inspector shows a page of large tiles; pagination never scrolls the game. */
 dialog.tile-inspector {
   width: min(740px, calc(var(--game-viewport-width, 100vw) - 24px));

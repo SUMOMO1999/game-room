@@ -180,7 +180,8 @@ export function createUnifiedServer(options) {
         if(req.method!=='GET') return reply(res,405,{error:'请使用 GET。'},{Allow:'GET'});
         if(!requestCookie(webRequest,entry.cookieName)) return reply(res,200,{...accountPublic,authenticated:false});
         let session;try {session=await sessions.authorize(webRequest,{fresh:true});} catch(error) {
-          if(error.status===401) return reply(res,200,{...accountPublic,authenticated:false},{'set-cookie':sessions.clearSessionCookie(webRequest)});throw error;
+          // A delayed old-cookie check must not erase a newer login Cookie.
+          if(error.status===401) return reply(res,200,{...accountPublic,authenticated:false});throw error;
         }
         const profile=await rooms.ensureProfile(session.userKey),recentRooms=await rooms.recentRooms(session.userKey);
         await sessions.authorize(webRequest,{touch:false});
@@ -262,7 +263,7 @@ export function createUnifiedServer(options) {
     } catch(error) {
       const known=error instanceof RoomError || error instanceof IdentityFailure;
       reply(res,known?error.status:503,{error:known?message(error):'服务暂时无法完成操作。',code:known?error.code:'SERVICE_UNAVAILABLE',
-        ...(error.retryAfter?{retryAfter:error.retryAfter}:{}),...(error.code==='PREVIEW_RATE_LIMIT'?{minIntervalMs:error.minIntervalMs,nextAllowedAt:error.nextAllowedAt}:{})},error.status===401 && res.gameEntry?{'set-cookie':`${res.gameEntry.cookieName}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${res.gameEntry.secureCookies?'; Secure':''}`}:error.retryAfter?{'Retry-After':String(error.retryAfter)}:{});
+        ...(error.retryAfter?{retryAfter:error.retryAfter}:{}),...(error.code==='PREVIEW_RATE_LIMIT'?{minIntervalMs:error.minIntervalMs,nextAllowedAt:error.nextAllowedAt}:{})},error.retryAfter?{'Retry-After':String(error.retryAfter)}:{});
     }
   });
   let cleanupPromise;

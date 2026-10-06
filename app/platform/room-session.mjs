@@ -55,7 +55,7 @@ export function createRoomExit({ session, roomCode, getClient, getView, forgetMe
           method:'POST', token:client.membership.token, body,
         }, client.epoch());
         if (!session.current(task.fence)) return false;
-        if (requireAcknowledgement && !result.left) throw new Error('退出结果暂时无法确认，请重试。');
+        if (requireAcknowledgement && result?.left !== true) throw new Error('退出结果暂时无法确认，请重试。');
         client.stop(); forgetMembership(roomCode,selfId); onLeft?.(); return true;
       } catch (error) {
         if (!session.current(task.fence)) return false;

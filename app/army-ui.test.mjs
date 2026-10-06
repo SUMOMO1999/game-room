@@ -512,3 +512,13 @@ test('retired army source cannot repaint or clear a restored account with its la
   assert.equal(f.get('connection-label').textContent,label);assert.equal(current.stopped,false);
   assert.equal(f.get('army-cells').children.length,60);assert.equal(f.get('room-play').hidden,false);
 });
+
+test('actual army hung write releases controls after ten seconds without replaying and keeps explicit leave available',async t=>{
+  const f=await fixture(t),pending=deferred();f.setAction(()=>pending.promise);f.pageAPI.click('r0c1');await settle();
+  assert.equal(f.get('leave-room').disabled,true);const first=f.calls.find(call=>call.url.endsWith('/actions'));
+  assert.equal(first.options.signal.aborted,false);f.timers.tick(10000);await settle();
+  assert.equal(first.options.signal.aborted,true);assert.equal(f.get('leave-room').disabled,false);assert.equal(f.account.accountState().verification,'verified');
+  assert.equal(f.calls.filter(call=>call.url.endsWith('/actions')).length,1);assert.equal(f.calls.at(-1).options.method,'GET');
+  assert.match(f.get('toast').textContent,/操作结果未确认/);f.get('leave-room').dispatchEvent(new Event('click'));assert.equal(f.get('confirm-leave-room').disabled,false);
+  pending.resolve(json({view:{...roomView(),revision:99}}));await settle();assert.equal(f.pageAPI.view().revision,1);
+});

@@ -8,6 +8,22 @@ const RECENT_KEY = entryStorageKey('friends-game-room.recent-seats.v1');
 // The server pings every 20 seconds. Three silent intervals allow slow networks
 // without leaving a half-open reader permanently reported as connected.
 const STREAM_IDLE_MS = 60000;
+const REQUEST_TIMEOUT_MS = 10000;
+const streamTimeout = error => ['STREAM_OPEN_TIMEOUT', 'STREAM_RESPONSE_TIMEOUT', 'STREAM_IDLE_TIMEOUT'].includes(error?.code);
+// Race the deadline as well as aborting the transport: a stalled body or a
+// source that ignores AbortSignal must still release its page-owned controls.
+async function boundedRequest(operation, controller, timeoutError) {
+  let timer, abort;
+  try {
+    return await new Promise((resolve, reject) => {
+      abort = () => reject(superseded());
+      controller.signal.addEventListener('abort', abort, { once: true });
+      if (controller.signal.aborted) { abort(); return; }
+      timer = setTimeout(() => { reject(timeoutError()); controller.abort(); }, REQUEST_TIMEOUT_MS);
+      Promise.resolve(operation()).then(resolve, reject);
+    });
+  } finally { clearTimeout(timer); controller.signal.removeEventListener('abort', abort); }
+}
 const unifiedSeats = new Map();
 let membershipEpoch = accountGeneration();
 onAccountChange(() => {
@@ -53,7 +69,9 @@ export function forgetMembership(code, playerId) {
   if (seat?.playerId === playerId) { try { sessionStorage.removeItem(SESSION_PREFIX + code); } catch {} }
   try { localStorage.setItem(RECENT_KEY, JSON.stringify(recentSeats().filter(item => item.roomCode !== code || item.playerId !== playerId))); } catch {}
 }
-export async function api(path, { method = 'GET', token, body, signal } = {}) {
+// Parsing owns no identity notification. Its late completion is harmless even
+// when a transport ignores abort after the public wrapper has already settled.
+async function rawApi(path, { method = 'GET', token, body, signal, onFailureStatus } = {}) {
   if (signal?.aborted) throw superseded();
   const epoch = accountGeneration();
   const account = accountState();
@@ -64,12 +82,12 @@ export async function api(path, { method = 'GET', token, body, signal } = {}) {
     ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
   }, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) });
   if (signal?.aborted || epoch !== accountGeneration()) throw superseded();
+  if (!response.ok && (response.status >= 400 && response.status < 500 || response.status === 503)) onFailureStatus?.(response.status);
   let data;
   try { data = await response.json(); }
   catch {
     if (signal?.aborted || epoch !== accountGeneration()) throw superseded();
     const error = Object.assign(new Error('房间响应暂时无法确认，请稍后重试。'), { status: response.status === 401 ? 401 : 503 });
-    if (isUnified) reportAuthFailure(error);
     throw error;
   }
   if (!data || typeof data !== 'object' || Array.isArray(data)) data = {};
@@ -79,10 +97,38 @@ export async function api(path, { method = 'GET', token, body, signal } = {}) {
     const error = Object.assign(new Error(data.error || data.message || '暂时无法连接房间。'), { status: response.status, code: data.code,
       retryAfter: Number.isFinite(retryAfter) && retryAfter > 0 && retryAfter <= 86400 ? Math.ceil(retryAfter) : null,
       ...(data.code==='PREVIEW_RATE_LIMIT'?{minIntervalMs:data.minIntervalMs,nextAllowedAt:data.nextAllowedAt}:{}) });
-    if (isUnified && [401, 503].includes(error.status)) reportAuthFailure(error);
     throw error;
   }
   return data;
+}
+
+// All entry points, including the first room read and lobby submissions, share
+// one deadline across fetch and JSON. A caller's cancellation still fences it.
+export async function api(path, { method = 'GET', token, body, signal } = {}) {
+  if (signal?.aborted) throw superseded();
+  const epoch = accountGeneration(), isUnified = unified(), controller = new AbortController();
+  const abort = () => controller.abort();
+  signal?.addEventListener('abort', abort, { once: true });
+  const writing = !['GET', 'HEAD'].includes(method);
+  let responseFailureStatus = null;
+  try {
+    const data = await boundedRequest(() => rawApi(path, { method, token, body, signal: controller.signal,
+      onFailureStatus: status => { responseFailureStatus = status; } }), controller, () => {
+      const status = responseFailureStatus ?? (writing ? null : 503);
+      const message = status === 401 ? '登录已过期，请重新登录后继续。' : responseFailureStatus !== null
+        ? '房间暂时无法确认这次请求，请稍后重试。' : writing
+          ? '操作结果尚未确认，请稍后重试原操作。' : '房间暂时没有回应，请重新连接。';
+      return Object.assign(new Error(message), { code: 'ROOM_REQUEST_TIMEOUT', ...(status === null ? {} : { status }) });
+    });
+    if (signal?.aborted || epoch !== accountGeneration()) throw superseded();
+    return data;
+  } catch (error) {
+    // Notify after the bounded operation settles. A current 401/503 keeps its
+    // status; an old caller or late failed body cannot invalidate a new login.
+    if (signal?.aborted || epoch !== accountGeneration()) throw superseded();
+    if (isUnified && [401, 503].includes(error.status)) reportAuthFailure(error);
+    throw error;
+  } finally { signal?.removeEventListener('abort', abort); }
 }
 
 export class RoomClient {
@@ -248,7 +294,7 @@ export class RoomClient {
     const epoch = this.epoch();
     this.onConnection('connecting');
     this.readStream(controller, epoch, streamGeneration).catch(error => {
-      if ((controller.signal.aborted && error.code !== 'STREAM_IDLE_TIMEOUT') || !this.live(epoch) || streamGeneration !== this.streamGeneration) return;
+      if ((controller.signal.aborted && !streamTimeout(error)) || !this.live(epoch) || streamGeneration !== this.streamGeneration) return;
       this.onConnection('offline');
       this.resetPreview();
       if ([401, 503, 404,429].includes(error.status)) { this.onError(error); return; }
@@ -259,19 +305,33 @@ export class RoomClient {
     const valid = () => this.live(epoch) && !controller.signal.aborted && streamGeneration === this.streamGeneration;
     if (!valid()) throw superseded();
     const isUnified = unified();
-    const response = await fetch(gamePath(`/api/rooms/${this.code}/events${this.onPreview?'?preview=1':''}`), { headers: {
-      ...(!isUnified ? { Authorization: `Bearer ${this.membership.token}` } : {}),
-    }, credentials: 'same-origin', cache: 'no-store', signal: controller.signal });
-    if (!valid()) throw superseded();
-    if (!response.ok) {
-      let data;
-      try { data = await response.json(); } catch { data = {}; }
-      if (!data || typeof data !== 'object' || Array.isArray(data)) data = {};
+    let response;
+    this.requests.add(controller);
+    try {
+      response = await boundedRequest(() => fetch(gamePath(`/api/rooms/${this.code}/events${this.onPreview?'?preview=1':''}`), { headers: {
+        ...(!isUnified ? { Authorization: `Bearer ${this.membership.token}` } : {}),
+      }, credentials: 'same-origin', cache: 'no-store', signal: controller.signal }), controller,
+      () => Object.assign(new Error('房间连接暂时没有回应，正在重新连接。'), { code: 'STREAM_OPEN_TIMEOUT' }));
       if (!valid()) throw superseded();
-      const error = Object.assign(new Error(data.error || '房间连接已失效。'), { status: response.status });
-      if (isUnified && [401, 503].includes(error.status)) reportAuthFailure(error);
-      throw error;
-    }
+      if (!response.ok) {
+        let data;
+        try {
+          data = await boundedRequest(() => response.json(), controller,
+            () => Object.assign(new Error('房间连接暂时无法确认，请重新连接。'), { code: 'STREAM_RESPONSE_TIMEOUT', status: response.status }));
+        } catch (error) {
+          if (error.code === 'STREAM_RESPONSE_TIMEOUT') {
+            if (isUnified && [401, 503].includes(error.status)) reportAuthFailure(error);
+            throw error;
+          }
+          data = {};
+        }
+        if (!data || typeof data !== 'object' || Array.isArray(data)) data = {};
+        if (!valid()) throw superseded();
+        const error = Object.assign(new Error(data.error || '房间连接已失效。'), { status: response.status });
+        if (isUnified && [401, 503].includes(error.status)) reportAuthFailure(error);
+        throw error;
+      }
+    } finally { this.requests.delete(controller); }
     const reader = response.body.getReader(); const decoder = new TextDecoder(); let pending = '';
     let idleTimer = null, rejectRead = null;
     const abortRead = () => rejectRead?.(superseded());

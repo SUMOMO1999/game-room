@@ -16,6 +16,7 @@
   <meta name="apple-mobile-web-app-title" content="棋牌室">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <script type="module" src="./army-practice.mjs"></script>
+  <script type="module" src="./platform/practice-navigation.mjs"></script>
   <script type="module" src="./app-shell.mjs"></script>
   <style>
     .army-practice-screen #exit-practice { display:inline-flex; align-items:center; justify-content:center; flex:none; border:1px solid #d7c48d66; border-radius:7px; text-decoration:none; color:#f4e7c7; white-space:nowrap; }
@@ -41,13 +42,13 @@
 <body data-mode="army-practice" class="army-screen army-practice-screen in-game">
   <div class="shell">
     <header class="site-header">
-      <a class="brand" href="./" aria-label="棋牌室首页"><span class="brand-mark" aria-hidden="true"><i>3</i><i>3</i></span><strong>棋牌室</strong></a>
+      <a class="brand" href="./" data-practice-exit aria-label="棋牌室首页"><span class="brand-mark" aria-hidden="true"><i>3</i><i>3</i></span><strong>棋牌室</strong></a>
       <div class="header-actions">
         <span class="mode-badge" id="practice-mode">单人练习 · 不计战绩</span>
         <button id="game-settings-toggle" class="quiet-button game-settings-toggle" type="button" data-room-settings data-settings-dialog="game-settings-dialog" data-settings-close="game-settings-close" aria-controls="game-settings-dialog" aria-haspopup="dialog" aria-expanded="false">设置</button><button id="sound-toggle" data-settings-target="game-settings-audio" class="sound-toggle" type="button" aria-pressed="false" aria-label="开启音效">音效关</button>
         <button id="show-rules" data-settings-target="game-settings-help" data-settings-dismiss class="quiet-button" type="button">规则</button>
         <button id="restart" data-settings-target="game-settings-practice" data-settings-dismiss class="quiet-button" type="button">重新开始</button>
-        <a id="exit-practice" class="quiet-button" href="./" aria-label="退出练习，返回大厅">← 返回大厅</a>
+        <a id="exit-practice" data-practice-exit class="quiet-button" href="./" aria-label="退出练习，返回大厅">← 返回大厅</a>
       </div>
     </header>
     <main>

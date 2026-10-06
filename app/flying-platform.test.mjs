@@ -525,3 +525,17 @@ test('flying-room HTTP and private SSE share chat for both players and spectator
   assert.equal(after.revision,before.revision);assert.deepEqual(after.game,before.game);assert.deepEqual(after.turnClock,before.turnClock);
   assert.equal(f.tape.calls.length,samples);
 });
+
+test('a completed flying room exposes only the original public participant names after its winner leaves',t=>{
+  const f=memory(t),first=f.start(),ids=first.game.players.map(player=>player.id);
+  for(const step of completeFirstPlayerScript(ids,0)){
+    const index=ids.indexOf(step.playerId);f.tape.push(step.die-1);f.action(index,'roll');
+    if(step.number!==null){const rolled=f.view(index);f.action(index,'move',{rollId:rolled.game.rollId,planeId:`${rolled.game.players[index].side}-${step.number}`});}
+  }
+  assert.equal(f.view(1).phase,'finished');const original=f.view(1).matchPlayers;
+  f.action(0,'leave');const remaining=f.view(1);assert.deepEqual(remaining.matchPlayers,original);
+  assert.deepEqual(remaining.matchPlayers,ids.map(id=>({id,name:'同名'})));assert.ok(!/userKey|seatId|token|rack/.test(JSON.stringify(remaining.matchPlayers)));
+  const restored=createRoomStore({now:f.now});t.after(()=>restored.close());restored.importSnapshot(f.store.exportSnapshot(f.host.roomCode));
+  assert.deepEqual(restored.getTrustedView(f.host.roomCode,users[1]).matchPlayers,original);
+  f.action(1,'rematch');assert.deepEqual(f.view(1).matchPlayers,[]);
+});
