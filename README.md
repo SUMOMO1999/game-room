@@ -13,10 +13,13 @@
 - [棋牌室共通设计](docs/design/platform.md)：房间、玩家、观战、聊天、声音、保存恢复和手机体验。
 - [拉密设计](docs/design/games/rummikub.md)：当前朋友规则、鬼牌、桌面与手牌操作、边界例子和验收。
 - [军棋设计](docs/design/games/army-flip.md)：翻棋、碰暗棋、运旗、排雷及固定棋盘操作。
-- [新游戏设计模板](docs/design/game-design-template.md)：朋友写玩法和例子，维护者补技术设计。
+- [分类模板入口](docs/design/game-design-template.md)：朋友写玩法和例子，维护者补技术设计。
+- [固定牌类模板](docs/design/templates/fixed-deck-game.md)：414、扑克、麻将、拉密，重点是牌组与规则。
+- [桌游类模板](docs/design/templates/tabletop-game.md)与[逐卡定义](docs/design/templates/card-definition.md)：不同角色、牌或地块各有行为；飞行棋可用轻版。
+- [Step 0 资源阶段](docs/design/resource-stage.md)：先做代表性资源和操作小样，完整接入前补齐本轮内容与资源。
 - [迭代经验](docs/design/lessons.md)：把之前漏掉的流程与交互变成设计检查项。
 
-准备写 414 的朋友可以复制模板，填写前半部分，保存为 `414.md` 直接交给维护者，也可以提交到 [提案目录](docs/proposals/README.md)。无需先了解技术。维护者会核对歧义并补充后半部分；未明确的地方规则保持“待确认”，不会由 AI 默默猜定。
+准备写 414 的朋友可以复制固定牌类模板，填写“朋友填写”部分，保存为 `414.md` 直接交给维护者，也可以提交到 [提案目录](docs/proposals/README.md)。内容型桌游先列完整初版目录，再为有独特行为的类型填写逐卡定义；重复副本共用定义。无需先了解技术。维护者会核对歧义并补充技术部分；未明确的地方规则保持“待确认”，不会由 AI 默默猜定。只有游戏名时先看[一版设计如何拆解](docs/design/from-game-name.md)。
 
 这份设计库从拉密和军棋的实际迭代中整理而来。它记录的不只是玩法，还包含进入与退出、角色权限、拖动与整理、反馈、保存恢复、弱网和边界验收，避免每款新游戏都重新漏掉相同的产品流程。具体协作方式见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
