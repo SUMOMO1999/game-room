@@ -1,0 +1,22 @@
+node_modules/
+.env
+.env.*
+!.env.example
+.local/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+dist/
+.DS_Store
+coverage/
+*.pem
+*.key
+*.p12
+*.pfx
+*.log
+
+# Internal workspace collaboration records
+project.md
+specs/
+ops/
+AGENTS.md

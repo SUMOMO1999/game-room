@@ -1,0 +1,19 @@
+.lobby-shell .practice-menu { position: relative; flex: none; z-index: 20; }
+.practice-menu summary { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 8px 0 8px 12px; color: var(--green); font-size: 12px; cursor: pointer; list-style: none; white-space: nowrap; }
+.practice-menu summary::-webkit-details-marker { display: none; }
+.practice-menu summary > span { font-size: 16px; line-height: 1; }
+.practice-menu[open] summary > span { transform: rotate(180deg); }
+.practice-menu summary:focus-visible { outline: 3px solid #dfac50; outline-offset: 4px; border-radius: 5px; }
+.practice-menu-options { position: absolute; right: 0; top: calc(100% + 6px); width: min(236px, calc(100vw - 32px)); padding: 6px; border: 1px solid var(--line); border-radius: 10px; background: #fffaf0; box-shadow: 0 8px 24px #243e341c; }
+.practice-menu-options a { display: flex; flex-direction: column; gap: 5px; min-height: 64px; padding: 12px; border-radius: 6px; color: var(--green); text-decoration: none; }
+.practice-menu-options a + a { border-top: 1px solid var(--line); }
+.practice-menu-options a:hover { background: #eeeee2; }
+.practice-menu-options strong { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; font-weight: 600; }
+.practice-menu-options small { font-size: 10px; line-height: 1.6; color: #687366; }
+.lobby-shell .lobby-bottom { align-items: center; }
+.practice-shortcuts { display: flex; flex-wrap: wrap; align-items: center; gap: 0 22px; }
+.practice-shortcuts a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; white-space: nowrap; }
+@media (max-width: 600px) {
+  .lobby-shell .lobby-bottom { align-items: flex-start; }
+  .practice-shortcuts { column-gap: 24px; font-size: 11px; }
+}

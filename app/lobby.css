@@ -1,0 +1,25 @@
+.lobby-shell .recent-seat {display:flex;align-items:center;gap:16px;padding:16px 0;border-bottom:1px solid var(--line);background:transparent;width:100%;text-align:left;}
+#create-game,#join-role {width:100%;min-height:48px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);font:inherit;}
+.recent-room-label {display:flex;flex-direction:column;gap:5px;flex:1;min-width:0;}
+.recent-room-label strong {font-size:15px;}
+.recent-room-label span {font-size:12px;color:var(--muted);line-height:1.5;}
+.recent-room-controls {display:flex;align-items:center;gap:12px;flex:none;}
+.recent-room-controls button {min-height:42px;}
+.history-section {margin:36px 0 24px;padding-top:28px;border-top:1px solid var(--line);}
+.history-section h2 {font-size:20px;margin:0 0 8px;}
+#history-stats,#history-status {font-size:13px;color:var(--muted);line-height:1.6;}
+.history-match {border-bottom:1px solid var(--line);padding:12px 0;}
+.history-match summary {cursor:pointer;display:flex;justify-content:space-between;gap:16px;min-height:32px;align-items:center;}
+.history-match summary strong {font-size:14px;}
+.history-match summary span {font-size:12px;color:var(--muted);}
+.history-match p,.history-match li {font-size:13px;color:var(--muted);line-height:1.6;}
+.history-match ul {padding-left:20px;}
+.history-footer {display:flex;align-items:center;gap:12px;}
+#lobby-exit-dialog {max-width:430px;width:calc(100vw - 40px);padding:24px;border:1px solid var(--line);border-radius:18px;background:var(--paper);color:var(--ink);}
+#lobby-exit-dialog::backdrop {background:rgb(0 0 0 / .5);}
+#lobby-exit-dialog h2 {margin:0 0 14px;font-size:22px;}
+#lobby-exit-description,#lobby-exit-status {font-size:14px;line-height:1.7;}
+#lobby-exit-status {color:#a52727;}
+.lobby-exit-actions {display:flex;justify-content:flex-end;gap:14px;margin-top:20px;}
+.lobby-exit-actions .exit-confirm {background:#a53838;color:white;border:0;border-radius:10px;padding:12px 18px;}
+@media(max-width:540px) {.lobby-shell .recent-seat {align-items:flex-start;flex-direction:column;gap:10px;}.recent-room-controls {width:100%;justify-content:space-between;}.history-match summary {gap:8px;}}

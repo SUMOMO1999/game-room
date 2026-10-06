@@ -1,0 +1,24 @@
+{
+  # Error logs can also contain an OAuth URL even when access logging is disabled.
+  log default {
+    format filter {
+      wrap json
+      fields {
+        request>uri delete
+        request>headers delete
+      }
+    }
+  }
+}
+
+game.sumomoli.com {
+  # Access logging stays disabled: OAuth callback query strings contain one-use credentials.
+  reverse_proxy 127.0.0.1:4177 {
+    header_up Host game.sumomoli.com
+    header_up X-Game-Room-Peer {http.request.remote.host}
+    transport http {
+      # Must be shorter than the Node upstream's 5-second keepalive timeout.
+      keepalive 4s
+    }
+  }
+}

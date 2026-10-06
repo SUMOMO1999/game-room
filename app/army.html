@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-CN" class="army-root">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#143b30">
+  <meta name="description" content="棋牌室的双人翻棋军棋。随机翻子，与朋友慢慢下。">
+  <title>翻棋军棋 · 棋牌室</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css"><link rel="stylesheet" href="./army.css">
+  <script type="module" src="./army-room.mjs"></script>
+<link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="棋牌室"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><link rel="stylesheet" href="./app-shell.css"><script type="module" src="./app-shell.mjs"></script>
+</head>
+<body data-mode="army" class="army-screen">
+  <div class="shell">
+    <header class="site-header">
+      <a class="brand" href="./" aria-label="棋牌室首页">
+        <span class="brand-mark" aria-hidden="true"><i>3</i><i>3</i></span>
+        <span><strong>棋牌室</strong><small>GOOD COMPANY, GOOD GAMES.</small></span>
+      </a>
+      <div class="header-actions"><span class="mode-badge"><span></span><span id="connection-label">连接中</span></span><button id="chat-toggle" class="chat-toggle" type="button" aria-controls="room-chat" aria-expanded="false" hidden>聊两句 <span id="chat-unread" class="chat-unread" hidden></span></button><button id="sound-toggle" class="sound-toggle" type="button" aria-pressed="false" aria-label="开启音效">音效关</button><button class="quiet-button" id="show-rules" aria-label="玩法说明">规则</button><button id="room-options" class="quiet-button room-options-toggle" type="button" aria-controls="room-options-dialog" aria-label="房间选项">•••</button><button id="leave-room" class="room-exit" type="button" aria-label="退出房间" title="退出房间" disabled>×</button></div>
+    </header>
+
+    <main><div class="room-topbar"><a class="quiet-link" href="./">← 返回大厅</a><span>房间 <strong id="room-code">------</strong></span></div><p id="chat-legacy-note" class="chat-legacy-note" hidden>房间聊天可在统一账号预览中体验。</p><div id="room-players" class="room-players"></div>
+<section id="room-waiting" class="room-waiting"><p class="eyebrow">EVERYONE AT THE TABLE</p><h2>两个人坐好，就开始。</h2><p id="waiting-hint">正在恢复你的座位…</p><a id="room-account-recover" class="primary-button" hidden>登录并恢复房间 →</a><a id="room-account-reauth" class="quiet-link account-reauth-link" href="https://agora.sumomoli.com/#account" target="_blank" rel="noopener" hidden>重新验证账号 ↗</a><p id="room-account-reauth-note" class="account-reauth-note" hidden>若登录仍失败，请在 Agora 完成账号验证后返回，再登录棋牌室。原房间席位会保留。</p><div class="waiting-actions"><button id="ready-button" class="primary-button" disabled>准备好了</button><button id="start-room" class="secondary-button" hidden>开始游戏</button></div><p class="room-rule-note" id="room-rule-note">双人翻棋：随机扣子、轮流行动，每回合30分钟，时间到自动跳过。</p></section>
+<section id="room-result" class="room-result" hidden><p class="eyebrow">GOOD GAME, GOOD COMPANY</p><h2 id="result-title">这一局结束了。</h2><p id="result-reason"></p><div id="result-scores"></div><button id="rematch" class="primary-button" hidden>再来一局 →</button></section><div id="room-play" hidden>
+      <div class="army-heading"><h1>翻棋军棋</h1><span id="army-round">等待开局</span><strong id="army-turn">轮流翻子</strong><span id="turn-clock" class="turn-clock" hidden><span id="turn-clock-time" class="turn-clock-time"></span><span id="turn-clock-action" class="turn-clock-action"></span></span></div>
+      <section class="army-table" aria-label="军棋棋盘"><p class="orientation-hint" role="note"><span aria-hidden="true">↻</span>把手机横过来，展开完整棋盘。</p><div id="army-board-stage" class="army-board-stage"><div id="army-board" class="army-board" aria-label="完整军棋棋盘"><svg id="army-lines" viewBox="0 0 1200 500" aria-hidden="true"></svg><div id="army-cells" class="army-cells"></div></div></div></section>
+      <div class="army-action-bar"><p id="army-feedback" role="status" aria-live="polite">轮到你时，点暗子翻开；点己方棋子后再点亮起的目标。</p><div class="army-action-buttons"><button id="army-cancel" class="secondary-button" type="button" disabled>取消选子</button><button id="resume-room" class="primary-button" type="button" hidden>继续这局</button><button id="army-captured" class="secondary-button" type="button">阵亡棋子</button></div></div>
+</div>
+    </main>
+  </div>
+
+  <aside id="room-chat" class="room-chat" aria-labelledby="chat-title" hidden>
+    <div class="chat-heading"><div><h2 id="chat-title">这一桌，聊两句。</h2><p>最近 24 小时 · 最多 500 条；新加入的朋友也能看到。</p></div><button id="chat-close" class="chat-close" type="button" aria-label="收起房间聊天">×</button></div>
+    <div class="chat-history-tools"><button id="chat-older" class="text-button" type="button" hidden>更早的消息</button><span id="chat-truncated" hidden>部分旧消息已到期或超出保留范围。</span></div>
+    <ol id="chat-messages" class="chat-messages" aria-label="房间消息"></ol>
+    <button id="chat-latest" class="chat-latest" type="button" hidden>回到最新 ↓</button>
+    <div id="chat-outbox" class="chat-outbox" aria-label="待确认发送的消息"></div>
+    <form id="chat-form" class="chat-form"><label class="visually-hidden" for="chat-input">给房间朋友的消息</label><textarea id="chat-input" rows="2" placeholder="说点什么…" aria-describedby="chat-counter chat-status" enterkeyhint="enter"></textarea><div class="chat-composer-bottom"><span id="chat-counter">0/500</span><button id="chat-send" class="primary-button" type="submit" disabled>发送</button></div></form>
+    <div class="chat-status-row"><span id="chat-status" role="status" aria-live="polite">连接中…</span><button id="chat-reconnect" class="text-button" type="button" hidden>重新同步</button></div>
+  </aside>
+
+  <dialog id="room-options-dialog" class="room-options-dialog" aria-labelledby="room-options-title">
+    <div class="dialog-heading"><h2 id="room-options-title">这一桌的安排</h2><button id="room-options-close" class="close-button" type="button" aria-label="收起房间选项">×</button></div>
+    <div class="army-room-menu-content">
+    <p id="army-spectator-note"></p><p id="room-options-note">暂离保留席位；退出房间会释放席位。</p>
+    <div class="room-menu-actions"><button id="army-switch-role" class="secondary-button" type="button" hidden>入座下棋</button><button id="army-offer-draw" class="secondary-button" type="button" hidden>提议和棋</button><button id="army-resign" class="secondary-button" type="button" hidden>认输</button><button id="show-room-activity" class="secondary-button" type="button">本局动态</button><button id="copy-invite" class="secondary-button" type="button">复制邀请链接</button><button id="pause-room" class="secondary-button" type="button" hidden>提议暂停</button><button id="resume-room-menu" class="secondary-button" type="button" hidden>继续这局</button><button id="take-host" class="secondary-button" type="button" hidden>接任房主</button></div>
+    <div id="host-transfer-controls" class="host-transfer-controls" hidden><label for="next-host">交给另一位房主</label><select id="next-host" aria-label="下一位房主"></select><button id="transfer-host" class="secondary-button" type="button">转交</button></div>
+    <div class="room-menu-separation"><button id="away-room" class="secondary-button" type="button">暂离牌桌</button><button id="room-account-logout" class="text-button" type="button" hidden>退出棋牌账号</button></div>
+    <p id="room-menu-status" role="status" aria-live="polite"></p>
+    </div>
+  </dialog>
+  <dialog id="room-activity-dialog" class="room-activity-dialog" aria-labelledby="room-activity-title"><div class="dialog-heading"><h2 id="room-activity-title">本局动态</h2><button id="room-activity-close" class="close-button" type="button" aria-label="收起本局动态">×</button></div><p class="activity-note">只显示公开行动，方便回来后接着玩。</p><ol id="room-activity-list" class="room-activity-list"></ol><div class="activity-pages"><button id="activity-prev" class="secondary-button" type="button">上一页</button><span id="activity-page"></span><button id="activity-next" class="secondary-button" type="button">下一页</button></div></dialog>
+  <dialog id="leave-room-dialog" class="confirm-dialog" aria-labelledby="leave-room-title">
+    <div class="dialog-heading"><h2 id="leave-room-title">退出这个房间？</h2><button id="leave-room-close" class="close-button" type="button" aria-label="取消退出房间">×</button></div>
+    <p id="leave-room-explanation"></p><p id="leave-room-status" role="status" aria-live="polite"></p>
+    <div class="confirm-actions"><button id="cancel-leave-room" class="secondary-button" type="button">留在牌桌</button><button id="confirm-leave-room" class="primary-button" type="button">确认退出房间</button></div>
+  </dialog>
+
+  <dialog id="rules-dialog" class="army-dialog army-rules-dialog" aria-labelledby="rules-title"><div class="dialog-heading"><h2 id="rules-title">双人翻棋军棋</h2><button id="close-rules" class="close-button" type="button" aria-label="关闭规则">×</button></div><p id="army-assignment-rule"></p><div id="army-rule-page"></div><div class="army-rule-pages"><button id="army-rules-prev" class="secondary-button" type="button">上一页</button><span id="army-rules-page"></span><button id="army-rules-next" class="secondary-button" type="button">下一页</button></div><div class="sound-settings"><label for="sound-volume">音效音量</label><input id="sound-volume" type="range" min="0" max="100" step="5" value="45" aria-label="音效音量"><select id="sound-preview-kind" aria-label="选择试听音效"><option value="flip">翻棋</option><option value="move">走棋</option><option value="collision">碰撞</option><option value="select">选牌</option><option value="undo">撤销</option><option value="invalid">操作失败</option><option value="start">开局</option><option value="turn">轮到你</option><option value="win">获胜</option><option value="loss">落败</option><option value="draw-result">和局</option><option value="ready">准备</option><option value="pause">暂停</option><option value="resume">继续</option><option value="chat">聊天发言</option></select><button id="sound-preview" class="secondary-button" type="button">试听</button><span id="sound-preview-status" role="status" aria-live="polite">45%</span></div><button id="start-playing" class="primary-button" type="button">知道了</button></dialog>
+  <dialog id="army-resign-dialog" class="army-dialog confirm-dialog" aria-labelledby="army-resign-title"><div class="dialog-heading"><h2 id="army-resign-title">确认认输？</h2><button id="army-resign-close" class="close-button" type="button" aria-label="取消认输">×</button></div><p>认输会结束当前对局，记为你负、对方胜。你仍留在房间，可以再来一局。退出房间则中止本局，不计输赢。</p><p id="army-resign-status" role="status"></p><div class="confirm-actions"><button id="army-resign-cancel" class="secondary-button" type="button">继续下棋</button><button id="army-resign-confirm" class="primary-button" type="button">确认认输</button></div></dialog>
+  <dialog id="army-captured-dialog" class="army-dialog" aria-labelledby="army-captured-title"><div class="dialog-heading"><h2 id="army-captured-title">公开阵亡棋子</h2><button id="army-captured-close" class="close-button" type="button" aria-label="关闭阵亡棋子">×</button></div><p>只显示双方已经翻开并阵亡的棋子。</p><div id="army-captured-list" class="army-captured-list"></div></dialog>
+  <section id="army-draw-offer" class="army-draw-offer" role="region" aria-label="和棋提议" hidden><p id="army-draw-note"></p><div><button id="army-accept-draw" class="primary-button" type="button">同意和棋</button><button id="army-decline-draw" class="secondary-button" type="button">继续对局</button></div></section>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <noscript><p class="noscript">请开启浏览器的 JavaScript 后进入房间。</p></noscript>
+</body>
+</html>

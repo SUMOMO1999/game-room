@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f5f3ec">
+  <meta name="description" content="棋牌室的拉密朋友局。和朋友一起整理手牌，慢慢玩。">
+  <title>拉密 · 棋牌室</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.mjs"></script>
+<link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="棋牌室"><meta name="apple-mobile-web-app-status-bar-style" content="default"><link rel="stylesheet" href="./app-shell.css"><script type="module" src="./app-shell.mjs"></script>
+</head>
+<body data-mode="room" class="game-screen">
+  <div class="shell">
+    <header class="site-header">
+      <a class="brand" href="./" aria-label="棋牌室首页">
+        <span class="brand-mark" aria-hidden="true"><i>3</i><i>3</i></span>
+        <span><strong>棋牌室</strong><small>GOOD COMPANY, GOOD GAMES.</small></span>
+      </a>
+      <div class="header-actions"><span class="mode-badge"><span></span><span id="connection-label">连接中</span></span><button id="chat-toggle" class="chat-toggle" type="button" aria-controls="room-chat" aria-expanded="false" hidden>聊两句 <span id="chat-unread" class="chat-unread" hidden></span></button><button id="sound-toggle" class="sound-toggle" type="button" aria-pressed="false" aria-label="开启音效">音效关</button><button class="quiet-button" id="show-rules" aria-label="玩法说明">规则</button><button id="room-options" class="quiet-button room-options-toggle" type="button" aria-controls="room-options-dialog" aria-label="房间选项">•••</button><button id="leave-room" class="room-exit" type="button" aria-label="退出房间" title="退出房间" disabled>×</button></div>
+    </header>
+
+    <main><p class="orientation-hint" role="note"><span aria-hidden="true">↻</span>把手机横过来，展开这一桌好牌。</p><div class="room-topbar"><a class="quiet-link" href="./">← 返回大厅</a><span>房间 <strong id="room-code">------</strong></span></div><p id="chat-legacy-note" class="chat-legacy-note" hidden>房间聊天可在统一账号预览中体验。</p><div id="room-players" class="room-players"></div><p id="spectator-list" class="spectator-list" hidden></p>
+<section id="room-waiting" class="room-waiting"><p class="eyebrow">EVERYONE AT THE TABLE</p><h2>等朋友坐好，就开始。</h2><p id="waiting-hint">正在恢复你的座位…</p><a id="room-account-recover" class="primary-button" hidden>登录并恢复房间 →</a><a id="room-account-reauth" class="quiet-link account-reauth-link" href="https://agora.sumomoli.com/#account" target="_blank" rel="noopener" hidden>重新验证账号 ↗</a><p id="room-account-reauth-note" class="account-reauth-note" hidden>若登录仍失败，请在 Agora 完成账号验证后返回，再登录棋牌室。原房间席位会保留。</p><div class="waiting-actions"><button id="ready-button" class="primary-button" disabled>准备好了</button><button id="start-room" class="secondary-button" hidden>开始游戏</button><button id="role-toggle" class="secondary-button" type="button" hidden>改为观战</button></div><p class="room-rule-note" id="room-rule-note">朋友局：首次30点，开局后可取回和重组鬼牌，每回合30分钟，时间到自动摸牌；没有罚牌。</p></section>
+<section id="room-result" class="room-result" hidden><p class="eyebrow">GOOD GAME, GOOD COMPANY</p><h2 id="result-title">这一局结束了。</h2><p id="result-reason"></p><div id="result-scores"></div><button id="rematch" class="primary-button" hidden>再来一局 →</button></section><div id="room-play" hidden>
+      <section class="game-heading" aria-labelledby="game-title">
+        <div><p class="eyebrow">01 / TILE GAMES</p><h1 id="game-title">拉密<span>慢慢想，好好玩。</span></h1><p class="description">把数字连成顺子，或让不同颜色的同数牌相遇。</p></div>
+        <strong id="turn-banner" role="status" aria-live="polite" hidden></strong><div class="round-summary"><span id="turn-clock" class="turn-clock" hidden><span id="turn-clock-time" class="turn-clock-time"></span><span id="turn-clock-action" class="turn-clock-action"></span></span><span id="round-label">第 1 轮</span><strong id="opening-label">开局 ≥ 30 点</strong></div>
+      </section>
+
+      <section class="game-table" aria-label="拉密桌面">
+        <div class="table-topline"><span><i class="small-dot"></i>公共桌面</span><div class="table-view-actions"><span id="board-count">9 张牌</span><button type="button" id="board-arrange" class="board-view-button" aria-label="自动整理">整理桌面</button><button type="button" id="board-view" class="board-view-button" aria-pressed="false" aria-label="放大查看牌组">看牌</button></div></div>
+        <p id="preview-status" class="preview-status" role="status" hidden></p><div id="board" class="board" aria-label="公共组合"></div>
+        <div class="table-note"><span aria-hidden="true">✳</span><span id="table-note">首次出牌先用自己的牌，开局后再重组桌面。</span></div>
+      </section>
+
+      <section class="rack-section" aria-label="我的手牌">
+        <div class="rack-heading"><div><h2>我的手牌 <span id="rack-count">14</span></h2><p id="selection-hint">可拖动，也可选中几张，再点「新组合」。</p></div><div class="sort-controls" aria-label="整理手牌"><button id="rack-inspect" class="sort-button" aria-label="放大查看手牌">看手牌</button><button id="sort-color" class="sort-button" title="按颜色和数字整理">按颜色</button><button id="sort-number" class="sort-button" title="按数字和颜色整理">按数字</button></div></div>
+        <div id="rack" class="rack" data-zone="rack" aria-label="手牌区"></div>
+        <div class="rack-bottom"><button id="return-rack" class="text-button" disabled>收回选中牌</button><span id="pool-count">牌池 83 张</span></div>
+      </section>
+
+      <div class="turn-bar">
+        <div class="feedback" id="feedback" role="status" aria-live="polite"><span class="feedback-icon" aria-hidden="true">○</span><span id="feedback-text">首次出牌先用自己的手牌，组合合计至少30点。</span></div>
+        <div class="turn-actions"><button id="undo" class="secondary-button" aria-label="撤销一步" disabled>撤销</button><button id="restore" class="secondary-button" aria-label="还原本轮" disabled>还原</button><button id="draw" class="secondary-button" aria-label="摸一张">摸牌</button><button id="resume-room" class="primary-button" type="button" hidden>继续这局</button><button id="commit" class="primary-button" aria-label="确认出牌" disabled>出牌 <span aria-hidden="true">→</span></button></div>
+      </div>
+
+      <footer class="page-footer"><span>桌面整理可同步观看，确认后才正式保存。其余手牌只有自己可见。</span><button id="restart" class="text-button" hidden>重新开始</button></footer></div>
+    </main>
+  </div>
+
+  <aside id="room-chat" class="room-chat" aria-labelledby="chat-title" hidden>
+    <div class="chat-heading"><div><h2 id="chat-title">这一桌，聊两句。</h2><p>最近 24 小时 · 最多 500 条；新加入的朋友也能看到。</p></div><button id="chat-close" class="chat-close" type="button" aria-label="收起房间聊天">×</button></div>
+    <div class="chat-history-tools"><button id="chat-older" class="text-button" type="button" hidden>更早的消息</button><span id="chat-truncated" hidden>部分旧消息已到期或超出保留范围。</span></div>
+    <ol id="chat-messages" class="chat-messages" aria-label="房间消息"></ol>
+    <button id="chat-latest" class="chat-latest" type="button" hidden>回到最新 ↓</button>
+    <div id="chat-outbox" class="chat-outbox" aria-label="待确认发送的消息"></div>
+    <form id="chat-form" class="chat-form"><label class="visually-hidden" for="chat-input">给房间朋友的消息</label><textarea id="chat-input" rows="2" placeholder="说点什么…" aria-describedby="chat-counter chat-status" enterkeyhint="enter"></textarea><div class="chat-composer-bottom"><span id="chat-counter">0/500</span><button id="chat-send" class="primary-button" type="submit" disabled>发送</button></div></form>
+    <div class="chat-status-row"><span id="chat-status" role="status" aria-live="polite">连接中…</span><button id="chat-reconnect" class="text-button" type="button" hidden>重新同步</button></div>
+  </aside>
+
+  <dialog id="room-options-dialog" class="room-options-dialog" aria-labelledby="room-options-title">
+    <div class="dialog-heading"><h2 id="room-options-title">这一桌的安排</h2><button id="room-options-close" class="close-button" type="button" aria-label="收起房间选项">×</button></div>
+    <p id="room-options-note">暂离保留席位；退出房间会释放席位。</p>
+    <div class="room-menu-actions"><button id="show-room-activity" class="secondary-button" type="button">本局动态</button><button id="joker-settings-open" class="secondary-button" type="button">鬼牌设置</button><button id="copy-invite" class="secondary-button" type="button">复制邀请链接</button><button id="pause-room" class="secondary-button" type="button" hidden>提议暂停</button><button id="resume-room-menu" class="secondary-button" type="button" hidden>继续这局</button><button id="take-host" class="secondary-button" type="button" hidden>接任房主</button></div>
+    <div id="host-transfer-controls" class="host-transfer-controls" hidden><label for="next-host">交给另一位房主</label><select id="next-host" aria-label="下一位房主"></select><button id="transfer-host" class="secondary-button" type="button">转交</button></div>
+    <div class="room-menu-separation"><button id="away-room" class="secondary-button" type="button">暂离牌桌</button><button id="room-account-logout" class="text-button" type="button" hidden>退出棋牌账号</button></div>
+    <p id="room-menu-status" role="status" aria-live="polite"></p>
+  </dialog>
+  <dialog id="joker-settings-dialog" class="joker-settings-dialog" aria-labelledby="joker-settings-title"><div class="dialog-heading"><h2 id="joker-settings-title">这一局的鬼牌</h2><button id="joker-settings-close" class="close-button" type="button" aria-label="关闭鬼牌设置">×</button></div><form id="joker-config-form" class="joker-config-form"><h3>鬼牌设置</h3><p>房主开局前设置；每类0～8张，合计最多24张。修改后大家需要重新准备。</p><div class="joker-config-grid"><label>传统百搭<input id="joker-normal" type="number" min="0" max="8" value="2" inputmode="numeric"></label><label>镜像百搭<input id="joker-mirror" type="number" min="0" max="8" value="0" inputmode="numeric"></label><label>变色百搭<input id="joker-color-change" type="number" min="0" max="8" value="0" inputmode="numeric"></label><label>双重百搭<input id="joker-double" type="number" min="0" max="8" value="0" inputmode="numeric"></label></div><div class="joker-config-bottom"><span id="joker-config-summary"></span><button id="joker-config-apply" class="secondary-button" type="submit">保存设置</button></div><p id="joker-config-status" role="status"></p></form></dialog>
+  <dialog id="room-activity-dialog" class="room-activity-dialog" aria-labelledby="room-activity-title"><div class="dialog-heading"><h2 id="room-activity-title">本局动态</h2><button id="room-activity-close" class="close-button" type="button" aria-label="收起本局动态">×</button></div><p class="activity-note">只显示公开行动，方便回来后接着玩。</p><ol id="room-activity-list" class="room-activity-list"></ol><div class="activity-pages"><button id="activity-prev" class="secondary-button" type="button">上一页</button><span id="activity-page"></span><button id="activity-next" class="secondary-button" type="button">下一页</button></div></dialog>
+  <dialog id="leave-room-dialog" class="confirm-dialog" aria-labelledby="leave-room-title">
+    <div class="dialog-heading"><h2 id="leave-room-title">退出这个房间？</h2><button id="leave-room-close" class="close-button" type="button" aria-label="取消退出房间">×</button></div>
+    <p id="leave-room-explanation"></p><p id="leave-room-status" role="status" aria-live="polite"></p>
+    <div class="confirm-actions"><button id="cancel-leave-room" class="secondary-button" type="button">留在牌桌</button><button id="confirm-leave-room" class="primary-button" type="button">确认退出房间</button></div>
+  </dialog>
+
+  <dialog id="rules-dialog" class="rules-dialog" aria-labelledby="rules-title">
+    <div class="dialog-heading"><p class="eyebrow">HOW TO PLAY</p><button class="close-button" id="close-rules" aria-label="关闭玩法说明">×</button></div>
+    <h2 id="rules-title">一起把牌打出去。</h2>
+    <label class="color-assist-option"><input id="tile-color-assist" type="checkbox">牌色辅助标记<span>红● · 蓝▲ · 黄◆ · 黑■</span></label>
+    <div class="sound-settings"><label for="sound-volume">音效音量</label><input id="sound-volume" type="range" min="0" max="100" step="5" value="45" aria-label="音效音量"><select id="sound-preview-kind" aria-label="选择试听音效"><option value="placement">落牌</option><option value="select">选牌</option><option value="sort">整理 / 排序</option><option value="undo">撤销</option><option value="restore">还原</option><option value="split">拆组</option><option value="merge">拼组</option><option value="draw">摸牌</option><option value="commit">确认出牌</option><option value="invalid">操作失败</option><option value="start">开局</option><option value="turn">轮到你</option><option value="win">获胜</option><option value="loss">落败</option><option value="ready">准备</option><option value="pause">暂停</option><option value="resume">继续</option><option value="chat">聊天发言</option></select><button id="sound-preview" class="secondary-button" type="button">试听</button><span id="sound-preview-status" role="status" aria-live="polite">45%</span></div>
+    <p class="dialog-intro" id="rule-version">拉密朋友局</p>
+    <ol class="rules-list">
+      <li><strong>人数与牌数</strong><p id="tile-count-rule">2～4人用两副数字牌，5～7人用三副；默认每副一张传统鬼牌，房主可以在开局前设置鬼牌种类和数量。每人起手14张。</p></li>
+      <li><strong>两种组合</strong><p>同数：3 或 4 张同数字、不同颜色。顺子：至少 3 张同色连续数字，1 不接在 13 后面。</p></li>
+      <li><strong>先过 30 点</strong><p>首次出牌只能用自己的手牌，所有新组合合计至少 30 点。这版朋友局中，这一轮先不重组公共桌面。</p></li>
+      <li><strong>再玩重组</strong><p>开局后可拆分、接牌、重新组合，但桌面最终必须全部合法，并且至少打出一张自己的牌。</p></li>
+      <li><strong>鬼牌与还原</strong><p id="joker-rule">开局后可以重组含鬼牌组合。取回的鬼牌可接进已有组合，或组成新组；本回合必须重新用到桌上，并至少出一张自己的牌。桌面牌不能拿回手牌。</p><p id="twist-rule" hidden>传统百搭代替一个数字。镜像百搭必须在正中，两侧数字和颜色对称；每组限一张；新朋友局按靠中心的对应数字计分，旧局保留原计分。变色百搭只用于顺子，数字仍连续，可改变后面牌的颜色。双重百搭在顺子中代替连续两个数字，在同数组中代替两种缺少的颜色。每组至少三张实牌，不能全是鬼牌；手里每张鬼牌结算按30点。</p><p>整理失败可以还原，不罚牌。</p></li>
+    </ol>
+    <div class="dialog-tip"><strong>怎么操作？</strong><p>拖牌到组合或桌面空位，合法顺子会自动排好。拖动组合标题可以移动整组，拖到另一组上可以拼接；点组上的剪刀，再选牌之间的分界即可拆开。也可以点选多张牌后放入组合，整理都能撤销。自动整理只重排位置。</p></div>
+    <p class="prototype-note">牌池耗尽后可过牌，全部玩家连续过牌时以手牌点数最低者获胜；手里剩余鬼牌按30点计算，可并列。</p>
+    <button id="start-playing" class="primary-button">明白了，开始玩 <span aria-hidden="true">→</span></button>
+  </dialog>
+
+  <dialog id="restart-dialog" class="confirm-dialog" aria-labelledby="restart-title"><h2 id="restart-title">重新开始练习？</h2><p>当前手牌和未提交的整理会清空，重新发回示例牌。</p><div class="confirm-actions"><button id="cancel-restart" class="secondary-button">继续这局</button><button id="confirm-restart" class="primary-button">重新开始</button></div></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <noscript><p class="noscript">请开启浏览器的 JavaScript 后进入房间。</p></noscript>
+</body>
+</html>

@@ -1,0 +1,115 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Own game-room single-host production infrastructure in Tokyo. Preparation only; application release and its independent Cognito client are separate operations.",
+  "Metadata": {
+    "Project": "game-room",
+    "Environment": "production",
+    "ReviewedRegion": "ap-northeast-1",
+    "AuthenticationBoundary": "This template does not create or modify any Cognito client, user pool, shared identity, Agora, calendar or stock resource.",
+    "RetentionBoundary": "All declared resources are retained on removal or replacement. Retention continues charges; cleanup requires a separate precise review.",
+    "BootstrapBoundary": "No application code, credentials, encryption keys or launch script are sent through UserData. Install the reviewed release separately over SSH. Require IMDSv2 separately before enabling offsite backups."
+  },
+  "Parameters": {
+    "DnsHostedZoneId": {
+      "Type": "String",
+      "Description": "Your existing Route 53 public hosted zone ID. Verify ownership before creating the DNS record.",
+      "AllowedPattern": "^Z[A-Z0-9]+$"
+    },
+    "GameDomainName": {
+      "Type": "String",
+      "Description": "Your exact game hostname, without scheme or trailing dot. Authentication and proxy configuration require separate adaptation.",
+      "AllowedPattern": "^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?$"
+    },
+    "AdminIpv4Cidr": {
+      "Type": "String",
+      "Description": "Reviewed administrator public IPv4 address with /32. No default and no public SSH range.",
+      "AllowedPattern": "^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])/32$",
+      "ConstraintDescription": "Specify one valid administrator IPv4 address followed by /32."
+    },
+    "SshKeyPairName": {
+      "Type": "String",
+      "Description": "Name of an existing reviewed Lightsail SSH key pair in Tokyo. Private key stays outside the template.",
+      "MinLength": 1,
+      "MaxLength": 255,
+      "AllowedPattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+    }
+  },
+  "Resources": {
+    "GameInstance": {
+      "Type": "AWS::Lightsail::Instance",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "InstanceName": "game-room-production",
+        "AvailabilityZone": "ap-northeast-1a",
+        "BlueprintId": "ubuntu_24_04",
+        "BundleId": "small_3_0",
+        "IpAddressType": "ipv4",
+        "KeyPairName": { "Ref": "SshKeyPairName" },
+        "AddOns": [
+          {
+            "AddOnType": "AutoSnapshot",
+            "Status": "Enabled",
+            "AutoSnapshotAddOnRequest": { "SnapshotTimeOfDay": "19:00" }
+          }
+        ],
+        "Networking": {
+          "Ports": [
+            { "FromPort": 80, "ToPort": 80, "Protocol": "tcp", "Cidrs": ["0.0.0.0/0"], "Ipv6Cidrs": [] },
+            { "FromPort": 443, "ToPort": 443, "Protocol": "tcp", "Cidrs": ["0.0.0.0/0"], "Ipv6Cidrs": [] },
+            { "FromPort": 22, "ToPort": 22, "Protocol": "tcp", "Cidrs": [{ "Ref": "AdminIpv4Cidr" }], "Ipv6Cidrs": [] }
+          ]
+        },
+        "Tags": [
+          { "Key": "project", "Value": "game-room" },
+          { "Key": "env", "Value": "production" }
+        ]
+      }
+    },
+    "GameStaticIp": {
+      "Type": "AWS::Lightsail::StaticIp",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "StaticIpName": "game-room-production-ip",
+        "AttachedTo": { "Ref": "GameInstance" }
+      }
+    },
+    "GameBackupBucket": {
+      "Type": "AWS::Lightsail::Bucket",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "BucketName": { "Fn::Sub": "sumomo-game-room-backups-${AWS::AccountId}" },
+        "BundleId": "small_1_0",
+        "ObjectVersioning": false,
+        "AccessRules": { "GetObject": "private", "AllowPublicOverrides": false },
+        "ResourcesReceivingAccess": [{ "Ref": "GameInstance" }],
+        "Tags": [
+          { "Key": "project", "Value": "game-room" },
+          { "Key": "env", "Value": "production" }
+        ]
+      }
+    },
+    "GameDnsRecord": {
+      "Type": "AWS::Route53::RecordSet",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "HostedZoneId": { "Ref": "DnsHostedZoneId" },
+        "Name": { "Fn::Sub": "${GameDomainName}." },
+        "Type": "A",
+        "TTL": "300",
+        "ResourceRecords": [{ "Fn::GetAtt": ["GameStaticIp", "IpAddress"] }]
+      }
+    }
+  },
+  "Outputs": {
+    "GameOrigin": { "Value": { "Fn::Sub": "https://${GameDomainName}" } },
+    "LoginCallback": { "Value": { "Fn::Sub": "https://${GameDomainName}/auth/callback" } },
+    "PostLogoutUri": { "Value": { "Fn::Sub": "https://${GameDomainName}/" } },
+    "InstanceName": { "Value": { "Ref": "GameInstance" } },
+    "StaticIpv4": { "Value": { "Fn::GetAtt": ["GameStaticIp", "IpAddress"] } },
+    "BackupBucketName": { "Value": { "Ref": "GameBackupBucket" } }
+  }
+}

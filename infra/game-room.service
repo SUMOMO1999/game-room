@@ -1,0 +1,37 @@
+[Unit]
+Description=SUMOMO game-room BFF and rooms
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=game-room
+Group=game-room
+WorkingDirectory=/opt/game-room/current
+EnvironmentFile=/etc/game-room/runtime.env
+LoadCredential=store-key:/etc/game-room/store-key
+Environment=GAME_ROOM_STORE_KEY_FILE=%d/store-key
+ExecStartPre=/opt/node/bin/node scripts/production-preflight.mjs
+ExecStart=/opt/node/bin/node scripts/production-start.mjs
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+KillSignal=SIGTERM
+UMask=0077
+StateDirectory=game-room
+StateDirectoryMode=0700
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+ReadWritePaths=/var/lib/game-room
+
+[Install]
+WantedBy=multi-user.target

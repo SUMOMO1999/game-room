@@ -1,0 +1,22 @@
+{
+  "name": "friends-game-room",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env app/server.mjs",
+    "test": "node scripts/test.mjs",
+    "test:release": "node scripts/test.mjs --release",
+    "preview:identity": "node scripts/local-identity-preview.mjs",
+    "start:production": "node scripts/production-start.mjs",
+    "preflight:production": "node scripts/production-preflight.mjs",
+    "build:release": "node scripts/build-release.mjs"
+  },
+  "engines": {
+    "node": ">=22.23.2"
+  },
+  "dependencies": {
+    "jose": "6.2.12",
+    "openid-client": "6.8.8"
+  }
+}
