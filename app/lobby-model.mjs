@@ -1,4 +1,4 @@
-import { presentationCatalog } from './games/catalog.mjs';
+import { storedGameType } from './games/types.mjs';
 const PHASES = new Set(['waiting', 'playing', 'paused', 'finished', 'aborted']);
 const PHASE_LABELS = { waiting: '等待开局', playing: '正在游戏', paused: '暂停保存', finished: '本局已结束', aborted: '本局已中止' };
 
@@ -9,7 +9,9 @@ export function normalizeRecentRoom(entry) {
   for (const key of ['updatedAt', 'expiresAt']) if (Number.isFinite(entry[key]) && entry[key] > 0) result[key] = entry[key];
   for (const key of ['playersCount', 'connectedCount']) if (Number.isInteger(entry[key]) && entry[key] >= 0 && entry[key] <= 7) result[key] = entry[key];
   if (typeof entry.hostName === 'string') result.hostName = entry.hostName;
-  if (presentationCatalog.has(entry.gameType)) result.gameType=entry.gameType;
+  if (entry.gameType !== undefined) {
+    try { result.gameType=storedGameType(entry.gameType); } catch { return null; }
+  }
   if(['player','spectator'].includes(entry.selfRole))result.selfRole=entry.selfRole;
   if(Number.isInteger(entry.spectatorsCount) && entry.spectatorsCount>=0 && entry.spectatorsCount<=8)result.spectatorsCount=entry.spectatorsCount;
   return result;

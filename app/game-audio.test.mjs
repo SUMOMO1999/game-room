@@ -83,13 +83,13 @@ function fixture(options = {}) {
 
 function bindActualPageGestures(filename, document, audio) {
   const source = readFileSync(new URL(filename, import.meta.url), 'utf8');
-  assert.match(source, /mountRoomAudioControls\(\{ audio, document/, `${filename}: actual shared audio controls are mounted`);
+  assert.match(source, /mountRoomAudioControls\(\{\s*audio,\s*document/, `${filename}: actual shared audio controls are mounted`);
   document.getElementById = () => null;
   return mountRoomAudioControls({ document, audio });
 }
 
 test('actual game entries unlock on the first trusted touch release, share one context, and stay closed after disposal', async t => {
-  for (const filename of ['app.mjs', 'army-room.mjs', 'army-practice.mjs']) {
+  for (const filename of ['app.mjs', 'army-room.mjs', 'army-practice.mjs', 'games/flying-chess/page-ui.mjs']) {
     for (const release of ['pointerup', 'touchend']) await t.test(`${filename}: ${release}`, async subtest => {
       const pending = deferred(), f = fixture({ resumePending: pending });
       subtest.after(() => f.audio.close());
@@ -389,6 +389,37 @@ test('background, loss of focus, mute and zero volume discard pending gesture au
     await f.audio.unlock(); assert.ok(f.contexts.every(context => context.oscillators.length === 0));
     await f.audio.close();
   }
+});
+
+test('a visible window blur and focus keep already activated audio audible without another gesture', async () => {
+  const f = fixture(); await f.audio.unlock();
+  const context = f.contexts[0], resumeCalls = context.resumeCalls;
+  f.document.defaultView.navigator.userActivation.isActive = false;
+  f.page('blur'); f.page('focus');
+  assert.equal(f.document.hidden, false);
+  assert.equal(f.audio.state().ready, true); assert.equal(f.audio.state().needsGesture, false);
+  assert.equal(context.suspendCalls, 0); assert.equal(context.closeCalls, 0);
+  assert.equal(context.resumeCalls, resumeCalls); assert.equal(f.contexts.length, 1);
+  assert.equal(f.audio.play('turn'), true); assert.equal(f.audio.play('chat'), true);
+  assert.equal(context.oscillators.length, 4);
+  await f.audio.close(); assert.equal(f.windowListeners.size, 0); assert.equal(f.listeners.size, 0);
+});
+
+test('visible blur never unlocks a new or interrupted graph and later hidden/pagehide still revoke old activation', async () => {
+  for (const revoke of [f => f.visibility(true), f => f.page('pagehide')]) {
+    const f = fixture(); f.page('blur'); f.page('focus');
+    assert.equal(f.contexts.length, 0); assert.equal(f.audio.play('turn'), false);
+    await f.audio.unlock(); f.page('blur'); revoke(f);
+    f.visibility(false); f.page('focus');
+    assert.equal(f.audio.state().ready, false); assert.equal(f.audio.play('chat'), false);
+    assert.equal(f.contexts[0].suspendCalls, 1);
+    await f.audio.close();
+  }
+  const f = fixture(); await f.audio.unlock(); f.contexts[0].transition('interrupted');
+  f.page('blur'); f.page('focus');
+  assert.equal(f.audio.state().ready, false); assert.equal(f.audio.state().needsGesture, true);
+  assert.equal(f.audio.play('turn'), false);
+  assert.equal(f.contexts.length, 1); await f.audio.close();
 });
 
 test('one pending gesture retains only its latest action and control subscribers cannot break playback', async () => {

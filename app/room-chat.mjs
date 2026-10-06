@@ -217,6 +217,18 @@ export class RoomChatModel {
   discard(requestId) { if (this.outbox.get(requestId)?.status !== 'sending') { this.outbox.delete(requestId); this.changed(); } }
 }
 
+/** New pages consume the shared composer structure, including keyboard layout
+ * hooks. Existing static pages retain their compatible markup. */
+export function roomChatMarkup() {
+  return `<aside id="room-chat" class="room-chat" aria-labelledby="chat-title" hidden>
+ <div class="chat-heading"><div><h2 id="chat-title">这一桌，聊两句。</h2><p>最近24小时 · 最多500条；新加入的朋友也能看到。</p></div><button id="chat-close" class="chat-close" type="button" aria-label="收起聊天">×</button></div>
+ <div class="chat-history-tools"><button id="chat-older" class="text-button" type="button" hidden>更早的消息</button><span id="chat-truncated" hidden>部分旧消息已到期。</span></div>
+ <ol id="chat-messages" class="chat-messages" aria-label="房间消息"></ol><button id="chat-latest" class="chat-latest" type="button" hidden>回到最新 ↓</button>
+ <div id="chat-outbox" class="chat-outbox" aria-label="待确认消息"></div>
+ <form id="chat-form" class="chat-form"><label class="visually-hidden" for="chat-input">给朋友的消息</label><textarea id="chat-input" rows="2" placeholder="说点什么…" aria-describedby="chat-counter chat-status" enterkeyhint="enter"></textarea><div class="chat-composer-bottom"><span id="chat-counter">0/500</span><button id="chat-send" class="primary-button" type="submit" disabled>发送</button></div></form>
+ <div class="chat-status-row"><span id="chat-status" role="status" aria-live="polite"></span><button id="chat-reconnect" class="text-button" type="button" hidden>重新同步</button></div></aside>`;
+}
+
 export function mountRoomChat({ documentRef = document, windowRef = window, onUnavailable = () => {}, onCue = () => {}, storage = null } = {}) {
   const byId = (id) => documentRef.getElementById(id);
   const toggle = byId('chat-toggle'); const panel = byId('room-chat'); const list = byId('chat-messages');
@@ -224,7 +236,7 @@ export function mountRoomChat({ documentRef = document, windowRef = window, onUn
   const latest = byId('chat-latest'); const outbox = byId('chat-outbox'); const status = byId('chat-status');
   let restoringScroll = false; let previousSignature = ''; let lastState = null; let composing = false, compositionEpoch = null, discardCompositionInput = false;
   let awaitingStreamBaseline = true, previewTimer = null, previewEpoch = 0, notificationsSuspended = true, alertsMuted = false;
-  let sentTimer = null, sentEpoch = 0, noticesFit = true;
+  let sentTimer = null, sentEpoch = 0, noticesFit = true, visibleChatHeight = windowRef.innerHeight;
   const setTimer = windowRef.setTimeout?.bind(windowRef) || globalThis.setTimeout;
   const clearTimer = windowRef.clearTimeout?.bind(windowRef) || globalThis.clearTimeout;
   try { storage ||= windowRef.localStorage || globalThis.localStorage; const preference=JSON.parse(storage?.getItem('game-room:chat-alerts:v1') || 'null'); alertsMuted=preference?.version===1 && preference.muted===true; } catch { /* Optional device preference. */ }
@@ -271,7 +283,7 @@ export function mountRoomChat({ documentRef = document, windowRef = window, onUn
   alertsToggle.addEventListener('click',()=>{alertsMuted=!alertsMuted;clearPreview();updateAlerts();try{storage?.setItem('game-room:chat-alerts:v1',JSON.stringify({version:1,muted:alertsMuted}));}catch{/* Preference is still effective in this window. */}});
   documentRef.addEventListener('visibilitychange',()=>{if(hidden()){notificationsSuspended=true;clearNotices();}});
   windowRef.addEventListener('pagehide',()=>{notificationsSuspended=true;clearNotices();});
-  documentRef.addEventListener('pointerdown',event=>{if(event.target?.closest?.('.game-table,.rack,.army-table'))clearNotices();},{capture:true});
+  documentRef.addEventListener('pointerdown',event=>{if(event.target?.closest?.('[data-chat-dismiss-notices],.game-table,.rack,.army-table'))clearNotices();},{capture:true});
   updateAlerts();
   function element(tag, className, text) {
     const node = documentRef.createElement(tag); if (className) node.className = className;
@@ -286,7 +298,7 @@ export function mountRoomChat({ documentRef = document, windowRef = window, onUn
     node.append(meta, element('p', '', message.text)); return node;
   }
   function render(state) {
-    lastState = state; if(!state.available){if(compositionEpoch)discardCompositionInput=true;composing=false;clearNotices();}else if(state.open)clearPreview();sentPreview.hidden=!state.available || state.open || !noticesFit || !sentText.textContent; toggle.classList.toggle('has-unread',Boolean(state.unread)); toggle.hidden = !state.available; panel.hidden = !state.available || !state.open;
+    lastState = state; updateDensity(state); if(!state.available){if(compositionEpoch)discardCompositionInput=true;composing=false;clearNotices();}else if(state.open)clearPreview();sentPreview.hidden=!state.available || state.open || !noticesFit || !sentText.textContent; toggle.classList.toggle('has-unread',Boolean(state.unread)); toggle.hidden = !state.available; panel.hidden = !state.available || !state.open;
     toggle.setAttribute('aria-expanded', String(state.open));
     byId('chat-unread').hidden = !state.unread; byId('chat-unread').textContent = state.unread > 99 ? '99+' : String(state.unread);
     toggle.setAttribute('aria-label', `房间聊天${state.unread ? `，${state.unread} 条未读消息` : ''}`);
@@ -368,6 +380,14 @@ export function mountRoomChat({ documentRef = document, windowRef = window, onUn
   // Stop the game's document-level Escape handler from touching a tile draft.
   panel.addEventListener('keydown', (event) => { if (event.key === 'Escape') { event.stopPropagation(); if(!composing && !event.isComposing && event.keyCode!==229){input.blur(); model.setOpen(false);} } });
   const viewport = windowRef.visualViewport;
+  function updateDensity(state = lastState) {
+    const pending = Boolean(state?.outbox.length);
+    panel.classList.toggle('chat-has-outbox', pending);
+    // Pending messages need their own reachable scroll region, even when all
+    // secondary controls are visible. Compress the composer before it overflows.
+    panel.classList.toggle('chat-compact', visibleChatHeight < 360 || pending && visibleChatHeight < 500);
+    panel.classList.toggle('chat-compressed', visibleChatHeight < 220 || pending && visibleChatHeight < 280);
+  }
   const updateViewport = () => {
     const active=documentRef.activeElement;
     const editing=Boolean(active && (['INPUT','TEXTAREA','SELECT'].includes(active.tagName) || active.isContentEditable));
@@ -376,11 +396,12 @@ export function mountRoomChat({ documentRef = document, windowRef = window, onUn
     panel.style.setProperty('--chat-viewport-top', `${frame.top}px`);
     panel.style.setProperty('--chat-viewport-left', `${frame.left}px`);
     panel.style.setProperty('--chat-viewport-width', `${frame.width}px`);
-    panel.classList.toggle('chat-compact',frame.height<360);
-    panel.classList.toggle('chat-compressed',frame.height<220);
+    visibleChatHeight = frame.height; updateDensity();
     panel.classList.toggle('chat-keyboard',editing && frame.height<windowRef.innerHeight-80);
     let noticeTop=frame.top+4;
-    for(const node of [documentRef.querySelector('.site-header'),documentRef.querySelector('.game-heading')]) {
+    // A page may use display:contents for its header. Games declare actual
+    // boxed controls rather than teaching the shared chat about their layout.
+    for(const node of new Set([...documentRef.querySelectorAll('[data-chat-notice-anchor]'),documentRef.querySelector('.site-header'),documentRef.querySelector('.game-heading')])) {
       if(!node)continue;
       let visible=true;for(let ancestor=node;ancestor;ancestor=ancestor.parentNode)if(ancestor.hidden){visible=false;break;}
       const rect=node.getBoundingClientRect();if(visible && rect.width>0 && rect.height>0)noticeTop=Math.max(noticeTop,rect.bottom+4);

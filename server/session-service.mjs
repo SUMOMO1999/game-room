@@ -1,4 +1,4 @@
-import { timingSafeEqual } from 'node:crypto';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { CognitoProvider, MockProvider, IdentityFailure, withIdentityDeadline } from './auth.mjs';
 import { opaqueId, identityKey } from './storage.mjs';
 import { entryFor, entryPath, entryReturnTo, recordMatchesEntry, requestContext } from './entry-context.mjs';
@@ -62,6 +62,29 @@ export class SessionService {
       if (error instanceof IdentityFailure && error.status === 503) this.notify(requestCookie(request, entryFor(request, this.settings).cookieName), null, 503);
       throw error;
     }
+  }
+  async entryStatus(request) {
+    // This navigation marker never replaces the persisted game identity key or
+    // authorizes a user supplied identity. Only the current entry's session can.
+    const session = await this.authorize(request, { fresh: true, touch: false });
+    return { identityFingerprint: createHash('sha256').update(session.issuer + '\0' + session.sub).digest('hex') };
+  }
+  async resume(request, url) {
+    if (requestHeader(request, 'sec-fetch-site') === 'cross-site') throw new IdentityFailure(403, 'invalid_origin');
+    if (requestHeader(request, 'authorization') || [...url.searchParams.keys()].some(key => !['expectedIdentity', 'returnTo'].includes(key))
+        || url.searchParams.getAll('expectedIdentity').length !== 1 || url.searchParams.getAll('returnTo').length > 1
+        || !/^[a-f0-9]{64}$/.test(url.searchParams.get('expectedIdentity') || '')) throw new IdentityFailure(400, 'invalid_entry_request');
+    const entry = entryFor(request, this.settings), returnTo = entryReturnTo(url.searchParams.get('returnTo'), entry);
+    let current;
+    try { current = await this.entryStatus(request); }
+    catch (error) {
+      // A cold entry still uses the original OAuth route. Resume itself must not
+      // create a transaction, clear cookies, or silently replay a login.
+      if (!(error instanceof IdentityFailure) || error.status !== 401) throw error;
+      return { status: 303, headers: { 'cache-control': 'no-store', location: entryPath(entry, '/auth/login') + '?returnTo=' + encodeURIComponent(returnTo) }, body: null };
+    }
+    if (!equalSecret(current.identityFingerprint, url.searchParams.get('expectedIdentity'))) throw new IdentityFailure(409, 'entry_identity_changed');
+    return { status: 303, headers: { 'cache-control': 'no-store', location: entryPath(entry, returnTo) }, body: null };
   }
   async authorizeWithin(request, { fresh, touch }, deadline) {
     if (!this.loginReady) throw new IdentityFailure(503, 'login_not_configured');
@@ -248,11 +271,12 @@ export class SessionService {
   async route(request) {
     const url = new URL(request.url, entryFor(request, this.settings).origin); const method = request.method || 'GET';
     const routePath = requestContext(request)?.logicalPath || url.pathname;
-    if (!['/auth/login', '/auth/callback', '/auth/logout'].includes(routePath)) return null;
+    if (!['/auth/login', '/auth/callback', '/auth/logout', '/auth/resume'].includes(routePath)) return null;
     try {
       if (routePath === '/auth/login' && method === 'GET') return await this.begin(request, url);
       if (routePath === '/auth/callback' && method === 'GET') return await this.callback(request, url);
       if (routePath === '/auth/logout' && method === 'POST') return await this.logout(request);
+      if (routePath === '/auth/resume' && method === 'GET') return await this.resume(request, url);
       return { status: 405, headers: { allow: routePath === '/auth/logout' ? 'POST' : 'GET', 'cache-control': 'no-store' }, body: { error: 'method_not_allowed' } };
     } catch (error) {
       const status = error instanceof IdentityFailure ? error.status : 503;

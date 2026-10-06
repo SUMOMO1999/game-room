@@ -10,6 +10,8 @@
   <link rel="stylesheet" href="./styles.css">
   <script type="module" src="./app.mjs"></script>
 <link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="棋牌室"><meta name="apple-mobile-web-app-status-bar-style" content="default"><link rel="stylesheet" href="./app-shell.css"><script type="module" src="./app-shell.mjs"></script>
+  <link rel="stylesheet" href="./platform/room-settings.css">
+  <script type="module" src="./platform/room-settings.mjs"></script>
 </head>
 <body class="game-screen">
   <div class="shell">
@@ -18,7 +20,7 @@
         <span class="brand-mark" aria-hidden="true"><i>3</i><i>3</i></span>
         <span><strong>棋牌室</strong><small>GOOD COMPANY, GOOD GAMES.</small></span>
       </a>
-      <div class="header-actions"><nav class="practice-lessons" aria-label="拉密练习场景"><a id="lesson-basic" href="./practice.html" aria-current="page" aria-label="基础练习">基础</a><a id="lesson-joker" href="./practice.html?lesson=joker" aria-label="鬼牌重组练习">鬼牌</a></nav><button id="sound-toggle" class="sound-toggle" type="button" aria-pressed="false" aria-label="开启音效">音效关</button><button class="quiet-button" id="show-rules" aria-label="玩法说明">规则</button><button id="restart" class="text-button">重新开始</button><a id="exit-practice" class="practice-exit" href="./" aria-label="退出练习，返回大厅" title="退出练习，返回大厅"><span aria-hidden="true">×</span><span class="practice-exit-label">返回大厅</span></a></div>
+      <div class="header-actions"><nav class="practice-lessons" id="practice-lessons" data-settings-target="game-settings-practice" aria-label="拉密练习场景"><a id="lesson-basic" href="./practice.html" aria-current="page" aria-label="基础练习">基础</a><a id="lesson-joker" href="./practice.html?lesson=joker" aria-label="鬼牌重组练习">鬼牌</a></nav><button id="game-settings-toggle" class="quiet-button game-settings-toggle" type="button" data-room-settings data-settings-dialog="game-settings-dialog" data-settings-close="game-settings-close" aria-controls="game-settings-dialog" aria-haspopup="dialog" aria-expanded="false">设置</button><button id="sound-toggle" data-settings-target="game-settings-audio" class="sound-toggle" type="button" aria-pressed="false" aria-label="开启音效">音效关</button><button class="quiet-button" id="show-rules" data-settings-target="game-settings-help" data-settings-dismiss aria-label="玩法说明">规则</button><button id="restart" data-settings-target="game-settings-practice" data-settings-dismiss class="text-button">重新开始</button><a id="exit-practice" class="practice-exit" href="./" aria-label="退出练习，返回大厅" title="退出练习，返回大厅"><span aria-hidden="true">×</span><span class="practice-exit-label">返回大厅</span></a></div>
     </header>
 
     <main><p class="orientation-hint" role="note"><span aria-hidden="true">↻</span>把手机横过来，展开这一桌好牌。</p>
@@ -51,8 +53,8 @@
   <dialog id="rules-dialog" class="rules-dialog" aria-labelledby="rules-title">
     <div class="dialog-heading"><p class="eyebrow">HOW TO PLAY</p><button class="close-button" id="close-rules" aria-label="关闭玩法说明">×</button></div>
     <h2 id="rules-title">一起把牌打出去。</h2>
-    <label class="color-assist-option"><input id="tile-color-assist" type="checkbox">牌色辅助标记<span>红● · 蓝▲ · 黄◆ · 黑■</span></label>
-    <div class="sound-settings"><label for="sound-volume">音效音量</label><input id="sound-volume" type="range" min="0" max="100" step="5" value="45" aria-label="音效音量"><select id="sound-preview-kind" aria-label="选择试听音效"><option value="placement">落牌</option><option value="select">选牌</option><option value="sort">整理 / 排序</option><option value="undo">撤销</option><option value="restore">还原</option><option value="split">拆组</option><option value="merge">拼组</option><option value="draw">摸牌</option><option value="commit">确认出牌</option><option value="invalid">操作失败</option><option value="start">开局</option><option value="turn">轮到你</option><option value="win">获胜</option><option value="loss">落败</option></select><button id="sound-preview" class="secondary-button" type="button">试听</button><span id="sound-preview-status" role="status" aria-live="polite">45%</span></div>
+    <label class="color-assist-option" id="color-assist-settings" data-settings-target="game-settings-display"><input id="tile-color-assist" type="checkbox">牌色辅助标记<span>红● · 蓝▲ · 黄◆ · 黑■</span></label>
+    <div class="sound-settings" id="sound-settings" data-settings-target="game-settings-audio"><label for="sound-volume">音效音量</label><input id="sound-volume" type="range" min="0" max="100" step="5" value="45" aria-label="音效音量"><select id="sound-preview-kind" aria-label="选择试听音效"><option value="placement">落牌</option><option value="select">选牌</option><option value="sort">整理 / 排序</option><option value="undo">撤销</option><option value="restore">还原</option><option value="split">拆组</option><option value="merge">拼组</option><option value="draw">摸牌</option><option value="commit">确认出牌</option><option value="invalid">操作失败</option><option value="start">开局</option><option value="turn">轮到你</option><option value="win">获胜</option><option value="loss">落败</option></select><button id="sound-preview" class="secondary-button" type="button">试听</button><span id="sound-preview-status" role="status" aria-live="polite">45%</span></div>
     <p class="dialog-intro" id="rule-version">拉密操作练习</p>
     <ol class="rules-list">
       <li><strong>两种组合</strong><p>同数：3 或 4 张同数字、不同颜色。顺子：至少 3 张同色连续数字，1 不接在 13 后面。</p></li>
@@ -68,5 +70,6 @@
   <dialog id="restart-dialog" class="confirm-dialog" aria-labelledby="restart-title"><h2 id="restart-title">重新开始练习？</h2><p>当前手牌和未提交的整理会清空，重新发回示例牌。</p><div class="confirm-actions"><button id="cancel-restart" class="secondary-button">继续这局</button><button id="confirm-restart" class="primary-button">重新开始</button></div></dialog>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   <noscript><p class="noscript">请开启浏览器的 JavaScript 后进入练习。</p></noscript>
+<dialog id="game-settings-dialog" class="game-settings-dialog" aria-labelledby="game-settings-title"><div class="dialog-heading"><h2 id="game-settings-title">设置</h2><button id="game-settings-close" class="close-button" type="button" aria-label="收起设置">×</button></div><div class="game-settings-body"><section><h3>音效</h3><div id="game-settings-audio" class="game-settings-controls"></div></section><section><h3>牌面显示</h3><div id="game-settings-display" class="game-settings-controls"></div></section><section><h3>玩法</h3><div id="game-settings-help" class="game-settings-controls"></div></section><section><h3>练习</h3><div id="game-settings-practice" class="game-settings-controls"></div></section></div></dialog>
 </body>
 </html>

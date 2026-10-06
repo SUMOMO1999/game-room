@@ -20,3 +20,6 @@ project.md
 specs/
 ops/
 AGENTS.md
+
+# Local implementation plan includes private deployment/acceptance evidence.
+/docs/plans/flying-chess-v1.md

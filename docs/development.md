@@ -22,7 +22,7 @@
 
 ## 模块与变更边界
 
-- 游戏规则、布局和交互：[拉密](../app/games/rummikub/)、[军棋](../app/games/army-flip/)。旧根目录文件只承担兼容转发。
+- 游戏规则、布局和交互：[拉密](../app/games/rummikub/)、[军棋](../app/games/army-flip/)、[飞行棋](../app/games/flying-chess/)。旧根目录文件只承担兼容转发。
 - 游戏服务端能力：[适配器契约](../server/games/adapter-contract.mjs)、[注册表](../app/game-registry.mjs)。房间与历史只调用适配器，不能按某款游戏猜测默认能力。
 - 共通页面控制：[platform](../app/platform/)，包括时钟、异步页面代际、离席、音频和视口。
 - 房间与授权：[rooms.mjs](../app/rooms.mjs)、[durable-rooms.mjs](../server/durable-rooms.mjs)、[unified-http.mjs](../server/unified-http.mjs)。

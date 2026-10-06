@@ -14,6 +14,7 @@ export function createArmyFlipAdapter() {
     actionTypes: Object.freeze(Object.keys(actions)),
     // Keep the historical unsupported-config response after the generic field check.
     configurationFields: Object.freeze(['jokerConfig']),
+    playersChanged: () => {}, roomDefaults: () => ({}), turnTimeoutMs: value => value,
     createGame: engine.createGame, privateView: engine.privateView,
     spectatorView(game) {
       const view = engine.privateView(game, game.players[0].id);

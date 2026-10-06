@@ -4,6 +4,8 @@ import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 import { entryBase, gamePath, entryStorageKey } from './entry-path.mjs';
 import { normalizeRecentRoom } from './lobby-model.mjs';
+import { storedGameType } from './games/types.mjs';
+import { createRoomActionIntent } from './platform/room-action-intent.mjs';
 
 const DIRECT = 'https://game.sumomoli.com/entry-path.mjs';
 const MOUNTED = 'https://agora.sumomoli.com/game/entry-path.mjs';
@@ -61,7 +63,7 @@ async function loadModule(context, filename, extra = '') {
 async function browserFixture(moduleUrl, { legacy = false, sessionData = new Map(), localData = new Map() } = {}) {
   const requests = [], sessionStorage = storage(sessionData), localStorage = storage(localData);
   const context = vm.createContext({ URL, Response, AbortController, TextDecoder, structuredClone,
-    setTimeout, clearTimeout, Date, sessionStorage, localStorage, normalizeRecentRoom,
+    setTimeout, clearTimeout, Date, sessionStorage, localStorage, normalizeRecentRoom, storedGameType, createRoomActionIntent,
     location:{hostname:'127.0.0.1', href:moduleUrl},
     fetch:async(path, options={})=>{
       requests.push({path,options});

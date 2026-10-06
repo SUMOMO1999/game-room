@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomInt } from 'node:crypto';
 import { createRoomStore, RoomError, DEFAULT_TURN_TIMEOUT_MS } from '../app/rooms.mjs';
-import { normalizeGameType } from '../app/game-registry.mjs';
+import { defaultGameRegistry } from '../app/game-registry.mjs';
 
 const FOREVER = Number.MAX_SAFE_INTEGER;
 const hash = (value) => createHash('sha256').update(value).digest('hex');
@@ -31,8 +31,9 @@ function nickname(value) {
 export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
   pausedTtlMs = 7 * 24 * 60 * 60 * 1000, leaveRetentionMs = 24 * 60 * 60 * 1000, hostTakeoverGraceMs = 60000,
   maxRooms = 100, gameOptions = {}, gameEngine, pollIntervalMs = 1000, presenceTtlMs = 10000,
-  maxCasAttempts = 100, turnTimeoutMs = DEFAULT_TURN_TIMEOUT_MS } = {}) {
-  if (!storage?.read || !storage?.replaceCAS || !storage?.putIfAbsent || !storage?.remove) throw new TypeError('Durable rooms require an atomic encrypted store.');
+  maxCasAttempts = 100, turnTimeoutMs = DEFAULT_TURN_TIMEOUT_MS, gameRegistry = defaultGameRegistry,
+  serverRandomInt = randomInt } = {}) {
+  if (!storage?.read || !storage?.replaceCAS || !storage?.guardedCAS || !storage?.putIfAbsent || !storage?.remove) throw new TypeError('Durable rooms require an atomic encrypted store.');
   if (!(ttlMs > 0) || !(presenceTtlMs > 0) || !(maxRooms > 0)) throw new TypeError('Invalid room limits.');
   const local = new Map();
   let closed = false;
@@ -40,7 +41,8 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
   let history = null, historyFlight = null;
   const expiry = (snapshot) => snapshot.lastActiveAt + (snapshot.phase === 'paused' ? pausedTtlMs : ttlMs);
   function engine(snapshot) {
-    const store = createRoomStore({ now, ttlMs, pausedTtlMs, leaveRetentionMs, gameOptions, turnTimeoutMs, ...(gameEngine ? { gameEngine } : {}) });
+    const store = createRoomStore({ now, ttlMs, pausedTtlMs, leaveRetentionMs, gameOptions, turnTimeoutMs,
+      gameRegistry, serverRandomInt, ...(gameEngine ? { gameEngine } : {}) });
     if (snapshot) store.importSnapshot(snapshot);
     return store;
   }
@@ -170,7 +172,7 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
   }
   async function createRoom(userKey, name, id, gameType = 'rummikub') {
     identity(userKey); requestId(id); name = nickname(name);
-    try { gameType = normalizeGameType(gameType); }
+    try { gameType = gameRegistry.normalizeGameType(gameType); }
     catch { fail(400, 'INVALID_GAME_TYPE', '请选择支持的游戏。'); }
     await ensureProfile(userKey);
     const operationKey = hash(`${userKey}\0create\0${id}`);
@@ -283,7 +285,14 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
         ? { ...record.value, snapshot, leaveReceipts }
         : error ? terminalRecord(record.value, 'expired') : { snapshot: null, roomCode: code, deletedAt: now(), reason: 'empty', leaveReceipts,
           pendingRecords: [...(record.value.pendingRecords ?? []), ...(snapshot?.pendingRecords ?? [])] };
-      const wrote = input.type === 'transferHost' && trustedContext.presenceRecord
+      const deadline = record.value.snapshot.phase === 'playing' && record.value.snapshot.turnClock
+        && !['leave', 'transferHost'].includes(input.type) ? record.value.snapshot.turnClock.deadlineAt : null;
+      // A roll or move prepared before expiry cannot commit after its deadline.
+      // Guard the actual storage transaction, rather than a pre-write time read.
+      const wrote = deadline !== null
+        ? await storage.guardedCAS('rooms', roomId, record.version, next, FOREVER,
+          { scope: 'rooms', id: roomId, version: record.version, validUntil: deadline })
+        : input.type === 'transferHost' && trustedContext.presenceRecord
         ? await storage.guardedCAS('rooms', roomId, record.version, next, FOREVER,
           { scope: 'room-presence', id: roomId, version: trustedContext.presenceRecord.version, validUntil: expiry(record.value.snapshot) })
         : await storage.replaceCAS('rooms', roomId, record.version, next, FOREVER);

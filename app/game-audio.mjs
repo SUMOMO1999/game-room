@@ -4,8 +4,8 @@ const MAX_VOICES = 12;
 const CUE_BOOST = 1.75;
 const MAX_MIX_PEAK = 0.5;
 const PRIORITY_CUES = new Set(['turn','win','loss','draw-result']);
-const PUBLIC_ACTION_CUES = new Set(['placement','flip','move','collision']);
-const LIMITS = { select: 90, sort: 250, undo: 180, restore: 250, split: 200, merge: 200, ready: 250, start: 700, pause: 400, resume: 400, flip: 100, move: 90, collision: 160, placement: 90, draw: 160, turn: 1000, commit: 240, invalid: 500, chat: 850, win: 1500, loss: 1500, 'draw-result': 1500 };
+const PUBLIC_ACTION_CUES = new Set(['placement','flip','move','collision','roll','launch','flight','plane-finish']);
+const LIMITS = { select: 90, sort: 250, undo: 180, restore: 250, split: 200, merge: 200, ready: 250, start: 700, pause: 400, resume: 400, flip: 100, move: 90, collision: 160, placement: 90, draw: 160, roll: 160, launch: 180, flight: 180, 'plane-finish': 350, turn: 1000, commit: 240, invalid: 500, chat: 850, win: 1500, loss: 1500, 'draw-result': 1500 };
 
 // Original, short synthesized cues. No recordings, music, downloads or account data.
 // [start offset, duration, pitch, end pitch, peak gain, oscillator shape]
@@ -22,6 +22,10 @@ const CUES = {
   resume: [[0, 0.08, 480, 480, 0.10, 'sine'], [0.095, 0.12, 640, 640, 0.10, 'sine']],
   flip: [[0, 0.055, 280, 650, 0.14, 'triangle'], [0.06, 0.045, 1050, 800, 0.07, 'sine']],
   move: [[0, 0.09, 480, 290, 0.13, 'triangle']],
+  roll: [[0, 0.035, 350, 290, 0.10, 'triangle'], [0.06, 0.035, 470, 330, 0.10, 'triangle'], [0.12, 0.08, 600, 440, 0.12, 'triangle']],
+  launch: [[0, 0.18, 300, 850, 0.12, 'sine']],
+  flight: [[0, 0.16, 560, 1150, 0.10, 'sine'], [0.17, 0.09, 900, 650, 0.08, 'triangle']],
+  'plane-finish': [[0, 0.10, 659, 659, 0.09, 'triangle'], [0.12, 0.17, 988, 988, 0.10, 'sine']],
   collision: [[0, 0.09, 170, 100, 0.14, 'triangle'], [0.006, 0.075, 930, 350, 0.08, 'triangle'], [0.11, 0.10, 260, 170, 0.10, 'triangle']],
   placement: [[0, 0.055, 670, 330, 0.13, 'triangle'], [0.006, 0.045, 1100, 780, 0.035, 'sine']],
   draw: [[0, 0.055, 380, 510, 0.10, 'triangle'], [0.065, 0.05, 510, 640, 0.075, 'triangle']],
@@ -152,17 +156,24 @@ export function createGameAudio({ storage = defaultStorage(), AudioContext = def
   }
   function visibilityChanged() { if (hidden()) revokeGesture({ suspend: true }); else notify(); }
   function pageHidden() { revokeGesture({ suspend: true }); }
+  function windowBlurred() {
+    // A visible window losing keyboard focus does not suspend an already
+    // authorized running graph. Hidden pages and unfinished first activation
+    // still revoke their grant; focus alone must never authorize late sounds.
+    if (!hidden() && unlocked && !attempt && context?.state === 'running') notify();
+    else pageHidden();
+  }
   function pageReturned() {
     if (closed) return;
     // iOS can dispatch pageshow/focus after the first restoring tap. The earlier
-    // pagehide/blur already revoked its old grant; do not cancel this new tap.
+    // suspension already revoked its old grant; do not cancel this new tap.
     if (hidden()) revokeGesture({ suspend: true });
     else { if (context?.state !== 'running') { unlocked = false; stopVoices(); } notify(); }
   }
   try { document?.addEventListener?.('visibilitychange', visibilityChanged); } catch { /* Non-browser environment. */ }
   try {
     window?.addEventListener?.('pagehide', pageHidden);
-    window?.addEventListener?.('blur', pageHidden);
+    window?.addEventListener?.('blur', windowBlurred);
     window?.addEventListener?.('pageshow', pageReturned);
     window?.addEventListener?.('focus', pageReturned);
   } catch { /* Non-browser environment. */ }
@@ -290,7 +301,7 @@ export function createGameAudio({ storage = defaultStorage(), AudioContext = def
     try { document?.removeEventListener?.('visibilitychange', visibilityChanged); } catch { /* Non-browser environment. */ }
     try {
       window?.removeEventListener?.('pagehide', pageHidden);
-      window?.removeEventListener?.('blur', pageHidden);
+      window?.removeEventListener?.('blur', windowBlurred);
       window?.removeEventListener?.('pageshow', pageReturned);
       window?.removeEventListener?.('focus', pageReturned);
     } catch { /* Non-browser environment. */ }

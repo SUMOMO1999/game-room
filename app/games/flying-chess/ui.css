@@ -1,0 +1,382 @@
+/* Flying chess owns a fixed reading board and ordinary large HTML controls.
+   No pixel geometry or CSS layout participates in rules or saved positions. */
+html.flying-root { width:100%; height:100%; background:#173e33; overflow:hidden; overflow:clip; overscroll-behavior:none; }
+body.flying-screen,body.flying-body { margin:0; padding:0; width:var(--flying-width,var(--flying-viewport-width,100vw)); height:var(--flying-height,var(--flying-viewport-height,100dvh)); background:radial-gradient(ellipse at 50% 0,#2d5c4c,#173e33); color:#f7f0d8; overflow:hidden; overflow:clip; overscroll-behavior:none; }
+#flying-root { width:100%; height:100%; min-width:0; min-height:0; overflow:hidden; overflow:clip; }
+.flying-page > .app-shell-tools { display:none!important; }
+.flying-page { --flying-ink:#183c32; --flying-gold:#edce89; box-sizing:border-box; width:100%; height:100%; max-width:1600px; margin:0 auto; padding:max(6px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(6px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left)); display:grid; grid-template-rows:auto auto minmax(0,1fr) auto; gap:7px; min-height:0; min-width:0; overflow:hidden; overflow:clip; font-family:system-ui,-apple-system,'PingFang SC',sans-serif; }
+.flying-page *, .flying-page *::before, .flying-page *::after { box-sizing:border-box; }
+.flying-page [hidden] { display:none!important; }
+.flying-page h1,.flying-page h2,.flying-page h3,.flying-page p { margin:0; }
+.flying-page button,.flying-page a.flying-button { font:inherit; touch-action:manipulation; cursor:pointer; min-height:44px; border:1px solid #b7ccb36b; border-radius:9px; padding:8px 11px; background:#184334; color:#f7f0d8; text-decoration:none; }
+.flying-page button:disabled { cursor:default; color:#c2cebc; background:#264c40; border-color:#b7ccb333; opacity:1; }
+.flying-page button:focus-visible,.flying-page a:focus-visible { outline:3px solid #fff0a4; outline-offset:2px; }
+.flying-page button.flying-primary,.flying-page .primary-button { background:#edce89; border-color:#dbc080; color:#173e33; font-weight:750; }
+.flying-page button.flying-primary:disabled,.flying-page .primary-button:disabled { background:#62795d; border-color:#748269; color:#d9e0c9; }
+.flying-header { display:flex; align-items:center; justify-content:space-between; gap:8px; min-width:0; min-height:44px; }
+.flying-brand { display:flex; align-items:center; gap:7px; flex:none; color:inherit; text-decoration:none; white-space:nowrap; font-size:15px; font-weight:750; }
+.flying-brand .brand-mark { flex:none; width:31px; height:29px; --brand-scale:.68; transform:none; }
+.flying-header-actions { display:flex; align-items:center; justify-content:flex-end; gap:5px; min-width:0; }
+.flying-header-actions button { flex:none; min-width:44px; white-space:nowrap; font-size:12px; padding:8px; }
+.flying-connection { min-width:0; max-width:170px; color:#c9d6bc; font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.flying-mode { font-size:11px; color:#d2debd; white-space:nowrap; }
+.flying-players { min-width:0; display:grid; grid-template-columns:repeat(var(--flying-player-count,4),minmax(0,1fr)); gap:6px; }
+.flying-player { min-width:0; display:grid; grid-template-columns:auto minmax(0,1fr); column-gap:6px; row-gap:2px; padding:6px 8px; border:1px solid #b7ccb335; border-radius:8px; background:#133d3270; }
+.flying-player.current { border:2px solid #ffe091; padding:5px 7px; background:#51745682; box-shadow:inset 0 0 0 1px #173e33; }
+.flying-player.self { box-shadow:inset 3px 0 0 #d5dfb3; }
+.flying-player.current.self { box-shadow:inset 3px 0 0 #ffe091; }
+.flying-player-side { grid-row:1 / span 2; display:flex; align-items:center; font-size:11px; white-space:nowrap; color:#f7f0d8; }
+.flying-player-name { min-width:0; font-size:12px; line-height:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:700; }
+.flying-player-detail { min-width:0; font-size:10px; line-height:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#d7e0c5; }
+.flying-main { display:grid; grid-template-columns:minmax(0,1fr) minmax(250px,.48fr); gap:10px; min-width:0; min-height:0; overflow:hidden; overflow:clip; }
+.flying-roster { min-width:0; min-height:0; display:flex; flex-direction:column; gap:5px; }
+.flying-roster-heading { display:flex; align-items:center; justify-content:space-between; gap:6px; font-size:12px; }
+.flying-roster-heading button { min-width:44px; font-size:11px; padding:7px; }
+.flying-roster-heading strong { min-width:0; overflow-wrap:anywhere; }
+.flying-board-panel { min-width:0; min-height:0; padding:8px; border:1px solid #c6d7b34a; border-radius:13px; background:#345f4dcc; display:grid; grid-template-rows:minmax(0,1fr); gap:5px; overflow:hidden; overflow:clip; }
+.flying-board-frame { min-height:0; min-width:0; width:100%; height:100%; display:grid; place-items:center; overflow:hidden; overflow:clip; }
+.flying-board-frame svg { display:block; width:100%; height:100%; max-width:100%; max-height:100%; object-fit:contain; flex:none; }
+.flying-control-panel { min-height:0; min-width:0; display:flex; flex-direction:column; gap:9px; padding:12px; border:1px solid #c6d7b34a; border-radius:13px; background:#1b4438; overflow:hidden; overflow:clip; }
+.flying-status-row { flex:none; display:flex; align-items:center; gap:10px; min-height:64px; }
+.flying-die { flex:none; width:64px; height:82px; display:grid; place-items:center; }
+.flying-die svg { width:100%; height:100%; display:block; }
+.flying-die { position:relative; }
+.flying-die.previous-die svg { opacity:.65; }
+.flying-die-label { position:absolute; bottom:0; left:50%; transform:translateX(-50%); white-space:nowrap; font-size:9px; line-height:12px; background:#143b30; border-radius:3px; padding:0 2px; color:#fff0c9; }
+.flying-die-empty { width:56px; height:56px; display:grid; place-items:center; border:1px dashed #c6d7b369; border-radius:12px; font-size:26px; color:#c9d5be; }
+.flying-status-copy { min-width:0; display:grid; gap:5px; }
+.flying-turn { font-size:16px; font-weight:750; line-height:1.35; overflow-wrap:anywhere; }
+.flying-turn.is-self { color:#ffe59d; }
+.flying-stage { font-size:12px; line-height:1.45; color:#d4dfc4; overflow-wrap:anywhere; }
+.flying-clock { font-variant-numeric:tabular-nums; font-size:12px; color:#eddbb5; }
+.flying-side-note { flex:none; display:flex; align-items:center; justify-content:space-between; gap:5px; font-size:11px; color:#d4dfc4; }
+.flying-plane-grid { flex:none; min-width:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
+.flying-page .flying-plane-button { min-height:60px; display:grid; grid-template-columns:auto minmax(0,1fr); grid-template-rows:auto auto; column-gap:8px; row-gap:3px; text-align:left; padding:7px; color:#eff1dc; border:1px solid #b7ccb353; background:#173d32; }
+.flying-plane-number { grid-row:1 / span 2; align-self:center; width:26px; height:26px; display:grid; place-items:center; border:2px solid currentColor; border-radius:50%; font-size:16px; font-weight:750; background:#fff9e9; color:#a53e3e; }
+.flying-plane-button[data-side="blue"] .flying-plane-number { color:#2b6f9d; border-radius:4px; }
+.flying-plane-button[data-side="yellow"] .flying-plane-number { color:#8a6507; border-radius:4px; box-shadow:inset 0 0 0 2px #fff9e9,inset 0 0 0 3px currentColor; }
+.flying-plane-button[data-side="green"] .flying-plane-number { color:#36745c; border-radius:50% 50% 3px 3px; }
+.flying-plane-label { min-width:0; font-size:12px; line-height:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:700; }
+.flying-plane-position { min-width:0; font-size:10px; line-height:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#d0dbbc; }
+.flying-page .flying-plane-button.legal { border:2px dashed #e8dda1; padding:6px; background:#345c45; }
+.flying-page .flying-plane-button.selected,.flying-page .flying-plane-button[aria-pressed="true"] { border:3px solid #ffe091; padding:5px; color:#fff6d9; background:#5a724c; box-shadow:inset 0 0 0 1px #133d32; }
+.flying-page .flying-plane-button.completed { border-color:#bad2b680; background:#284b3d; }
+.flying-page .flying-plane-button:disabled { opacity:1; }
+.flying-route-text,.flying-feedback { min-width:0; font-size:12px; line-height:1.5; color:#d8e2c9; overflow-wrap:anywhere; }
+.flying-feedback { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; }
+.flying-feedback.error,.flying-feedback[data-kind="error"],.flying-error { color:#ffe0bc; border-left:3px solid #ffbd8a; padding-left:7px; }
+.flying-feedback.pending { color:#ffe3a6; }
+.flying-actions { flex:none; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
+.flying-actions button { min-width:0; min-height:48px; font-size:14px; }
+.flying-actions button:only-child { grid-column:1 / -1; }
+.flying-recovery { flex:none; display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+.flying-recovery button { flex:1; font-size:12px; min-height:44px; }
+.flying-footer { min-width:0; display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:10px; color:#c8d7b8; line-height:1.35; }
+.flying-footer p { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.flying-waiting { min-height:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:12px; padding:12px; grid-column:1 / -1; }
+.flying-waiting h2 { font-size:24px; line-height:1.4; }
+.flying-waiting p { font-size:13px; max-width:600px; line-height:1.5; color:#d4dfc4; }
+.flying-waiting-actions { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; }
+.flying-waiting-actions button { min-width:104px; }
+.flying-result { flex:none; border:1px solid #ead08b7a; background:#365d45; padding:12px; border-radius:9px; font-size:13px; line-height:1.55; }
+.flying-result h2 { color:#ffe7ac; font-size:18px; margin-bottom:6px; }
+.flying-page dialog { width:min(560px,calc(var(--flying-viewport-width,100vw) - 24px)); max-height:calc(var(--flying-viewport-height,100dvh) - 24px); border:1px solid #c9cdb5; border-radius:13px; padding:16px; color:#233c32; background:#fbf6e7; box-shadow:0 18px 55px #071e2480; }
+.flying-page dialog[open] { display:flex; flex-direction:column; gap:10px; }
+.flying-page dialog::backdrop { background:#0c211ccd; }
+.flying-page dialog button { color:#244336; background:#e7eddc; border-color:#c2d0b2; }
+.flying-dialog-heading { display:flex; align-items:center; justify-content:space-between; gap:10px; flex:none; }
+.flying-dialog-heading h2 { font-size:18px; }
+.flying-dialog-content { min-height:0; overflow:auto; overscroll-behavior:contain; font-size:13px; line-height:1.6; }
+.flying-rule-page h3 { font-size:14px; margin:6px 0; }
+.flying-rule-page p { margin-bottom:10px; }
+.flying-rule-pager { display:flex; align-items:center; justify-content:space-between; gap:7px; flex:none; font-size:12px; }
+.flying-page dialog.flying-board-dialog { width:min(820px,calc(var(--flying-viewport-width,100vw) - 18px)); height:calc(var(--flying-viewport-height,100dvh) - 18px); max-height:none; padding:10px; }
+.flying-board-zoom { min-height:0; flex:1; overflow:auto; overscroll-behavior:contain; touch-action:pan-x pan-y pinch-zoom; background:white; border-radius:9px; }
+.flying-board-zoom svg { display:block; width:var(--flying-zoom-size,720px); height:var(--flying-zoom-size,720px); max-width:none; }
+
+@media (orientation:portrait) {
+  .flying-main { grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(0,1fr) auto; gap:7px; }
+  .flying-control-panel { padding:9px; display:grid; grid-template-columns:68px minmax(0,1fr); gap:6px 8px; }
+  .flying-status-row { grid-column:1 / -1; min-height:0; gap:9px; }
+  .flying-die { width:44px; height:56px; }
+  .flying-die-empty { width:42px; height:42px; }
+  .flying-status-copy { flex:1; gap:3px; }
+  .flying-stage { font-size:11px; }
+  .flying-side-note { grid-column:1 / -1; }
+  .flying-plane-grid { grid-column:1 / -1; grid-template-columns:repeat(4,minmax(0,1fr)); gap:5px; }
+  .flying-page .flying-plane-button { min-height:52px; grid-template-columns:1fr; grid-template-rows:auto auto; justify-items:center; padding:5px 2px; text-align:center; gap:2px; }
+  .flying-plane-number { display:none; }
+  .flying-plane-label { font-size:11px; }
+  .flying-plane-position { font-size:9px; }
+  .flying-page .flying-plane-button.legal { padding:4px 1px; }
+  .flying-page .flying-plane-button.selected,.flying-page .flying-plane-button[aria-pressed="true"] { padding:3px 0; }
+  .flying-feedback,.flying-route-text { grid-column:1 / -1; flex:none; max-height:40px; font-size:11px; }
+  .flying-actions,.flying-recovery,.flying-result { grid-column:1 / -1; }
+  .flying-actions button { min-height:44px; }
+}
+@media (max-width:600px) {
+  .flying-brand { font-size:13px; }
+  .flying-brand .brand-mark { display:none; }
+  .flying-header { gap:5px; }
+  .flying-header-actions { gap:4px; }
+  .flying-header-actions button { font-size:11px; padding:7px 6px; }
+  .flying-connection { max-width:74px; font-size:9px; }
+  .flying-mode { display:none; }
+  .flying-player { grid-template-columns:minmax(0,1fr); padding:5px; gap:2px; }
+  .flying-player.current { padding:4px; }
+  .flying-player-side { grid-row:auto; font-size:9px; }
+  .flying-player-name { font-size:10px; line-height:13px; }
+  .flying-player-detail { font-size:9px; line-height:12px; }
+}
+@media (max-height:500px) and (orientation:landscape) {
+  .flying-page { gap:4px; padding-top:max(4px,env(safe-area-inset-top)); padding-bottom:max(4px,env(safe-area-inset-bottom)); }
+  .flying-brand { font-size:13px; }
+  .flying-control-panel { padding:6px; gap:5px; }
+  .flying-status-row { min-height:44px; gap:7px; }
+  .flying-die { width:38px; height:49px; }
+  .flying-die-empty { width:38px; height:38px; }
+  .flying-turn { font-size:13px; }
+  .flying-stage { font-size:10px; line-height:1.3; }
+  .flying-status-copy { gap:2px; }
+  .flying-side-note { font-size:10px; }
+  .flying-plane-grid { grid-template-columns:repeat(4,minmax(0,1fr)); gap:4px; }
+  .flying-page .flying-plane-button { min-height:44px; padding:5px 2px; grid-template-columns:1fr; justify-items:center; gap:2px; text-align:center; }
+  .flying-page .flying-plane-button.legal { padding:4px 1px; }
+  .flying-page .flying-plane-button.selected,.flying-page .flying-plane-button[aria-pressed="true"] { padding:3px 0; }
+  .flying-plane-number { display:none; }
+  .flying-plane-label { font-size:10px; line-height:12px; }
+  .flying-plane-position { font-size:9px; line-height:11px; }
+  .flying-feedback,.flying-route-text { font-size:10px; line-height:1.35; max-height:30px; }
+  .flying-actions button { min-height:44px; font-size:12px; padding:6px; }
+  .flying-board-panel { padding:5px; gap:2px; }
+  .flying-footer { display:none; }
+}
+@media (max-height:330px) and (orientation:landscape) {
+  .flying-players { gap:4px; }
+  .flying-player { grid-template-columns:auto minmax(0,1fr); padding:3px 5px; min-height:28px; }
+  .flying-player.current { padding:2px 4px; }
+  .flying-player-side { grid-row:1 / span 2; font-size:9px; }
+  .flying-player-name { font-size:10px; line-height:12px; }
+  .flying-player-detail { font-size:9px; line-height:10px; }
+  .flying-board-panel { position:relative; grid-template-rows:minmax(0,1fr); }
+  .flying-control-panel { gap:4px; padding:4px; }
+  .flying-side-note,.flying-route-text { display:none; }
+  .flying-feedback { max-height:24px; flex:1; font-size:9px; line-height:12px; }
+  .flying-status-row { min-height:44px; }
+  .flying-die { width:34px; height:44px; }
+  .flying-stage { font-size:9px; }
+  .flying-waiting { padding:5px; gap:7px; }
+  .flying-waiting h2 { font-size:18px; }
+  .flying-waiting p { font-size:11px; }
+}
+@media (prefers-reduced-motion:reduce) { .flying-page *, .flying-page *::before, .flying-page *::after { animation:none!important; transition:none!important; scroll-behavior:auto!important; } }
+
+/* The mounted room/practice page uses the same structural nodes. Keep these
+   selectors explicit so legacy table/button styles cannot change its grid. */
+.flying-page .flying-header.site-header { border:0; padding:0; margin:0; min-height:44px; }
+.flying-brand small { font-size:11px; font-weight:500; color:#d2debd; }
+.flying-page .flying-players { grid-template-columns:none; grid-auto-flow:column; grid-auto-columns:minmax(0,1fr); }
+.flying-page .flying-player { grid-template-columns:minmax(0,1fr); }
+.flying-player > strong,.flying-player > small { min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.flying-player > strong { font-size:12px; line-height:15px; }
+.flying-player > small { font-size:10px; line-height:13px; color:#d7e0c5; }
+.flying-page #flying-controls > * { flex:none; }
+.flying-page #flying-live { display:flex; flex:1; flex-direction:column; gap:8px; min-height:0; min-width:0; }
+.flying-stage-row { display:flex; align-items:center; gap:10px; flex:none; min-width:0; }
+.flying-stage-row > div:last-child { display:flex; flex-direction:column; align-items:flex-start; gap:5px; min-width:0; }
+.flying-stage-row .flying-stage { display:block; color:#f7f0d8; font-size:14px; line-height:1.35; }
+.flying-clock { white-space:nowrap; }
+.flying-clock.expired { color:#ffe09d; font-weight:700; }
+.flying-page .flying-plane-button { display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:3px; min-width:0; border-left:4px solid var(--side-color,#99baa4); font-size:13px; font-weight:650; }
+.flying-page .flying-plane-button > small { display:block; min-width:0; width:100%; font-size:10px; font-weight:400; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#d0dbbc; }
+.flying-page .flying-plane-button.legal { border-left:4px solid var(--side-color,#99baa4); }
+.flying-page .flying-plane-button.selected { border-left:4px solid #ffe091; }
+.flying-route { font-size:12px; line-height:1.45; overflow-wrap:anywhere; color:#eadfb9; min-height:0; }
+.flying-page #flying-controls > .flying-feedback { flex:0 1 auto; overflow:hidden; overflow:clip; max-height:58px; }
+.flying-page #flying-live > .flying-actions { margin-top:auto; }
+.flying-page #flying-gate { display:flex; flex-direction:column; gap:12px; min-width:0; margin:auto 0; font-size:13px; line-height:1.55; }
+.flying-page #flying-gate a { min-height:44px; display:flex; align-items:center; justify-content:center; border:1px solid #b7ccb36b; border-radius:9px; padding:8px 12px; color:#ffe091; }
+.flying-page #flying-waiting { display:flex; flex-direction:column; gap:12px; min-width:0; margin:auto 0; }
+.flying-page #flying-waiting h2 { font-size:21px; line-height:1.35; }
+.flying-page #flying-waiting p { font-size:12px; line-height:1.5; color:#d4dfc4; }
+.flying-page #flying-waiting .flying-actions { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.flying-page .flying-recovery { display:flex; flex-direction:column; align-items:stretch; gap:6px; font-size:12px; line-height:1.45; color:#ffe4ad; }
+.flying-page .flying-recovery .flying-actions { width:100%; }
+.flying-footer a { color:#e8dbad; flex:none; }
+#flying-root.is-your-turn .flying-board-panel { border-color:#ffe091; box-shadow:inset 0 0 0 2px #ffe09166; }
+#flying-root.is-your-turn #flying-turn { color:#ffe091; }
+.flying-body .flying-dialog { width:min(560px,calc(var(--flying-width,100vw) - 24px)); max-height:calc(var(--flying-height,100dvh) - 24px); border:1px solid #c9cdb5; border-radius:13px; padding:16px; color:#233c32; background:#fbf6e7; box-shadow:0 18px 55px #071e2480; overflow:hidden; }
+.flying-body .flying-dialog[open] { display:flex; flex-direction:column; gap:10px; }
+.flying-body .flying-dialog::backdrop { background:#0c211ccd; }
+.flying-body .flying-dialog .dialog-heading { display:flex; align-items:center; justify-content:space-between; gap:10px; flex:none; }
+.flying-body .flying-dialog h2 { margin:0; font-size:18px; }
+.flying-body .flying-dialog p { margin:0; font-size:13px; line-height:1.55; }
+.flying-body .flying-dialog button { min-width:44px; min-height:44px; padding:8px 11px; border:1px solid #c2d0b2; border-radius:8px; color:#244336; background:#e7eddc; font:inherit; font-size:13px; touch-action:manipulation; }
+.flying-body .flying-dialog a { color:#244336; }
+.flying-body .flying-dialog .flying-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; flex:none; }
+.flying-body #flying-rule-text,.flying-body .flying-dialog .room-menu-actions { min-height:0; overflow:auto; overscroll-behavior:contain; display:flex; flex-direction:column; gap:10px; }
+.flying-body .flying-dialog label { font-size:12px; line-height:1.5; }
+.flying-body .flying-dialog input,.flying-body .flying-dialog select { max-width:100%; min-height:36px; }
+.flying-body .flying-dialog .sound-settings { flex:none; display:flex; flex-wrap:wrap; align-items:center; gap:6px; font-size:11px; }
+.flying-body .flying-dialog .sound-settings input { width:min(120px,30vw); }
+.flying-body .flying-dialog .sound-settings select { max-width:110px; font-size:12px; }
+.flying-body .flying-board-dialog { width:min(820px,calc(var(--flying-width,100vw) - 18px)); height:calc(var(--flying-height,100dvh) - 18px); max-height:none; padding:10px; }
+.flying-zoom-frame { min-height:0; flex:1; overflow:auto; overscroll-behavior:contain; touch-action:pan-x pan-y pinch-zoom; background:white; border-radius:9px; }
+#flying-zoom-board { min-width:100%; }
+#flying-zoom-board svg { display:block; width:100%; height:auto; max-width:none; }
+.flying-body .flying-dialog button:focus-visible,.flying-body .flying-dialog a:focus-visible { outline:3px solid #507f59; outline-offset:2px; }
+@media (orientation:portrait) {
+  .flying-page .flying-control-panel { display:flex; }
+  .flying-page #flying-live { gap:6px; }
+  .flying-stage-row { gap:8px; }
+  .flying-stage-row .flying-stage { font-size:12px; }
+  .flying-page .flying-plane-button { align-items:center; font-size:11px; min-height:52px; }
+  .flying-page .flying-plane-button > small { font-size:9px; text-align:center; }
+  .flying-route { max-height:32px; overflow:hidden; font-size:11px; }
+  .flying-page #flying-controls > .flying-feedback { max-height:32px; font-size:11px; line-height:1.4; }
+}
+@media (max-width:380px) and (orientation:portrait) {
+  .flying-header { flex-wrap:wrap; }
+  .flying-brand { width:100%; font-size:12px; }
+  .flying-brand small { font-size:10px; }
+  .flying-header-actions { width:100%; justify-content:space-between; }
+  .flying-page { gap:5px; padding-left:max(8px,env(safe-area-inset-left)); padding-right:max(8px,env(safe-area-inset-right)); }
+  .flying-player > strong { font-size:10px; line-height:12px; }
+  .flying-player > small { font-size:9px; line-height:11px; }
+}
+@media (max-height:500px) and (orientation:landscape) {
+  .flying-page #flying-live { gap:5px; }
+  .flying-page .flying-plane-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px; }
+  .flying-page .flying-plane-button { min-height:44px; align-items:flex-start; padding:5px; font-size:11px; }
+  .flying-page .flying-plane-button.legal { padding:4px; }
+  .flying-page .flying-plane-button.selected { padding:3px; }
+  .flying-stage-row { gap:6px; }
+  .flying-stage-row .flying-stage { font-size:11px; }
+  .flying-stage-row > div:last-child { gap:2px; }
+  .flying-route { font-size:10px; line-height:1.3; max-height:26px; overflow:hidden; }
+  .flying-page #flying-controls > .flying-feedback { max-height:24px; font-size:10px; line-height:1.2; }
+}
+@media (max-height:330px) and (orientation:landscape) {
+  .flying-page .flying-player { min-height:26px; padding:2px 4px; gap:0; }
+  .flying-page .flying-player.current { padding:1px 3px; }
+  .flying-player > strong { font-size:10px; line-height:11px; }
+  .flying-player > small { font-size:9px; line-height:10px; }
+  .flying-page .flying-control-panel { padding:3px; gap:3px; }
+  .flying-page #flying-live { gap:3px; }
+  .flying-page .flying-stage-row { min-height:20px; height:20px; gap:5px; }
+  .flying-page .flying-die { width:25px; height:32px; margin-top:-6px; margin-bottom:-6px; }
+  .flying-stage-row .flying-stage { font-size:9px; line-height:11px; }
+  .flying-stage-row > div:last-child { flex-direction:row; align-items:center; gap:6px; }
+  .flying-clock { font-size:9px; }
+  .flying-clock small { display:none; }
+  .flying-page .flying-plane-grid { gap:3px; }
+  .flying-page .flying-plane-button { min-height:44px; padding:3px 5px; font-size:11px; gap:1px; }
+  .flying-page .flying-plane-button.legal { padding:2px 4px; }
+  .flying-page .flying-plane-button.selected { padding:1px 3px; }
+  .flying-page .flying-plane-button > small { font-size:9px; line-height:10px; }
+  .flying-page .flying-actions button { min-height:44px; }
+  .flying-page .flying-route { display:none; }
+  .flying-page #flying-controls > .flying-feedback { display:none; }
+  .flying-page #flying-waiting { gap:7px; }
+  .flying-page #flying-waiting h2 { font-size:17px; }
+  .flying-page #flying-waiting p { font-size:10px; line-height:1.3; }
+  .flying-page .flying-recovery { font-size:10px; gap:3px; }
+  .flying-page .flying-recovery:has(+ .flying-feedback):not([hidden]) ~ .flying-feedback { display:none; }
+  .flying-body .flying-dialog { padding:10px; gap:6px; }
+}
+/* At 240px height a second chooser row would hide the confirm action. Four
+   ordinary 44px targets fit in one row; details remain in the board dialog. */
+@media (max-height:270px) and (orientation:landscape) {
+  .flying-page .flying-plane-grid { grid-template-columns:repeat(4,minmax(0,1fr)); }
+  .flying-page .flying-plane-button { font-size:10px; padding:3px 1px; align-items:center; }
+  .flying-page .flying-plane-button > small { font-size:8px; text-align:center; }
+  .flying-page #flying-waiting .flying-actions { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .flying-page #flying-waiting .flying-actions button { font-size:10px; padding:3px; }
+  #flying-root.has-recovery .flying-plane-grid,#flying-root.has-recovery #flying-live > .flying-actions { display:none; }
+}
+
+/* A landscape board owns the full height. Information is in two bounded side
+   columns; resizing never changes the logical board, turn or saved selection. */
+@media (orientation:landscape) {
+  .flying-page {
+    --flying-left-min:clamp(88px,9vw,120px); --flying-right-min:clamp(240px,24vw,290px); --flying-gap:7px; --flying-top:max(6px,env(safe-area-inset-top)); --flying-bottom:max(6px,env(safe-area-inset-bottom));
+    --flying-map-track:max(0px,min(912px,calc(var(--flying-height,100dvh) - var(--flying-top) - var(--flying-bottom)),calc(min(var(--flying-width,100vw),1600px) - max(10px,env(safe-area-inset-left)) - max(10px,env(safe-area-inset-right)) - var(--flying-left-min) - var(--flying-right-min) - 2 * var(--flying-gap))));
+    grid-template-columns:minmax(var(--flying-left-min),160px) var(--flying-map-track) minmax(var(--flying-right-min),340px);
+    grid-template-rows:44px minmax(0,1fr) auto; justify-content:center; gap:var(--flying-gap);
+  }
+  .flying-page .flying-header.site-header,.flying-main { display:contents; }
+  .flying-brand { grid-column:1; grid-row:1; flex-direction:column; align-items:flex-start; justify-content:center; gap:1px; font-size:14px; }
+  .flying-header-actions { grid-column:3; grid-row:1; width:100%; gap:3px; }
+  .flying-header-actions button { flex:none; min-width:44px; height:44px; padding:5px 8px; font-size:11px; line-height:13px; white-space:nowrap; }
+  .flying-header-actions #flying-options,.flying-header-actions #chat-toggle { min-width:64px; }
+  .flying-header-actions #flying-exit { width:44px; }
+  .flying-roster { grid-column:1; grid-row:2; gap:8px; }
+  .flying-roster-heading { display:contents; }
+  #flying-turn { order:-1; font-size:12px; line-height:1.4; color:#ffe7b0; }
+  .flying-page .flying-players { grid-auto-flow:row; grid-auto-columns:auto; gap:6px; }
+  .flying-player { border-left:4px solid var(--side-color,#77948b); }
+  .flying-player.current { border-left:4px solid var(--side-color,#77948b); background:#657f508a; }
+  #flying-enlarge { margin-top:auto; width:100%; min-height:44px; font-size:11px; padding:5px; }
+  .flying-board-panel { grid-column:2; grid-row:1 / -1; width:100%; height:var(--flying-map-track); align-self:center; padding:5px; border-radius:15px; }
+  .flying-board-frame { max-height:900px; align-self:center; }
+  .flying-control-panel { grid-column:3; grid-row:2 / -1; }
+  .flying-footer { grid-column:1; grid-row:3; flex-direction:column; align-items:flex-start; gap:3px; font-size:9px; overflow-wrap:anywhere; }
+  .flying-footer a { display:none; }
+}
+@media (max-height:500px) and (orientation:landscape) {
+  .flying-page { --flying-left-min:88px; --flying-right-min:240px; --flying-gap:5px; --flying-top:max(4px,env(safe-area-inset-top)); --flying-bottom:max(4px,env(safe-area-inset-bottom)); grid-template-rows:44px minmax(0,1fr); }
+  .flying-roster { gap:6px; }
+  .flying-page .flying-player { padding:5px; }
+  .flying-page .flying-player.current { padding:4px; }
+  .flying-page .flying-plane-button { min-height:48px; }
+  .flying-page .flying-route { display:block; max-height:39px; }
+}
+@media (max-height:330px) and (orientation:landscape) {
+  .flying-page { --flying-left-min:72px; --flying-right-min:224px; --flying-gap:4px; }
+  .flying-brand { font-size:12px; }
+  .flying-header-actions { gap:1px; }
+  .flying-roster { gap:5px; }
+  #flying-turn { font-size:10px; line-height:12px; }
+  .flying-page .flying-players { gap:3px; }
+  .flying-page .flying-player { padding:2px 3px; min-height:26px; }
+  .flying-page .flying-player.current { padding:1px 2px; }
+  .flying-board-panel { padding:3px; }
+  .flying-page .flying-stage-row { height:auto; min-height:32px; }
+  .flying-page .flying-die { margin:0; }
+  .flying-stage-row > div:last-child { flex-direction:column; align-items:flex-start; gap:1px; }
+  .flying-page .flying-route { display:block; max-height:26px; font-size:10px; line-height:13px; }
+}
+@media (max-height:330px) and (orientation:landscape) {
+  .flying-roster { gap:2px; }
+  #flying-turn { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:none; }
+  .flying-page .flying-player { min-height:24px; padding:1px 3px; }
+  .flying-page .flying-player.current { padding:0 2px; }
+  #flying-enlarge { flex:none; }
+  .flying-stage-row .flying-stage { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; max-height:24px; }
+}
+.flying-header-actions #chat-toggle { position:relative; }
+.flying-header-actions .chat-unread { position:absolute; top:0; right:0; min-width:17px; height:17px; padding:1px 3px; line-height:15px; font-size:9px; }
+@media (max-width:380px) and (orientation:portrait) {
+  .flying-header { flex-wrap:nowrap; }
+  .flying-brand { width:auto; flex-direction:column; align-items:flex-start; gap:1px; }
+  .flying-header-actions { width:auto; flex:1; gap:3px; }
+  .flying-header-actions button { flex:1; padding:3px; }
+  .flying-roster { display:grid; grid-template-columns:minmax(0,1fr) 49px; gap:3px 5px; }
+  .flying-roster-heading { display:contents; }
+  .flying-roster .flying-players { grid-column:1; grid-row:1; }
+  #flying-turn { grid-column:1; grid-row:2; font-size:10px; line-height:12px; }
+  #flying-enlarge { grid-column:2; grid-row:1 / span 2; padding:3px; }
+}
+
+@media (max-height:330px) and (orientation:landscape) {
+  .flying-page #flying-result { padding:6px; }
+  .flying-page #flying-result h2 { font-size:13px; line-height:18px; max-height:36px; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
+  .flying-page #flying-gate { gap:6px; font-size:11px; line-height:1.35; }
+  .flying-page #flying-gate p { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:4; overflow:hidden; }
+}
+
+.flying-header-actions #flying-connection { flex:1; min-width:0; font-size:10px; line-height:13px; color:#c8d7b8; overflow-wrap:anywhere; }
+.flying-body .game-settings-dialog .room-menu-actions { grid-template-columns:1fr; }
+.flying-body .game-settings-dialog .room-menu-actions > * { min-width:0; }
+
+.flying-page #flying-roll { min-height:48px; }

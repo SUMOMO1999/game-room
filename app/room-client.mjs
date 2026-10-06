@@ -1,8 +1,13 @@
 import { gamePath, entryStorageKey } from './entry-path.mjs';
 import { accountState, accountGeneration, onAccountChange, reportAuthFailure } from './account-client.mjs';
+import { storedGameType } from './games/types.mjs';
+import { createRoomActionIntent } from './platform/room-action-intent.mjs';
 
 const SESSION_PREFIX = entryStorageKey('friends-game-room.seat.');
 const RECENT_KEY = entryStorageKey('friends-game-room.recent-seats.v1');
+// The server pings every 20 seconds. Three silent intervals allow slow networks
+// without leaving a half-open reader permanently reported as connected.
+const STREAM_IDLE_MS = 60000;
 const unifiedSeats = new Map();
 let membershipEpoch = accountGeneration();
 onAccountChange(() => {
@@ -10,24 +15,25 @@ onAccountChange(() => {
 });
 const unified = () => accountState().mode !== 'legacy';
 const superseded = () => new DOMException('登录或房间状态已更新，请重新进入。', 'AbortError');
+const knownSeat = seat => { try { storedGameType(seat?.gameType); return true; } catch { return false; } };
 
 export function normalizeCode(value) { return String(value || '').trim().toUpperCase(); }
 export function loadMembership(code) {
   code = normalizeCode(code);
   if (unified()) return unifiedSeats.get(code) || recentSeats().find((entry) => entry.roomCode === code) || null;
-  try { return JSON.parse(sessionStorage.getItem(SESSION_PREFIX + code) || 'null'); } catch { return null; }
+  try { const seat = JSON.parse(sessionStorage.getItem(SESSION_PREFIX + code) || 'null'); return seat && knownSeat(seat) ? seat : null; } catch { return null; }
 }
 export function recentSeats() {
   if (unified()) return accountState().authenticated ? accountState().recentRooms : [];
   try {
     const data = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
-    return Array.isArray(data) ? data.filter(item => item && /^[A-Z0-9]{6}$/.test(item.roomCode) && typeof item.token === 'string').slice(0, 8) : [];
+    return Array.isArray(data) ? data.filter(item => item && /^[A-Z0-9]{6}$/.test(item.roomCode) && typeof item.token === 'string' && knownSeat(item)).slice(0, 8) : [];
   } catch { return []; }
 }
 export function rememberMembership(data, name) {
   const seat = { roomCode: data.roomCode, playerId: data.playerId, name, at: Date.now() };
-  const gameType=data.view?.gameType || data.gameType;
-  if(['rummikub','army-flip'].includes(gameType)) seat.gameType=gameType;
+  const gameType=data.view?.gameType ?? data.gameType;
+  if(gameType !== undefined) seat.gameType=storedGameType(gameType);
   if (unified()) {
     if (!accountState().authenticated) throw superseded();
     unifiedSeats.set(seat.roomCode, seat);
@@ -87,6 +93,7 @@ export class RoomClient {
     this.view = null; this.stopped = false; this.controller = null; this.retryTimer = null;
     this.generation = 0; this.streamGeneration = 0; this.accountEpoch = accountGeneration();
     this.requests = new Set();
+    this.actionIntent = null; this.actionInFlight = false;
     this.unsubscribeAccount = onAccountChange((account) => {
       if (this.stopped || this.accountEpoch === accountGeneration()) return;
       this.stop(); this.view = null; this.onConnection('offline');
@@ -116,6 +123,13 @@ export class RoomClient {
     if (this.view && view.revision < this.view.revision) return;
     const previewFence=value=>JSON.stringify([value?.roomId,value?.matchId,value?.phase,value?.game?.revision,value?.game?.turnPlayerId]);
     if(previewFence(view)!==previewFence(this.view)) {this.resetPreview();this.previewSequences.clear();}
+    if (Array.isArray(view.actionReceipts) && !this.actionIntent) {
+      const owner = accountState().userKey || this.membership.playerId;
+      let storage; try { storage = globalThis.sessionStorage; } catch { /* Memory fencing remains available. */ }
+      this.actionIntent = createRoomActionIntent({ scope: { owner, roomId: view.roomId || view.roomCode, memberId: view.selfId },
+        storage, key: entryStorageKey(`game-room.action-intent.${owner}.${view.roomId || view.roomCode}.${view.selfId}`) });
+    }
+    this.actionIntent?.reconcile(view);
     this.view = view; this.onView(view);
   }
   resetPreview() {
@@ -172,6 +186,10 @@ export class RoomClient {
     const epoch = this.epoch();
     if (!this.live(epoch)) throw superseded();
     if (!this.view) throw new Error('正在恢复房间，请稍等。');
+    if (this.actionIntent) {
+      if (this.actionInFlight) throw Object.assign(new Error('正在确认操作，请稍等。'), { code: 'ACTION_PENDING' });
+      return this.submitIntent(this.actionIntent.begin(type, fields, this.view), epoch);
+    }
     const body = { ...fields, type, requestId: crypto.randomUUID(), expectedRevision: this.view.revision };
     let data;
     try { data = await this.request(`/api/rooms/${this.code}/actions`, { method: 'POST', token: this.membership.token, body }, epoch); }
@@ -188,6 +206,40 @@ export class RoomClient {
     }
     this.receive(data.view, epoch); return data.view;
   }
+  pendingAction() { return this.actionIntent?.pending() || null; }
+  actionStorageReady() { return this.actionIntent?.available() ?? true; }
+  async retryAction() {
+    const epoch = this.epoch();
+    if (!this.live(epoch)) throw superseded();
+    if (this.actionInFlight) throw Object.assign(new Error('正在确认操作，请稍等。'), { code: 'ACTION_PENDING' });
+    if (!this.actionIntent) throw new Error('没有待确认的操作。');
+    // An explicit retry keeps all three: request ID, body and expected revision.
+    return this.submitIntent(this.actionIntent.retry(), epoch);
+  }
+  async submitIntent(body, epoch) {
+    this.actionInFlight = true;
+    try {
+      let data;
+      try { data = await this.request(`/api/rooms/${this.code}/actions`, { method: 'POST', token: this.membership.token, body }, epoch); }
+      catch (error) {
+        if (!this.live(epoch) || [401, 503].includes(error.status) || error.name === 'AbortError') throw error;
+        if (!error.status || error.status === 409) {
+          await this.refresh();
+          const receipt = this.view?.actionReceipts?.find(entry => entry.requestId === body.requestId);
+          if (receipt?.status === 'committed') return this.view;
+          if (receipt?.status === 'rejected') throw Object.assign(new Error(receipt.error?.message || '操作未执行。'), receipt.error);
+        }
+        if (error.status >= 400 && error.status < 500) this.actionIntent.clear();
+        else error.message = '操作结果尚未确认，请恢复牌局或重试原操作。';
+        throw error;
+      }
+      if (data?.left === true) { this.actionIntent.clear(); return null; }
+      if (!data?.view || data.view.selfId !== this.membership.playerId || data.view.roomCode !== this.code) {
+        throw Object.assign(new Error('操作结果尚未确认，请恢复牌局。'), { status: 503 });
+      }
+      this.receive(data.view, epoch); this.actionIntent.clear(); return this.view;
+    } finally { this.actionInFlight = false; }
+  }
   connect() {
     if (this.stopped || this.accountEpoch !== accountGeneration()) return;
     this.controller?.abort(); clearTimeout(this.retryTimer); this.retryTimer = null;
@@ -196,7 +248,7 @@ export class RoomClient {
     const epoch = this.epoch();
     this.onConnection('connecting');
     this.readStream(controller, epoch, streamGeneration).catch(error => {
-      if (controller.signal.aborted || !this.live(epoch) || streamGeneration !== this.streamGeneration) return;
+      if ((controller.signal.aborted && error.code !== 'STREAM_IDLE_TIMEOUT') || !this.live(epoch) || streamGeneration !== this.streamGeneration) return;
       this.onConnection('offline');
       this.resetPreview();
       if ([401, 503, 404,429].includes(error.status)) { this.onError(error); return; }
@@ -221,12 +273,34 @@ export class RoomClient {
       throw error;
     }
     const reader = response.body.getReader(); const decoder = new TextDecoder(); let pending = '';
-    this.onConnection('online');
+    let idleTimer = null, rejectRead = null;
+    const abortRead = () => rejectRead?.(superseded());
+    const renewDeadline = () => {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        if (!valid()) return;
+        // Reject before aborting, so this transport timeout uses the ordinary
+        // read-only reconnect path instead of looking like intentional stop().
+        rejectRead?.(Object.assign(new Error('房间连接暂时没有回应，正在重新连接。'), { code: 'STREAM_IDLE_TIMEOUT' }));
+        controller.abort();
+      }, STREAM_IDLE_MS);
+      idleTimer?.unref?.();
+    };
+    this.requests.add(controller);
+    controller.signal.addEventListener('abort', abortRead);
     try {
+      renewDeadline();
+      this.onConnection('online');
       while (valid()) {
-        const { value, done } = await reader.read();
+        const { value, done } = await new Promise((resolve, reject) => {
+          rejectRead = reject;
+          reader.read().then(resolve, reject);
+        }).finally(() => { rejectRead = null; });
         if (!valid()) throw superseded();
         if (done) throw new Error('房间连接已断开。');
+        // Fragments count as transport activity; empty chunks do not extend
+        // the deadline. A ping is not an identity verification or a game view.
+        if (value?.byteLength) renewDeadline();
         pending += decoder.decode(value, { stream: true });
         let separator;
         while ((separator = /\r?\n\r?\n/.exec(pending))) {
@@ -257,7 +331,12 @@ export class RoomClient {
         // packet while permitting the supported UTF-8 text history size.
         if (pending.length > 1048576) throw new Error('房间消息格式无效。');
       }
-    } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
+    } finally {
+      clearTimeout(idleTimer); controller.signal.removeEventListener('abort', abortRead);
+      this.requests.delete(controller);
+      // A source whose cancel promise hangs must not prevent the reconnect.
+      reader.cancel().catch(() => {}); reader.releaseLock();
+    }
   }
   stop() {
     if (this.stopped) return;

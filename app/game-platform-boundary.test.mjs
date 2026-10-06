@@ -35,6 +35,7 @@ function syntheticAdapter(calls = []) {
   return {
     gameType, minPlayers: 2, maxPlayers: 2, ruleVersions: ['synthetic-choice-v1'],
     actionTypes: ['choose', 'solve'], configurationFields: ['roundLimit'],
+    playersChanged: () => {}, roomDefaults: () => ({}), turnTimeoutMs: value => value,
     createGame(players, options) { calls.push(['create', options]); return { players: players.map((player, index) => ({ ...player, privateChoice: `private-${index}` })),
       ruleVersion: 'synthetic-choice-v1', status: 'playing', revision: 0, round: 1, turnIndex: 0, result: null, hiddenAnswer: 'secret-answer' }; },
     actionFields: type => type === 'choose' ? ['choice'] : type === 'solve' ? [] : null,
@@ -115,7 +116,7 @@ test('a third engine supplies its own settings, actions, timeout and outcomes wi
 });
 
 test('incomplete new adapters fail registration rather than inherit another game policy', () => {
-  for (const missing of ['applyTimeout', 'playerResult', 'spectatorView', 'snapshotProblem', 'validateAction']) {
+  for (const missing of ['applyTimeout', 'playerResult', 'spectatorView', 'snapshotProblem', 'validateAction', 'playersChanged', 'roomDefaults', 'turnTimeoutMs']) {
     const adapter = syntheticAdapter(); delete adapter[missing];
     assert.throws(() => createGameRegistry([adapter]), /适配器不完整/);
   }

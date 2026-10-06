@@ -11,7 +11,7 @@ export function requireAdapter(adapter) {
     'actionFields', 'validateAction', 'configurationSupportProblem', 'configure', 'roomView',
     'gameOptions', 'playerSummary', 'playerResult', 'describeAction', 'supportsTimeout',
     'applyTimeout', 'describeTimeout', 'snapshotSchema', 'snapshotProblem', 'roomStateProblem',
-    'historyPlayerProblem', 'historyOutcomeProblem'];
+    'historyPlayerProblem', 'historyOutcomeProblem', 'playersChanged', 'roomDefaults', 'turnTimeoutMs'];
   if (!adapter || typeof adapter.gameType !== 'string' || !adapter.gameType
       || !Number.isSafeInteger(adapter.minPlayers) || adapter.minPlayers < 2
       || !Number.isSafeInteger(adapter.maxPlayers) || adapter.maxPlayers < adapter.minPlayers

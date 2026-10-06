@@ -51,7 +51,11 @@ export function createUnifiedServer(options) {
   }
   function reply(res,status,body,extra={}) {
     if(res.destroyed || res.writableEnded) return;if(res.headersSent) {res.end();return;}
-    res.writeHead(status,{...security,'Content-Type':'application/json; charset=utf-8',...extra});res.end(body===null?undefined:JSON.stringify(body));
+    // Header names are case-insensitive on the wire. Normalize overrides so
+    // auth responses do not emit duplicate Cache-Control or security headers.
+    const headers=Object.fromEntries(Object.entries({...security,'Content-Type':'application/json; charset=utf-8'}).map(([name,value])=>[name.toLowerCase(),value]));
+    for(const [name,value] of Object.entries(extra)) headers[name.toLowerCase()]=value;
+    res.writeHead(status,headers);res.end(body===null?undefined:JSON.stringify(body));
   }
   const unsubscribeInvalidation=sessions.subscribeInvalidation(({sessionId,status})=>{preview.clearSession(sessionId);for(const connection of connections) if(connection.id===sessionId) connection.end(status);});
   const viewSignature=value=>{const {serverTime,...stable}=value || {};return JSON.stringify(stable);};
@@ -160,6 +164,17 @@ export function createUnifiedServer(options) {
           return reply(res,303,null,{...auth.headers,location:entryPath(entry,target.pathname)+target.search});
         }
         return reply(res,auth.status,auth.body,auth.headers);
+      }
+      if(url.pathname==='/api/entry-status') {
+        if(req.method!=='GET') return reply(res,405,{error:'请使用 GET。'},{Allow:'GET'});
+        if(url.search) return reply(res,400,{error:'invalid_entry_request',code:'invalid_entry_request'});
+        try {return reply(res,200,await sessions.entryStatus(webRequest));}
+        catch(error) {
+          // The fixed front door consumes status only; never transfer cookies,
+          // profile/room data, or session secrets in this read-only response.
+          const status=error instanceof IdentityFailure?error.status:503;
+          return reply(res,status,{error:error instanceof IdentityFailure?error.code:'identity_unavailable',code:error instanceof IdentityFailure?error.code:'identity_unavailable'});
+        }
       }
       if(url.pathname==='/api/state') {
         if(req.method!=='GET') return reply(res,405,{error:'请使用 GET。'},{Allow:'GET'});

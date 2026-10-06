@@ -127,8 +127,9 @@ test('closed SSE event reports 404, stays offline and does not schedule reconnec
     return streamResponse(packet('view', view(5)) + packet('closed', { error: '你已离开房间。' }), 7);
   });
   // If it incorrectly schedules a retry, settle immediately so the assertion fails without a wait.
-  t.mock.method(globalThis, 'setTimeout', () => {
-    retries += 1; settle(new Error('unexpected reconnect')); return 0;
+  t.mock.method(globalThis, 'setTimeout', (_callback, delay) => {
+    if (delay === 2000) { retries += 1; settle(new Error('unexpected reconnect')); }
+    return 0;
   });
   t.after(() => client.stop());
   client.connect();
@@ -336,7 +337,10 @@ test('unified closed SSE preserves 401/503 and stops private data without automa
       assert.ok(!('Authorization' in options.headers));
       return streamResponse(packet('view', view(5)) + packet('closed', { status, error: 'synthetic identity failure' }), 7);
     });
-    t.mock.method(globalThis, 'setTimeout', () => { retries += 1; settled.resolve(new Error('unexpected retry')); return 0; });
+    t.mock.method(globalThis, 'setTimeout', (_callback, delay) => {
+      if (delay === 2000) { retries += 1; settled.resolve(new Error('unexpected retry')); }
+      return 0;
+    });
     client.connect();
     const error = await settled.promise;
     assert.equal(error.status, status);

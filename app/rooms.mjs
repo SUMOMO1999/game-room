@@ -71,8 +71,10 @@ function validateAction(action, adapter) {
 /** In-memory seats and private projections. Credentials never occur in room views. */
 export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
   pausedTtlMs = 7 * 24 * 60 * 60 * 1000, leaveRetentionMs = 24 * 60 * 60 * 1000,
-  hostTakeoverGraceMs = 70000, maxRooms = 100, gameEngine, gameOptions = {}, turnTimeoutMs = 0, gameRegistry = defaultGameRegistry } = {}) {
+  hostTakeoverGraceMs = 70000, maxRooms = 100, gameEngine, gameOptions = {}, turnTimeoutMs = 0, gameRegistry = defaultGameRegistry,
+  serverRandomInt = randomInt } = {}) {
   if (!Number.isSafeInteger(turnTimeoutMs) || turnTimeoutMs < 0 || turnTimeoutMs > 24 * 60 * 60 * 1000) throw new TypeError('Invalid turn timeout.');
+  if (typeof serverRandomInt !== 'function') throw new TypeError('A trusted server random source is required.');
   const rooms = new Map();
   const closedRooms = new Map();
   const expiry = (room) => room.lastActiveAt + (room.phase === 'paused' ? pausedTtlMs : ttlMs);
@@ -179,7 +181,9 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
   }
   function playerView(room, player, context = localContext(room)) {
     const selfRole=room.players.some(candidate=>candidate.id===player.id)?'player':'spectator';
-    const game = room.game ? structuredClone(selfRole==='player'?adapterFor(room).privateView(room.game, player.id):adapterFor(room).spectatorView(room.game)) : null;
+    const game = room.game ? structuredClone(selfRole==='player'
+      ? adapterFor(room).privateView(room.game, player.id, { phase: room.phase })
+      : adapterFor(room).spectatorView(room.game, { phase: room.phase })) : null;
     if (game && room.phase === 'aborted') { game.status = 'aborted'; game.result = structuredClone(room.abortedResult); game.winnerId = null; }
     if (game && room.phase === 'paused') game.status = 'paused';
     return {
@@ -191,6 +195,12 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
       ...adapterFor(room).roomView(room),
       hostCanTakeOver: selfRole==='player' && !!context.hostCanTakeOver, expiresAt: expiry(room),
       matchId: room.matchId ?? null,
+      // Only the owning member sees its bounded receipts. A newer room revision
+      // alone cannot prove that a missing response committed this user's intent.
+      ...(adapterFor(room).usesActionIntents ? { actionReceipts: [...player.requests].map(([requestId, receipt]) => ({
+        requestId, status: receipt.error ? 'rejected' : 'committed',
+        ...(receipt.error ? { error: { status: receipt.error[0], code: receipt.error[1], message: receipt.error[2] } } : {}),
+      })) } : {}),
       ...(Object.hasOwn(room, 'turnClock') ? { turnClock: structuredClone(room.turnClock), serverTime: now() } : {}),
       activity: structuredClone(room.activity ?? []),
       pause: room.pauseVote ? { type: 'pause', requestedBy: room.pauseVote.requestedBy,
@@ -233,6 +243,7 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
     do { code = String(randomInt(1_000_000)).padStart(6, '0'); } while (rooms.has(code) || closedRooms.has(code));
     const room = { code, gameType, hostId: player.id, phase: 'waiting', revision: 0,
       players: [player], game: null, listeners: new Map(), lastActiveAt: now(), hostSinceAt: now(), leaveReceipts: {}, pendingRecords: [] };
+    Object.assign(room, adapterFor(room).roomDefaults());
     rooms.set(code, room);
     return credentials(room, player, token);
   }
@@ -241,6 +252,7 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
     const joiningRole=joinRole(room,role);
     const { player, token } = makePlayer(name);
     if(joiningRole==='player') room.players.push(player);else {room.rolesEnabled=true;room.spectators ??= [];room.spectators.push(player);}
+    if(joiningRole==='player') adapterFor(room).playersChanged(room);
     room.revision += 1;
     room.lastActiveAt = now();
     broadcast(room);
@@ -287,18 +299,21 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
         joinRole(room,input.role);player.ready=false;room.rolesEnabled=true;
         if(input.role==='spectator') {room.players=room.players.filter(entry=>entry.id!==player.id);room.spectators ??= [];room.spectators.push(player);}
         else {room.spectators=room.spectators.filter(entry=>entry.id!==player.id);room.players.push(player);}
+        adapter.playersChanged(room);
       } else if (input.type === 'ready') player.ready = input.ready;
       else if (input.type === 'start') {
         if (player.id !== room.hostId) fail(403, 'HOST_REQUIRED', '只有房主可以开始对局。');
         if (room.players.length < adapter.minPlayers || room.players.length > adapter.maxPlayers || !room.players.every((entry) => entry.ready)) {
           fail(409, 'NOT_READY', `需要${adapter.minPlayers === adapter.maxPlayers ? adapter.minPlayers : `${adapter.minPlayers}～${adapter.maxPlayers}`}人加入，且所有人准备后才能开始。`);
         }
-        room.game = adapter.createGame(room.players.map(({ id, name }) => ({ id, name })), adapter.gameOptions(room, gameOptions));
+        room.game = adapter.createGame(room.players.map(({ id, name }) => ({ id, name })),
+          adapter.gameOptions(room, { ...gameOptions, serverRandomInt }));
         room.phase = 'playing';
         room.matchId = randomBytes(16).toString('hex'); room.matchStartedAt = now(); delete room.matchEndedAt;
         room.matchParticipants = room.players.map(({ id, userKey, name }) => ({ playerId: id, ...(userKey ? { userKey } : {}), name }));
         room.pauseVote = null; delete room.abortedResult;
-        if (turnTimeoutMs > 0 && adapter.supportsTimeout(room.game)) startClock(room);
+        const durationMs = adapter.turnTimeoutMs(turnTimeoutMs);
+        if (durationMs > 0 && adapter.supportsTimeout(room.game)) startClock(room, currentPlayer(room), durationMs);
         else delete room.turnClock;
       } else if (input.type === 'rematch') {
         if (player.id !== room.hostId) fail(403, 'HOST_REQUIRED', '只有房主可以发起下一局。');
@@ -317,6 +332,7 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
         room.leaveReceipts[receiptKey] = { fingerprint, requestId: input.requestId, at: now(), result: { view: null, left: true } };
         room.players = room.players.filter((entry) => entry.id !== player.id);
         room.spectators=(room.spectators ?? []).filter(entry=>entry.id!==player.id);
+        if(!spectator && room.phase==='waiting') adapter.playersChanged(room);
         const departing = [...(room.listeners.get(player.id) ?? [])];
         room.listeners.delete(player.id);
         if (room.hostId === player.id) {
@@ -352,7 +368,7 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
         room.phase = 'playing'; room.pauseVote = null;
       } else {
         if (room.phase !== 'playing') fail(409, room.phase === 'paused' ? 'GAME_PAUSED' : 'GAME_NOT_PLAYING', room.phase === 'paused' ? '对局已暂停，继续后才能出牌。' : '当前没有进行中的对局。');
-        const result = adapter.applyGameAction(room.game, player.id, input);
+        const result = adapter.applyGameAction(room.game, player.id, input, { serverRandomInt });
         if (!result.ok) fail(409, 'INVALID_GAME_ACTION', result.error);
         room.game = result.state;
         if (room.game.status === 'finished') { room.phase = 'finished'; room.pauseVote = null; conclude(room, 'completed', room.game.result.reason); }
@@ -433,6 +449,7 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
     const { player } = makePlayer(name, userKey);
     const room = { code, roomId, gameType, hostId: player.id, phase: 'waiting', revision: 0,
       players: [player], game: null, listeners: new Map(), lastActiveAt: now(), hostSinceAt: now(), leaveReceipts: {}, pendingRecords: [] };
+    Object.assign(room, adapterFor(room).roomDefaults());
     rooms.set(code, room);
     return membership(room, player);
   }
@@ -452,6 +469,7 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
     const joiningRole=joinRole(room,role);
     const { player } = makePlayer(name, userKey);
     if(joiningRole==='player') room.players.push(player);else {room.rolesEnabled=true;room.spectators ??= [];room.spectators.push(player);}
+    if(joiningRole==='player') adapterFor(room).playersChanged(room);
     room.revision += 1;
     room.lastActiveAt = now();
     broadcast(room);
@@ -524,7 +542,18 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
       fail(500, 'INVALID_SNAPSHOT', '房间保存的生命周期无效。');
     }
     data.gameType = adapter.gameType;
-    if (data.schemaVersion === 7 || data.schemaVersion === 8 && Object.hasOwn(data,'turnClock')) {
+    if (adapter.usesActionIntents && members(data).some(player =>
+      new Set(player.requests.map(entry => entry?.[0])).size !== player.requests.length || player.requests.some(entry =>
+        !Array.isArray(entry) || entry.length !== 2 || !/^[A-Za-z0-9_-]{1,128}$/.test(entry[0])
+        || !entry[1] || typeof entry[1] !== 'object' || Array.isArray(entry[1])
+        || !/^[a-f0-9]{64}$/.test(entry[1].fingerprint ?? '')
+        || Object.keys(entry[1]).some(key => !['fingerprint', 'error'].includes(key))
+        || entry[1].error !== undefined && (!Array.isArray(entry[1].error) || entry[1].error.length !== 3
+          || !Number.isSafeInteger(entry[1].error[0]) || entry[1].error[0] < 400 || entry[1].error[0] > 599
+          || typeof entry[1].error[1] !== 'string' || typeof entry[1].error[2] !== 'string')))) {
+      fail(500, 'INVALID_SNAPSHOT', '房间保存的操作回执无效。');
+    }
+    if ([7, 9].includes(data.schemaVersion) || data.schemaVersion === 8 && Object.hasOwn(data,'turnClock')) {
       const clock = data.turnClock;
       const fields = ['version','durationMs','remainingMs','startedAt','deadlineAt','pausedAt','firstPlayerId','matchId','round','playerId'];
       if (['playing','paused'].includes(data.phase) ? !clock || Object.keys(clock).length !== fields.length

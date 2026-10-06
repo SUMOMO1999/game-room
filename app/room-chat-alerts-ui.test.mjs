@@ -259,6 +259,27 @@ test('compact composer states follow actual visual height across tiny landscape 
   f.document.activeElement=null;Object.assign(visual,{width:390,height:844,offsetTop:112});f.document.dispatchEvent(new Event('focusout'));await settle();
   assert.equal(panel.classList.contains('chat-keyboard'),false);assert.equal(panel.style.getPropertyValue('--chat-viewport-top'),'0px');assert.equal(input.value,'输入仍完整可见');
 });
+test('dense short chat keeps pending retry controls and IME while compressing, then restores its normal layout when pending clears',async t=>{
+  const visual=visualFrame({height:420}),f=await fixture(t,{visualViewport:visual}),panel=f.get('room-chat'),input=f.get('chat-input');
+  f.client.sendChat=async()=>{throw new Error('发送结果尚未确认，可重试。');};
+  f.chat.model.setDraft('尚未确认的原正文');await f.chat.model.send();
+  const pending=structuredClone(f.chat.model.snapshot().outbox[0]);
+  assert.equal(panel.classList.contains('chat-has-outbox'),true);assert.equal(panel.classList.contains('chat-compact'),true);
+  assert.match(f.get('chat-outbox').textContent,/尚未确认的原正文.*重试确认.*移除/);
+  input.dispatchEvent(new Event('compositionstart'));input.value='输入法仍在组词';
+  for(const height of [420,380,360,220,180,150,128]){
+    Object.assign(visual,{height});visual.dispatchEvent(new Event('resize'));
+    assert.equal(panel.classList.contains('chat-compact'),true);
+    assert.equal(panel.classList.contains('chat-compressed'),height<280);
+    assert.deepEqual(f.chat.model.snapshot().outbox[0],pending,'viewport changes keep the exact unknown send and request id');
+    assert.equal(input.value,'输入法仍在组词');assert.equal(f.get('chat-send').disabled,true,'composition still controls sending');
+    assert.match(f.get('chat-outbox').textContent,/重试确认.*移除/);
+  }
+  Object.assign(visual,{height:420});visual.dispatchEvent(new Event('resize'));f.chat.model.discard(pending.requestId);
+  assert.equal(panel.classList.contains('chat-has-outbox'),false);assert.equal(panel.classList.contains('chat-compact'),false);
+  assert.equal(panel.classList.contains('chat-compressed'),false);assert.equal(input.value,'输入法仍在组词');
+  input.dispatchEvent(new Event('compositionend'));assert.equal(f.chat.model.snapshot().draft,'输入法仍在组词');assert.equal(f.get('chat-send').disabled,false);
+});
 test('notice anchors follow visible header and turn-heading bounds, ignore hidden room content and stay hidden in a tiny editing frame',async t=>{
   const visual=visualFrame(),f=await fixture(t,{visualViewport:visual}),header=f.document.querySelector('.site-header'),heading=f.document.querySelector('.game-heading');
   header.getBoundingClientRect=()=>({top:6,bottom:42,width:844,height:36});
@@ -274,4 +295,47 @@ test('notice anchors follow visible header and turn-heading bounds, ignore hidde
   f.document.activeElement=null;Object.assign(visual,{height:390,offsetTop:0});visual.dispatchEvent(new Event('resize'));
   assert.equal(own.hidden,false);assert.equal(f.get('room-chat-notice').hidden,false);
   f.timers.tick(5500);assert.equal(own.textContent,'×');assert.equal(own.hidden,true);
+});
+
+test('declared notice anchors survive a display-contents header and ignore hidden or empty anchors',async t=>{
+  const f=await fixture(t),header=f.document.querySelector('.site-header');
+  header.getBoundingClientRect=()=>({left:0,top:0,right:0,bottom:0,width:0,height:0});
+  const anchor=f.document.createElement('div');anchor.setAttribute('data-chat-notice-anchor','');
+  anchor.getBoundingClientRect=()=>({left:550,top:6,right:835,bottom:50,width:285,height:44});header.append(anchor);
+  const empty=f.document.createElement('div');empty.setAttribute('data-chat-notice-anchor','');
+  empty.getBoundingClientRect=()=>({left:0,top:0,right:0,bottom:500,width:0,height:0});header.append(empty);
+  const hidden=f.document.createElement('section');hidden.hidden=true;
+  const hiddenAnchor=f.document.createElement('div');hiddenAnchor.setAttribute('data-chat-notice-anchor','');
+  hiddenAnchor.getBoundingClientRect=()=>({left:0,top:0,right:800,bottom:600,width:800,height:600});hidden.append(hiddenAnchor);f.document.body.append(hidden);
+  f.newMessage(2);
+  const incoming=f.get('room-chat-notice');assert.equal(incoming.hidden,false);
+  assert.equal(incoming.style.getPropertyValue('--chat-notice-top'),'54px');
+  f.client.sendChat=async body=>({roomId:ROOM,message:msg(3,{playerId:SELF,requestId:body.requestId,text:body.text})});
+  f.chat.model.setDraft('自己的提醒也避开操作栏');await f.chat.model.send();
+  const own=f.get('room-chat-own-notice');assert.equal(own.hidden,false);
+  assert.equal(own.style.getPropertyValue('--chat-notice-top'),'54px');
+  anchor.getBoundingClientRect=()=>({left:300,top:2,right:560,bottom:46,width:260,height:44});
+  f.window.dispatchEvent(new Event('resize'));
+  assert.equal(incoming.style.getPropertyValue('--chat-notice-top'),'50px');
+  assert.equal(own.style.getPropertyValue('--chat-notice-top'),'50px');
+});
+
+test('declared play surfaces dismiss both temporary bubbles without losing unread messages or the composing draft',async t=>{
+  const f=await fixture(t);let messageSequence=1;
+  for(const label of ['棋盘','选机','回合操作']) {
+    const surface=f.document.createElement('section');surface.setAttribute('data-chat-dismiss-notices','');
+    const target=f.document.createElement('button');surface.append(target);f.document.body.append(surface);
+    f.newMessage(++messageSequence,{text:`${label}之前朋友发来的消息`});
+    f.client.sendChat=async body=>({roomId:ROOM,message:msg(++messageSequence,{playerId:SELF,requestId:body.requestId,text:body.text})});
+    f.chat.model.setDraft('刚确认发送的消息');await f.chat.model.send();
+    f.chat.model.setDraft(`${label}时仍保留的草稿`);
+    const before=f.chat.model.snapshot();
+    assert.equal(f.get('room-chat-notice').hidden,false);assert.equal(f.get('room-chat-own-notice').hidden,false);
+    const pointer=new Event('pointerdown');Object.defineProperty(pointer,'target',{value:target});f.document.dispatchEvent(pointer);
+    assert.equal(f.get('room-chat-notice').hidden,true);assert.equal(f.get('room-chat-own-notice').hidden,true);
+    assert.equal(f.get('room-chat-notice').textContent,'×');assert.equal(f.get('room-chat-own-notice').textContent,'×');
+    assert.equal(f.chat.model.snapshot().unread,before.unread);assert.equal(f.chat.model.snapshot().draft,before.draft);
+    assert.deepEqual(f.chat.model.snapshot().messages,before.messages);assert.equal(f.get('chat-input').value,before.draft);
+  }
+  assert.equal(f.get('chat-unread').textContent,'3');assert.deepEqual(f.cues,['chat','chat','chat']);
 });

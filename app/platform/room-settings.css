@@ -1,0 +1,56 @@
+.site-header [data-settings-target] { display:none !important; }
+.site-header .game-settings-toggle,
+.site-header #leave-room,
+.site-header #exit-practice {
+  min-width:44px !important;
+  min-height:44px !important;
+  flex:none;
+  touch-action:manipulation;
+}
+.site-header:has(.game-settings-toggle) { min-height:44px !important; flex-basis:44px; }
+.site-header .game-settings-toggle { padding:6px 12px; font-size:13px; white-space:nowrap; }
+.game-settings-dialog[open] {
+  box-sizing:border-box;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  width:min(440px,calc(100vw - 24px));
+  max-width:calc(100vw - 24px);
+  max-height:calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  padding:16px;
+  border:1px solid #ccbc8966;
+  border-radius:16px;
+  color:#f2ead3;
+  background:#173e32;
+  box-shadow:0 18px 54px #061e1b66;
+  overflow:auto;
+  overscroll-behavior:contain;
+}
+.game-settings-dialog[open]::backdrop { background:#071d18aa; }
+.game-settings-dialog[open] .dialog-heading { display:flex; justify-content:space-between; align-items:center; gap:12px; margin:0 0 12px; }
+.game-settings-dialog[open] .dialog-heading h2 { margin:0; font-size:21px; }
+.game-settings-dialog[open] .close-button { width:44px; min-height:44px; color:#f2ead3; }
+.game-settings-dialog[open] .game-settings-body { display:grid; gap:14px; }
+.game-settings-dialog[open] section { padding:12px; margin:0; background:#0c2a2166; border:1px solid #accab82e; border-radius:10px; }
+.game-settings-dialog[open] section h3 { margin:0 0 10px; font-size:12px; font-weight:600; color:#c5d1b8; }
+.game-settings-dialog[open] .game-settings-controls { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.game-settings-dialog[open] button,
+.game-settings-dialog[open] a,
+.game-settings-dialog[open] select { min-height:44px; font-size:13px; }
+.game-settings-dialog[open] button { color:#f2ead3; background:#264f3f; border-color:#bacaaa55; }
+.game-settings-dialog[open] .sound-settings:has(#sound-preview) { display:grid; grid-template-columns:1fr auto; flex:1 0 100%; gap:10px; margin:6px 0 0; padding:0; border:0; color:#f2ead3; }
+.game-settings-dialog[open] .sound-settings:has(#sound-preview) > label { grid-column:1 / -1; grid-row:auto; white-space:normal; }
+.game-settings-dialog[open] .sound-settings:has(#sound-preview) #sound-volume { grid-column:1 / -1; grid-row:auto; width:100%; height:44px; min-height:44px; padding:0; accent-color:#e1bf70; }
+.game-settings-dialog[open] .sound-settings:has(#sound-preview) #sound-preview-kind { grid-column:1; grid-row:auto; width:100%; min-width:0; max-width:none; height:44px; color:#f2ead3; background:#183d32; }
+.game-settings-dialog[open] .sound-settings:has(#sound-preview) #sound-preview { grid-column:2; grid-row:auto; min-height:44px; padding:8px 12px; font-size:13px; }
+.game-settings-dialog[open] .sound-settings:has(#sound-preview) #sound-preview-status { grid-column:1 / -1; grid-row:auto; white-space:normal; color:#c5d1b8; font-size:12px; }
+.game-settings-dialog[open] .color-assist-option { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:0; color:#f2ead3; font-size:13px; }
+.game-settings-dialog[open] .color-assist-option input { width:22px; height:22px; }
+.game-settings-dialog[open] .color-assist-option span { width:100%; margin-left:30px; color:#c5d1b8; }
+.game-settings-dialog[open] .practice-lessons { display:flex; gap:0; border-color:#bacaaa55; }
+.game-settings-dialog[open] .practice-lessons a { display:inline-flex; align-items:center; padding:8px 14px; color:#f2ead3; text-decoration:none; }
+.game-settings-dialog[open] .practice-lessons [aria-current="page"] { color:#163b30; background:#efe1b7; }
+@media (max-height:340px) {
+  .game-settings-dialog[open] { padding:12px; border-radius:12px; }
+  .game-settings-dialog[open] .game-settings-body { gap:8px; }
+}

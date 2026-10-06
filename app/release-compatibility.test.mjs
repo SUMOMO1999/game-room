@@ -104,6 +104,28 @@ test('schema6 sacrifice games forbid rollback to the released schema5 transport 
   assert.ok(!f.commands().includes(`start game-room.service ${f.priorDir}`));
 });
 
+test('schema9 unhealthy activation never starts the prior schema8 code or rolls the database back', t => {
+  const prior = current(); prior.roomSnapshots = { read: [1, 2, 3, 4, 5, 6, 7, 8], write: [2, 3, 4, 5, 6, 7, 8] };
+  const f = fixture(t, { prior }), identityPolicy = 'agora-account-security-v1';
+  writeFileSync(f.candidateManifest, JSON.stringify({ ...manifest(candidateId, current()), identityPolicy }));
+  writeFileSync(f.priorManifest, JSON.stringify({ ...manifest(priorId, prior), identityPolicy }));
+  assert.equal(activationPolicy(f.candidateManifest, f.priorManifest), 'rollback-forbidden');
+  const failure = f.run(); assert.equal(failure.status, 1); assert.match(failure.stderr, /AUTOMATIC ROLLBACK FORBIDDEN/);
+  assert.equal(realpathSync(f.link), f.candidateDir); assert.equal(readFileSync(f.database, 'utf8'), 'candidate-data-retained');
+  assert.ok(!f.commands().includes(`start game-room.service ${f.priorDir}`));
+});
+
+test('attempting schema8 code against a schema9 prior stops before preflight, backup, service or current changes', t => {
+  const old = current(); old.roomSnapshots = { read: [1, 2, 3, 4, 5, 6, 7, 8], write: [2, 3, 4, 5, 6, 7, 8] };
+  const f = fixture(t, { candidate: old, prior: current() }), identityPolicy = 'agora-account-security-v1';
+  writeFileSync(f.candidateManifest, JSON.stringify({ ...manifest(candidateId, old), identityPolicy }));
+  writeFileSync(f.priorManifest, JSON.stringify({ ...manifest(priorId, current()), identityPolicy }));
+  assert.throws(() => activationPolicy(f.candidateManifest, f.priorManifest), /CANDIDATE_DATA_INCOMPATIBLE/);
+  const failure = f.run(); assert.equal(failure.status, 1); assert.match(failure.stderr, /Data compatibility declaration rejected/);
+  assert.deepEqual(f.commands(), []); assert.equal(realpathSync(f.link), f.priorDir);
+  assert.equal(readFileSync(f.database, 'utf8'), 'prior-data-retained');
+});
+
 test('schema4 settings and observer snapshots forbid rollback to schema3 despite identical E3 enforcement',t=>{
   const prior=current();prior.roomSnapshots={read:[1,2,3],write:[2,3]};
   const f=fixture(t,{prior}),identityPolicy='agora-account-security-v1';

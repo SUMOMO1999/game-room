@@ -20,6 +20,14 @@ const entries = [
       'games/army-flip/game-page.mjs', 'games/army-flip/practice-page.mjs',
       'games/army-flip/board.mjs', 'games/army-flip/presentation.mjs',
       'games/army-flip/practice-engine.mjs', 'games/army-flip/ui.css'] },
+  { gameType: 'flying-chess', name: '飞行棋', page: 'flying.html', minPlayers: 2, maxPlayers: 4,
+    practicePage: 'flying-practice.html', scoreKind: 'outcome',
+    timeout: { action: '超时换人', hint: '时间到弃未使用骰子并换人，已经确认的飞机位置保留' },
+    assets: ['flying.html', 'flying-practice.html', 'games/flying-chess/board.mjs',
+      'games/flying-chess/routes.mjs', 'games/flying-chess/rules.mjs', 'games/flying-chess/art.mjs',
+      'games/flying-chess/presentation.mjs', 'games/flying-chess/ui.css',
+      'games/flying-chess/page-ui.mjs', 'games/flying-chess/game-page.mjs',
+      'games/flying-chess/practice-engine.mjs', 'games/flying-chess/practice-page.mjs'] },
 ];
 
 function safePage(page) { return typeof page === 'string' && /^[a-z][a-z0-9-]*\.html$/.test(page); }

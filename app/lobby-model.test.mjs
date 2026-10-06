@@ -17,11 +17,12 @@ test('legacy recent rooms remain compatible and invalid metadata cannot create f
   assert.equal(roomPhaseLabel(undefined), '原来的房间');
   assert.equal(roomPhaseLabel('paused'), '暂停保存');
 });
-test('server game type is retained for display while unknown or client authority fields are omitted', () => {
+test('server game type is retained without client authority, and explicit unknown types cannot become another game', () => {
   const input={roomCode:'123456',playerId:'seat-a',gameType:'army-flip',minPlayers:2,maxPlayers:2,side:'red'};
   const value=normalizeRecentRoom(input);
   assert.equal(value.gameType,'army-flip');assert.equal(value.side,undefined);
-  assert.equal(normalizeRecentRoom({...input,gameType:'unknown'}).gameType,undefined);
+  assert.equal(normalizeRecentRoom({...input,gameType:'flying-chess'}).gameType,'flying-chess');
+  assert.equal(normalizeRecentRoom({...input,gameType:'unknown'}),null);
 });
 test('explicit departure describes unfinished-game consequences and uses the current server revision', () => {
   assert.match(exitConsequence('paused'), /结束当前这一局/);

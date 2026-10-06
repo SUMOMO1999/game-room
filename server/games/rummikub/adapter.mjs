@@ -16,6 +16,7 @@ export function createRummikubAdapter({ gameEngine = rules } = {}) {
   if (['createGame', 'applyGameAction', 'privateView'].some(name => typeof engine[name] !== 'function')) throw new TypeError('游戏引擎不完整。');
   return Object.freeze({ gameType, minPlayers: 2, maxPlayers: 7, ruleVersions,
     actionTypes: Object.freeze(Object.keys(actions)), configurationFields: Object.freeze(['jokerConfig']),
+    playersChanged: () => {}, roomDefaults: () => ({}), turnTimeoutMs: value => value,
     withEngine: replacement => createRummikubAdapter({ gameEngine: replacement }),
     createGame: engine.createGame.bind(engine), applyGameAction: engine.applyGameAction.bind(engine),
     privateView: engine.privateView.bind(engine),

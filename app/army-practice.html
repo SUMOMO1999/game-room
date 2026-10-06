@@ -35,6 +35,8 @@
     @media (max-width:620px) { .army-practice-screen #practice-mode { display:none; } }
     @media (max-height:420px) { .army-practice-screen #practice-save-note { font-size:9px; } }
   </style>
+  <link rel="stylesheet" href="./platform/room-settings.css">
+  <script type="module" src="./platform/room-settings.mjs"></script>
 </head>
 <body data-mode="army-practice" class="army-screen army-practice-screen in-game">
   <div class="shell">
@@ -42,9 +44,9 @@
       <a class="brand" href="./" aria-label="棋牌室首页"><span class="brand-mark" aria-hidden="true"><i>3</i><i>3</i></span><strong>棋牌室</strong></a>
       <div class="header-actions">
         <span class="mode-badge" id="practice-mode">单人练习 · 不计战绩</span>
-        <button id="sound-toggle" class="sound-toggle" type="button" aria-pressed="false" aria-label="开启音效">音效关</button>
-        <button id="show-rules" class="quiet-button" type="button">规则</button>
-        <button id="restart" class="quiet-button" type="button">重新开始</button>
+        <button id="game-settings-toggle" class="quiet-button game-settings-toggle" type="button" data-room-settings data-settings-dialog="game-settings-dialog" data-settings-close="game-settings-close" aria-controls="game-settings-dialog" aria-haspopup="dialog" aria-expanded="false">设置</button><button id="sound-toggle" data-settings-target="game-settings-audio" class="sound-toggle" type="button" aria-pressed="false" aria-label="开启音效">音效关</button>
+        <button id="show-rules" data-settings-target="game-settings-help" data-settings-dismiss class="quiet-button" type="button">规则</button>
+        <button id="restart" data-settings-target="game-settings-practice" data-settings-dismiss class="quiet-button" type="button">重新开始</button>
         <a id="exit-practice" class="quiet-button" href="./" aria-label="退出练习，返回大厅">← 返回大厅</a>
       </div>
     </header>
@@ -65,7 +67,7 @@
     <div class="dialog-heading"><h2 id="rules-title">翻棋军棋练习</h2><button id="close-rules" class="close-button" type="button" aria-label="关闭规则">×</button></div>
     <p id="army-assignment-rule"></p><div id="army-rule-page"></div>
     <div class="army-rule-pages"><button id="army-rules-prev" class="secondary-button" type="button">上一页</button><span id="army-rules-page"></span><button id="army-rules-next" class="secondary-button" type="button">下一页</button></div>
-    <div class="sound-settings"><label for="sound-volume">音效音量</label><input id="sound-volume" type="range" min="0" max="100" step="5" value="45" aria-label="音效音量"><select id="sound-preview-kind" aria-label="选择试听音效"><option value="flip">翻棋</option><option value="move">走棋</option><option value="collision">碰撞</option><option value="select">选牌</option><option value="undo">撤销</option><option value="invalid">操作失败</option><option value="start">开局</option><option value="turn">轮到你</option><option value="win">获胜</option><option value="loss">落败</option><option value="draw-result">和局</option></select><button id="sound-preview" class="secondary-button" type="button">试听</button><span id="sound-preview-status" role="status" aria-live="polite">45%</span></div>
+    <div class="sound-settings" id="sound-settings" data-settings-target="game-settings-audio"><label for="sound-volume">音效音量</label><input id="sound-volume" type="range" min="0" max="100" step="5" value="45" aria-label="音效音量"><select id="sound-preview-kind" aria-label="选择试听音效"><option value="flip">翻棋</option><option value="move">走棋</option><option value="collision">碰撞</option><option value="select">选牌</option><option value="undo">撤销</option><option value="invalid">操作失败</option><option value="start">开局</option><option value="turn">轮到你</option><option value="win">获胜</option><option value="loss">落败</option><option value="draw-result">和局</option></select><button id="sound-preview" class="secondary-button" type="button">试听</button><span id="sound-preview-status" role="status" aria-live="polite">45%</span></div>
     <p>自动对手也只看已翻开的棋子。本机保存，与朋友房间及账号战绩无关。</p>
     <button id="start-playing" class="primary-button" type="button">明白了，继续练习</button>
   </dialog>
@@ -77,5 +79,6 @@
   <dialog id="army-captured-dialog" class="army-dialog" aria-labelledby="army-captured-title"><div class="dialog-heading"><h2 id="army-captured-title">已阵亡棋子</h2><button id="army-captured-close" class="close-button" type="button" aria-label="收起阵亡棋子">×</button></div><div id="army-captured-list" class="army-captured-list"></div><p>对方三枚地雷全部移除后，才可以攻击已翻开的军旗。</p></dialog>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   <noscript><p class="noscript">请开启浏览器的 JavaScript 后进入练习。</p></noscript>
+<dialog id="game-settings-dialog" class="game-settings-dialog" aria-labelledby="game-settings-title"><div class="dialog-heading"><h2 id="game-settings-title">设置</h2><button id="game-settings-close" class="close-button" type="button" aria-label="收起设置">×</button></div><div class="game-settings-body"><section><h3>音效</h3><div id="game-settings-audio" class="game-settings-controls"></div></section><section><h3>玩法</h3><div id="game-settings-help" class="game-settings-controls"></div></section><section><h3>练习</h3><div id="game-settings-practice" class="game-settings-controls"></div></section></div></dialog>
 </body>
 </html>
