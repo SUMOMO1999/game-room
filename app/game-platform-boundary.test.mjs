@@ -153,3 +153,28 @@ test('all historical room schemas 1 through 8 round-trip original versions, seat
     assert.deepEqual(restored.getTrustedView(f.host.roomCode, users[0]), view);
   }
 });
+
+test('corrupt historical game-type and rule-version mixtures retain the original early snapshot error', t => {
+  const definitions = [
+    { gameType: 'rummikub', ruleVersion: 'friends-v4', clock: 1000,
+      wrongType: 'army-flip', schemas: [3, 4, 7], configure: true },
+    { gameType: 'army-flip', ruleVersion: 'army-flip-v2', wrongType: 'rummikub', schemas: [1, 2, 4, 7] },
+    { gameType: 'army-flip', ruleVersion: 'army-flip-v3', wrongType: 'rummikub', schemas: [1, 2, 4] },
+  ];
+  for (const definition of definitions) {
+    const f = fixture(definition); t.after(() => f.store.close());
+    if (definition.configure) f.act(0, 'configure', { jokerConfig: { normal: 2, mirror: 0, colorChange: 0, double: 0 } });
+    f.start();
+    const original = f.store.exportSnapshot(f.host.roomCode);
+    for (const schema of definition.schemas) {
+      const corrupt = structuredClone(original);
+      corrupt.schemaVersion = schema; corrupt.gameType = definition.wrongType;
+      if (schema < 4) delete corrupt.spectators; else corrupt.spectators = [];
+      if (schema === 7) corrupt.turnClock ??= null; else delete corrupt.turnClock;
+      assert.throws(() => f.store.importSnapshot(corrupt), error => error.status === 500
+        && error.code === 'INVALID_SNAPSHOT' && error.message === '房间保存内容无效。',
+      `${definition.ruleVersion} with ${definition.wrongType} schema ${schema}`);
+      assert.deepEqual(f.store.exportSnapshot(f.host.roomCode), original, 'bad imports must not replace the original room');
+    }
+  }
+});

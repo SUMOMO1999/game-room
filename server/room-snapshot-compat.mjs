@@ -8,6 +8,12 @@ export function snapshotGameType(data) {
 export function snapshotFormatProblem(data, adapter) {
   const hasRoles = snapshotHasRoles(data);
   return ![1, 2, 3, 4, 5, 6, 7, 8].includes(data?.schemaVersion)
+    // These historical envelope guards preceded game dispatch. Keep their
+    // ordering even for a corrupt snapshot carrying another game's type so
+    // the existing INVALID_SNAPSHOT response stays identical.
+    || data.schemaVersion !== 8 && data.game?.ruleVersion === 'friends-v4'
+    || data.schemaVersion !== 5 && data.game?.ruleVersion === 'army-flip-v2'
+    || ![6, 7].includes(data.schemaVersion) && data.game?.ruleVersion === 'army-flip-v3'
     || adapter.snapshotProblem(data)
     || ![7, 8].includes(data.schemaVersion) && Object.hasOwn(data, 'turnClock')
     || data.schemaVersion === 7 && !Object.hasOwn(data, 'turnClock')
