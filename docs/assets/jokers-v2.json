@@ -1,0 +1,54 @@
+{
+  "version": 2,
+  "createdDate": "2026-10-06",
+  "independentAssets": true,
+  "legacyAssetRetained": "app/assets/joker-mark.png",
+  "ruleAndPersistenceVersionChanged": false,
+  "distribution": "Generated project assets distributed with the public repository; no separate license grant",
+  "assets": [
+    {
+      "type": "normal",
+      "file": "app/assets/joker-normal-v2.png",
+      "sha256": "e771bc9b1de278f58b1bcdba0f694e262533193f9b0f1ecf4713857d2dcf76b2",
+      "bytes": 72816,
+      "width": 256,
+      "height": 256,
+      "format": "PNG RGBA",
+      "generator": "built-in imagegen",
+      "promptReference": "jokers-v2.md#normal"
+    },
+    {
+      "type": "mirror",
+      "file": "app/assets/joker-mirror-v2.png",
+      "sha256": "39869a4051ff84be072f5acba53bd6909d9b9bd8529ea9909c5f8ff0ce6d4f87",
+      "bytes": 89871,
+      "width": 256,
+      "height": 256,
+      "format": "PNG RGBA",
+      "generator": "built-in imagegen",
+      "promptReference": "jokers-v2.md#mirror"
+    },
+    {
+      "type": "color-change",
+      "file": "app/assets/joker-color-change-v2.png",
+      "sha256": "55a2aa1684123b0ff4cdf492dcf33e1ae3875fa92286afae7c83d039bf9ec966",
+      "bytes": 87132,
+      "width": 256,
+      "height": 256,
+      "format": "PNG RGBA",
+      "generator": "built-in imagegen",
+      "promptReference": "jokers-v2.md#color-change"
+    },
+    {
+      "type": "double",
+      "file": "app/assets/joker-double-v2.png",
+      "sha256": "d2f51c72341b082eab3520febaf18652ff7d1e3015b6ea6451b02c6666ce1cac",
+      "bytes": 73471,
+      "width": 256,
+      "height": 256,
+      "format": "PNG RGBA",
+      "generator": "built-in imagegen",
+      "promptReference": "jokers-v2.md#double"
+    }
+  ]
+}

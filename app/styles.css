@@ -961,25 +961,17 @@ body.game-screen {
 .joker-config-bottom { display:flex; justify-content:space-between; align-items:center; gap:6px; margin-top:5px; font-size:10px; }
 .joker-config-bottom button { min-height:28px; padding:4px 8px; font-size:10px; }
 .joker-kind { position:absolute; bottom:1px; left:50%; transform:translateX(-50%); font:700 max(8px,.25em)/1 sans-serif; border-radius:3px; background:#faf4df; color:#28504d; }
-.tile[data-joker-type="mirror"] .joker-art { transform:scaleX(-1); }
 .tile[data-joker-type="color-change"] .joker-kind { color:#087a50; }
 .tile[data-joker-type="double"] .joker-kind { color:#0256b9; }
 
-/* Joker types remain readable as silhouettes at rack/board scale, with the
-   original illustration for the ordinary joker and words as a second cue. */
+/* Each joker type has its own illustration; words provide a second cue. */
 .joker-face { position:relative; display:grid; place-items:center; width:92%; height:82%; border-radius:3px; pointer-events:none; }
 .tile .joker-face .joker-art { position:relative; width:88%; height:88%; z-index:1; }
-.tile[data-joker-type="mirror"] .joker-face { background:#efe5fb; }
-.tile[data-joker-type="mirror"] .joker-face .joker-art { position:absolute; left:0; top:16%; width:47%; height:68%; transform:scaleX(-1); }
-.tile[data-joker-type="mirror"] .joker-face::before { content:''; position:absolute; left:53%; top:16%; width:47%; height:68%; background:url('./assets/joker-mark.png') center/contain no-repeat; }
-.tile[data-joker-type="mirror"] .joker-face::after { content:''; position:absolute; left:49%; top:10%; height:80%; border-left:2px dashed #7044a8; }
 .tile[data-joker-type="mirror"] .joker-kind { color:#7044a8; }
-.tile[data-joker-type="color-change"] .joker-face .joker-art { visibility:hidden; }
-.tile[data-joker-type="color-change"] .joker-face::before { content:''; position:absolute; width:82%; aspect-ratio:1; border:1px solid #fffaf0; border-radius:50%; background:conic-gradient(#ed1025 0 25%,#0060db 25% 50%,#f3bc00 50% 75%,#171b1a 75% 100%); box-shadow:0 0 0 1px #536356; }
-.tile[data-joker-type="color-change"] .joker-face::after { content:''; position:absolute; width:20%; aspect-ratio:1; border-radius:50%; background:#fffaf0; border:1px solid #536356; }
-.tile[data-joker-type="double"] .joker-face { background:#e4eefb; }
-.tile[data-joker-type="double"] .joker-face .joker-art { position:absolute; left:34%; top:30%; width:62%; height:64%; padding:1px; background:#fffaf0; border:1px solid #3975b9; border-radius:2px; }
-.tile[data-joker-type="double"] .joker-face::before { content:''; position:absolute; left:4%; top:6%; width:62%; height:64%; background:#fffaf0 url('./assets/joker-mark.png') center/contain no-repeat; border:1px solid #3975b9; border-radius:2px; }
+.joker-missing { font-size:.6em; color:#8c453e; }
+.joker-art-fallback { display:none; font:700 max(8px,.3em)/1.15 sans-serif; color:#284d3b; text-align:center; }
+.joker-load-failed .joker-art { display:none; }
+.joker-load-failed .joker-art-fallback { display:block; }
 
 @media (max-height: 500px) {
   body.game-screen { --play-sidebar: 92px; --play-gap: 9px; --play-top-height: 32px; }

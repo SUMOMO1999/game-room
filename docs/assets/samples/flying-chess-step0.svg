@@ -1,0 +1,701 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1280" height="1140" viewBox="0 0 1280 1140" role="img" aria-labelledby="title desc">
+<title id="title">飞行棋 Step 0：棋盘、四阵营、骰面与小屏静态样板</title><desc id="desc">原创矢量资源建议。52个外环格、四阵营六格归航、四架叠机、六骰面和手机布局。此图不能操作，未接入游戏或大厅；规则及真实设备验证待确认。</desc>
+<style>text{font-family:system-ui,-apple-system,"PingFang SC","Hiragino Sans GB",sans-serif}*{box-sizing:border-box}</style>
+<defs><path id="plane-mark" d="M0,-12 C2,-12 3,-10 3,-7 L3,-2 L12,4 L12,7 L3,4 L3,8 L7,11 L7,13 L0,11 L-7,13 L-7,11 L-3,8 L-3,4 L-12,7 L-12,4 L-3,-2 L-3,-7 C-3,-10 -2,-12 0,-12 Z"/><marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#263b43"/></marker></defs>
+<defs><g id="board-base">
+<rect x="0" y="0" width="600" height="600" rx="20" fill="#fff" stroke="#d8dfdb" stroke-width="1"/>
+<rect x="34" y="34" width="142" height="142" rx="18" fill="#f6e0dd" stroke="#a53e3e" stroke-width="1.3"/>
+<circle cx="48" cy="54" r="5" fill="#a53e3e"/>
+<text x="60" y="60" font-size="14" fill="#a53e3e" text-anchor="start" font-weight="700">红圆机库</text>
+<circle cx="66" cy="92" r="20" fill="#fff" stroke="#a53e3e" stroke-dasharray="3 4" opacity=".7"/>
+<text x="66" y="97" font-size="14" fill="#a53e3e" text-anchor="middle" font-weight="400">1</text>
+<circle cx="138" cy="92" r="20" fill="#fff" stroke="#a53e3e" stroke-dasharray="3 4" opacity=".7"/>
+<text x="138" y="97" font-size="14" fill="#a53e3e" text-anchor="middle" font-weight="400">2</text>
+<circle cx="66" cy="144" r="20" fill="#fff" stroke="#a53e3e" stroke-dasharray="3 4" opacity=".7"/>
+<text x="66" y="149" font-size="14" fill="#a53e3e" text-anchor="middle" font-weight="400">3</text>
+<circle cx="138" cy="144" r="20" fill="#fff" stroke="#a53e3e" stroke-dasharray="3 4" opacity=".7"/>
+<text x="138" y="149" font-size="14" fill="#a53e3e" text-anchor="middle" font-weight="400">4</text>
+<rect x="424" y="34" width="142" height="142" rx="18" fill="#deedf5" stroke="#2b6f9d" stroke-width="1.3"/>
+<rect x="433" y="49" width="10" height="10" rx="1" fill="#2b6f9d"/>
+<text x="450" y="60" font-size="14" fill="#2b6f9d" text-anchor="start" font-weight="700">蓝方机库</text>
+<circle cx="456" cy="92" r="20" fill="#fff" stroke="#2b6f9d" stroke-dasharray="3 4" opacity=".7"/>
+<text x="456" y="97" font-size="14" fill="#2b6f9d" text-anchor="middle" font-weight="400">1</text>
+<circle cx="528" cy="92" r="20" fill="#fff" stroke="#2b6f9d" stroke-dasharray="3 4" opacity=".7"/>
+<text x="528" y="97" font-size="14" fill="#2b6f9d" text-anchor="middle" font-weight="400">2</text>
+<circle cx="456" cy="144" r="20" fill="#fff" stroke="#2b6f9d" stroke-dasharray="3 4" opacity=".7"/>
+<text x="456" y="149" font-size="14" fill="#2b6f9d" text-anchor="middle" font-weight="400">3</text>
+<circle cx="528" cy="144" r="20" fill="#fff" stroke="#2b6f9d" stroke-dasharray="3 4" opacity=".7"/>
+<text x="528" y="149" font-size="14" fill="#2b6f9d" text-anchor="middle" font-weight="400">4</text>
+<rect x="424" y="424" width="142" height="142" rx="18" fill="#f7edce" stroke="#8a6507" stroke-width="1.3"/>
+<path d="M438,438 L444,444 L438,450 L432,444 Z" fill="#8a6507"/>
+<text x="450" y="450" font-size="14" fill="#8a6507" text-anchor="start" font-weight="700">黄菱机库</text>
+<circle cx="456" cy="482" r="20" fill="#fff" stroke="#8a6507" stroke-dasharray="3 4" opacity=".7"/>
+<text x="456" y="487" font-size="14" fill="#8a6507" text-anchor="middle" font-weight="400">1</text>
+<circle cx="528" cy="482" r="20" fill="#fff" stroke="#8a6507" stroke-dasharray="3 4" opacity=".7"/>
+<text x="528" y="487" font-size="14" fill="#8a6507" text-anchor="middle" font-weight="400">2</text>
+<circle cx="456" cy="534" r="20" fill="#fff" stroke="#8a6507" stroke-dasharray="3 4" opacity=".7"/>
+<text x="456" y="539" font-size="14" fill="#8a6507" text-anchor="middle" font-weight="400">3</text>
+<circle cx="528" cy="534" r="20" fill="#fff" stroke="#8a6507" stroke-dasharray="3 4" opacity=".7"/>
+<text x="528" y="539" font-size="14" fill="#8a6507" text-anchor="middle" font-weight="400">4</text>
+<rect x="34" y="424" width="142" height="142" rx="18" fill="#deeee4" stroke="#36745c" stroke-width="1.3"/>
+<path d="M48,438 L54,449 L42,449 Z" fill="#36745c"/>
+<text x="60" y="450" font-size="14" fill="#36745c" text-anchor="start" font-weight="700">绿三角机库</text>
+<circle cx="66" cy="482" r="20" fill="#fff" stroke="#36745c" stroke-dasharray="3 4" opacity=".7"/>
+<text x="66" y="487" font-size="14" fill="#36745c" text-anchor="middle" font-weight="400">1</text>
+<circle cx="138" cy="482" r="20" fill="#fff" stroke="#36745c" stroke-dasharray="3 4" opacity=".7"/>
+<text x="138" y="487" font-size="14" fill="#36745c" text-anchor="middle" font-weight="400">2</text>
+<circle cx="66" cy="534" r="20" fill="#fff" stroke="#36745c" stroke-dasharray="3 4" opacity=".7"/>
+<text x="66" y="539" font-size="14" fill="#36745c" text-anchor="middle" font-weight="400">3</text>
+<circle cx="138" cy="534" r="20" fill="#fff" stroke="#36745c" stroke-dasharray="3 4" opacity=".7"/>
+<text x="138" y="539" font-size="14" fill="#36745c" text-anchor="middle" font-weight="400">4</text>
+<polyline points="80,204 116,192 148,192 180,204 204,180 192,148 192,116 204,80 236,68 268,68 300,68 332,68 364,68 396,80 408,116 408,148 396,180 420,204 452,192 484,192 520,204 532,236 532,268 532,300 532,332 532,364 520,396 484,408 452,408 420,396 396,420 408,452 408,484 396,520 364,532 332,532 300,532 268,532 236,532 204,520 192,484 192,452 204,420 180,396 148,408 116,408 80,396 68,364 68,332 68,300 68,268 68,236 80,204" fill="none" stroke="#acb9b8" stroke-width="26" stroke-linejoin="round"/>
+<g data-track-id="C00" data-x="80" data-y="204">
+<circle cx="80" cy="204" r="15" fill="#deeee4" stroke="#36745c" stroke-width="1.1"/>
+<path d="M73,194 L77,201 L69,201 Z" fill="#36745c"/>
+</g>
+<g data-track-id="C01" data-x="116" data-y="192">
+<circle cx="116" cy="192" r="15" fill="#f6e0dd" stroke="#a53e3e" stroke-width="1.1"/>
+<circle cx="109" cy="186" r="3" fill="#a53e3e"/>
+</g>
+<g data-track-id="C02" data-x="148" data-y="192">
+<circle cx="148" cy="192" r="15" fill="#deedf5" stroke="#2b6f9d" stroke-width="1.1"/>
+<rect x="138" y="183" width="6" height="6" rx="1" fill="#2b6f9d"/>
+</g>
+<g data-track-id="C03" data-x="180" data-y="204">
+<circle cx="180" cy="204" r="15" fill="#f7edce" stroke="#8a6507" stroke-width="1.1"/>
+<path d="M173,194 L177,198 L173,202 L169,198 Z" fill="#8a6507"/>
+</g>
+<g data-track-id="C04" data-x="204" data-y="180">
+<circle cx="204" cy="180" r="15" fill="#deeee4" stroke="#36745c" stroke-width="1.1"/>
+<path d="M197,170 L201,177 L193,177 Z" fill="#36745c"/>
+</g>
+<g data-track-id="C05" data-x="192" data-y="148">
+<circle cx="192" cy="148" r="15" fill="#f6e0dd" stroke="#a53e3e" stroke-width="1.1"/>
+<circle cx="185" cy="142" r="3" fill="#a53e3e"/>
+</g>
+<g data-track-id="C06" data-x="192" data-y="116">
+<circle cx="192" cy="116" r="15" fill="#deedf5" stroke="#2b6f9d" stroke-width="1.1"/>
+<rect x="182" y="107" width="6" height="6" rx="1" fill="#2b6f9d"/>
+</g>
+<g data-track-id="C07" data-x="204" data-y="80">
+<circle cx="204" cy="80" r="15" fill="#f7edce" stroke="#8a6507" stroke-width="1.1"/>
+<path d="M197,70 L201,74 L197,78 L193,74 Z" fill="#8a6507"/>
+</g>
+<g data-track-id="C08" data-x="236" data-y="68">
+<circle cx="236" cy="68" r="15" fill="#deeee4" stroke="#36745c" stroke-width="1.1"/>
+<path d="M229,58 L233,65 L225,65 Z" fill="#36745c"/>
+</g>
+<g data-track-id="C09" data-x="268" data-y="68">
+<circle cx="268" cy="68" r="15" fill="#f6e0dd" stroke="#a53e3e" stroke-width="1.1"/>
+<circle cx="261" cy="62" r="3" fill="#a53e3e"/>
+</g>
+<g data-track-id="C10" data-x="300" data-y="68">
+<circle cx="300" cy="68" r="15" fill="#deedf5" stroke="#2b6f9d" stroke-width="1.1"/>
+<rect x="290" y="59" width="6" height="6" rx="1" fill="#2b6f9d"/>
+</g>
+<g data-track-id="C11" data-x="332" data-y="68">
+<circle cx="332" cy="68" r="15" fill="#f7edce" stroke="#8a6507" stroke-width="1.1"/>
+<path d="M325,58 L329,62 L325,66 L321,62 Z" fill="#8a6507"/>
+</g>
+<g data-track-id="C12" data-x="364" data-y="68">
+<circle cx="364" cy="68" r="15" fill="#deeee4" stroke="#36745c" stroke-width="1.1"/>
+<path d="M357,58 L361,65 L353,65 Z" fill="#36745c"/>
+</g>
+<g data-track-id="C13" data-x="396" data-y="80">
+<circle cx="396" cy="80" r="15" fill="#f6e0dd" stroke="#a53e3e" stroke-width="1.1"/>
+<circle cx="389" cy="74" r="3" fill="#a53e3e"/>
+</g>
+<g data-track-id="C14" data-x="408" data-y="116">
+<circle cx="408" cy="116" r="15" fill="#deedf5" stroke="#2b6f9d" stroke-width="1.1"/>
+<rect x="398" y="107" width="6" height="6" rx="1" fill="#2b6f9d"/>
+</g>
+<g data-track-id="C15" data-x="408" data-y="148">
+<circle cx="408" cy="148" r="15" fill="#f7edce" stroke="#8a6507" stroke-width="1.1"/>
+<path d="M401,138 L405,142 L401,146 L397,142 Z" fill="#8a6507"/>
+</g>
+<g data-track-id="C16" data-x="396" data-y="180">
+<circle cx="396" cy="180" r="15" fill="#deeee4" stroke="#36745c" stroke-width="1.1"/>
+<path d="M389,170 L393,177 L385,177 Z" fill="#36745c"/>
+</g>
+<g data-track-id="C17" data-x="420" data-y="204">
+<circle cx="420" cy="204" r="15" fill="#f6e0dd" stroke="#a53e3e" stroke-width="1.1"/>
+<circle cx="413" cy="198" r="3" fill="#a53e3e"/>
+</g>
+<g data-track-id="C18" data-x="452" data-y="192">
+<circle cx="452" cy="192" r="15" fill="#deedf5" stroke="#2b6f9d" stroke-width="1.1"/>
+<rect x="442" y="183" width="6" height="6" rx="1" fill="#2b6f9d"/>
+</g>
+<g data-track-id="C19" data-x="484" data-y="192">
+<circle cx="484" cy="192" r="15" fill="#f7edce" stroke="#8a6507" stroke-width="1.1"/>
+<path d="M477,182 L481,186 L477,190 L473,186 Z" fill="#8a6507"/>
+</g>
+<g data-track-id="C20" data-x="520" data-y="204">
+<circle cx="520" cy="204" r="15" fill="#deeee4" stroke="#36745c" stroke-width="1.1"/>
+<path d="M513,194 L517,201 L509,201 Z" fill="#36745c"/>
+</g>
+<g data-track-id="C21" data-x="532" data-y="236">
+<circle cx="532" cy="236" r="15" fill="#f6e0dd" stroke="#a53e3e" stroke-width="1.1"/>
+<circle cx="525" cy="230" r="3" fill="#a53e3e"/>
+</g>
+<g data-track-id="C22" data-x="532" data-y="268">
+<circle cx="532" cy="268" r="15" fill="#deedf5" stroke="#2b6f9d" stroke-width="1.1"/>
+<rect x="522" y="259" width="6" height="6" rx="1" fill="#2b6f9d"/>
+</g>
+<g data-track-id="C23" data-x="532" data-y="300">
+<circle cx="532" cy="300" r="15" fill="#f7edce" stroke="#8a6507" stroke-width="1.1"/>
+<path d="M525,290 L529,294 L525,298 L521,294 Z" fill="#8a6507"/>
+</g>
+<g data-track-id="C24" data-x="532" data-y="332">
+<circle cx="532" cy="332" r="15" fill="#deeee4" stroke="#36745c" stroke-width="1.1"/>
+<path d="M525,322 L529,329 L521,329 Z" fill="#36745c"/>
+</g>
+<g data-track-id="C25" data-x="532" data-y="364">
+<circle cx="532" cy="364" r="15" fill="#f6e0dd" stroke="#a53e3e" stroke-width="1.1"/>
+<circle cx="525" cy="358" r="3" fill="#a53e3e"/>
+</g>
+<g data-track-id="C26" data-x="520" data-y="396">
+<circle cx="520" cy="396" r="15" fill="#deedf5" stroke="#2b6f9d" stroke-width="1.1"/>
+<rect x="510" y="387" width="6" height="6" rx="1" fill="#2b6f9d"/>
+</g>
+<g data-track-id="C27" data-x="484" data-y="408">
+<circle cx="484" cy="408" r="15" fill="#f7edce" stroke="#8a6507" stroke-width="1.1"/>
+<path d="M477,398 L481,402 L477,406 L473,402 Z" fill="#8a6507"/>
+</g>
+<g data-track-id="C28" data-x="452" data-y="408">
+<circle cx="452" cy="408" r="15" fill="#deeee4" stroke="#36745c" stroke-width="1.1"/>
+<path d="M445,398 L449,405 L441,405 Z" fill="#36745c"/>
+</g>
+<g data-track-id="C29" data-x="420" data-y="396">
+<circle cx="420" cy="396" r="15" fill="#f6e0dd" stroke="#a53e3e" stroke-width="1.1"/>
+<circle cx="413" cy="390" r="3" fill="#a53e3e"/>
+</g>
+<g data-track-id="C30" data-x="396" data-y="420">
+<circle cx="396" cy="420" r="15" fill="#deedf5" stroke="#2b6f9d" stroke-width="1.1"/>
+<rect x="386" y="411" width="6" height="6" rx="1" fill="#2b6f9d"/>
+</g>
+<g data-track-id="C31" data-x="408" data-y="452">
+<circle cx="408" cy="452" r="15" fill="#f7edce" stroke="#8a6507" stroke-width="1.1"/>
+<path d="M401,442 L405,446 L401,450 L397,446 Z" fill="#8a6507"/>
+</g>
+<g data-track-id="C32" data-x="408" data-y="484">
+<circle cx="408" cy="484" r="15" fill="#deeee4" stroke="#36745c" stroke-width="1.1"/>
+<path d="M401,474 L405,481 L397,481 Z" fill="#36745c"/>
+</g>
+<g data-track-id="C33" data-x="396" data-y="520">
+<circle cx="396" cy="520" r="15" fill="#f6e0dd" stroke="#a53e3e" stroke-width="1.1"/>
+<circle cx="389" cy="514" r="3" fill="#a53e3e"/>
+</g>
+<g data-track-id="C34" data-x="364" data-y="532">
+<circle cx="364" cy="532" r="15" fill="#deedf5" stroke="#2b6f9d" stroke-width="1.1"/>
+<rect x="354" y="523" width="6" height="6" rx="1" fill="#2b6f9d"/>
+</g>
+<g data-track-id="C35" data-x="332" data-y="532">
+<circle cx="332" cy="532" r="15" fill="#f7edce" stroke="#8a6507" stroke-width="1.1"/>
+<path d="M325,522 L329,526 L325,530 L321,526 Z" fill="#8a6507"/>
+</g>
+<g data-track-id="C36" data-x="300" data-y="532">
+<circle cx="300" cy="532" r="15" fill="#deeee4" stroke="#36745c" stroke-width="1.1"/>
+<path d="M293,522 L297,529 L289,529 Z" fill="#36745c"/>
+</g>
+<g data-track-id="C37" data-x="268" data-y="532">
+<circle cx="268" cy="532" r="15" fill="#f6e0dd" stroke="#a53e3e" stroke-width="1.1"/>
+<circle cx="261" cy="526" r="3" fill="#a53e3e"/>
+</g>
+<g data-track-id="C38" data-x="236" data-y="532">
+<circle cx="236" cy="532" r="15" fill="#deedf5" stroke="#2b6f9d" stroke-width="1.1"/>
+<rect x="226" y="523" width="6" height="6" rx="1" fill="#2b6f9d"/>
+</g>
+<g data-track-id="C39" data-x="204" data-y="520">
+<circle cx="204" cy="520" r="15" fill="#f7edce" stroke="#8a6507" stroke-width="1.1"/>
+<path d="M197,510 L201,514 L197,518 L193,514 Z" fill="#8a6507"/>
+</g>
+<g data-track-id="C40" data-x="192" data-y="484">
+<circle cx="192" cy="484" r="15" fill="#deeee4" stroke="#36745c" stroke-width="1.1"/>
+<path d="M185,474 L189,481 L181,481 Z" fill="#36745c"/>
+</g>
+<g data-track-id="C41" data-x="192" data-y="452">
+<circle cx="192" cy="452" r="15" fill="#f6e0dd" stroke="#a53e3e" stroke-width="1.1"/>
+<circle cx="185" cy="446" r="3" fill="#a53e3e"/>
+</g>
+<g data-track-id="C42" data-x="204" data-y="420">
+<circle cx="204" cy="420" r="15" fill="#deedf5" stroke="#2b6f9d" stroke-width="1.1"/>
+<rect x="194" y="411" width="6" height="6" rx="1" fill="#2b6f9d"/>
+</g>
+<g data-track-id="C43" data-x="180" data-y="396">
+<circle cx="180" cy="396" r="15" fill="#f7edce" stroke="#8a6507" stroke-width="1.1"/>
+<path d="M173,386 L177,390 L173,394 L169,390 Z" fill="#8a6507"/>
+</g>
+<g data-track-id="C44" data-x="148" data-y="408">
+<circle cx="148" cy="408" r="15" fill="#deeee4" stroke="#36745c" stroke-width="1.1"/>
+<path d="M141,398 L145,405 L137,405 Z" fill="#36745c"/>
+</g>
+<g data-track-id="C45" data-x="116" data-y="408">
+<circle cx="116" cy="408" r="15" fill="#f6e0dd" stroke="#a53e3e" stroke-width="1.1"/>
+<circle cx="109" cy="402" r="3" fill="#a53e3e"/>
+</g>
+<g data-track-id="C46" data-x="80" data-y="396">
+<circle cx="80" cy="396" r="15" fill="#deedf5" stroke="#2b6f9d" stroke-width="1.1"/>
+<rect x="70" y="387" width="6" height="6" rx="1" fill="#2b6f9d"/>
+</g>
+<g data-track-id="C47" data-x="68" data-y="364">
+<circle cx="68" cy="364" r="15" fill="#f7edce" stroke="#8a6507" stroke-width="1.1"/>
+<path d="M61,354 L65,358 L61,362 L57,358 Z" fill="#8a6507"/>
+</g>
+<g data-track-id="C48" data-x="68" data-y="332">
+<circle cx="68" cy="332" r="15" fill="#deeee4" stroke="#36745c" stroke-width="1.1"/>
+<path d="M61,322 L65,329 L57,329 Z" fill="#36745c"/>
+</g>
+<g data-track-id="C49" data-x="68" data-y="300">
+<circle cx="68" cy="300" r="15" fill="#f6e0dd" stroke="#a53e3e" stroke-width="1.1"/>
+<circle cx="61" cy="294" r="3" fill="#a53e3e"/>
+</g>
+<g data-track-id="C50" data-x="68" data-y="268">
+<circle cx="68" cy="268" r="15" fill="#deedf5" stroke="#2b6f9d" stroke-width="1.1"/>
+<rect x="58" y="259" width="6" height="6" rx="1" fill="#2b6f9d"/>
+</g>
+<g data-track-id="C51" data-x="68" data-y="236">
+<circle cx="68" cy="236" r="15" fill="#f7edce" stroke="#8a6507" stroke-width="1.1"/>
+<path d="M61,226 L65,230 L61,234 L57,230 Z" fill="#8a6507"/>
+</g>
+<g transform="rotate(0 300 300)">
+<path d="M96,282 H267 V272 L296,300 L267,328 V318 H96 Z" fill="#f6e0dd" stroke="#a53e3e" stroke-width="1.2"/>
+<g data-home-id="0-H1" data-x="116" data-y="300"><circle cx="116" cy="300" r="11" fill="#fff" stroke="#a53e3e" stroke-width=".8"/></g>
+<text transform="rotate(0 116 300)" x="116" y="304" text-anchor="middle" font-size="11" font-weight="700" fill="#a53e3e">1</text>
+<g data-home-id="0-H2" data-x="148" data-y="300"><circle cx="148" cy="300" r="11" fill="#fff" stroke="#a53e3e" stroke-width=".8"/></g>
+<text transform="rotate(0 148 300)" x="148" y="304" text-anchor="middle" font-size="11" font-weight="700" fill="#a53e3e">2</text>
+<g data-home-id="0-H3" data-x="180" data-y="300"><circle cx="180" cy="300" r="11" fill="#fff" stroke="#a53e3e" stroke-width=".8"/></g>
+<text transform="rotate(0 180 300)" x="180" y="304" text-anchor="middle" font-size="11" font-weight="700" fill="#a53e3e">3</text>
+<g data-home-id="0-H4" data-x="212" data-y="300"><circle cx="212" cy="300" r="11" fill="#fff" stroke="#a53e3e" stroke-width=".8"/></g>
+<text transform="rotate(0 212 300)" x="212" y="304" text-anchor="middle" font-size="11" font-weight="700" fill="#a53e3e">4</text>
+<g data-home-id="0-H5" data-x="244" data-y="300"><circle cx="244" cy="300" r="11" fill="#fff" stroke="#a53e3e" stroke-width=".8"/></g>
+<text transform="rotate(0 244 300)" x="244" y="304" text-anchor="middle" font-size="11" font-weight="700" fill="#a53e3e">5</text>
+<g data-home-id="0-H6" data-x="276" data-y="300"><circle cx="276" cy="300" r="11" fill="#fff" stroke="#a53e3e" stroke-width=".8"/></g>
+<text transform="rotate(0 276 300)" x="276" y="304" text-anchor="middle" font-size="11" font-weight="700" fill="#a53e3e">6</text>
+</g>
+<g transform="rotate(90 300 300)">
+<path d="M96,282 H267 V272 L296,300 L267,328 V318 H96 Z" fill="#deedf5" stroke="#2b6f9d" stroke-width="1.2"/>
+<g data-home-id="1-H1" data-x="300" data-y="116"><circle cx="116" cy="300" r="11" fill="#fff" stroke="#2b6f9d" stroke-width=".8"/></g>
+<text transform="rotate(-90 116 300)" x="116" y="304" text-anchor="middle" font-size="11" font-weight="700" fill="#2b6f9d">1</text>
+<g data-home-id="1-H2" data-x="300" data-y="148"><circle cx="148" cy="300" r="11" fill="#fff" stroke="#2b6f9d" stroke-width=".8"/></g>
+<text transform="rotate(-90 148 300)" x="148" y="304" text-anchor="middle" font-size="11" font-weight="700" fill="#2b6f9d">2</text>
+<g data-home-id="1-H3" data-x="300" data-y="180"><circle cx="180" cy="300" r="11" fill="#fff" stroke="#2b6f9d" stroke-width=".8"/></g>
+<text transform="rotate(-90 180 300)" x="180" y="304" text-anchor="middle" font-size="11" font-weight="700" fill="#2b6f9d">3</text>
+<g data-home-id="1-H4" data-x="300" data-y="212"><circle cx="212" cy="300" r="11" fill="#fff" stroke="#2b6f9d" stroke-width=".8"/></g>
+<text transform="rotate(-90 212 300)" x="212" y="304" text-anchor="middle" font-size="11" font-weight="700" fill="#2b6f9d">4</text>
+<g data-home-id="1-H5" data-x="300" data-y="244"><circle cx="244" cy="300" r="11" fill="#fff" stroke="#2b6f9d" stroke-width=".8"/></g>
+<text transform="rotate(-90 244 300)" x="244" y="304" text-anchor="middle" font-size="11" font-weight="700" fill="#2b6f9d">5</text>
+<g data-home-id="1-H6" data-x="300" data-y="276"><circle cx="276" cy="300" r="11" fill="#fff" stroke="#2b6f9d" stroke-width=".8"/></g>
+<text transform="rotate(-90 276 300)" x="276" y="304" text-anchor="middle" font-size="11" font-weight="700" fill="#2b6f9d">6</text>
+</g>
+<g transform="rotate(180 300 300)">
+<path d="M96,282 H267 V272 L296,300 L267,328 V318 H96 Z" fill="#f7edce" stroke="#8a6507" stroke-width="1.2"/>
+<g data-home-id="2-H1" data-x="484" data-y="300"><circle cx="116" cy="300" r="11" fill="#fff" stroke="#8a6507" stroke-width=".8"/></g>
+<text transform="rotate(-180 116 300)" x="116" y="304" text-anchor="middle" font-size="11" font-weight="700" fill="#8a6507">1</text>
+<g data-home-id="2-H2" data-x="452" data-y="300"><circle cx="148" cy="300" r="11" fill="#fff" stroke="#8a6507" stroke-width=".8"/></g>
+<text transform="rotate(-180 148 300)" x="148" y="304" text-anchor="middle" font-size="11" font-weight="700" fill="#8a6507">2</text>
+<g data-home-id="2-H3" data-x="420" data-y="300"><circle cx="180" cy="300" r="11" fill="#fff" stroke="#8a6507" stroke-width=".8"/></g>
+<text transform="rotate(-180 180 300)" x="180" y="304" text-anchor="middle" font-size="11" font-weight="700" fill="#8a6507">3</text>
+<g data-home-id="2-H4" data-x="388" data-y="300"><circle cx="212" cy="300" r="11" fill="#fff" stroke="#8a6507" stroke-width=".8"/></g>
+<text transform="rotate(-180 212 300)" x="212" y="304" text-anchor="middle" font-size="11" font-weight="700" fill="#8a6507">4</text>
+<g data-home-id="2-H5" data-x="356" data-y="300"><circle cx="244" cy="300" r="11" fill="#fff" stroke="#8a6507" stroke-width=".8"/></g>
+<text transform="rotate(-180 244 300)" x="244" y="304" text-anchor="middle" font-size="11" font-weight="700" fill="#8a6507">5</text>
+<g data-home-id="2-H6" data-x="324" data-y="300"><circle cx="276" cy="300" r="11" fill="#fff" stroke="#8a6507" stroke-width=".8"/></g>
+<text transform="rotate(-180 276 300)" x="276" y="304" text-anchor="middle" font-size="11" font-weight="700" fill="#8a6507">6</text>
+</g>
+<g transform="rotate(270 300 300)">
+<path d="M96,282 H267 V272 L296,300 L267,328 V318 H96 Z" fill="#deeee4" stroke="#36745c" stroke-width="1.2"/>
+<g data-home-id="3-H1" data-x="300" data-y="484"><circle cx="116" cy="300" r="11" fill="#fff" stroke="#36745c" stroke-width=".8"/></g>
+<text transform="rotate(-270 116 300)" x="116" y="304" text-anchor="middle" font-size="11" font-weight="700" fill="#36745c">1</text>
+<g data-home-id="3-H2" data-x="300" data-y="452"><circle cx="148" cy="300" r="11" fill="#fff" stroke="#36745c" stroke-width=".8"/></g>
+<text transform="rotate(-270 148 300)" x="148" y="304" text-anchor="middle" font-size="11" font-weight="700" fill="#36745c">2</text>
+<g data-home-id="3-H3" data-x="300" data-y="420"><circle cx="180" cy="300" r="11" fill="#fff" stroke="#36745c" stroke-width=".8"/></g>
+<text transform="rotate(-270 180 300)" x="180" y="304" text-anchor="middle" font-size="11" font-weight="700" fill="#36745c">3</text>
+<g data-home-id="3-H4" data-x="300" data-y="388"><circle cx="212" cy="300" r="11" fill="#fff" stroke="#36745c" stroke-width=".8"/></g>
+<text transform="rotate(-270 212 300)" x="212" y="304" text-anchor="middle" font-size="11" font-weight="700" fill="#36745c">4</text>
+<g data-home-id="3-H5" data-x="300" data-y="356"><circle cx="244" cy="300" r="11" fill="#fff" stroke="#36745c" stroke-width=".8"/></g>
+<text transform="rotate(-270 244 300)" x="244" y="304" text-anchor="middle" font-size="11" font-weight="700" fill="#36745c">5</text>
+<g data-home-id="3-H6" data-x="300" data-y="324"><circle cx="276" cy="300" r="11" fill="#fff" stroke="#36745c" stroke-width=".8"/></g>
+<text transform="rotate(-270 276 300)" x="276" y="304" text-anchor="middle" font-size="11" font-weight="700" fill="#36745c">6</text>
+</g>
+<g data-launch-id="0" data-x="44" data-y="184">
+<rect x="22" y="171" width="44" height="26" rx="8" fill="#fff" stroke="#a53e3e" stroke-width="1.6"/>
+<text x="44" y="188" font-size="10" fill="#a53e3e" text-anchor="middle" font-weight="700">起飞</text>
+<path d="M44,184 L80,204" fill="none" stroke="#a53e3e" stroke-width="1.5" stroke-dasharray="3 3"/>
+</g>
+<g data-launch-id="1" data-x="416" data-y="44">
+<rect x="394" y="31" width="44" height="26" rx="8" fill="#fff" stroke="#2b6f9d" stroke-width="1.6"/>
+<text x="416" y="48" font-size="10" fill="#2b6f9d" text-anchor="middle" font-weight="700">起飞</text>
+<path d="M416,44 L396,80" fill="none" stroke="#2b6f9d" stroke-width="1.5" stroke-dasharray="3 3"/>
+</g>
+<g data-launch-id="2" data-x="556" data-y="416">
+<rect x="534" y="403" width="44" height="26" rx="8" fill="#fff" stroke="#8a6507" stroke-width="1.6"/>
+<text x="556" y="420" font-size="10" fill="#8a6507" text-anchor="middle" font-weight="700">起飞</text>
+<path d="M556,416 L520,396" fill="none" stroke="#8a6507" stroke-width="1.5" stroke-dasharray="3 3"/>
+</g>
+<g data-launch-id="3" data-x="184" data-y="556">
+<rect x="162" y="543" width="44" height="26" rx="8" fill="#fff" stroke="#36745c" stroke-width="1.6"/>
+<text x="184" y="560" font-size="10" fill="#36745c" text-anchor="middle" font-weight="700">起飞</text>
+<path d="M184,556 L204,520" fill="none" stroke="#36745c" stroke-width="1.5" stroke-dasharray="3 3"/>
+</g>
+<path data-flight="0" data-from="C17" data-to="C29" data-cross-home="2-H3" d="M420,204 L420,396" fill="none" stroke="#a53e3e" stroke-width="2" stroke-dasharray="6 5"/>
+<circle cx="420" cy="204" r="10" fill="#fff" stroke="#a53e3e" stroke-width="1.8"/>
+<text x="420" y="208" font-size="10" fill="#a53e3e" text-anchor="middle" font-weight="700">飞</text>
+<circle cx="420" cy="396" r="10" fill="#fff" stroke="#a53e3e" stroke-width="1.8"/>
+<text x="420" y="400" font-size="10" fill="#a53e3e" text-anchor="middle" font-weight="700">落</text>
+<path data-flight="1" data-from="C30" data-to="C42" data-cross-home="3-H3" d="M396,420 L204,420" fill="none" stroke="#2b6f9d" stroke-width="2" stroke-dasharray="6 5"/>
+<circle cx="396" cy="420" r="10" fill="#fff" stroke="#2b6f9d" stroke-width="1.8"/>
+<text x="396" y="424" font-size="10" fill="#2b6f9d" text-anchor="middle" font-weight="700">飞</text>
+<circle cx="204" cy="420" r="10" fill="#fff" stroke="#2b6f9d" stroke-width="1.8"/>
+<text x="204" y="424" font-size="10" fill="#2b6f9d" text-anchor="middle" font-weight="700">落</text>
+<path data-flight="2" data-from="C43" data-to="C03" data-cross-home="0-H3" d="M180,396 L180,204" fill="none" stroke="#8a6507" stroke-width="2" stroke-dasharray="6 5"/>
+<circle cx="180" cy="396" r="10" fill="#fff" stroke="#8a6507" stroke-width="1.8"/>
+<text x="180" y="400" font-size="10" fill="#8a6507" text-anchor="middle" font-weight="700">飞</text>
+<circle cx="180" cy="204" r="10" fill="#fff" stroke="#8a6507" stroke-width="1.8"/>
+<text x="180" y="208" font-size="10" fill="#8a6507" text-anchor="middle" font-weight="700">落</text>
+<path data-flight="3" data-from="C04" data-to="C16" data-cross-home="1-H3" d="M204,180 L396,180" fill="none" stroke="#36745c" stroke-width="2" stroke-dasharray="6 5"/>
+<circle cx="204" cy="180" r="10" fill="#fff" stroke="#36745c" stroke-width="1.8"/>
+<text x="204" y="184" font-size="10" fill="#36745c" text-anchor="middle" font-weight="700">飞</text>
+<circle cx="396" cy="180" r="10" fill="#fff" stroke="#36745c" stroke-width="1.8"/>
+<text x="396" y="184" font-size="10" fill="#36745c" text-anchor="middle" font-weight="700">落</text>
+<path d="M268,68 L300,68" stroke="#263b43" stroke-width="1.8" marker-end="url(#arrow)"/>
+<path d="M532,268 L532,300" stroke="#263b43" stroke-width="1.8" marker-end="url(#arrow)"/>
+<path d="M332,532 L300,532" stroke="#263b43" stroke-width="1.8" marker-end="url(#arrow)"/>
+<path d="M68,332 L68,300" stroke="#263b43" stroke-width="1.8" marker-end="url(#arrow)"/>
+</g><g id="board-labels">
+<text x="80" y="228" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C00</text>
+<text x="116" y="216" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C01</text>
+<text x="148" y="216" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C02</text>
+<text x="180" y="228" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C03</text>
+<text x="204" y="204" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C04</text>
+<text x="192" y="172" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C05</text>
+<text x="192" y="140" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C06</text>
+<text x="204" y="104" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C07</text>
+<text x="236" y="92" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C08</text>
+<text x="268" y="92" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C09</text>
+<text x="300" y="92" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C10</text>
+<text x="332" y="92" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C11</text>
+<text x="364" y="92" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C12</text>
+<text x="396" y="104" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C13</text>
+<text x="408" y="140" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C14</text>
+<text x="408" y="172" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C15</text>
+<text x="396" y="204" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C16</text>
+<text x="420" y="228" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C17</text>
+<text x="452" y="216" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C18</text>
+<text x="484" y="216" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C19</text>
+<text x="520" y="228" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C20</text>
+<text x="532" y="260" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C21</text>
+<text x="532" y="292" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C22</text>
+<text x="532" y="324" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C23</text>
+<text x="532" y="356" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C24</text>
+<text x="532" y="388" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C25</text>
+<text x="520" y="420" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C26</text>
+<text x="484" y="432" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C27</text>
+<text x="452" y="432" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C28</text>
+<text x="420" y="420" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C29</text>
+<text x="396" y="444" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C30</text>
+<text x="408" y="476" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C31</text>
+<text x="408" y="508" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C32</text>
+<text x="396" y="544" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C33</text>
+<text x="364" y="556" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C34</text>
+<text x="332" y="556" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C35</text>
+<text x="300" y="556" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C36</text>
+<text x="268" y="556" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C37</text>
+<text x="236" y="556" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C38</text>
+<text x="204" y="544" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C39</text>
+<text x="192" y="508" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C40</text>
+<text x="192" y="476" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C41</text>
+<text x="204" y="444" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C42</text>
+<text x="180" y="420" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C43</text>
+<text x="148" y="432" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C44</text>
+<text x="116" y="432" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C45</text>
+<text x="80" y="420" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C46</text>
+<text x="68" y="388" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C47</text>
+<text x="68" y="356" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C48</text>
+<text x="68" y="324" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C49</text>
+<text x="68" y="292" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C50</text>
+<text x="68" y="260" font-size="8.5" fill="#526770" text-anchor="middle" font-weight="400">C51</text>
+</g><g id="board-scene">
+<polyline points="332,68 364,68 396,80" fill="none" stroke="#263b43" stroke-width="3" marker-end="url(#arrow)"/>
+<path d="M396,80 Q372,160 420,204" fill="none" stroke="#263b43" stroke-width="2.5" stroke-dasharray="4 4" marker-end="url(#arrow)"/>
+<text x="369" y="138" font-size="12" fill="#263b43" text-anchor="start" font-weight="700">跳 +4</text>
+<circle cx="420" cy="396" r="18" fill="none" stroke="#263b43" stroke-width="3"/><circle cx="420" cy="396" r="22" fill="none" stroke="#263b43" stroke-dasharray="3 3"/>
+</g><g id="board-public-scene">
+<g transform="translate(66 92) scale(1)" opacity="1">
+<circle r="16" fill="#fff" stroke="#bbc7c7"/>
+<use href="#plane-mark" fill="#a53e3e"/>
+<circle cx="-10" cy="-10" r="3" fill="#a53e3e"/>
+<text x="11" y="14" font-size="10" fill="#a53e3e" text-anchor="middle" font-weight="700">1</text>
+</g>
+<g transform="translate(66 144) scale(1)" opacity="1">
+<circle r="16" fill="#fff" stroke="#bbc7c7"/>
+<use href="#plane-mark" fill="#a53e3e"/>
+<circle cx="-10" cy="-10" r="3" fill="#a53e3e"/>
+<text x="11" y="14" font-size="10" fill="#a53e3e" text-anchor="middle" font-weight="700">3</text>
+</g>
+<g transform="translate(138 144) scale(1)" opacity="1">
+<circle r="16" fill="#fff" stroke="#bbc7c7"/>
+<use href="#plane-mark" fill="#a53e3e"/>
+<circle cx="-10" cy="-10" r="3" fill="#a53e3e"/>
+<text x="11" y="14" font-size="10" fill="#a53e3e" text-anchor="middle" font-weight="700">4</text>
+</g>
+<g transform="translate(332 68) scale(1)" opacity="1">
+<circle r="16" fill="#fff" stroke="#bbc7c7"/>
+<use href="#plane-mark" fill="#a53e3e"/>
+<circle cx="-10" cy="-10" r="3" fill="#a53e3e"/>
+<text x="11" y="14" font-size="10" fill="#a53e3e" text-anchor="middle" font-weight="700">2</text>
+</g>
+<g transform="translate(520 204) scale(1)" opacity="1">
+<circle r="16" fill="#fff" stroke="#bbc7c7"/>
+<use href="#plane-mark" fill="#2b6f9d"/>
+<rect x="-13" y="-13" width="6" height="6" rx="1" fill="#2b6f9d"/>
+<text x="11" y="14" font-size="10" fill="#2b6f9d" text-anchor="middle" font-weight="700">1</text>
+</g>
+<rect x="526" y="179" width="28" height="20" rx="7" fill="#263b43" stroke="#263b43" stroke-width="1"/>
+<text x="540" y="193" font-size="12" fill="#fff" text-anchor="middle" font-weight="700">×4</text>
+<g transform="translate(456 482) scale(1)" opacity="1">
+<circle r="16" fill="#fff" stroke="#bbc7c7"/>
+<use href="#plane-mark" fill="#8a6507"/>
+<path d="M-10,-14 L-6,-10 L-10,-6 L-14,-10 Z" fill="#8a6507"/>
+<text x="11" y="14" font-size="10" fill="#8a6507" text-anchor="middle" font-weight="700">1</text>
+</g>
+<g transform="translate(528 482) scale(1)" opacity="1">
+<circle r="16" fill="#fff" stroke="#bbc7c7"/>
+<use href="#plane-mark" fill="#8a6507"/>
+<path d="M-10,-14 L-6,-10 L-10,-6 L-14,-10 Z" fill="#8a6507"/>
+<text x="11" y="14" font-size="10" fill="#8a6507" text-anchor="middle" font-weight="700">2</text>
+</g>
+<g transform="translate(456 534) scale(1)" opacity="1">
+<circle r="16" fill="#fff" stroke="#bbc7c7"/>
+<use href="#plane-mark" fill="#8a6507"/>
+<path d="M-10,-14 L-6,-10 L-10,-6 L-14,-10 Z" fill="#8a6507"/>
+<text x="11" y="14" font-size="10" fill="#8a6507" text-anchor="middle" font-weight="700">3</text>
+</g>
+<g transform="translate(324 300) scale(0.65)" opacity="1">
+<circle r="16" fill="#fff" stroke="#bbc7c7"/>
+<use href="#plane-mark" fill="#8a6507"/>
+<path d="M-10,-14 L-6,-10 L-10,-6 L-14,-10 Z" fill="#8a6507"/>
+<text x="11" y="14" font-size="10" fill="#8a6507" text-anchor="middle" font-weight="700">4</text>
+<text x="12" y="-10" font-size="13" fill="#263b43" text-anchor="middle" font-weight="700">✓</text>
+</g>
+<g transform="translate(66 482) scale(1)" opacity="1">
+<circle r="16" fill="#fff" stroke="#bbc7c7"/>
+<use href="#plane-mark" fill="#36745c"/>
+<path d="M-10,-14 L-6,-7 L-14,-7 Z" fill="#36745c"/>
+<text x="11" y="14" font-size="10" fill="#36745c" text-anchor="middle" font-weight="700">1</text>
+</g>
+<g transform="translate(138 482) scale(1)" opacity="1">
+<circle r="16" fill="#fff" stroke="#bbc7c7"/>
+<use href="#plane-mark" fill="#36745c"/>
+<path d="M-10,-14 L-6,-7 L-14,-7 Z" fill="#36745c"/>
+<text x="11" y="14" font-size="10" fill="#36745c" text-anchor="middle" font-weight="700">2</text>
+</g>
+<g transform="translate(66 534) scale(1)" opacity="1">
+<circle r="16" fill="#fff" stroke="#bbc7c7"/>
+<use href="#plane-mark" fill="#36745c"/>
+<path d="M-10,-14 L-6,-7 L-14,-7 Z" fill="#36745c"/>
+<text x="11" y="14" font-size="10" fill="#36745c" text-anchor="middle" font-weight="700">3</text>
+</g>
+<g transform="translate(184 556) scale(0.85)" opacity="0.48">
+<circle r="16" fill="#fff" stroke="#bbc7c7"/>
+<use href="#plane-mark" fill="#36745c"/>
+<path d="M-10,-14 L-6,-7 L-14,-7 Z" fill="#36745c"/>
+<text x="11" y="14" font-size="10" fill="#36745c" text-anchor="middle" font-weight="700">4</text>
+</g>
+<path d="M104,420 L128,420" stroke="#263b43" stroke-width="4"/>
+</g><g id="board-selected-plane">
+<g transform="translate(332 68) scale(1)" opacity="1">
+<circle r="19" fill="#fff" stroke="#263b43" stroke-width="2.5"/><circle r="15.5" fill="none" stroke="#fff" stroke-width="2"/>
+<use href="#plane-mark" fill="#a53e3e"/>
+<circle cx="-10" cy="-10" r="3" fill="#a53e3e"/>
+<text x="11" y="14" font-size="10" fill="#a53e3e" text-anchor="middle" font-weight="700">2</text>
+</g>
+</g><g id="board-detailed"><use href="#board-base"/><use href="#board-labels"/><use href="#board-public-scene"/><use href="#board-scene"/><use href="#board-selected-plane"/></g><g id="board-compact"><use href="#board-base"/><use href="#board-public-scene"/><use href="#board-scene"/><use href="#board-selected-plane"/></g><g id="board-public"><use href="#board-base"/><use href="#board-public-scene"/></g></defs>
+<rect x="0" y="0" width="1280" height="1140" rx="0" fill="#f4f5f0" stroke="#f4f5f0" stroke-width="1"/>
+<text x="28" y="43" font-size="28" fill="#263b43" text-anchor="start" font-weight="700">飞行棋 · Step 0</text>
+<text x="28" y="73" font-size="16" fill="#526770" text-anchor="start" font-weight="400">朋友版建议 / 原创矢量 / 静态资源与布局样板</text>
+<rect x="950" y="25" width="302" height="46" rx="12" fill="#fff" stroke="#b7c5c1" stroke-width="1"/>
+<text x="1101" y="54" font-size="16" fill="#526770" text-anchor="middle" font-weight="600">未接入大厅 · 规则待确认</text>
+<rect x="24" y="101" width="600" height="690" rx="18" fill="#fff" stroke="#d8dfdb" stroke-width="1"/>
+<text x="45" y="135" font-size="20" fill="#263b43" text-anchor="start" font-weight="700">传统棋盘 · 原始图拓扑核对，样式待确认</text>
+<use href="#board-detailed" x="24" y="152"/>
+<text x="45" y="776" font-size="14" fill="#526770" text-anchor="start" font-weight="400">红 2 · 骰子 2 → C13 → 跳 C17 → 飞 C29</text>
+<rect x="650" y="101" width="606" height="314" rx="18" fill="#fff" stroke="#d8dfdb" stroke-width="1"/>
+<text x="670" y="135" font-size="19" fill="#263b43" text-anchor="start" font-weight="700">四阵营：颜色 + 形状 + 中文名 + 序号</text>
+<g transform="translate(706 177) scale(1)" opacity="1">
+<circle r="16" fill="#fff" stroke="#bbc7c7"/>
+<use href="#plane-mark" fill="#a53e3e"/>
+<circle cx="-10" cy="-10" r="3" fill="#a53e3e"/>
+<text x="11" y="14" font-size="10" fill="#a53e3e" text-anchor="middle" font-weight="700">1</text>
+</g>
+<circle cx="742" cy="171" r="7" fill="#a53e3e"/>
+<text x="703" y="216" font-size="16" fill="#a53e3e" text-anchor="middle" font-weight="700">红圆</text>
+<g transform="translate(848 177) scale(1)" opacity="1">
+<circle r="16" fill="#fff" stroke="#bbc7c7"/>
+<use href="#plane-mark" fill="#2b6f9d"/>
+<rect x="-13" y="-13" width="6" height="6" rx="1" fill="#2b6f9d"/>
+<text x="11" y="14" font-size="10" fill="#2b6f9d" text-anchor="middle" font-weight="700">2</text>
+</g>
+<rect x="877" y="164" width="14" height="14" rx="1" fill="#2b6f9d"/>
+<text x="845" y="216" font-size="16" fill="#2b6f9d" text-anchor="middle" font-weight="700">蓝方</text>
+<g transform="translate(990 177) scale(1)" opacity="1">
+<circle r="16" fill="#fff" stroke="#bbc7c7"/>
+<use href="#plane-mark" fill="#8a6507"/>
+<path d="M-10,-14 L-6,-10 L-10,-6 L-14,-10 Z" fill="#8a6507"/>
+<text x="11" y="14" font-size="10" fill="#8a6507" text-anchor="middle" font-weight="700">3</text>
+</g>
+<path d="M1026,163 L1034,171 L1026,179 L1018,171 Z" fill="#8a6507"/>
+<text x="987" y="216" font-size="16" fill="#8a6507" text-anchor="middle" font-weight="700">黄菱</text>
+<g transform="translate(1132 177) scale(1)" opacity="1">
+<circle r="16" fill="#fff" stroke="#bbc7c7"/>
+<use href="#plane-mark" fill="#36745c"/>
+<path d="M-10,-14 L-6,-7 L-14,-7 Z" fill="#36745c"/>
+<text x="11" y="14" font-size="10" fill="#36745c" text-anchor="middle" font-weight="700">4</text>
+</g>
+<path d="M1168,163 L1176,178 L1160,178 Z" fill="#36745c"/>
+<text x="1129" y="216" font-size="16" fill="#36745c" text-anchor="middle" font-weight="700">绿三角</text>
+<text x="670" y="254" font-size="16" fill="#526770" text-anchor="start" font-weight="400">六面骰：点阵与数字互相核对</text>
+<rect x="678" y="268" width="44" height="44" rx="10" fill="#fff" stroke="#263b43" stroke-width="1.6"/>
+<g data-die-face="1" aria-label="1点">
+<circle cx="700.0" cy="290.0" r="2.42" fill="#263b43"/>
+</g>
+<text x="700" y="336" font-size="13" fill="#526770" text-anchor="middle" font-weight="400">1</text>
+<rect x="767" y="268" width="44" height="44" rx="10" fill="#fff" stroke="#263b43" stroke-width="1.6"/>
+<g data-die-face="2" aria-label="2点">
+<circle cx="778.0" cy="279.0" r="2.42" fill="#263b43"/>
+<circle cx="800.0" cy="301.0" r="2.42" fill="#263b43"/>
+</g>
+<text x="789" y="336" font-size="13" fill="#526770" text-anchor="middle" font-weight="400">2</text>
+<rect x="856" y="268" width="44" height="44" rx="10" fill="#fff" stroke="#263b43" stroke-width="1.6"/>
+<g data-die-face="3" aria-label="3点">
+<circle cx="867.0" cy="279.0" r="2.42" fill="#263b43"/>
+<circle cx="878.0" cy="290.0" r="2.42" fill="#263b43"/>
+<circle cx="889.0" cy="301.0" r="2.42" fill="#263b43"/>
+</g>
+<text x="878" y="336" font-size="13" fill="#526770" text-anchor="middle" font-weight="400">3</text>
+<rect x="945" y="268" width="44" height="44" rx="10" fill="#fff" stroke="#263b43" stroke-width="1.6"/>
+<g data-die-face="4" aria-label="4点">
+<circle cx="956.0" cy="279.0" r="2.42" fill="#263b43"/>
+<circle cx="956.0" cy="301.0" r="2.42" fill="#263b43"/>
+<circle cx="978.0" cy="279.0" r="2.42" fill="#263b43"/>
+<circle cx="978.0" cy="301.0" r="2.42" fill="#263b43"/>
+</g>
+<text x="967" y="336" font-size="13" fill="#526770" text-anchor="middle" font-weight="400">4</text>
+<rect x="1034" y="268" width="44" height="44" rx="10" fill="#fff" stroke="#263b43" stroke-width="1.6"/>
+<g data-die-face="5" aria-label="5点">
+<circle cx="1045.0" cy="279.0" r="2.42" fill="#263b43"/>
+<circle cx="1045.0" cy="301.0" r="2.42" fill="#263b43"/>
+<circle cx="1056.0" cy="290.0" r="2.42" fill="#263b43"/>
+<circle cx="1067.0" cy="279.0" r="2.42" fill="#263b43"/>
+<circle cx="1067.0" cy="301.0" r="2.42" fill="#263b43"/>
+</g>
+<text x="1056" y="336" font-size="13" fill="#526770" text-anchor="middle" font-weight="400">5</text>
+<rect x="1123" y="268" width="44" height="44" rx="10" fill="#fff" stroke="#263b43" stroke-width="1.6"/>
+<g data-die-face="6" aria-label="6点">
+<circle cx="1134.0" cy="279.0" r="2.42" fill="#263b43"/>
+<circle cx="1134.0" cy="290.0" r="2.42" fill="#263b43"/>
+<circle cx="1134.0" cy="301.0" r="2.42" fill="#263b43"/>
+<circle cx="1156.0" cy="279.0" r="2.42" fill="#263b43"/>
+<circle cx="1156.0" cy="290.0" r="2.42" fill="#263b43"/>
+<circle cx="1156.0" cy="301.0" r="2.42" fill="#263b43"/>
+</g>
+<text x="1145" y="336" font-size="13" fill="#526770" text-anchor="middle" font-weight="400">6</text>
+<g transform="translate(697 377) scale(0.8)" opacity="1">
+<circle r="19" fill="#fff" stroke="#263b43" stroke-width="2.5"/><circle r="15.5" fill="none" stroke="#fff" stroke-width="2"/>
+<use href="#plane-mark" fill="#a53e3e"/>
+<circle cx="-10" cy="-10" r="3" fill="#a53e3e"/>
+<text x="11" y="14" font-size="10" fill="#a53e3e" text-anchor="middle" font-weight="700">2</text>
+</g>
+<text x="722" y="383" font-size="14" fill="#263b43" text-anchor="start" font-weight="400">选中</text>
+<g transform="translate(827 377) scale(0.8)" opacity="0.48">
+<circle r="16" fill="#fff" stroke="#bbc7c7"/>
+<use href="#plane-mark" fill="#2b6f9d"/>
+<rect x="-13" y="-13" width="6" height="6" rx="1" fill="#2b6f9d"/>
+<text x="11" y="14" font-size="10" fill="#2b6f9d" text-anchor="middle" font-weight="700">1</text>
+</g>
+<text x="852" y="383" font-size="14" fill="#263b43" text-anchor="start" font-weight="400">不可用</text>
+<g transform="translate(969 377) scale(0.8)" opacity="1">
+<circle r="16" fill="#fff" stroke="#bbc7c7"/>
+<use href="#plane-mark" fill="#8a6507"/>
+<path d="M-10,-14 L-6,-10 L-10,-6 L-14,-10 Z" fill="#8a6507"/>
+<text x="11" y="14" font-size="10" fill="#8a6507" text-anchor="middle" font-weight="700">4</text>
+<text x="12" y="-10" font-size="13" fill="#263b43" text-anchor="middle" font-weight="700">✓</text>
+</g>
+<text x="994" y="383" font-size="14" fill="#263b43" text-anchor="start" font-weight="400">已完成</text>
+<text x="1116" y="383" font-size="13" fill="#526770" text-anchor="start" font-weight="400">━━ 最近落点</text>
+<text x="650" y="447" font-size="17" fill="#263b43" text-anchor="start" font-weight="700">320px 竖屏 · 信息字号与大目标示意</text>
+<rect x="650" y="462" width="320" height="626" rx="18" fill="#fff" stroke="#b9c5c5" stroke-width="1.3"/>
+<text x="666" y="492" font-size="17" fill="#263b43" text-anchor="start" font-weight="700">红圆 · 我       轮到我</text>
+<text x="666" y="518" font-size="15" fill="#526770" text-anchor="start" font-weight="400">已掷 2 · 选择飞机   29:42</text>
+<use href="#board-compact" transform="translate(666 532) scale(.48)"/>
+<text x="666" y="844" font-size="16" fill="#263b43" text-anchor="start" font-weight="700">红 2 → C29 · 跳后飞</text>
+<rect x="666" y="856" width="140" height="44" rx="8" fill="#eef1eb" stroke="#bccac8" stroke-width="1.3"/>
+<circle cx="681" cy="878" r="5" fill="#a53e3e"/>
+<text x="695" y="884" font-size="15" fill="#64736e" text-anchor="start" font-weight="600">红 1 · 机库</text>
+<rect x="814" y="856" width="140" height="44" rx="8" fill="#f6e0dd" stroke="#a53e3e" stroke-width="1.3"/>
+<circle cx="829" cy="878" r="5" fill="#a53e3e"/>
+<text x="843" y="884" font-size="15" fill="#263b43" text-anchor="start" font-weight="600">红 2 · 选中</text>
+<rect x="666" y="907" width="140" height="44" rx="8" fill="#eef1eb" stroke="#bccac8" stroke-width="1.3"/>
+<circle cx="681" cy="929" r="5" fill="#a53e3e"/>
+<text x="695" y="935" font-size="15" fill="#64736e" text-anchor="start" font-weight="600">红 3 · 机库</text>
+<rect x="814" y="907" width="140" height="44" rx="8" fill="#eef1eb" stroke="#bccac8" stroke-width="1.3"/>
+<circle cx="829" cy="929" r="5" fill="#a53e3e"/>
+<text x="843" y="935" font-size="15" fill="#64736e" text-anchor="start" font-weight="600">红 4 · 机库</text>
+<rect x="666" y="965" width="140" height="48" rx="9" fill="#263b43" stroke="#263b43" stroke-width="1"/>
+<text x="736" y="996" font-size="16" fill="#fff" text-anchor="middle" font-weight="700">确认移动</text>
+<rect x="814" y="965" width="140" height="48" rx="9" fill="#fff" stroke="#9fafac" stroke-width="1"/>
+<text x="884" y="996" font-size="16" fill="#263b43" text-anchor="middle" font-weight="400">取消选择</text>
+<rect x="666" y="1022" width="140" height="46" rx="9" fill="#fff" stroke="#9fafac" stroke-width="1"/>
+<text x="736" y="1052" font-size="15" fill="#263b43" text-anchor="middle" font-weight="400">放大棋盘</text>
+<rect x="814" y="1022" width="140" height="46" rx="9" fill="#fff" stroke="#9fafac" stroke-width="1"/>
+<text x="884" y="1052" font-size="15" fill="#263b43" text-anchor="middle" font-weight="400">退出房间</text>
+<text x="24" y="821" font-size="17" fill="#263b43" text-anchor="start" font-weight="700">568 × 240 低横屏 · 棋盘与行动栏并列</text>
+<rect x="24" y="836" width="568" height="240" rx="18" fill="#fff" stroke="#b9c5c5" stroke-width="1.3"/>
+<use href="#board-public" transform="translate(34 846) scale(.365)"/>
+<text x="269" y="867" font-size="16" fill="#263b43" text-anchor="start" font-weight="700">蓝方 · 对手回合</text>
+<text x="269" y="892" font-size="14" fill="#526770" text-anchor="start" font-weight="400">骰子 6 · 观众仅看公开结果</text>
+<rect x="269" y="908" width="48" height="48" rx="10" fill="#fff" stroke="#263b43" stroke-width="1.6"/>
+<g data-die-face="6" aria-label="6点">
+<circle cx="281.0" cy="920.0" r="2.64" fill="#263b43"/>
+<circle cx="281.0" cy="932.0" r="2.64" fill="#263b43"/>
+<circle cx="281.0" cy="944.0" r="2.64" fill="#263b43"/>
+<circle cx="305.0" cy="920.0" r="2.64" fill="#263b43"/>
+<circle cx="305.0" cy="932.0" r="2.64" fill="#263b43"/>
+<circle cx="305.0" cy="944.0" r="2.64" fill="#263b43"/>
+</g>
+<text x="329" y="927" font-size="14" fill="#263b43" text-anchor="start" font-weight="400">蓝 1 / 2 / 3 / 4 同格</text>
+<text x="329" y="949" font-size="13" fill="#526770" text-anchor="start" font-weight="400">四架逐架走，不堵路</text>
+<rect x="269" y="971" width="140" height="44" rx="8" fill="#fff" stroke="#9fafac" stroke-width="1"/>
+<text x="339" y="999" font-size="15" fill="#263b43" text-anchor="middle" font-weight="400">放大棋盘</text>
+<rect x="417" y="971" width="150" height="44" rx="8" fill="#fff" stroke="#9fafac" stroke-width="1"/>
+<text x="492" y="999" font-size="15" fill="#263b43" text-anchor="middle" font-weight="400">退出房间</text>
+<text x="269" y="1046" font-size="13" fill="#526770" text-anchor="start" font-weight="400">聊天键盘 / 安全区：仍待真机验收</text>
+<rect x="995" y="462" width="261" height="626" rx="18" fill="#eef1eb" stroke="#d8dfdb" stroke-width="1"/>
+<text x="1014" y="495" font-size="18" fill="#263b43" text-anchor="start" font-weight="700">这张图检查什么</text>
+<text x="1014" y="532" font-size="15" fill="#526770" text-anchor="start" font-weight="400">52 外环 + 四条归航</text>
+<text x="1014" y="559" font-size="15" fill="#526770" text-anchor="start" font-weight="400">颜色外还有形状 / 名字</text>
+<text x="1014" y="586" font-size="15" fill="#526770" text-anchor="start" font-weight="400">六面点数没有错位</text>
+<text x="1014" y="620" font-size="15" fill="#526770" text-anchor="start" font-weight="400">四架叠机选子表示例</text>
+<rect x="1014" y="635" width="105" height="44" rx="8" fill="#deedf5" stroke="#2b6f9d" stroke-width="1.2"/>
+<rect x="1025" y="652" width="10" height="10" rx="1" fill="#2b6f9d"/>
+<text x="1047" y="663" font-size="15" fill="#263b43" text-anchor="start" font-weight="600">蓝 1</text>
+<rect x="1126" y="635" width="105" height="44" rx="8" fill="#deedf5" stroke="#2b6f9d" stroke-width="1.2"/>
+<rect x="1137" y="652" width="10" height="10" rx="1" fill="#2b6f9d"/>
+<text x="1159" y="663" font-size="15" fill="#263b43" text-anchor="start" font-weight="600">蓝 2</text>
+<rect x="1014" y="686" width="105" height="44" rx="8" fill="#deedf5" stroke="#2b6f9d" stroke-width="1.2"/>
+<rect x="1025" y="703" width="10" height="10" rx="1" fill="#2b6f9d"/>
+<text x="1047" y="714" font-size="15" fill="#263b43" text-anchor="start" font-weight="600">蓝 3</text>
+<rect x="1126" y="686" width="105" height="44" rx="8" fill="#deedf5" stroke="#2b6f9d" stroke-width="1.2"/>
+<rect x="1137" y="703" width="10" height="10" rx="1" fill="#2b6f9d"/>
+<text x="1159" y="714" font-size="15" fill="#263b43" text-anchor="start" font-weight="600">蓝 4</text>
+<text x="1014" y="765" font-size="14" fill="#526770" text-anchor="start" font-weight="400">━━ 普通行走</text>
+<text x="1014" y="791" font-size="14" fill="#526770" text-anchor="start" font-weight="400">┄┄ 跳跃 +4</text>
+<text x="1014" y="817" font-size="14" fill="#526770" text-anchor="start" font-weight="400">红虚线：捷径 +12</text>
+<text x="1014" y="859" font-size="14" fill="#526770" text-anchor="start" font-weight="400">手机不显示微小格号</text>
+<text x="1014" y="885" font-size="14" fill="#526770" text-anchor="start" font-weight="400">骰面与大目标另行显示</text>
+<text x="1014" y="916" font-size="17" fill="#263b43" text-anchor="start" font-weight="700">此图不能操作</text>
+<text x="1014" y="946" font-size="14" fill="#526770" text-anchor="start" font-weight="400">真实触摸、软键盘、</text>
+<text x="1014" y="970" font-size="14" fill="#526770" text-anchor="start" font-weight="400">旋转、声音、恢复与</text>
+<text x="1014" y="994" font-size="14" fill="#526770" text-anchor="start" font-weight="400">资源失败备用均待测。</text>
+<text x="1014" y="1038" font-size="14" fill="#526770" text-anchor="start" font-weight="400">不代表 Step 0 已通过。</text>
+<text x="28" y="1120" font-size="14" fill="#526770" text-anchor="start" font-weight="400">fc-art-step0-v1 · 2026-10-06 · 传统52格外环 / 6格归航 / 跨对面H3 · 静态样板未接入</text>
+</svg>

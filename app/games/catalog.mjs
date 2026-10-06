@@ -6,6 +6,8 @@ const entries = [
     assets: ['practice.html', 'room.html', 'app.mjs', 'rules.mjs', 'twist-rules.mjs',
       'table-layout.mjs', 'rack-layout.mjs', 'rummikub-feedback.mjs', 'rummikub-assist.mjs',
       'rummikub-preview-client.mjs', 'assets/joker-mark.png',
+      'assets/joker-normal-v2.png', 'assets/joker-mirror-v2.png',
+      'assets/joker-color-change-v2.png', 'assets/joker-double-v2.png',
       'games/rummikub/game-page.mjs', 'games/rummikub/rules.mjs', 'games/rummikub/jokers.mjs',
       'games/rummikub/table-layout.mjs', 'games/rummikub/rack-layout.mjs',
       'games/rummikub/feedback.mjs', 'games/rummikub/assist.mjs',

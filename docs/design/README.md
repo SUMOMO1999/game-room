@@ -7,6 +7,7 @@
 1. [共通产品与运行设计](platform.md)：账号与席位、房间生命周期、回合、保存、恢复、公私信息、聊天、声音、布局和接入门槛。
 2. [拉密](games/rummikub.md)：拉密的规则版本、牌组、鬼牌、整理与提交语义。
 3. [军棋（双人翻棋）](games/army-flip.md)：分阵营、翻子、移动、碰暗棋、排雷、夺旗与运旗。
+   [飞行棋朋友版建议](games/flying-chess.md)：未实现的 2～4 人规则草案、关键待确认分歧与[资源 Step 0 样板](../assets/flying-chess.md)。
 4. [分类模板入口](game-design-template.md)：[固定牌类](templates/fixed-deck-game.md)重牌组与规则；[桌游类](templates/tabletop-game.md)重内容目录与行为，配合[逐卡定义](templates/card-definition.md)。朋友先填规则、例子和未知，维护者补技术与验收。
 5. [迭代经验](lessons.md)：实际问题为何出现，以及怎样转成下一款游戏的设计检查项。
 6. [Step 0资源阶段](resource-stage.md)：样板上屏与操作小样通过后开始完整实现，全量内容与资源齐备后完整接入。

@@ -174,7 +174,7 @@ async function fixture(t,{page='room',query='',state=AUTH,history,initialView,in
   let pageAPI;
   if(page==='room' || page==='practice') {
     context.expose=(value)=>{pageAPI=value;};
-    await moduleIn(context,'app.mjs','expose({draft:()=>structuredClone(draft),client:()=>roomClient,busy:()=>busy,move:(ids,zone="new",before=null,point=null)=>moveTiles(Array.isArray(ids)?ids:[ids],zone,before,point),rackPositions:()=>structuredClone(rackPositions),rackBasis:()=>structuredClone(rackBasis),rackLayout:()=>structuredClone(rackLayout),rackOrder:()=>[...rackOrder],view:()=>structuredClone(roomView),committed:()=>structuredClone(committed),canAct,captureBoardPositions,captureCommittedBoardPositions,tablePoints:()=>structuredClone(tablePositions),tableFit:()=>structuredClone(tableLayout),remote:()=>structuredClone(remotePreview),feedback:()=>structuredClone(turnFeedbackState),newIds:()=>[...newSinceOwnTurn],groups:()=>structuredClone(playableRackGroups),sortMode:()=>sortMode,select:(id)=>selection.add(id),selected:()=>[...selection],drag:()=>drag,setDrag:(value)=>{drag=value;},sort:arrangePlayableRack,render,clear:clearRoomPrivate,action:roomAction});');
+    await moduleIn(context,'app.mjs','expose({draft:()=>structuredClone(draft),client:()=>roomClient,busy:()=>busy,move:(ids,zone="new",before=null,point=null)=>moveTiles(Array.isArray(ids)?ids:[ids],zone,before,point),rackPositions:()=>structuredClone(rackPositions),rackBasis:()=>structuredClone(rackBasis),rackLayout:()=>structuredClone(rackLayout),rackOrder:()=>[...rackOrder],view:()=>structuredClone(roomView),committed:()=>structuredClone(committed),canAct,captureBoardPositions,captureCommittedBoardPositions,tablePoints:()=>structuredClone(tablePositions),tableFit:()=>structuredClone(tableLayout),remote:()=>structuredClone(remotePreview),feedback:()=>structuredClone(turnFeedbackState),newIds:()=>[...newSinceOwnTurn],groups:()=>structuredClone(playableRackGroups),sortMode:()=>sortMode,select:(id)=>selection.add(id),selected:()=>[...selection],drag:()=>drag,setDrag:(value)=>{drag=value;},sort:arrangePlayableRack,render,tileHTML,clear:clearRoomPrivate,action:roomAction});');
   }else if(page==='army' || page==='army-practice') {
     context.expose=value=>{pageAPI=value;};
     await moduleIn(context,page==='army'?'army-room.mjs':'army-practice.mjs',page==='army'
@@ -1408,33 +1408,32 @@ test('actual practice bot action survives its same-view own-turn or loss cue and
   }
 });
 
-const JOKER_ASSET_SHA='4fb13b99c15c2a4675588e6c841c02ed098845e7d3619c86f907ef7a361626d5';
 const JOKER_TYPES=['normal','mirror','color-change','double'];
+const JOKER_ASSETS={normal:'joker-normal-v2.png',mirror:'joker-mirror-v2.png','color-change':'joker-color-change-v2.png',double:'joker-double-v2.png'};
 async function jokerAssetServer(t,mount) {
-  const png=await readFile(new URL('assets/joker-mark.png',import.meta.url));
-  const css=await readFile(jokerRegressionSource('styles.css'));
-  assert.equal(createHash('sha256').update(png).digest('hex'),JOKER_ASSET_SHA);
+  const images=new Map();
+  for(const type of JOKER_TYPES) images.set(type,await readFile(jokerRegressionSource('assets/'+JOKER_ASSETS[type])));
+  assert.equal(new Set([...images.values()].map(png=>createHash('sha256').update(png).digest('hex'))).size,4,'four joker types must ship independent images');
   const server=createServer((request,response)=>{
-    if(request.url===`${mount}assets/joker-mark.png`) {
-      response.writeHead(200,{'Content-Type':'image/png'});response.end(png);
-    } else if(request.url===`${mount}styles.css`) {
-      response.writeHead(200,{'Content-Type':'text/css'});response.end(css);
+    const type=JOKER_TYPES.find(type=>request.url===`${mount}assets/${JOKER_ASSETS[type]}`);
+    if(type) {
+      response.writeHead(200,{'Content-Type':'image/png'});response.end(images.get(type));
     } else {response.writeHead(404);response.end('outside this game entry');}
   });
   server.listen(0,'127.0.0.1');await once(server,'listening');
   t.after(()=>new Promise(resolve=>{server.close(resolve);server.closeAllConnections();}));
-  return {origin:`http://127.0.0.1:${server.address().port}`,mount};
+  return {origin:`http://127.0.0.1:${server.address().port}`,mount,images};
 }
-async function loadedJokerAsset(src,base,{origin,mount},description) {
+async function loadedJokerAsset(src,base,{origin,mount,images},type,description) {
   const url=new URL(src,base);assert.equal(url.origin,origin,description);
-  // Fetch the real bytes before checking the path: a root-only image URL must
-  // fail at the mounted server, even if the generated HTML looks reasonable.
+  // Fetch the actual type's bytes: a root-only URL or the wrong type must fail
+  // even when the rendered HTML contains a plausible image element.
   const response=await fetch(url);assert.equal(response.status,200,`${description}: ${url.pathname}`);
   const bytes=Buffer.from(await response.arrayBuffer());
   assert.equal(response.headers.get('content-type'),'image/png',description);
   assert.deepEqual(bytes.subarray(0,8),Buffer.from([137,80,78,71,13,10,26,10]),description);
-  assert.equal(createHash('sha256').update(bytes).digest('hex'),JOKER_ASSET_SHA,description);
-  assert.equal(url.pathname,`${mount}assets/joker-mark.png`,description);
+  assert.deepEqual(bytes,images.get(type),description);
+  assert.equal(url.pathname,`${mount}assets/${JOKER_ASSETS[type]}`,description);
 }
 async function loadedRenderedJokers(container,types,f,entry,description) {
   assert.equal(container.querySelectorAll('img.joker-art').length,types.length,description);
@@ -1442,7 +1441,7 @@ async function loadedRenderedJokers(container,types,f,entry,description) {
     const tile=container.matches(`[data-joker-type="${type}"]`)?container:container.querySelector(`[data-joker-type="${type}"]`);
     assert.ok(tile,`${description}: ${type} tile`);
     const image=tile.querySelector('img.joker-art');assert.ok(image,`${description}: ${type} image`);
-    await loadedJokerAsset(image.getAttribute('src'),f.location.href,entry,`${description}: ${type}`);
+    await loadedJokerAsset(image.getAttribute('src'),f.location.href,entry,type,`${description}: ${type}`);
   }
 }
 function jokerResourceView() {
@@ -1495,22 +1494,50 @@ for(const mount of ['/','/game/']) {
       const ghost=own.document.querySelector('.group-drag-ghost');assert.ok(ghost,`real ${type} group drag clone`);
       assert.equal(ghost.getAttribute('inert'),'','a group drag copy cannot enter the keyboard focus order');
       const images=ghost.querySelectorAll('img.joker-art');assert.equal(images.length,1,`real ${type} group drag image`);
-      await loadedJokerAsset(images[0].getAttribute('src'),own.location.href,entry,`real ${type} group drag clone`);
+      await loadedJokerAsset(images[0].getAttribute('src'),own.location.href,entry,type,`real ${type} group drag clone`);
       pointer(own,'pointercancel',handle);assert.equal(own.document.querySelector('.group-drag-ghost'),null);
     }
     assert.equal(own.calls.filter(call=>call.url.endsWith('/actions')).length,0);
   });
-  test(`joker CSS background asset loads at ${mount} for mirror and double silhouettes`,async t=>{
-    const entry=await jokerAssetServer(t,mount),cssUrl=`${entry.origin}${mount}styles.css`;
-    const response=await fetch(cssUrl);assert.equal(response.status,200);const css=await response.text();
-    for(const type of ['mirror','double']) {
-      const rule=css.match(new RegExp(`\\.tile\\[data-joker-type="${type}"\\] \\.joker-face::before \\{([^}]+)\\}`));
-      assert.ok(rule,`${type} silhouette rule`);const src=rule[1].match(/url\(['"]?([^'"\)]+)['"]?\)/)?.[1];
-      assert.ok(src,`${type} silhouette uses its existing illustration`);
-      await loadedJokerAsset(src,cssUrl,entry,`${type} CSS background`);
-    }
-  });
 }
+
+test('failed joker images keep the actual type readable across rack, table and drag copies without game writes',async t=>{
+  const f=await fixture(t,{initialView:jokerResourceView(),geometry:true});f.frame();
+  const before=plain(f.pageAPI.draft()),calls=f.calls.filter(call=>call.url.endsWith('/actions')).length;
+  const labels={normal:'百搭',mirror:'镜像','color-change':'变色',double:'双重'};
+  for(const area of ['rack','board'])for(const type of JOKER_TYPES) {
+    const face=f.get(area).querySelector(`[data-joker-type="${type}"]`).querySelector('.joker-face'),img=face.querySelector('img.joker-art');
+    const event=new Event('error');Object.defineProperty(event,'target',{value:img});f.document.dispatchEvent(event);
+    assert.equal(face.classList.contains('joker-load-failed'),true);
+    assert.equal(face.querySelector('.joker-art-fallback').textContent,labels[type]);
+    assert.equal(face.closest('.tile').getAttribute('aria-label'),{normal:'传统百搭',mirror:'镜像百搭','color-change':'变色百搭',double:'双重百搭'}[type]);
+    assert.equal(face.cloneNode(true).classList.contains('joker-load-failed'),true,'a failed image remains identified in its presentation copy');
+  }
+  assert.deepEqual(plain(f.pageAPI.draft()),before);
+  assert.equal(f.calls.filter(call=>call.url.endsWith('/actions')).length,calls);
+});
+
+test('joker artwork stays directly visible and unknown types do not borrow the ordinary image',async t=>{
+  const css=await readFile(jokerRegressionSource('styles.css'),'utf8');
+  assert.doesNotMatch(css,/\.tile\[data-joker-type=[^\]]+\]\s+\.joker-(?:face|art)[^{}]*\{/,'type-specific CSS cannot transform or replace the independent artwork');
+  assert.doesNotMatch(css,/joker-face::(?:before|after)|joker-mark\.png/,'no composed background images remain');
+  for(const mount of ['/','/game/']) {
+    const f=await fixture(t,{mount});
+    const legacy={id:'legacy-joker',joker:true,color:'red',value:1};
+    const normal=f.document.createElement('div');normal.innerHTML=f.pageAPI.tileHTML(legacy);
+    assert.equal(normal.querySelector('img.joker-art').getAttribute('src'),`${mount}assets/${JOKER_ASSETS.normal}`,'a valid legacy joker without a subtype is ordinary');
+    for(const jokerType of ['future-joker','',null,'__proto__']) {
+      const unknown=f.document.createElement('div');unknown.innerHTML=f.pageAPI.tileHTML({...legacy,jokerType});
+      const tile=unknown.querySelector('.tile');
+      assert.equal(tile.getAttribute('data-joker-type'),'unknown');
+      assert.equal(tile.getAttribute('aria-label'),'未知鬼牌');
+      assert.equal(tile.getAttribute('title'),'未知鬼牌');
+      assert.equal(unknown.querySelector('img.joker-art'),null,'an unsupported type never requests a known illustration');
+      assert.equal(unknown.querySelector('.joker-kind').textContent,'未知');
+      assert.equal(unknown.querySelector('.joker-missing').textContent,'?');
+    }
+  }
+});
 
 for(const [kind,value]of [...['red','blue','orange','black'].map(color=>['number',color]),...JOKER_TYPES.map(type=>['joker',type])]) {
   test(`actual group drag presentation retains ${kind} ${value} while stripping interaction metadata and cancels cleanly`,async t=>{

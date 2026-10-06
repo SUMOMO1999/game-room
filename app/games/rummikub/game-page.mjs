@@ -159,6 +159,8 @@ let activityPage = 0;
 let jokerSettingsSignature=null;
 let lastVerifiedSessionExpiresAt=null;
 const JOKER_NAMES={normal:'传统百搭',mirror:'镜像百搭','color-change':'变色百搭',double:'双重百搭'};
+const JOKER_ART={normal:'joker-normal-v2.png',mirror:'joker-mirror-v2.png','color-change':'joker-color-change-v2.png',double:'joker-double-v2.png'};
+const JOKER_FALLBACK={normal:'百搭',mirror:'镜像','color-change':'变色',double:'双重'};
 const JOKER_FIELDS={normal:'joker-normal',mirror:'joker-mirror',colorChange:'joker-color-change',double:'joker-double'};
 function renderJokerSettings({force=false}={}) {
   if(!$('joker-config-form') || !roomView)return;
@@ -451,13 +453,13 @@ function tilesChanged() {
 
 function tileHTML(tile) {
   const selected = selection.has(tile.id);
-  const jokerType=tile.jokerType || 'normal';
-  const label = tile.joker ? JOKER_NAMES[jokerType] || '鬼牌' : `${COLORS[tile.color]} ${tile.value}`;
+  const jokerType=tile.jokerType===undefined?'normal':Object.hasOwn(JOKER_ART,tile.jokerType)?tile.jokerType:'unknown';
+  const label = tile.joker ? JOKER_NAMES[jokerType] || '未知鬼牌' : `${COLORS[tile.color]} ${tile.value}`;
   const arrived=(arrivedTileIds.get(tile.id) || 0)>performance.now();
   const newSince=newSinceOwnTurn.has(tile.id);
   const newDescription=turnFeedbackState?.recovered?'恢复后新增的牌':'朋友新出的牌';
   const playableGroup=playableRackGroups.findIndex(group=>group.some(item=>item.id===tile.id));
-  return `<button type="button" class="tile${tile.joker ? ' joker' : ''}${selected ? ' selected' : ''}${arrived?' tile-arrived':''}${newSince?' tile-new-since-turn':''}${playableGroup>=0?' tile-playable':''}" data-tile="${tile.id}" data-color="${tile.color}"${tile.joker?` data-joker-type="${jokerType}"`:''}${playableGroup>=0?` data-playable-group="${playableGroup}"`:''} aria-label="${label}${newSince?'，'+newDescription:''}${playableGroup>=0?`，手牌组合 ${playableGroup+1}${playableCanOpen?'':'，尚未满30点'}`:''}" aria-pressed="${selected}" title="${label}${newSince?' · '+newDescription:''}">${tile.joker ? `<span class="joker-face" aria-hidden="true"><img src="${gamePath('/assets/joker-mark.png')}" alt="" class="joker-art"></span>` : tile.value}${tile.joker && jokerType!=='normal'?`<span class="joker-kind" aria-hidden="true">${{mirror:'镜','color-change':'变',double:'双'}[jokerType] || ''}</span>`:''}${tile.joker?'':`<span class="tile-color-tag" aria-hidden="true">${COLOR_MARKS[tile.color]}</span>`}${newSince?'<span class="tile-new-mark" aria-hidden="true">新</span>':''}${playableGroup>=0?`<span class="rack-group-mark" aria-hidden="true">${playableGroup+1}</span>`:''}</button>`;
+  return `<button type="button" class="tile${tile.joker ? ' joker' : ''}${selected ? ' selected' : ''}${arrived?' tile-arrived':''}${newSince?' tile-new-since-turn':''}${playableGroup>=0?' tile-playable':''}" data-tile="${tile.id}" data-color="${tile.color}"${tile.joker?` data-joker-type="${jokerType}"`:''}${playableGroup>=0?` data-playable-group="${playableGroup}"`:''} aria-label="${label}${newSince?'，'+newDescription:''}${playableGroup>=0?`，手牌组合 ${playableGroup+1}${playableCanOpen?'':'，尚未满30点'}`:''}" aria-pressed="${selected}" title="${label}${newSince?' · '+newDescription:''}">${tile.joker ? `<span class="joker-face" aria-hidden="true">${JOKER_ART[jokerType]?`<img src="${gamePath('/assets/'+JOKER_ART[jokerType])}" alt="" class="joker-art"><span class="joker-art-fallback">${JOKER_FALLBACK[jokerType]}</span>`:'<span class="joker-missing">?</span>'}</span>` : tile.value}${tile.joker && jokerType!=='normal'?`<span class="joker-kind" aria-hidden="true">${{mirror:'镜','color-change':'变',double:'双',unknown:'未知'}[jokerType]}</span>`:''}${tile.joker?'':`<span class="tile-color-tag" aria-hidden="true">${COLOR_MARKS[tile.color]}</span>`}${newSince?'<span class="tile-new-mark" aria-hidden="true">新</span>':''}${playableGroup>=0?`<span class="rack-group-mark" aria-hidden="true">${playableGroup+1}</span>`:''}</button>`;
 }
 
 function renderRuleText() {
@@ -954,6 +956,13 @@ function toggleTile(id) {
   render();
   requestAnimationFrame(() => document.querySelector(`[data-tile="${id}"]`)?.focus({ preventScroll: true }));
 }
+
+// Image errors do not bubble. Capture them for rack, table, inspectors and
+// transient drag copies; keep the tile's type readable without changing play.
+document.addEventListener('error', (event) => {
+  const image=event.target;
+  if(image?.classList?.contains('joker-art'))image.closest('.joker-face')?.classList.add('joker-load-failed');
+}, true);
 
 document.addEventListener('click', (event) => {
   if (suppressClick) { suppressClick = false; return; }
