@@ -1,9 +1,8 @@
 import { createHash, randomBytes, randomInt } from 'node:crypto';
-import { gameAdapter, gameInfo, normalizeGameType } from './game-registry.mjs';
-import * as gameRules from './rules.mjs';
+import { defaultGameRegistry } from './game-registry.mjs';
+import { snapshotHasRoles, snapshotGameType, snapshotFormatProblem, serializeRoomSnapshot } from '../server/room-snapshot-compat.mjs';
 
 const COMMON_ACTIONS = new Set(['ready', 'start', 'rematch', 'leave', 'transferHost', 'pause', 'resume', 'set-role','configure']);
-const ACTIVITY_TYPES = new Set([...COMMON_ACTIONS, 'submit', 'draw', 'pass', 'flip', 'move', 'pickup', 'resign', 'offer-draw', 'accept-draw', 'decline-draw', 'finished', 'timeout']);
 export const DEFAULT_TURN_TIMEOUT_MS = 30 * 60 * 1000;
 export const ROOM_CAPACITY = 7;
 export const SPECTATOR_CAPACITY = 8;
@@ -52,7 +51,7 @@ function validateAction(action, adapter) {
     if (typeof action.ready !== 'boolean') fail(400, 'INVALID_READY', '请选择准备或取消准备。');
   }
   if(action.type==='set-role') {allowed.add('role');if(!['player','spectator'].includes(action.role)) fail(400,'INVALID_ROLE','请选择玩家或观众。');}
-  if(action.type==='configure') allowed.add('jokerConfig');
+  if(action.type==='configure') for (const field of adapter.configurationFields) allowed.add(field);
   for (const field of adapter.actionFields(action.type) ?? []) allowed.add(field);
   if (action.type === 'transferHost') {
     allowed.add('playerId');
@@ -65,24 +64,20 @@ function validateAction(action, adapter) {
   if (Object.keys(action).some((key) => !allowed.has(key))) {
     fail(400, 'INVALID_ACTION', '该操作包含不适用的字段。');
   }
-  if (adapter.gameType === 'army-flip') {
-    for (const field of adapter.actionFields(action.type) ?? []) {
-      if (typeof action[field] !== 'string' || !action[field].length || action[field].length > 128) {
-        fail(400, 'INVALID_ACTION', '棋盘操作需要有效的格子位置。');
-      }
-    }
-  }
+  const problem = adapter.validateAction(action);
+  if (problem) fail(problem.status, problem.code, problem.message);
 }
 
 /** In-memory seats and private projections. Credentials never occur in room views. */
 export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
   pausedTtlMs = 7 * 24 * 60 * 60 * 1000, leaveRetentionMs = 24 * 60 * 60 * 1000,
-  hostTakeoverGraceMs = 70000, maxRooms = 100, gameEngine, gameOptions = {}, turnTimeoutMs = 0 } = {}) {
+  hostTakeoverGraceMs = 70000, maxRooms = 100, gameEngine, gameOptions = {}, turnTimeoutMs = 0, gameRegistry = defaultGameRegistry } = {}) {
   if (!Number.isSafeInteger(turnTimeoutMs) || turnTimeoutMs < 0 || turnTimeoutMs > 24 * 60 * 60 * 1000) throw new TypeError('Invalid turn timeout.');
   const rooms = new Map();
   const closedRooms = new Map();
   const expiry = (room) => room.lastActiveAt + (room.phase === 'paused' ? pausedTtlMs : ttlMs);
-  const adapterFor = (room) => gameAdapter(room.gameType ?? 'rummikub', { gameEngine });
+  const adapterFor = (room) => gameRegistry.gameAdapter(room.gameType, { gameEngine });
+  const activityTypes = new Set([...COMMON_ACTIONS, ...gameRegistry.activityTypes(), 'finished', 'timeout']);
   const currentPlayer = (room) => room.game?.players[room.game.turnIndex]?.id;
   function startClock(room, firstPlayerId = currentPlayer(room), durationMs = turnTimeoutMs) {
     const at = now();
@@ -102,7 +97,7 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
     }
   }
   function roomType(value) {
-    try { return normalizeGameType(value); }
+    try { return gameRegistry.normalizeGameType(value); }
     catch { fail(400, 'INVALID_GAME_TYPE', '请选择支持的游戏。'); }
   }
   function activity(room, actor, type, text) {
@@ -129,16 +124,13 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
     if (!room.matchId || room.matchEndedAt !== undefined) return;
     room.matchEndedAt = now();
     const result = status === 'completed' ? room.game.result : null;
-    const scores = new Map((result?.scores ?? []).map((score) => [score.playerId, score.points]));
-    const winners = result?.winnerIds ?? [];
+    const adapter = adapterFor(room);
     const summary = { matchId: room.matchId, roomId: room.roomId ?? digest(room.code).slice(0, 32), roomCode: room.code,
-      game: room.gameType ?? 'rummikub', ruleVersion: room.game.ruleVersion, startedAt: room.matchStartedAt, endedAt: room.matchEndedAt,
+      game: room.gameType, ruleVersion: room.game.ruleVersion, startedAt: room.matchStartedAt, endedAt: room.matchEndedAt,
       status, reason, ...(room.matchStartedAt === null ? { legacy: true } : {}),
       players: (room.matchParticipants ?? []).filter((player) => player.userKey).map((player) => ({
         userKey: player.userKey, seatId: player.playerId, nickname: player.name,
-        outcome: !result ? 'unscored' : room.gameType === 'army-flip' && result.tie ? 'draw'
-          : winners.includes(player.playerId) ? winners.length > 1 ? 'draw' : 'win' : 'loss',
-        remainingPoints: result ? scores.get(player.playerId) ?? null : null,
+        ...adapter.playerResult(result, player.playerId),
       })) };
     room.pendingRecords ??= [];
     // Older anonymous or mixed-seat games have no complete account ownership; never invent history participants.
@@ -192,11 +184,11 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
     if (game && room.phase === 'paused') game.status = 'paused';
     return {
       roomCode: room.code, phase: room.phase, revision: room.revision,
-      ...gameInfo(room.gameType),
+      ...gameRegistry.gameInfo(room.gameType),
       ...(room.roomId ? { roomId: room.roomId } : {}),
       hostId: room.hostId, selfId: player.id,
       selfRole,spectatorCapacity:SPECTATOR_CAPACITY,
-      jokerConfig:room.jokerConfig?structuredClone(room.jokerConfig):null,
+      ...adapterFor(room).roomView(room),
       hostCanTakeOver: selfRole==='player' && !!context.hostCanTakeOver, expiresAt: expiry(room),
       matchId: room.matchId ?? null,
       ...(Object.hasOwn(room, 'turnClock') ? { turnClock: structuredClone(room.turnClock), serverTime: now() } : {}),
@@ -204,11 +196,10 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
       pause: room.pauseVote ? { type: 'pause', requestedBy: room.pauseVote.requestedBy,
         agreedIds: [...room.pauseVote.agreedIds], requiredIds: room.players.map((candidate) => candidate.id) } : null,
       players: room.players.map((candidate) => {
-        const publicPlayer = game?.players.find((entry) => entry.id === candidate.id);
         return {
           id: candidate.id, name: candidate.name, ready: candidate.ready,
           connected: !!context.connected[candidate.id],
-          ...(publicPlayer && room.gameType === 'rummikub' ? { rackCount: publicPlayer.rackCount, opened: publicPlayer.opened } : {}),
+          ...adapterFor(room).playerSummary(game, candidate.id),
         };
       }),
       spectators:(room.spectators ?? []).map(candidate=>({id:candidate.id,name:candidate.name,connected:!!context.connected[candidate.id]})),
@@ -281,13 +272,14 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
       if (['ready', 'start','configure'].includes(input.type) && room.phase !== 'waiting') {
         fail(409, 'ROOM_LOCKED', '对局期间不能改变席位或准备状态。');
       }
-      const previousRackCount = room.game?.players.find((entry) => entry.id === player.id)?.rack?.length ?? 0;
+      const beforeGame = room.game;
       if(input.type==='configure') {
-        if(room.gameType!=='rummikub') fail(400,'CONFIG_UNSUPPORTED','这个游戏没有拉密鬼牌设置。');
+        const supportProblem = adapter.configurationSupportProblem(room, input);
+        if (supportProblem) fail(supportProblem.status, supportProblem.code, supportProblem.message);
         if(player.id!==room.hostId) fail(403,'HOST_REQUIRED','只有房主可以更改本局规则。');
-        let config;try {config=gameRules.normalizeJokerConfig(input.jokerConfig);} catch {fail(400,'INVALID_JOKER_CONFIG','鬼牌设置需要四类0～8张，总数不超过24张。');}
-        if(canonical(room.jokerConfig)===canonical(config)) fail(409,'CONFIG_UNCHANGED','鬼牌设置没有变化。');
-        room.jokerConfig=config;room.rolesEnabled=true;for(const member of room.players) member.ready=false;
+        const configuration = adapter.configure(room, input);
+        if (configuration.problem) fail(configuration.problem.status, configuration.problem.code, configuration.problem.message);
+        Object.assign(room, configuration.updates);room.rolesEnabled=true;for(const member of room.players) member.ready=false;
       } else if(input.type==='set-role') {
         const current=spectator?'spectator':'player';
         if(input.role===current) fail(409,'ROLE_UNCHANGED','你已是这个房间的当前身份。');
@@ -301,12 +293,12 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
         if (room.players.length < adapter.minPlayers || room.players.length > adapter.maxPlayers || !room.players.every((entry) => entry.ready)) {
           fail(409, 'NOT_READY', `需要${adapter.minPlayers === adapter.maxPlayers ? adapter.minPlayers : `${adapter.minPlayers}～${adapter.maxPlayers}`}人加入，且所有人准备后才能开始。`);
         }
-        room.game = adapter.createGame(room.players.map(({ id, name }) => ({ id, name })), {...gameOptions,...(room.jokerConfig?{jokerConfig:structuredClone(room.jokerConfig)}:{})});
+        room.game = adapter.createGame(room.players.map(({ id, name }) => ({ id, name })), adapter.gameOptions(room, gameOptions));
         room.phase = 'playing';
         room.matchId = randomBytes(16).toString('hex'); room.matchStartedAt = now(); delete room.matchEndedAt;
         room.matchParticipants = room.players.map(({ id, userKey, name }) => ({ playerId: id, ...(userKey ? { userKey } : {}), name }));
         room.pauseVote = null; delete room.abortedResult;
-        if (turnTimeoutMs > 0 && (room.gameType !== 'army-flip' || room.game.ruleVersion === 'army-flip-v3')) startClock(room);
+        if (turnTimeoutMs > 0 && adapter.supportsTimeout(room.game)) startClock(room);
         else delete room.turnClock;
       } else if (input.type === 'rematch') {
         if (player.id !== room.hostId) fail(403, 'HOST_REQUIRED', '只有房主可以发起下一局。');
@@ -367,21 +359,15 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
       }
       syncClock(room);
       const texts = {
-        configure:`${player.name}更改了鬼牌设置，所有玩家需要重新准备。`,
         'set-role':`${player.name}切换为${input.role==='player'?'玩家':'观众'}。`,
         ready: `${player.name}${input.ready ? '已准备。' : '取消准备。'}`,
         start: `${player.name}开始了新一局。`, rematch: `${player.name}发起再来一局，等待大家准备。`,
-        submit: `${player.name}出牌${previousRackCount - (room.game?.players.find((entry) => entry.id === player.id)?.rack?.length ?? previousRackCount)}张。`,
-        draw: `${player.name}摸了1张牌。`, pass: `${player.name}跳过本回合。`,
-        flip: `${player.name}翻开一枚棋子。`, move: `${player.name}移动了棋子。`,
-        pickup: `${player.name}拿起${input.flagSide === 'red' ? '红方' : '黑方'}军旗。`, resign: `${player.name}认输了。`,
-        'offer-draw': `${player.name}提议和棋。`, 'accept-draw': `${player.name}接受了和棋。`, 'decline-draw': `${player.name}拒绝了和棋。`,
         pause: room.phase === 'paused' ? '所有成员已同意，对局暂停。'
           : `${player.name}${input.agree === false ? '取消同意暂停。' : '同意暂停，等待其他成员确认。'}`,
         resume: `${player.name}继续了对局。`,
         transferHost: `${room.players.find((entry) => entry.id === room.hostId)?.name}成为房主。`,
       };
-      activity(room, player, input.type, texts[input.type]);
+      activity(room, player, input.type, texts[input.type] ?? adapter.describeAction({ action: input, player, beforeGame, afterGame: room.game }));
       if (room.phase === 'finished' && adapter.actionFields(input.type) !== null) activity(room, null, 'finished', '本局已结束，结算已保存。');
       room.revision += 1;
       if (input.type !== 'pause' || room.phase === 'paused') room.lastActiveAt = now();
@@ -401,13 +387,13 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
     const room = rooms.get(code), clock = room?.turnClock;
     if (!clock || room.phase !== 'playing' || now() < clock.deadlineAt || now() >= expiry(room)
         || !fence || ['matchId', 'round', 'playerId', 'deadlineAt'].some((key) => fence[key] !== clock[key])) return false;
-    const player = room.players.find(({ id }) => id === clock.playerId), adapter = adapterFor(room), hadPool = room.game.pool?.length > 0;
-    const result = room.gameType === 'army-flip' ? adapter.applyTimeout(room.game, clock.playerId)
-      : adapter.applyGameAction(room.game, clock.playerId, { type: room.game.pool.length ? 'draw' : 'pass' });
+    const player = room.players.find(({ id }) => id === clock.playerId), adapter = adapterFor(room);
+    const timeoutText = adapter.describeTimeout(room.game, player);
+    const result = adapter.applyTimeout(room.game, clock.playerId);
     if (!result.ok) fail(500, 'INVALID_TIMEOUT', result.error);
     room.game = result.state;
     if (room.game.status === 'finished') { room.phase = 'finished'; room.pauseVote = null; conclude(room, 'completed', room.game.result.reason); }
-    activity(room, player, 'timeout', `${player.name}本回合时间已到，${room.gameType === 'army-flip' ? '自动跳过。' : hadPool ? '自动摸牌。' : '牌池已空，自动跳过。'}`);
+    activity(room, player, 'timeout', timeoutText);
     if (room.phase === 'finished') activity(room, null, 'finished', '本局已结束，结算已保存。');
     syncClock(room); room.revision += 1; broadcast(room);
     return true;
@@ -484,15 +470,7 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
   function exportSnapshot(code) {
     const room = rooms.get(code) ?? closedRooms.get(code);
     if (!room) return null;
-    const { listeners, players, spectators=[], rolesEnabled=false,gameType, ...data } = room;
-    const memberSnapshot=({requests,...player})=>({...player,requests:[...requests]});
-    const armySchema = gameType === 'army-flip' ? !data.game || data.game.ruleVersion === 'army-flip-v3' ? 6
-      : data.game.ruleVersion === 'army-flip-v2' ? 5 : null : null;
-    return structuredClone({ ...data, ...(data.game?.ruleVersion === 'friends-v4' ? {gameType,schemaVersion:8,spectators:spectators.map(memberSnapshot)}
-      : Object.hasOwn(data, 'turnClock') ? {gameType,schemaVersion:7,spectators:spectators.map(memberSnapshot)}
-      : armySchema ? {gameType,schemaVersion:armySchema,spectators:spectators.map(memberSnapshot)}
-      : rolesEnabled || spectators.length ? {gameType,schemaVersion:4,spectators:spectators.map(memberSnapshot)}
-      : gameType === 'army-flip' ? { gameType, schemaVersion: 3 } : { schemaVersion: 2 }),players: players.map(memberSnapshot) });
+    return serializeRoomSnapshot(room, adapterFor(room));
   }
   function expireRoom(code) {
     const room = rooms.get(code);
@@ -502,24 +480,16 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
   }
   function importSnapshot(snapshot) {
     const data = structuredClone(snapshot);
-    const hasRoles=[4,5,6,7,8].includes(data?.schemaVersion);
-    if (![1, 2, 3,4,5,6,7,8].includes(data?.schemaVersion)
-        || data.schemaVersion===8 && (data.gameType!=='rummikub' || data.game?.ruleVersion!=='friends-v4')
-        || data.schemaVersion!==8 && data.game?.ruleVersion==='friends-v4'
-        || data.schemaVersion===6 && (data.gameType!=='army-flip' || data.game && data.game.ruleVersion!=='army-flip-v3')
-        || data.schemaVersion===5 && (data.gameType!=='army-flip' || data.game && data.game.ruleVersion!=='army-flip-v2')
-        || data.schemaVersion!==5 && data.game?.ruleVersion==='army-flip-v2'
-        || ![6,7].includes(data.schemaVersion) && data.game?.ruleVersion==='army-flip-v3'
-        || ![7,8].includes(data.schemaVersion) && Object.hasOwn(data,'turnClock')
-        || data.schemaVersion===7 && !Object.hasOwn(data,'turnClock')
-        || (hasRoles ? !['rummikub','army-flip'].includes(data.gameType) || !Array.isArray(data.spectators) || data.spectators.length>SPECTATOR_CAPACITY
-          : data.schemaVersion === 3 ? data.gameType !== 'army-flip' : data.gameType !== undefined && data.gameType !== 'rummikub')
-        || !hasRoles && data.spectators!==undefined
-        || !/^\d{6}$/.test(data.code)
+    const hasRoles = snapshotHasRoles(data);
+    let adapter;
+    try { adapter = gameRegistry.gameAdapter(snapshotGameType(data), { gameEngine }); }
+    catch { fail(500, 'INVALID_SNAPSHOT', '房间保存内容无效。'); }
+    if (snapshotFormatProblem(data, adapter)
+        || hasRoles && data.spectators.length > SPECTATOR_CAPACITY        || !/^\d{6}$/.test(data.code)
         || !['waiting', 'playing', 'paused', 'finished', 'aborted'].includes(data.phase)
         || !Number.isSafeInteger(data.revision) || data.revision < 0
         || !Number.isFinite(data.lastActiveAt) || !Array.isArray(data.players)
-        || !data.players.length || data.players.length > (data.gameType==='army-flip' ? 2 : ROOM_CAPACITY)
+        || !data.players.length || data.players.length > adapter.maxPlayers
         || new Set(members(data).map((player) => player.id)).size !== members(data).length
         || members(data).some((player) => !/^[a-f0-9]{32}$/.test(player.id)
           || (player.userKey && !/^[a-f0-9]{64}$/.test(player.userKey))
@@ -542,7 +512,7 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
           !entry || Object.keys(entry).some((key) => !['sequence', 'id', 'at', 'actorName', 'type', 'text'].includes(key))
           || !Number.isSafeInteger(entry.sequence) || entry.sequence < 1 || entry.sequence > (data.activitySequence ?? 0)
           || index > 0 && entry.sequence <= data.activity[index - 1].sequence
-          || entry.id !== `${data.code}:${entry.sequence}` || !Number.isFinite(entry.at) || !ACTIVITY_TYPES.has(entry.type)
+          || entry.id !== `${data.code}:${entry.sequence}` || !Number.isFinite(entry.at) || !activityTypes.has(entry.type)
           || typeof entry.actorName !== 'string' || [...entry.actorName].length > 16 || /\p{Cc}/u.test(entry.actorName)
           || typeof entry.text !== 'string' || entry.text.length > 160 || /\p{Cc}/u.test(entry.text)))
         || data.pendingRecords !== undefined && (!Array.isArray(data.pendingRecords) || data.pendingRecords.some((record) => !/^[a-f0-9]{32}$/.test(record.matchId ?? '') || !['completed', 'aborted'].includes(record.status)))
@@ -553,7 +523,7 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
           || data.pauseVote.agreedIds.some((id) => !data.players.some((player) => player.id === id)))) {
       fail(500, 'INVALID_SNAPSHOT', '房间保存的生命周期无效。');
     }
-    data.gameType = hasRoles?data.gameType:data.schemaVersion === 3 ? 'army-flip' : 'rummikub';
+    data.gameType = adapter.gameType;
     if (data.schemaVersion === 7 || data.schemaVersion === 8 && Object.hasOwn(data,'turnClock')) {
       const clock = data.turnClock;
       const fields = ['version','durationMs','remainingMs','startedAt','deadlineAt','pausedAt','firstPlayerId','matchId','round','playerId'];
@@ -564,18 +534,13 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
           || !Number.isFinite(clock.startedAt) || clock.matchId!==data.matchId || clock.round!==data.game.round
           || clock.playerId!==data.game.players[data.game.turnIndex]?.id
           || !data.game.players.some(({id})=>id===clock.firstPlayerId)
-          || data.gameType==='army-flip' && data.game.ruleVersion!=='army-flip-v3'
+          || !adapter.supportsTimeout(data.game)
           || (data.phase==='paused' ? !Number.isFinite(clock.pausedAt) || clock.deadlineAt!==null
             : clock.pausedAt!==null || !Number.isFinite(clock.deadlineAt) || clock.deadlineAt!==clock.startedAt+clock.remainingMs)
           : clock!==null) fail(500,'INVALID_SNAPSHOT','房间保存的回合时钟无效。');
     }
-    if(data.jokerConfig!==undefined) {
-      if(!hasRoles || data.gameType!=='rummikub') fail(500,'INVALID_SNAPSHOT','房间设置的版本无效。');
-      try {data.jokerConfig=gameRules.normalizeJokerConfig(data.jokerConfig);} catch {fail(500,'INVALID_SNAPSHOT','房间保存的鬼牌设置无效。');}
-    }
-    if(data.game && (['friends-v3','friends-v4'].includes(data.game.ruleVersion)
-      ? !data.jokerConfig || canonical(data.jokerConfig)!==canonical(data.game.jokerConfig)
-      : data.jokerConfig!==undefined)) fail(500,'INVALID_SNAPSHOT','本局鬼牌设置与房间保存内容不一致。');
+    const stateProblem = adapter.roomStateProblem(data, hasRoles);
+    if (stateProblem) fail(500, 'INVALID_SNAPSHOT', stateProblem);
     data.rolesEnabled=hasRoles;
     delete data.schemaVersion;
     data.players = data.players.map((player) => ({ ...player, name: validateName(player.name),

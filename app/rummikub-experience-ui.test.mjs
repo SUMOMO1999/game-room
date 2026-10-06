@@ -1,8 +1,12 @@
+import * as roomClock from './platform/room-clock.mjs';
+import * as roomSession from './platform/room-session.mjs';
+import * as roomAudioControls from './platform/room-audio-controls.mjs';
+import * as roomViewport from './platform/room-viewport.mjs';
 import * as entryPath from './entry-path.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
-import { readFile } from 'node:fs/promises';
+import { readRuntimeSource as readFile } from './test-support/runtime-source.mjs';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { createHash } from 'node:crypto';
@@ -158,7 +162,7 @@ async function fixture(t,{page='room',query='',state=AUTH,history,initialView,in
     AbortController,DOMException,Event,EventTarget,structuredClone,performance,crypto,innerWidth:844,innerHeight:390,
     setTimeout:timers.setTimeout,clearTimeout:timers.clearTimeout,setInterval:()=>0,clearInterval(){},queueMicrotask,requestAnimationFrame:callback=>{if(!geometry)return 0;const id=++frameId;frames.set(id,callback);return id;},cancelAnimationFrame:id=>frames.delete(id),
     getComputedStyle:()=>({paddingLeft:'8',paddingRight:'8',paddingTop:'8',paddingBottom:'8'}),
-    ...rules,...presentation,...lobbyModel,...gameRouting,...rummiFeedback,...rummiAssist,...rackLayout,...tableLayout,...viewport,...armyBoard,...armyPresentation,...armyPractice,
+    ...roomClock,...roomSession,...roomAudioControls,...roomViewport,...rules,...presentation,...lobbyModel,...gameRouting,...rummiFeedback,...rummiAssist,...rackLayout,...tableLayout,...viewport,...armyBoard,...armyPresentation,...armyPractice,
     paginateInspector:presentation.inspectorPages,
     createPracticeSession:options=>armyPractice.createPracticeSession({...options,setTimer:timers.setTimeout,clearTimer:timers.clearTimeout,withLock:callback=>Promise.resolve().then(callback),randomInt:max=>max-1}),
     createGameAudio(options) {const audio=createGameAudio({...options,storage:localStorage,document,window,AudioContext:audioContext,setTimeout:timers.setTimeout,clearTimeout:timers.clearTimeout});return {...audio,play(kind,fields){audioCalls.push(kind);return audio.play(kind,fields);}};}});

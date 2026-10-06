@@ -3,6 +3,7 @@ import { loadAccount, accountState, accountGeneration, onAccountChange, logoutAc
 import { roomPhaseLabel, exitConsequence, createExitRequest, historyOutcome, historyPoints } from './lobby-model.mjs';
 import { gamePath } from './entry-path.mjs';
 import { gameName, roomHref, gameDetails } from './game-routing.mjs';
+import { gamePresentation, gamePresentations } from './games/catalog.mjs';
 const $=id=>document.getElementById(id);
 const raw=new URLSearchParams(location.search).get('room');
 const incoming=/^\d{6}$/.test(raw || '')?raw:'';
@@ -16,7 +17,7 @@ const returnTo=incoming?`/?room=${incoming}`:'/';
 $('account-login').href=gamePath(`/auth/login?returnTo=${encodeURIComponent(returnTo)}`);
 function notice(message) { $('lobby-notice').textContent=message;$('lobby-notice').hidden=false; }
 function go(seat) { location.href=roomHref(seat.roomCode,seat.view?.gameType || seat.gameType); }
-function historyScore(item,points) {return item.game==='army-flip'?'仅记录胜负':historyPoints(points);}
+function historyScore(item,points) {return gamePresentation(item.game).scoreKind==='outcome'?'仅记录胜负':historyPoints(points);}
 let renderedGeneration=-1;
 let exitState=null;
 let historySequence=0,historyCursor=null,historyLoading=false,historyRefreshQueued=false;
@@ -208,6 +209,12 @@ function updateCreateGame() {
   const game=gameDetails($('create-game').value);
   $('create-game-description').textContent=`${game.name} · ${game.minPlayers===game.maxPlayers?game.minPlayers:`${game.minPlayers}～${game.maxPlayers}`} 人 · 每人回合 30 分钟`;
 }
+// Preserve the current choice while the registered games supply the options.
+const previousGameChoice = $('create-game').value;
+$('create-game').replaceChildren(...gamePresentations().map(game => {
+  const option = document.createElement('option'); option.value = game.gameType; option.textContent = game.name; return option;
+}));
+$('create-game').value = gamePresentations().some(game => game.gameType === previousGameChoice) ? previousGameChoice : gamePresentations()[0].gameType;
 $('create-game').addEventListener('change',updateCreateGame);
 updateCreateGame();
 $('join-form').addEventListener('submit',event=>{event.preventDefault();enter(event.currentTarget,true);});

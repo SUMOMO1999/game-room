@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
-import { chmodSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, readFileSync, readdirSync, lstatSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -25,6 +25,15 @@ if (release) {
     process.exit(1);
   }
 }
+function discoverTests(directory) {
+  return readdirSync(directory).sort().flatMap(name => {
+    const file = join(directory, name), stat = lstatSync(file);
+    if (stat.isSymbolicLink()) throw new Error('Test discovery cannot follow symbolic links.');
+    if (stat.isDirectory()) return ['node_modules', 'test-support', 'fixtures', '__fixtures__'].includes(name) ? [] : discoverTests(file);
+    return stat.isFile() && name.endsWith('.test.mjs') ? [file] : [];
+  });
+}
+
 const directory = mkdtempSync(join(tmpdir(), 'game-room-source-test-'));
 chmodSync(directory, 0o700);
 let child;
@@ -44,8 +53,7 @@ try {
     if (process.env[key] !== undefined) env[key] = process.env[key];
   }
   if (release) env.GAME_ROOM_SMOKE_INSTALL = 'locked';
-  const tests = readdirSync(join(projectRoot, 'app')).filter(name => name.endsWith('.test.mjs')).sort()
-    .map(name => join(projectRoot, 'app', name));
+  const tests = discoverTests(join(projectRoot, 'app'));
   let tail = '';
   child = spawn(process.execPath, ['--test', '--test-concurrency=1', '--test-reporter=tap', ...tests],
     { cwd: projectRoot, env, stdio: ['ignore', 'pipe', 'inherit'] });

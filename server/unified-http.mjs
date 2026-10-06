@@ -12,10 +12,10 @@ import { createMatchHistory, historyQuery } from './match-history.mjs';
 import { safeReturnTo } from './config.mjs';
 import { createRoomPreview } from './room-preview.mjs';
 import { makeEntries, resolveEntry, bindEntry, entryPath } from './entry-context.mjs';
+import { publicAssetPaths } from './public-assets.mjs';
 
 const root = fileURLToPath(new URL('../app/', import.meta.url));
-const files = new Set(['index.html','practice.html','room.html','app.mjs','lobby.mjs','lobby-model.mjs','lobby.css','account-client.mjs','room-client.mjs','room-chat.mjs','rules.mjs','board-layout.mjs','table-layout.mjs','rack-layout.mjs','game-audio.mjs','game-presentation.mjs','styles.css','favicon.svg','app-shell.mjs','app-shell.css','manifest.webmanifest','sw.js','offline.html','icons/icon-192.png','icons/icon-512.png','icons/apple-touch-icon.png','assets/joker-mark.png']);
-for(const file of ['entry-path.mjs','game-routing.mjs','game-viewport.mjs','twist-rules.mjs','rummikub-preview-client.mjs','rummikub-feedback.mjs','rummikub-assist.mjs','army.html','army-room.mjs','army-presentation.mjs','army.css','army-board.mjs','practice-entry.css','army-practice.html','army-practice.mjs','army-practice-engine.mjs']) files.add(file);
+const files = new Set(publicAssetPaths());
 const mime = {'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.js':'text/javascript; charset=utf-8','.webmanifest':'application/manifest+json; charset=utf-8','.png':'image/png','.svg':'image/svg+xml'};
 const baseHeaders = {'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' data:; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"};
 const reauthHref='https://agora.sumomoli.com/#account';

@@ -14,7 +14,9 @@ export function releaseSources(projectRoot = root) {
     for (const name of readdirSync(join(projectRoot, relative)).sort()) {
       const file = join(relative, name), stat = lstatSync(join(projectRoot, file));
       if (stat.isSymbolicLink()) throw new Error('Release source cannot be a symbolic link');
-      if (stat.isDirectory()) walk(file);
+      if (stat.isDirectory()) {
+        if (!['test-support', 'tests', 'fixtures', '__tests__', '__fixtures__'].includes(name)) walk(file);
+      }
       else if (stat.isFile() && /\.(?:html|css|mjs|js|svg|png|webmanifest)$/.test(name) && !name.endsWith('.test.mjs') && !(relative === 'app' && name === 'server.mjs')) files.push(file);
     }
   }

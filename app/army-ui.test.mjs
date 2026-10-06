@@ -1,8 +1,12 @@
+import * as roomClock from './platform/room-clock.mjs';
+import * as roomSession from './platform/room-session.mjs';
+import * as roomAudioControls from './platform/room-audio-controls.mjs';
+import * as roomViewport from './platform/room-viewport.mjs';
 import * as entryPath from './entry-path.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
-import { readFile } from 'node:fs/promises';
+import { readRuntimeSource as readFile } from './test-support/runtime-source.mjs';
 import {gameViewport} from './game-viewport.mjs';
 import * as board from './army-board.mjs';
 import * as army from './army-presentation.mjs';
@@ -115,7 +119,7 @@ async function fixture(t,{state=AUTH,query=''}={}) {
   Object.assign(window,{innerWidth:844,innerHeight:390,visualViewport:null,setInterval:()=>0,clearInterval(){}});
   const context=vm.createContext({document,window,location,navigator:{},sessionStorage,localStorage,fetch,URL,URLSearchParams,Response,ReadableStream,TextDecoder,AbortController,DOMException,Event,EventTarget,structuredClone,performance,crypto,
     setTimeout:timers.setTimeout,clearTimeout:timers.clearTimeout,queueMicrotask,requestAnimationFrame:()=>0,
-    ...board,...army,...presentation,...routing,...lobbyModel,gameViewport,createGameAudio});
+    ...roomClock,...roomSession,...roomAudioControls,...roomViewport,...board,...army,...presentation,...routing,...lobbyModel,gameViewport,createGameAudio});
   const account=await moduleIn(context,'account-client.mjs');Object.assign(context,account);
   context.watchAccountLifecycle=options=>{const watcher=account.watchAccountLifecycle(options);watchers.push(watcher);return watcher;};
   Object.assign(context,await moduleIn(context,'room-client.mjs'));
@@ -297,7 +301,7 @@ async function practiceFixture({snapshot,mounted=false,locks}={}) {
   const actions=[],session={suspend(){active=false;},async resume(){active=true;resumeCount++;changed(current);},async restart(){},async act(action){if(!active)return {ok:false,error:'返回练习后再走棋。'};actions.push(action);return actionResponse?actionResponse(action):{ok:true};}};
   const context=vm.createContext({document,window,navigator:{locks},localStorage,innerWidth:390,innerHeight:844,Event,EventTarget,structuredClone,performance,crypto,
     setTimeout:timers.setTimeout,clearTimeout:timers.clearTimeout,requestAnimationFrame:()=>0,
-    ...board,...army,gameViewport,createGameAudio,PRACTICE_SELF:'self',PRACTICE_STORAGE_KEY:'practice-v3-key',PRACTICE_V2_STORAGE_KEY:'practice-v2-key',PRACTICE_LEGACY_STORAGE_KEY:'practice-v1-key',
+    ...roomClock,...roomSession,...roomAudioControls,...roomViewport,...board,...army,gameViewport,createGameAudio,PRACTICE_SELF:'self',PRACTICE_STORAGE_KEY:'practice-v3-key',PRACTICE_V2_STORAGE_KEY:'practice-v2-key',PRACTICE_LEGACY_STORAGE_KEY:'practice-v1-key',
     createPracticeSession:async options=>{sessionOptions=options;changed=options.onChange;return session;},expose:value=>{pageAPI=value;}});
   const moduleUrl=mounted?'https://agora.sumomoli.com/game/entry-path.mjs':'https://game.sumomoli.com/entry-path.mjs';
   Object.assign(context, {entryBase:()=>entryPath.entryBase(moduleUrl),entryStorageKey:key=>entryPath.entryStorageKey(key,moduleUrl)});
@@ -494,4 +498,17 @@ test('spectator background and identity failures erase spectator names and recov
   f.deferState({promise:Promise.resolve(json({message:'revoked'},401))});f.timers.tick(15000);await settle();
   assert.equal(f.get('army-cells').children.length,0);assert.equal(f.get('army-spectator-note').textContent,'');
   assert.ok(f.calls.every(call=>(call.options.method??'GET')==='GET'));
+});
+
+
+test('retired army source cannot repaint or clear a restored account with its late connection or authentication error',async t=>{
+  const f=await fixture(t),old=f.pageAPI.client(),oldView=structuredClone(f.pageAPI.view());
+  f.setState({...AUTH,userKey:OTHER,csrf:'other-csrf',profile:{nickname:'新朋友'}});f.timers.tick(15000);await settle();
+  const current=f.pageAPI.client(),currentView=structuredClone(f.pageAPI.view()),label=f.get('connection-label').textContent;
+  assert.notEqual(current,old);assert.equal(currentView.selfId,'other');
+  old.onView({...oldView,revision:99});old.onConnection('offline');
+  for(const status of [401,503,404]) old.onError({status,message:'retired source'});
+  assert.equal(f.pageAPI.client(),current);assert.deepEqual(f.pageAPI.view(),currentView);
+  assert.equal(f.get('connection-label').textContent,label);assert.equal(current.stopped,false);
+  assert.equal(f.get('army-cells').children.length,60);assert.equal(f.get('room-play').hidden,false);
 });

@@ -1,12 +1,17 @@
+import * as roomClock from './platform/room-clock.mjs';
+import * as roomSession from './platform/room-session.mjs';
+import * as roomAudioControls from './platform/room-audio-controls.mjs';
+import * as roomViewport from './platform/room-viewport.mjs';
 import * as entryPath from './entry-path.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
-import { readFile } from 'node:fs/promises';
+import { readRuntimeSource as readFile } from './test-support/runtime-source.mjs';
 import * as rules from './rules.mjs';
 import * as presentation from './game-presentation.mjs';
 import * as lobbyModel from './lobby-model.mjs';
 import * as gameRouting from './game-routing.mjs';
+import * as gameCatalog from './games/catalog.mjs';
 import * as rummiFeedback from './rummikub-feedback.mjs';
 import * as rummiAssist from './rummikub-assist.mjs';
 import * as rackLayout from './rack-layout.mjs';
@@ -123,7 +128,7 @@ async function fixture(t,{page='room',query='',state=AUTH,history}={}) {
     AbortController,DOMException,Event,EventTarget,structuredClone,performance,crypto,innerWidth:844,innerHeight:390,
     setTimeout:timers.setTimeout,clearTimeout:timers.clearTimeout,queueMicrotask,requestAnimationFrame:()=>0,cancelAnimationFrame(){},
     getComputedStyle:()=>({paddingLeft:'8',paddingRight:'8',paddingTop:'8',paddingBottom:'8'}),
-    ...rules,...presentation,...lobbyModel,...gameRouting,...rummiFeedback,...rummiAssist,...rackLayout,...tableLayout,...viewport,createGameAudio});
+    ...roomClock,...roomSession,...roomAudioControls,...roomViewport,...rules,...presentation,...lobbyModel,...gameRouting,...gameCatalog,...rummiFeedback,...rummiAssist,...rackLayout,...tableLayout,...viewport,createGameAudio});
   const account=await moduleIn(context,'account-client.mjs');Object.assign(context,account);
   context.watchAccountLifecycle=(options)=>{const watcher=account.watchAccountLifecycle(options);watchers.push(watcher);return watcher;};
   Object.assign(context,await moduleIn(context,'room-client.mjs'));
@@ -447,4 +452,17 @@ test('a different account returned by a visible focus check cannot retain old ca
   assert.equal(f.get('room-players').textContent.includes('原朋友'),false);
   assert.equal(f.pageAPI.draft().board.length,roomView(OTHER).game.board.length);
   assert.ok(![...f.sessionStorage.values.keys()].some(key=>key.startsWith(`game-room.private-draft.${USER}.`)));
+});
+
+
+test('retired Rummikub source cannot apply its private view, disconnect label or 401/503 to a restored account',async t=>{
+  const f=await fixture(t),old=f.pageAPI.client(),oldView=structuredClone(old.view);
+  f.setState({...AUTH,userKey:OTHER,csrf:'other-csrf',profile:{nickname:'新朋友'}});f.timers.tick(15000);await settle();
+  const current=f.pageAPI.client(),currentView=structuredClone(current.view),label=f.get('connection-label').textContent;
+  assert.notEqual(current,old);assert.equal(currentView.selfId,'other');
+  old.onView({...oldView,revision:99});old.onConnection('offline');
+  for(const status of [401,503,404]) old.onError({status,message:'retired source'});
+  assert.equal(f.pageAPI.client(),current);assert.deepEqual(current.view,currentView);
+  assert.equal(f.get('connection-label').textContent,label);assert.equal(f.get('room-play').hidden,false);
+  assert.equal(current.stopped,false);assert.ok(f.get('rack').children.length);
 });

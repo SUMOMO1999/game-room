@@ -6,14 +6,10 @@ import path from 'node:path';
 import { createRoomStore, RoomError } from './rooms.mjs';
 import { readSettings } from '../server/config.mjs';
 import { createUnifiedServer } from '../server/unified-http.mjs';
+import { publicAssetPaths } from '../server/public-assets.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
-const publicFiles = new Set(['index.html', 'practice.html', 'room.html', 'app.mjs', 'lobby.mjs',
-  'room-client.mjs', 'room-chat.mjs', 'account-client.mjs', 'entry-path.mjs', 'lobby-model.mjs', 'lobby.css', 'game-presentation.mjs', 'rules.mjs', 'board-layout.mjs', 'table-layout.mjs', 'rack-layout.mjs', 'game-audio.mjs', 'styles.css', 'favicon.svg', 'app-shell.mjs', 'app-shell.css',
-  'manifest.webmanifest', 'sw.js', 'offline.html', 'icons/icon-192.png', 'icons/icon-512.png',
-  'icons/apple-touch-icon.png','assets/joker-mark.png','game-routing.mjs','rummikub-feedback.mjs','rummikub-assist.mjs','game-viewport.mjs','rummikub-preview-client.mjs','twist-rules.mjs',
-  'army.html','army-room.mjs','army-presentation.mjs','army.css','army-board.mjs',
-  'practice-entry.css','army-practice.html','army-practice.mjs','army-practice-engine.mjs']);
+const publicFiles = new Set(publicAssetPaths());
 const mime = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.mjs': 'text/javascript; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.webmanifest': 'application/manifest+json; charset=utf-8', '.png': 'image/png', '.svg': 'image/svg+xml' };

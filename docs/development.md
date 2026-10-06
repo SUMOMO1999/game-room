@@ -10,7 +10,7 @@
 
 ## 可重复的测试入口
 
-`npm test` 会构建当前源码的临时运行包，生成临时描述并运行 `app/` 中的测试，随后清理自己创建的目录。它不读取内部部署清单。测试子进程不继承账号令牌或云凭据，AWS 配置指向空文件，实例元数据访问关闭。
+`npm test` 会构建当前源码的临时运行包，生成临时描述并递归运行 `app/` 中的测试，随后清理自己创建的目录。它不读取内部部署清单。测试子进程不继承账号令牌或云凭据，AWS 配置指向空文件，实例元数据访问关闭。
 
 发布包测试校验原始压缩包成员、内容散列与准确清单，再解包验证 HTTP、私有状态和存档。默认测试复用当前项目已安装的依赖；完整模式 `npm run test:release` 在独立解包目录使用锁文件再次安装依赖，并要求零失败、取消、跳过和待办。
 
@@ -22,13 +22,15 @@
 
 ## 模块与变更边界
 
-- 规则与实体守恒：[rules.mjs](../app/rules.mjs)、[twist-rules.mjs](../app/twist-rules.mjs)、[army-board.mjs](../app/army-board.mjs)。
+- 游戏规则、布局和交互：[拉密](../app/games/rummikub/)、[军棋](../app/games/army-flip/)。旧根目录文件只承担兼容转发。
+- 游戏服务端能力：[适配器契约](../server/games/adapter-contract.mjs)、[注册表](../app/game-registry.mjs)。房间与历史只调用适配器，不能按某款游戏猜测默认能力。
+- 共通页面控制：[platform](../app/platform/)，包括时钟、异步页面代际、离席、音频和视口。
 - 房间与授权：[rooms.mjs](../app/rooms.mjs)、[durable-rooms.mjs](../server/durable-rooms.mjs)、[unified-http.mjs](../server/unified-http.mjs)。
-- 本域身份与安全：[auth.mjs](../server/auth.mjs)、[identity-policy-client.mjs](../server/identity-policy-client.mjs)、[config.mjs](../server/config.mjs)。
-- 存档与恢复：[storage.mjs](../server/storage.mjs)、[backup.mjs](../server/backup.mjs)。
-- 呈现与输入：[game-viewport.mjs](../app/game-viewport.mjs)、[table-layout.mjs](../app/table-layout.mjs)、[rack-layout.mjs](../app/rack-layout.mjs)、[room-chat.mjs](../app/room-chat.mjs)、[game-audio.mjs](../app/game-audio.mjs)。
-- 游戏接入：[game-registry.mjs](../app/game-registry.mjs)。
+- 身份与安全：[auth.mjs](../server/auth.mjs)、[identity-policy-client.mjs](../server/identity-policy-client.mjs)、[config.mjs](../server/config.mjs)。
+- 保存恢复：[storage.mjs](../server/storage.mjs)、[历史格式兼容](../server/room-snapshot-compat.mjs)、[backup.mjs](../server/backup.mjs)。
+- 公开资源：[浏览器目录](../app/games/catalog.mjs)、[服务端白名单](../server/public-assets.mjs)。发布包包含私有服务器代码，但 HTTP 只公开明确列出的页面资源。
 
+详细接入步骤与边界测试见 [模块结构与接入](architecture.md)。
 正式保存以服务端已确认状态为准，账号退出不删除业务记录。临时预览、设备手牌顺序和聊天草稿各有自己的生命周期；不能在通用恢复中混为一份状态。
 
 ## 运行包与基础设施

@@ -1,0 +1,157 @@
+/* Paint the root canvas as well as the board: iOS safe areas and viewport
+   transitions can expose it outside the body's current visual viewport. The
+   explicit root class also works without :has support. */
+html.army-root { height:100%; width:100%; background:#143b30; overflow:hidden; overflow:clip; overscroll-behavior:none; }
+body.army-screen { --army-viewport-height:100dvh; --army-viewport-width:100vw; color:#ede8d5; background:radial-gradient(ellipse at 50% 0%,#2c5e4e,#143b30); width:var(--army-viewport-width); height:var(--army-viewport-height); overflow:hidden; overflow:clip; overscroll-behavior:none; }
+.army-screen [hidden] { display:none!important; }
+.army-screen .shell { width:100%; max-width:1500px; height:100%; min-height:0; padding:max(6px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(6px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left)); display:flex; flex-direction:column; gap:6px; overflow:hidden; }
+.army-screen .site-header { flex:0 0 38px; min-height:0; border:0; gap:10px; }
+.army-screen .brand { gap:8px; }.army-screen .brand strong { font-size:15px; }.army-screen .brand small { display:none; }.army-screen .brand-mark { transform:scale(.66); transform-origin:left center; width:34px; }
+.army-screen .header-actions { gap:12px; min-width:0; }.army-screen .quiet-button,.army-screen .sound-toggle,.army-screen .chat-toggle { color:#e0e4cc; min-height:30px; padding:5px 8px; font-size:11px; border-color:#abc0a54a; }.army-screen .mode-badge { color:#bacdb9; font-size:10px; letter-spacing:0; }.army-screen .sound-toggle { background:#173c31; border:1px solid #abc0a54a; border-radius:7px; }.army-screen .sound-toggle[aria-pressed="true"] { color:#f7dfaa; border-color:#cdb47875; }.army-screen .room-exit { width:34px; min-height:32px; border:1px solid #d7c48d66; border-radius:8px; color:#f4e7c7; background:#1b4135; font-size:24px; line-height:1; }
+.army-screen #app-shell-tools { position:absolute; top:max(8px,env(safe-area-inset-top)); left:150px; padding:0; gap:4px; }.army-screen #app-shell-tools .app-shell-button { min-height:28px; color:#c6d5be; background:#163b30; border-color:#abc0a54a; font-size:9px; padding:4px 7px; }.army-screen .app-shell-status { color:#f5e7c5; }
+.army-screen .chat-toggle { color:#eeecd7; background:#173c31; border-color:#abc0a56b; }
+.army-screen .chat-toggle:not(:disabled):hover,.army-screen .chat-toggle[aria-expanded="true"] { background:#245745; border-color:#e0bd76; }
+.army-screen .chat-unread { color:#173c31; background:#e0bd76; }
+.army-screen .chat-toggle:disabled { color:#bac8ae; background:#284638; border-color:#8fa38866; opacity:1; cursor:default; }
+.army-screen main { flex:1; min-height:0; min-width:0; display:flex; flex-direction:column; gap:6px; position:relative; overflow:hidden; }
+.army-screen .orientation-hint { display:none; }.army-screen .room-topbar { min-height:24px; padding:0 3px; flex:0 0 24px; color:#c5d0b8; }.army-screen .room-topbar a,.army-screen .room-topbar strong { color:#ede8d5; }
+.army-screen.in-game .room-topbar { display:none; }.army-screen .room-players { flex:0 0 46px; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; overflow:hidden; }.army-screen .player-seat { display:flex; align-items:center; gap:8px; min-width:0; padding:6px 12px; color:#e8e7cf; background:#163b3066; border:1px solid #abc0a52c; border-radius:8px; }.army-screen .player-seat.current { background:#c5d5a02a; border-color:#ebd48b; }.army-screen .player-seat strong { min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:12px; }.army-screen .player-seat .player-detail { color:#becdb6; font-size:10px; margin-left:auto; white-space:nowrap; }.army-side { border-radius:4px; padding:2px 6px; background:#fff8e5; color:#b51628; font-size:10px; font-weight:700; }.army-side.black { color:#161a19; }.army-side.unassigned { color:#506450; }
+.army-screen .room-waiting { flex:1; min-height:0; padding:16px; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:13px; }.army-screen .room-waiting h2 { font-size:24px; }.army-screen .room-waiting p { color:#c7d5bd!important; margin:0; }.army-screen .room-rule-note { max-width:600px; }
+.army-screen #room-play { flex:1; min-height:0; min-width:0; display:grid; grid-template-rows:25px minmax(0,1fr) 42px; gap:6px; overflow:hidden; }
+.army-heading { display:flex; align-items:center; gap:15px; padding:0 3px; font-size:11px; color:#becdb6; min-width:0; }.army-heading h1 { font-size:16px; letter-spacing:2px; color:#f1e5c6; margin-right:auto; }.army-heading strong { font-size:11px; padding:3px 10px; border-radius:10px; background:#1c4438; color:#ede0b7; }
+.army-table { min-width:0; min-height:0; overflow:hidden; padding:7px 10px; border:1px solid #c3d3ab40; border-radius:14px; background:radial-gradient(ellipse at 50% 0%,#50826b,#345f4e); box-shadow:inset 0 1px 0 #e8e9c320,inset 0 -10px 25px #10281e20; }.army-board-stage { width:100%; height:100%; min-height:0; display:flex; justify-content:center; align-items:center; overflow:hidden; }.army-board { position:relative; width:min(100%,1200px); max-height:100%; aspect-ratio:12/5; flex:none; }.army-board svg,.army-cells { position:absolute; inset:0; width:100%; height:100%; }.army-board svg { pointer-events:none; }.army-road { stroke:#cedab37a; stroke-width:3; }.army-rail { stroke:#dcd3a4; stroke-width:8; stroke-linecap:round; }.army-rail-line { stroke:#305945; stroke-width:2; stroke-dasharray:4 9; }.army-terrain { fill:#345f4e; stroke:#c4d0a9b3; stroke-width:2; }.army-terrain.camp { stroke:#f0d9a2; }.army-terrain.headquarters { stroke:#d7c78d; stroke-width:3; }.army-cell { position:absolute; width:7.65%; height:18.6%; transform:translate(-50%,-50%); display:grid; place-items:center; padding:0; border:0; background:transparent; border-radius:6px; touch-action:manipulation; z-index:2; }.army-cell:focus-visible { outline:2px solid #ffda80; outline-offset:0; }.army-cell.selected { background:#f7d77a52; box-shadow:inset 0 0 0 2px #ffe397; }.army-cell.target::after { content:''; position:absolute; width:20%; aspect-ratio:1; border-radius:50%; background:#f5d888; box-shadow:0 0 0 3px #fff1b84d; z-index:4; }.army-cell.target.has-piece::after { width:85%; height:82%; border-radius:6px; background:transparent; box-shadow:inset 0 0 0 3px #ffe49a; }
+.army-piece { width:80%; height:77%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; border:1px solid #9e7b4b; border-bottom:3px solid #a48961; border-radius:5px; background:linear-gradient(#fffbee,#e8dcc0); color:#b41223; box-shadow:0 2px 5px #12352570; line-height:1; font-family:'Songti SC','Noto Serif CJK SC',serif; font-size:clamp(12px,calc(var(--army-unit,50px)*.30),27px); font-weight:700; letter-spacing:.04em; }.army-piece.black { color:#101615; }.army-piece small { font-family:-apple-system,BlinkMacSystemFont,sans-serif; font-size:clamp(6px,calc(var(--army-unit,50px)*.11),10px); letter-spacing:0; opacity:.76; }.army-piece.hidden-piece { color:#e7c994; background:repeating-linear-gradient(45deg,#a37c47 0 2px,#b68c54 2px 6px); border-color:#d6b783; border-bottom-color:#8f693c; }.army-piece.hidden-piece::before { content:''; width:38%; aspect-ratio:1; transform:rotate(45deg); border:2px double #f0dcb39c; box-shadow:inset 0 0 0 3px #a17a4399; }.army-empty-camp { width:36%; aspect-ratio:1; border:1px solid #f0d9a260; border-radius:50%; }.army-empty-hq { font-size:clamp(7px,calc(var(--army-unit,50px)*.14),11px); color:#d6dcb366; }
+.army-action-bar { display:flex; align-items:center; justify-content:space-between; min-width:0; min-height:0; gap:12px; }.army-action-bar p { min-width:0; font-size:11px; line-height:1.4; color:#d0dcc4; margin:0; overflow:hidden; max-height:34px; }.army-action-buttons { display:flex; flex:none; gap:6px; }.army-screen .primary-button { color:#274a37; background:#e8cd8f; border-color:#d6b772; }.army-screen .secondary-button { color:#e4e9d0; background:#173c31; border-color:#abc0a54a; }.army-action-buttons button { min-height:34px; padding:7px 11px; font-size:11px; }
+.army-screen dialog { max-height:calc(var(--army-viewport-height) - 24px); overflow:hidden; }.army-screen .army-dialog { width:min(510px,calc(var(--army-viewport-width) - 24px)); padding:18px; color:#26362f; background:#f5f0de; }.army-screen .army-dialog[open] { display:flex; flex-direction:column; gap:12px; }.army-screen dialog .secondary-button { color:#315b50; background:#e4e8da; border-color:#c5ccb8; }.army-screen .army-dialog p { margin:0; font-size:12px; line-height:1.65; }.army-rules-dialog h3 { font-size:12px; margin:8px 0 5px; }.army-rule-pages { display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:11px; }.army-rule-pages button { min-height:30px; padding:5px 12px; font-size:10px; }.army-screen .army-rules-dialog .sound-settings { padding:0; }.army-screen .army-rules-dialog #start-playing { min-height:32px; padding:7px 12px; font-size:11px; }.army-captured-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }.army-captured-list p { border:1px solid #c5ccb8; padding:8px; border-radius:6px; }
+.army-screen .room-result { position:absolute; z-index:10; top:50%; left:50%; transform:translate(-50%,-50%); width:min(460px,calc(100% - 24px)); max-height:calc(100% - 10px); margin:0; padding:18px; color:#26362f; background:#f5f0de; box-shadow:0 15px 45px #10261c66; overflow:hidden; }.army-screen .room-result h2 { font-size:22px; }.army-screen .room-result .primary-button { margin-top:10px; }.army-screen .room-result p { margin:9px 0; }.army-screen #result-scores { font-size:12px; }
+.army-screen .room-options-dialog { color:#26362f; background:#f5f0de; }.army-screen .room-menu-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }.army-screen .room-menu-actions button { min-height:32px; padding:5px 8px; font-size:11px; }.army-screen .room-options-dialog[open] { max-height:calc(var(--army-viewport-height) - 20px); gap:8px; }.army-screen .room-options-dialog .room-menu-separation { display:flex; gap:12px; }.army-screen .room-activity-dialog { color:#26362f; background:#f5f0de; }.army-screen .confirm-dialog { color:#26362f; background:#f5f0de; }.army-screen .confirm-actions button { min-height:34px; font-size:11px; padding:8px 12px; }
+.army-draw-offer { position:fixed; z-index:15; bottom:max(54px,env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); padding:12px 16px; border-radius:10px; background:#f5f0de; color:#26362f; box-shadow:0 7px 20px #0a221b66; max-width:calc(100% - 24px); }.army-draw-offer p { margin:0 0 8px; font-size:12px; }.army-draw-offer > div { display:flex; gap:8px; }.army-draw-offer button { padding:7px 12px; min-height:32px; font-size:11px; }
+@media (max-height:500px) { .army-screen .shell { padding-top:max(3px,env(safe-area-inset-top)); padding-bottom:max(4px,env(safe-area-inset-bottom)); gap:4px; }.army-screen .site-header { flex-basis:30px; }.army-screen .brand strong { font-size:12px; }.army-screen .header-actions { gap:5px; }.army-screen .quiet-button,.army-screen .sound-toggle,.army-screen .chat-toggle { min-height:27px; font-size:10px; padding:4px 6px; }.army-screen .room-players { flex-basis:34px; }.army-screen .player-seat { padding:4px 8px; gap:6px; }.army-screen .player-seat strong { font-size:10px; }.army-screen .player-detail { font-size:9px!important; }.army-screen #room-play { grid-template-rows:21px minmax(0,1fr) 34px; gap:4px; }.army-heading h1 { font-size:13px; }.army-heading { gap:7px; font-size:9px; }.army-heading strong { font-size:9px; }.army-table { padding:4px 7px; border-radius:9px; }.army-action-buttons button { min-height:30px; padding:5px 8px; font-size:10px; }.army-action-bar p { font-size:9px; max-height:27px; }.army-screen .army-dialog { padding:12px 16px; }.army-screen .army-dialog[open] { gap:7px; }.army-screen .army-dialog p { font-size:10px; line-height:1.45; }.army-rules-dialog h3 { margin:4px 0; font-size:11px; }.army-screen .sound-settings { font-size:10px; }.army-screen .room-options-dialog #room-options-note { font-size:9px; line-height:1.35; }.army-screen .room-options-dialog[open] { padding:10px 14px; gap:6px; } }
+@media (max-width:800px) { .army-screen #app-shell-tools { display:none; }.army-screen .brand-mark { display:none; }.army-screen .mode-badge { max-width:120px; overflow:hidden; text-overflow:ellipsis; }.army-screen .header-actions { gap:4px; }.army-screen .army-action-buttons { gap:4px; } }
+@media (max-width:620px) { .army-screen .brand { display:none; }.army-screen .header-actions { width:100%; justify-content:space-between; }.army-screen .player-seat { gap:4px; padding:4px 6px; }.army-screen .player-detail { max-width:90px; text-overflow:ellipsis; overflow:hidden; }.army-action-bar { gap:5px; }.army-action-buttons button { padding:5px 6px; }.army-heading #army-round { display:none; } }
+@media (orientation:portrait) and (max-width:700px) { .army-screen.in-game .orientation-hint { position:absolute; z-index:8; inset:80px 0 0; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:15px; background:#143b30f5; color:#f0e2bb; padding:25px; text-align:center; font-size:16px; }.army-screen .room-options-dialog .room-menu-separation { flex-wrap:wrap; }.army-screen .mode-badge { max-width:82px; font-size:9px; } }
+@media (prefers-reduced-motion:reduce) { .army-screen button { transition:none; } }
+
+.army-cell:disabled { opacity:1; }.army-cell.last-action:not(.selected) { box-shadow:inset 0 0 0 1px #f4e4a882; }
+
+/* Public transport markers use words and silhouettes as well as colour. They
+   stay inside each hit area and never add a row or resize the board. */
+.army-base.red-base { background:#b412231c; }
+.army-base.black-base { background:#10161429; }
+.army-base-label { position:absolute; bottom:0; left:50%; transform:translateX(-50%); z-index:5; padding:1px 3px; border-radius:3px; background:#fff4d7; font-size:clamp(7px,calc(var(--army-unit,50px)*.14),10px); font-weight:700; line-height:1; white-space:nowrap; pointer-events:none; }
+.army-base-label.red { color:#b41223; }.army-base-label.black { color:#101614; }
+.army-flag-mark { position:absolute; top:0; z-index:6; display:inline-flex; align-items:center; gap:2px; max-width:100%; padding:2px; border:1px solid currentColor; border-radius:3px; background:#fff5dc; color:#b41223; font-size:clamp(7px,calc(var(--army-unit,50px)*.14),10px); font-weight:700; line-height:1; white-space:nowrap; overflow:hidden; pointer-events:none; }
+.army-flag-mark.black { color:#101614; }
+.army-flag-mark::before { content:''; width:4px; height:7px; border-left:1px solid currentColor; background:linear-gradient(135deg,currentColor 0 48%,transparent 49%) top left/4px 4px no-repeat; }
+.army-flag-mark.carried { right:0; }.army-flag-mark.ground { left:0; top:auto; bottom:0; }
+.army-base .army-flag-mark.ground { top:0; bottom:auto; }
+.army-flag-mark.both { color:#101614; border-left:3px solid #b41223; }.army-flag-mark.ground::before { display:none; }
+.army-cell.pickup-ready { box-shadow:inset 0 0 0 2px #ffe397; }
+.army-cell.pickup-ready .army-flag-mark.ground { background:#ffe397; }
+
+/* The legacy short-screen Rummikub rules use .shell:not(.lobby-shell).
+   Keep the military board in its own grid instead of inheriting that flex row. */
+.army-screen .shell:not(.lobby-shell) #room-play { display:grid; }
+.army-screen .shell:not(.lobby-shell) > main { overflow:hidden; overflow:clip; }
+.army-screen .shell:not(.lobby-shell) .room-players { display:grid; margin:0; }
+
+/* Fixed play regions must not become focus-scroll containers. Chat and dialog
+   contents keep their own independently scrollable regions. */
+.army-screen .shell,.army-screen main,.army-screen #room-play,.army-screen .army-table,.army-screen .army-board-stage,.army-screen .room-players { overflow:hidden; overflow:clip; }
+
+/* Army seats own their typography and sizing. Generic Rummikub span spacing
+   and short-screen flex constraints must not squeeze faction/status text. */
+.army-screen .shell:not(.lobby-shell) .room-players { flex:0 0 auto; }
+.army-screen .shell:not(.lobby-shell) .player-seat {
+  display:grid; grid-template-columns:max-content minmax(0,1fr);
+  column-gap:8px; row-gap:2px; align-items:center;
+  min-width:0; max-width:none; min-height:44px; padding:6px 10px;
+}
+.army-screen .shell:not(.lobby-shell) .player-seat > span { margin:0; }
+.army-screen .shell:not(.lobby-shell) .player-seat .army-side {
+  grid-column:1; grid-row:1 / span 2; flex:none; white-space:nowrap;
+  font-size:10px; line-height:14px; color:#b51628;
+}
+.army-screen .shell:not(.lobby-shell) .player-seat .army-side.black { color:#161a19; }
+.army-screen .shell:not(.lobby-shell) .player-seat .army-side.unassigned { color:#506450; }
+.army-player-identity { grid-column:2; grid-row:1; display:flex; align-items:center; gap:6px; min-width:0; }
+.army-screen .shell:not(.lobby-shell) .player-seat strong {
+  flex:1; min-width:0; font-size:12px; line-height:14px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.army-screen .shell:not(.lobby-shell) .player-seat .army-player-role {
+  flex:none; margin:0; font-size:10px; line-height:14px;
+  white-space:nowrap; color:#f4e7c7;
+}
+.army-screen .shell:not(.lobby-shell) .player-seat .player-detail {
+  grid-column:2; grid-row:2; margin:0; max-width:none;
+  font-size:10px; line-height:14px; white-space:normal;
+  overflow:visible; text-overflow:clip; color:#d0dcc4;
+}
+.army-screen .shell:not(.lobby-shell) .orientation-hint { display:none; }
+.army-screen .room-waiting .waiting-actions { margin:8px 0; flex-wrap:nowrap; }
+.army-screen .shell:not(.lobby-shell) .header-actions { gap:4px; }
+.army-screen .shell:not(.lobby-shell) .brand-mark {
+  --brand-scale:.66; flex:none; width:calc(46px * var(--brand-scale));
+  height:calc(42px * var(--brand-scale)); transform:none; margin-right:0;
+}
+.army-screen .header-actions > button { flex:none; white-space:nowrap; }
+.army-screen .room-options-toggle { min-width:34px; }
+.army-screen .army-table { position:relative; }
+.army-screen .room-options-dialog > .dialog-heading { flex:none; }
+.army-room-menu-content {
+  display:flex; flex-direction:column; gap:inherit; min-height:0;
+  overflow-y:auto; overscroll-behavior:contain;
+}
+.army-room-menu-content > * { flex:none; }
+.army-screen .room-options-dialog #army-spectator-note {
+  overflow-wrap:anywhere;
+}
+@media (orientation:portrait) and (max-width:700px) {
+  .army-screen .shell:not(.lobby-shell) .room-players { grid-template-columns:minmax(0,1fr); }
+  .army-screen.in-game .shell:not(.lobby-shell) .orientation-hint { display:flex; inset:0; margin:0; border:0; border-radius:inherit; }
+}
+@media (max-height:500px) {
+  .army-screen .shell:not(.lobby-shell) .player-seat { min-height:32px; padding:3px 8px; column-gap:6px; row-gap:0; }
+  .army-screen .shell:not(.lobby-shell) .player-seat strong { font-size:10px; line-height:12px; }
+  .army-screen .shell:not(.lobby-shell) .player-seat .army-side,
+  .army-screen .shell:not(.lobby-shell) .player-seat .army-player-role,
+  .army-screen .shell:not(.lobby-shell) .player-seat .player-detail { font-size:9px; line-height:12px; }
+}
+
+/* Selection, a free destination and a collision target use distinct shapes
+   and contrast. Feedback stays static for reduced-motion and small screens. */
+.army-cell.selected {
+  background:#ffe17455; box-shadow:inset 0 0 0 3px #ffe174,0 0 0 1px #102d24;
+  z-index:6;
+}
+.army-cell.selected .army-piece { border-color:#ffe174; box-shadow:0 0 0 2px #fff2b5,0 2px 6px #0b281db3; }
+.army-cell.selected::before {
+  content:'已选'; position:absolute; top:0; right:0; z-index:8;
+  padding:1px 3px; border-radius:3px; background:#ffe174; color:#173c31;
+  font-size:clamp(8px,calc(var(--army-unit,50px)*.16),11px); line-height:1;
+  font-weight:700; white-space:nowrap; pointer-events:none;
+}
+.army-cell.selected:has(.army-flag-mark)::before { content:none; }
+.army-cell.target { background:#35d99b30; box-shadow:inset 0 0 0 2px #85ffd0; }
+.army-cell.target::after {
+  width:32%; height:auto; border:2px solid #f3fff8; background:#1dde91;
+  box-shadow:0 0 0 2px #174c39;
+}
+.army-cell.target.has-piece { background:#ffae6852; box-shadow:inset 0 0 0 2px #ffbf83; }
+.army-cell.target.has-piece::after {
+  width:88%; height:84%; border:2px solid #fff1d4;
+  border-radius:5px; background:transparent; box-shadow:0 0 0 2px #bd6428;
+}
+.army-cell.last-action:not(.selected):not(.target) { background:#c5baff24; box-shadow:inset 0 0 0 2px #d8c7ff; }
+
+/* Keep the optional sound preview from taking the rule page's remaining space. */
+.army-screen .army-rules-dialog .sound-settings { flex:none; gap:6px; }
+.army-screen .army-rules-dialog .sound-settings input { width:clamp(60px,19vw,120px); min-width:60px; }
+.army-screen .army-rules-dialog .sound-settings select { min-width:0; max-width:120px; font-size:inherit; }
+.army-screen .army-rules-dialog #sound-preview-status { white-space:nowrap; }
+@media (max-height:500px) {
+  .army-screen .army-rules-dialog #army-rule-page { min-height:56px; }
+  .army-screen .army-rules-dialog .sound-settings button { min-height:26px; padding:4px 8px; font-size:10px; }
+  .army-screen .army-rules-dialog .sound-settings + p { display:none; }
+}

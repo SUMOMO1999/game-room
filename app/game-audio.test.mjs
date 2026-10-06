@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { runInNewContext } from 'node:vm';
+import { readRuntimeSourceSync as readFileSync } from './test-support/runtime-source.mjs';
 import { createGameAudio } from './game-audio.mjs';
+import { mountRoomAudioControls } from './platform/room-audio-controls.mjs';
 
 function deferred() {
   let resolve, reject;
@@ -83,13 +83,9 @@ function fixture(options = {}) {
 
 function bindActualPageGestures(filename, document, audio) {
   const source = readFileSync(new URL(filename, import.meta.url), 'utf8');
-  const afterControls = source.indexOf('audio.onStateChange');
-  const binding = /for\s*\(\s*const type of\s*\[[^\]]+\]\s*\)\s*document\.addEventListener/.exec(source.slice(afterControls));
-  assert.ok(afterControls >= 0 && binding, `${filename}: actual audio gesture binding exists`);
-  const start = afterControls + binding.index, end = source.indexOf("$('sound-toggle')", start);
-  assert.ok(end > start, `${filename}: actual audio gesture binding ends before toggle click handler`);
-  runInNewContext(source.slice(start, end), { document, audio,
-    updateAudioControls() {}, updateAudio() {}, soundGestureWasLocked: false, soundRestoreRequested: false });
+  assert.match(source, /mountRoomAudioControls\(\{ audio, document/, `${filename}: actual shared audio controls are mounted`);
+  document.getElementById = () => null;
+  return mountRoomAudioControls({ document, audio });
 }
 
 test('actual game entries unlock on the first trusted touch release, share one context, and stay closed after disposal', async t => {
