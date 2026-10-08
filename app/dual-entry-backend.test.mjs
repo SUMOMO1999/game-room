@@ -172,6 +172,12 @@ test('logical and external mounted invite return paths are normalized once and u
     const login=await f.login('agora','a',route);assert.equal(login.callback.headers.get('location'),'/game/room.html?code=123456');
   }
   assert.equal(entryReturnTo('/game/?room=123456',entry),'/?room=123456');
+  for (const route of ['/poker414.html?code=123456', '/game/poker414.html?code=123456']) {
+    const login = await f.login('agora', 'a', route);
+    assert.equal(login.callback.headers.get('location'), '/game/poker414.html?code=123456');
+  }
+  const direct = await f.login('direct', 'a', '/poker414.html?code=123456');
+  assert.equal(direct.callback.headers.get('location'), '/poker414.html?code=123456');
   for(const route of ['/game/game/room.html?code=123456','https://game.sumomoli.com/room.html?code=123456','https://evil.invalid/game/','//evil.invalid','/game//evil.invalid','/game/room.html?code=123456&code=654321','/game/../room.html?code=123456','/game/room.html?code=%31%32%33%34%35%36']) {
     const login=await f.login('agora','a',route);assert.equal(login.callback.headers.get('location'),'/game/',route);
   }

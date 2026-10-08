@@ -231,6 +231,6 @@ export async function logoutAccount() {
   }
 }
 export function loginHref(returnTo = '/') {
-  if (typeof returnTo !== 'string' || !/^(?:\/|\/\?room=\d{6}|\/(?:room|army)\.html\?code=\d{6})$/.test(returnTo)) returnTo = '/';
+  if (typeof returnTo !== 'string' || !/^(?:\/|\/\?room=\d{6}|\/(?:room|army|flying|drawing|poker414)\.html\?code=\d{6})$/.test(returnTo)) returnTo = '/';
   return gamePath(`/auth/login?returnTo=${encodeURIComponent(returnTo)}`);
 }

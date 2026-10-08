@@ -7,23 +7,20 @@ import { EncryptedStore, MemoryAdapter } from '../server/storage.mjs';
 import { MockProvider } from '../server/auth.mjs';
 import { createRuntime } from '../server/runtime.mjs';
 import { createUnifiedServer } from '../server/unified-http.mjs';
-import { createGameRegistry, defaultGameRegistry } from './game-registry.mjs';
 import { getCard } from './games/poker414-2/cards.mjs';
 
 // These are real HTTP, SessionService, encrypted storage, room and SSE paths.
 // Only the upstream identity provider is synthetic; this is not real SSO evidence.
 async function fixture(t, { enabled = true } = {}) {
   let at = Date.now(); const now = () => at;
-  const settings = readSettings({ GAME_ROOM_AUTH_MODE: 'mock' });
+  const settings = readSettings({ GAME_ROOM_AUTH_MODE: 'mock', GAME_ROOM_POKER414_ENABLED: enabled ? '1' : '0' });
   const storage = new EncryptedStore(new MemoryAdapter({ now }), randomBytes(32), now);
   const provider = new MockProvider(settings, { now });
   provider.complete = async () => ({ issuer: 'urn:414-room-http', sub: provider.member,
     accessToken: 'synthetic-private-room-token', expiresAt: now() + 3600000 });
   provider.check = async identity => ({ sub: identity.sub });
-  const registry = enabled ? createGameRegistry(['rummikub', 'army-flip', 'flying-chess', 'draw-and-guess', 'poker414-2']
-    .map(type => defaultGameRegistry.gameAdapter(type))) : defaultGameRegistry;
   const runtime = createRuntime(settings, { storage, provider, now,
-    roomOptions: { gameRegistry: registry, pollIntervalMs: 0, serverRandomInt: max => max - 1 },
+    roomOptions: { pollIntervalMs: 0, serverRandomInt: max => max - 1 },
     chatOptions: { pollIntervalMs: 0 } });
   const server = createUnifiedServer(runtime), streams = [];
   t.after(async () => { for (const stream of streams) await stream.close(); server.closeAllConnections(); await server.shutdown(); });

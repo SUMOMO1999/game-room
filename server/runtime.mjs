@@ -8,7 +8,7 @@ import { createDrawingContentAssembly } from './games/draw-and-guess/content-ass
 import { createCanvasService } from './games/draw-and-guess/canvas-service.mjs';
 import { createIdentityBatchRuntime } from './identity-batch-runtime.mjs';
 import { createGameScores } from './game-scores.mjs';
-import { defaultGameRegistry } from '../app/game-registry.mjs';
+import { createGameRegistry, defaultGameRegistry } from '../app/game-registry.mjs';
 export function createRuntime(settings, options = {}) {
   const identityRuntime = options.sessions || options.provider ? null
     : createIdentityBatchRuntime(settings, { now: options.now, env: options.identityEnv });
@@ -22,7 +22,9 @@ export function createRuntime(settings, options = {}) {
     throw error;
   }
   const drawingEnabled = options.drawingEnabled ?? settings.drawingEnabled ?? false;
-  const gameRegistry = options.roomOptions?.gameRegistry ?? defaultGameRegistry;
+  const gameRegistry = options.roomOptions?.gameRegistry ?? (settings.poker414Enabled
+    ? createGameRegistry([...defaultGameRegistry.creationTypes(), 'poker414-2'].map(defaultGameRegistry.gameAdapter))
+    : defaultGameRegistry);
   const poker414Enabled = !options.rooms && gameRegistry.creationTypes().includes('poker414-2');
   const scores = options.scores || createGameScores({ storage, now: options.now });
   let rooms;
@@ -33,7 +35,7 @@ export function createRuntime(settings, options = {}) {
   // storage failure from becoming an unhandled rejection or opening the gate.
   wordbankReady.catch(() => {});
   const contentAssembly = createDrawingContentAssembly({ wordbanks, ready: wordbankReady, enabled: drawingEnabled, now: options.now });
-  rooms = options.rooms || createDurableRoomStore({storage, now:options.now, scores, ...contentAssembly, ...options.roomOptions});
+  rooms = options.rooms || createDurableRoomStore({storage, now:options.now, scores, ...contentAssembly, ...options.roomOptions, gameRegistry});
   const chat = options.chat || createRoomChat({storage, rooms, now:options.now, ...options.chatOptions});
   const preview = options.preview || createRoomPreview({now:options.now,...options.previewOptions});
   const canvases = options.canvases || (drawingEnabled ? createCanvasService({ storage, rooms, now: options.now, ...options.canvasOptions }) : null);
