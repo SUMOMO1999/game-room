@@ -15,7 +15,7 @@
 - [军棋设计](docs/design/games/army-flip.md)：翻棋、碰暗棋、运旗、排雷及固定棋盘操作。
 - [飞行棋设计](docs/design/games/flying-chess.md)：已认可的基础规则、国内玩法比较与独立资源；完整本机练习、2～4人朋友房间、保存恢复及第三款平台接入已上线。真实设备与中央真人联合继续按[当前交付范围](docs/design/README.md#当前范围)进行最终验收。
 - [你画我猜经典模式设计](docs/design/games/draw-and-guess.md)、[分类词库设计](docs/design/games/draw-and-guess-wordbank.md)与[实现及发布范围](docs/development-drawing.md)：经典一人画、其他人同时猜已上线；大画布、独占画笔、同步笔迹、猜词与计分、房间聊天及观战，伙伴可共同编辑分类和词条，保留记录并恢复版本。初始七类各80词、共560词；真实手机、多成员恢复及账号联合验收继续。
-- [414两副牌设计](docs/design/games/poker414-2.md)与[技术实施计划](docs/plans/poker414-2-v1.md)：牌面、纯规则和本机操作小样已制作；朋友房间、永久积分及正式上线尚未接通。实施进度与待验范围只在计划中维护。朋友可继续阅读和补充[一副牌设计](docs/design/games/poker414-1.md)，首版优先两副牌。
+- [414两副牌设计](docs/design/games/poker414-2.md)与[技术实施计划](docs/plans/poker414-2-v1.md)：正在实现朋友房间与永久积分，尚未正式开放。实际完成项、实施进度与待验范围只在计划中维护。朋友可继续阅读和补充[一副牌设计](docs/design/games/poker414-1.md)，首版优先两副牌。
 - [分类模板入口](docs/design/game-design-template.md)：朋友写玩法和例子，维护者补技术设计。
 - [固定牌类模板](docs/design/templates/fixed-deck-game.md)：414、扑克、麻将、拉密，重点是牌组与规则。
 - [桌游类模板](docs/design/templates/tabletop-game.md)与[逐卡定义](docs/design/templates/card-definition.md)：不同角色、牌或地块各有行为；飞行棋可用轻版。

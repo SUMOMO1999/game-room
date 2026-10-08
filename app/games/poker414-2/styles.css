@@ -200,3 +200,22 @@ html:has(.p414-body) { background:var(--theme-base,#173a31); }
 .p414-pattern-badge { display:grid; justify-items:center; gap:4px; padding:7px; border:1px solid var(--theme-border); border-radius:9px; background:var(--theme-control); }
 .p414-pattern-badge__art { width:102px; height:52px; }
 .p414-pattern-badge__label { font-size:11px; color:var(--theme-ink); }
+
+/* Connection recovery stays explicit, without discarding a healthy table. */
+.p414-recovery { position:absolute; z-index:8; top:calc(max(8px,env(safe-area-inset-top)) + 56px); left:max(12px,env(safe-area-inset-left)); right:max(12px,env(safe-area-inset-right)); display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 14px; border:1px solid var(--theme-accent); border-radius:14px; background:var(--theme-surface); box-shadow:0 5px 20px var(--theme-shadow); }
+.p414-recovery p { margin:0; font-size:12px; line-height:1.6; }
+.p414-recovery>div { display:flex; flex-shrink:0; flex-wrap:wrap; gap:6px; }
+.p414-recovery a { min-height:44px; padding:9px 14px; display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--theme-border); border-radius:11px; background:var(--theme-control); color:var(--theme-ink); font-size:13px; font-weight:600; text-decoration:none; }
+.p414-shell.is-concealed .p414-table, .p414-shell.is-concealed .p414-roster, .p414-shell.is-concealed .p414-actions, .p414-shell.is-concealed .p414-hand-section { visibility:hidden; }
+.p414-shell.is-concealed .p414-recovery { top:35%; }
+.p414-member-list { display:grid; gap:8px; }
+.p414-member-list>div { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:6px; padding:10px; border:1px solid var(--theme-border); border-radius:10px; font-size:13px; }
+.p414-member-list strong { overflow-wrap:anywhere; }
+.p414-member-list span { color:var(--theme-muted); }
+#p414-host-tools { margin-top:12px; }
+#p414-leave-error { color:var(--theme-accent); }
+.p414-dialog button:disabled { opacity:.46; cursor:default; }
+#p414-selection { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+.p414-hand-heading>strong { flex-shrink:0; }
+.p414-result h1 { max-width:100%; overflow-wrap:anywhere; text-align:center; }
+@media (max-width:520px) { .p414-recovery { align-items:stretch; flex-direction:column; } .p414-recovery>div { justify-content:flex-end; } }

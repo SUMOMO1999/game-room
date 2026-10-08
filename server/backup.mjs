@@ -136,10 +136,14 @@ export function validateScoreRecoveryReferences({ rooms, summaries, state }) {
   }
   function checkResult(roomId, matchId, result) {
     const ledger = ledgerFor(matchId);
+    // The game's shuffled seating order differs from the frozen ledger order.
+    // Compare exact seat ownership and values, never their incidental array positions.
+    const pointsBySeat = new Map(result.deltas.map(entry => [entry.playerId, entry.points]));
     if (!ledger || ledger.roomId !== roomId || ledger.reason !== result.reason || ledger.endedAt !== result.settledAt
         || ledger.ruleVersion !== result.ruleVersion || ledger.scoringVersion !== result.scoringVersion
-        || result.deltas.length !== ledger.participants.length
-        || result.deltas.some((entry, index) => entry.playerId !== ledger.participants[index].seatId || entry.points !== ledger.resultingDeltas[index].delta)) fail();
+        || result.deltas.length !== ledger.participants.length || pointsBySeat.size !== result.deltas.length
+        || ledger.participants.some((entry, index) => !pointsBySeat.has(entry.seatId)
+          || pointsBySeat.get(entry.seatId) !== ledger.resultingDeltas[index].delta)) fail();
     return ledger;
   }
   for (const room of rooms) {

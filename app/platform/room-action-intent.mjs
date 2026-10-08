@@ -5,7 +5,7 @@ const copy = value => structuredClone(value);
 const id = value => typeof value === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(value);
 function validBody(body) {
   return body && typeof body === 'object' && !Array.isArray(body) && id(body.requestId)
-    && typeof body.type === 'string' && /^[a-z][a-z-]*$/.test(body.type)
+    && typeof body.type === 'string' && (/^[a-z][a-z-]*$/.test(body.type) || body.type === 'transferHost')
     && Number.isSafeInteger(body.expectedRevision) && body.expectedRevision >= 0;
 }
 export function createRoomActionIntent({ scope, storage, key, requestId = () => crypto.randomUUID() }) {

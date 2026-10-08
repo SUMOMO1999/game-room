@@ -29,9 +29,12 @@ export function gameErrorMessage(error = {}) {
 
 export function orderedRoomPlayers(view) {
   const members = Array.isArray(view?.players) ? view.players : [];
-  const cycle = Array.isArray(view?.game?.players) ? view.game.players.map(player => player.id) : [];
+  const gamePlayers = Array.isArray(view?.game?.players) ? view.game.players.map(player => player.id) : [];
+  const explicit = view?.game?.actionOrder;
+  const cycle = Array.isArray(explicit) && explicit.length===gamePlayers.length && new Set(explicit).size===explicit.length
+    && explicit.every(id=>gamePlayers.includes(id)) ? explicit : gamePlayers;
   if (!cycle.length) return members.map(player => ({ ...player }));
-  const first = cycle.indexOf(view.turnClock?.firstPlayerId), start = first >= 0 ? first : 0;
+  const first = cycle.indexOf(view.game?.firstPlayerId ?? view.turnClock?.firstPlayerId), start = first >= 0 ? first : 0;
   const ids = [...cycle.slice(start), ...cycle.slice(0, start)];
   const current = cycle.indexOf(view.game.turnPlayerId), next = current < 0 ? null : cycle[(current + 1) % cycle.length];
   return ids.map((id, index) => {
@@ -48,6 +51,11 @@ export function turnClockDisplay(view, elapsedMs = 0) {
   const remainingMs = paused ? clock.remainingMs : Math.max(0, clock.deadlineAt - view.serverTime - Math.max(0, elapsedMs));
   const expired = !paused && remainingMs <= 0, seconds = Math.ceil(remainingMs / 1000);
   const time = `${String(Math.floor(seconds / 60)).padStart(2,'0')}:${String(seconds % 60).padStart(2,'0')}`;
+  if (['deal','response'].includes(clock.kind)) {
+    const label=clock.kind==='deal'?'下一批发牌':'勾叉机会';
+    return {visible:true,expired,paused:false,remainingMs,time,action:expired?`${label}待确认`:label,
+      label:`${label}${expired?'已到时':'剩余 '+time}；普通出牌不限时。`};
+  }
   const action = paused ? '已暂停' : expired ? '正在换人' : gamePresentation(view.gameType).timeout.action;
   const hint = gamePresentation(view.gameType).timeout.hint;
   return { visible: true, expired, paused, remainingMs, time, action,

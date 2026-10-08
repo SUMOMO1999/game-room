@@ -18,6 +18,8 @@ import { publicAssetPaths } from './public-assets.mjs';
 import { createWordbankHttp } from './content/wordbank-http.mjs';
 import { createCanvasHttp } from './games/draw-and-guess/canvas-http.mjs';
 import { WordbankError } from './content/draw-and-guess-wordbank.mjs';
+import { createGameScoresHttp } from './game-scores-http.mjs';
+import { createGameScores } from './game-scores.mjs';
 
 const root = fileURLToPath(new URL('../app/', import.meta.url));
 const files = new Set(publicAssetPaths());
@@ -73,19 +75,19 @@ async function readJson(req, maxBytes = 32768) {
 }
 export function createUnifiedServer(options) {
   const runtime=options.sessions && options.rooms ? options : createRuntime(options.settings,options);
-  const {settings,sessions,rooms,storage,chat,wordbanks,wordbankReady,canvases,drawingEnabled=false}=runtime;
+  const {settings,sessions,rooms,storage,chat,wordbanks,wordbankReady,canvases,drawingEnabled=false,poker414Enabled=false}=runtime;
   const configuredEntries=makeEntries(settings,options.entries);
   if(!configuredEntries.some(entry=>entry.direct)) throw new TypeError('The original direct game entry must remain enabled');
   // Explicit dual-entry configuration is immutable. The legacy one-entry API
   // still supports local fixtures assigning their actual ephemeral listen port.
   const entries=options.entries===undefined?null:configuredEntries;
   const preview=runtime.preview || createRoomPreview(options.previewOptions);
-  const history=runtime.history || createMatchHistory({storage,now:storage.now});
+  const history=runtime.history || createMatchHistory({storage,now:storage.now,gameRegistry:runtime.gameRegistry});
   rooms.setHistory?.(history);
   // Startup recovery may fail temporarily; the committed room outbox remains retryable.
   const historyRecovery=Promise.resolve().then(()=>rooms.flushPendingRecords?.()).catch(()=>{});
   const security={...baseHeaders,...(settings.production?{'Strict-Transport-Security':'max-age=31536000'}:{})};
-  const accountPublic={mode:settings.mode,loginReady:sessions.loginReady,drawingEnabled,reauthReady:settings.mode==='cognito',...(settings.mode==='cognito'?{reauthHref}:{})};
+  const accountPublic={mode:settings.mode,loginReady:sessions.loginReady,drawingEnabled,poker414Enabled,reauthReady:settings.mode==='cognito',...(settings.mode==='cognito'?{reauthHref}:{})};
   const connections=new Set();const buckets=new Map();
   let queuedCanvasBytes=0;
   const maxQueuedCanvasBytes=2*1024*1024;
@@ -104,6 +106,7 @@ export function createUnifiedServer(options) {
   }
   const wordbankRoute = wordbanks && drawingEnabled ? createWordbankHttp({sessions,rooms,wordbanks,ready:wordbankReady,limit,reply,readJson:req=>readJson(req,65536)}) : null;
   const canvasRoute = canvases && drawingEnabled ? createCanvasHttp({sessions,rooms,canvases,limit,reply,readJson}) : null;
+  let scoresRoute = null;
   const unsubscribeInvalidation=sessions.subscribeInvalidation(({sessionId,userKey,status})=>{preview.clearSession(sessionId);if(userKey) canvases?.invalidateActor(userKey);canvases?.invalidateAuthorization?.(sessionId);for(const connection of connections) if(connection.id===sessionId) connection.end(status);});
   const viewSignature=value=>{const {serverTime,...stable}=value || {};return JSON.stringify(stable);};
   async function stream(webRequest,res,code,session,roomId,withPreview=false,setupContext=null) {
@@ -384,6 +387,10 @@ export function createUnifiedServer(options) {
         if(identityContext) { await sessions.assertCurrent(session,{context:identityContext,guards});identityContext.assert(); }
       };
       if(wordbankRoute && await wait(() => wordbankRoute({req,res,url,webRequest}))) return;
+      if(/^\/api\/rooms\/[^/]+\/scores(?:\/|$)/.test(url.pathname)) {
+        scoresRoute ??= createGameScoresHttp({ sessions, rooms, scores: runtime.scores || createGameScores({ storage, now: storage.now }), limit, reply });
+        if(await wait(() => scoresRoute({req,res,url,webRequest}))) return;
+      }
       if(url.pathname==='/api/entry-status') {
         if(req.method!=='GET') return reply(res,405,{error:'请使用 GET。'},{Allow:'GET'});
         if(url.search) return reply(res,400,{error:'invalid_entry_request',code:'invalid_entry_request'});

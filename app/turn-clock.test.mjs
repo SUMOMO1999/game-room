@@ -8,6 +8,18 @@ import { createRoomStore, RoomError, DEFAULT_TURN_TIMEOUT_MS } from './rooms.mjs
 import { createDurableRoomStore } from '../server/durable-rooms.mjs';
 import { EncryptedStore, SQLiteAdapter, identityKey } from '../server/storage.mjs';
 import { orderedRoomPlayers, turnClockDisplay } from './game-presentation.mjs';
+
+test('explicit reverse action order and opportunity clocks do not inherit physical seats or turn expiry', () => {
+  const view={gameType:'poker414-2',phase:'playing',serverTime:1000,players:['a','b','c'].map(id=>({id})),game:{
+    players:['a','b','c'].map(id=>({id})),actionOrder:['a','c','b'],firstPlayerId:'c',turnPlayerId:'b'},turnClock:{kind:'response',deadlineAt:6000}};
+  const ordered=orderedRoomPlayers(view);
+  assert.deepEqual(ordered.map(player=>player.id),['c','b','a']);
+  assert.equal(ordered.find(player=>player.isCurrent).id,'b');assert.equal(ordered.find(player=>player.isNext).id,'a');
+  assert.match(turnClockDisplay(view).label,/勾叉机会剩余 00:05/);
+  assert.doesNotMatch(turnClockDisplay(view,5000).action,/换人/);
+  assert.match(turnClockDisplay({...view,turnClock:{kind:'deal',deadlineAt:1500}}).label,/下一批发牌/);
+  assert.equal(turnClockDisplay({...view,turnClock:null}).visible,false);
+});
 import { applyGameAction, applyTimeout, gameProblem, createGame } from './army-rules.mjs';
 import { gameAdapter } from './game-registry.mjs';
 import { compareReleaseCompatibility, CURRENT_DATA_COMPATIBILITY } from '../scripts/release-compatibility.mjs';

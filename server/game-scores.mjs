@@ -219,7 +219,37 @@ export function createGameScores({ storage, now = Date.now, capacityBytes = SCOR
     const saved = await read(SCORE_SCOPES.balances, balanceId(userKey));
     return saved ? structuredClone(saved.value) : { schemaVersion: 1, accountGroup: GROUP, userKey, total: 0, updatedAt: null };
   }
-  return Object.freeze({ prepareReservation, prepareSettlement, prepareCorrection, readBalance });
+  /** Trusted room authority supplies the exact saved revision; callers fence all returned guards before delivery. */
+  async function prepareRoomRead({ roomId, roomVersion, matchId: requestedMatchId = null }) {
+    demand(HEX32.test(roomId ?? '') && typeof roomVersion === 'string' && (requestedMatchId === null || HEX32.test(requestedMatchId ?? '')));
+    const room = await storage.read('rooms', roomId), snapshot = room?.value.snapshot;
+    if (!snapshot || room.version !== roomVersion) fail('SCORE_ROOM_CHANGED', '房间已变化，请重新读取积分。', 409);
+    if (snapshot.gameType !== 'poker414-2') fail('SCORE_UNSUPPORTED', '这个游戏暂未使用累计娱乐积分。', 400);
+    const selectedMatchId = requestedMatchId ?? snapshot.matchId ?? snapshot.lastMatchResult?.matchId ?? null;
+    // Membership in today's room does not grant access to every historical roster.
+    // Older matches remain behind the participant-scoped match-history service.
+    if (requestedMatchId && ![snapshot.matchId, snapshot.lastMatchResult?.matchId].includes(requestedMatchId)) {
+      fail('SCORE_MATCH_NOT_FOUND', '请从自己的历史战绩查看以往对局。', 404);
+    }
+    const head = selectedMatchId ? await read(SCORE_SCOPES.meta, matchId(selectedMatchId)) : null;
+    if (selectedMatchId && !head && [snapshot.matchId, snapshot.lastMatchResult?.matchId].includes(selectedMatchId)) fail('SCORE_CORRUPT');
+    if (head && head.value.roomId !== roomId) fail('SCORE_MATCH_NOT_FOUND', '本房间没有这局积分记录。', 404);
+    const ledger = head?.value.phase === 'settled' ? await read(SCORE_SCOPES.ledger, head.value.ledgerId) : null;
+    if (head?.value.phase === 'settled' && (!ledger || ledger.value.fingerprint !== head.value.fingerprint)) fail('SCORE_CORRUPT');
+    const values = await Promise.all(snapshot.players.map(player => read(SCORE_SCOPES.balances, balanceId(player.userKey))));
+    const guards = [{ scope: 'rooms', id: roomId, expectedVersion: roomVersion },
+      ...snapshot.players.map((player, index) => guard(SCORE_SCOPES.balances, balanceId(player.userKey), values[index])),
+      ...(selectedMatchId ? [guard(SCORE_SCOPES.meta, matchId(selectedMatchId), head)] : []),
+      ...(ledger ? [guard(SCORE_SCOPES.ledger, head.value.ledgerId, ledger)] : [])];
+    const seatByUser = new Map((ledger?.value.participants ?? []).map(player => [player.userKey, player.seatId]));
+    return { guards, body: { accountGroup: GROUP, roomId, roomRevision: snapshot.revision, matchId: selectedMatchId, readAt: now(),
+      players: snapshot.players.map((player, index) => ({ playerId: player.id, total: values[index]?.value.total ?? 0 })),
+      settlement: ledger ? { matchId: ledger.value.matchId, settlementVersion: ledger.value.settlementVersion,
+        endedAt: ledger.value.endedAt, status: ledger.value.status, reason: ledger.value.reason,
+        balancesAfter: ledger.value.balancesAfter.map(({ userKey, total }) => ({ playerId: seatByUser.get(userKey), total })),
+        deltas: ledger.value.resultingDeltas.map(({ userKey, delta }) => ({ playerId: seatByUser.get(userKey), delta })) } : null } };
+  }
+  return Object.freeze({ prepareReservation, prepareSettlement, prepareCorrection, readBalance, prepareRoomRead });
 }
 
 /** Offline accounting proof. Room and archived-summary references are checked by backup.mjs. */

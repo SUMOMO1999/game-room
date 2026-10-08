@@ -37,6 +37,7 @@ export function createGameRegistry(adapters, { creationTypes } = {}) {
     return gameEngine && typeof adapter.withEngine === 'function' ? requireAdapter(adapter.withEngine(gameEngine)) : adapter;
   }
   return Object.freeze({ normalizeGameType, gameInfo, gameAdapter,
+    creationTypes: () => Object.freeze([...creatable]),
     activityTypes: () => [...new Set([...catalog.values()].flatMap(adapter => adapter.actionTypes))] });
 }
 
