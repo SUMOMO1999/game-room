@@ -28,6 +28,20 @@ async function fixture(t, initial = []) {
   return { account, data, authenticate };
 }
 
+test('game availability requires explicit server booleans and is withdrawn during identity recovery', async t => {
+  const { account, authenticate } = await fixture(t);
+  assert.equal(account.accountState().poker414Enabled, false);
+  await authenticate({ poker414Enabled: 'true', drawingEnabled: true });
+  assert.equal(account.accountState().poker414Enabled, false);
+  assert.equal(account.accountState().drawingEnabled, true);
+  await authenticate({ poker414Enabled: true });
+  assert.equal(account.accountState().poker414Enabled, true);
+  account.reportAuthFailure({ status: 503 });
+  assert.equal(account.accountState().poker414Enabled, false);
+  await authenticate();
+  assert.equal(account.accountState().poker414Enabled, false);
+});
+
 test('503 hides all private account state and fences old replies while preserving only the local draft namespace', async t => {
   const { account, data, authenticate } = await fixture(t);
   await authenticate();

@@ -7,18 +7,18 @@ import { join } from 'node:path';
 import { createDurableRoomStore } from '../server/durable-rooms.mjs';
 import { createGameRegistry } from './game-registry.mjs';
 import { createPoker414Adapter } from '../server/games/poker414-2/adapter.mjs';
-import { EncryptedStore, SQLiteAdapter, identityKey } from '../server/storage.mjs';
+import { EncryptedStore, MemoryAdapter, SQLiteAdapter, identityKey } from '../server/storage.mjs';
 import { createMatchHistory } from '../server/match-history.mjs';
 import { createGameScores, SCORE_SCOPES } from '../server/game-scores.mjs';
-import { verifyLiveStore } from '../server/backup.mjs';
+import { verifyLiveStore, validateScoreRecoveryReferences } from '../server/backup.mjs';
 
 const users = Array.from({ length: 9 }, (_, i) => identityKey('urn:414-durable-test', String(i)));
 const registry = createGameRegistry([createPoker414Adapter()]);
-async function fixture(t, options = {}) {
+async function fixture(t, { memory = false, ...options } = {}) {
   const directory = await mkdtemp(join(tmpdir(), '414-durable-')), path = join(directory, 'game.sqlite'), key = randomBytes(32);
   let time = 10000, seq = 0; const now = () => time, opened = [];
   async function open(extra = {}) {
-    const storage = new EncryptedStore(new SQLiteAdapter(path, { now }), key, now);
+    const storage = new EncryptedStore(memory ? new MemoryAdapter({ now }) : new SQLiteAdapter(path, { now }), key, now);
     const rooms = createDurableRoomStore({ storage, now, gameRegistry: registry, pollIntervalMs: 0,
       serverRandomInt: max => max - 1, ...options, ...extra });
     const history = createMatchHistory({ storage, now, gameRegistry: registry });
@@ -45,6 +45,75 @@ async function fixture(t, options = {}) {
 const saved = async (entry, host) => (await entry.storage.read('rooms', host.view.roomId)).value.snapshot;
 const ledgers = async entry => (await entry.storage.scan(SCORE_SCOPES.ledger)).map(r => r.value);
 const balance = async (entry, user) => createGameScores({ storage: entry.storage }).readBalance(user);
+
+for (const memory of [true, false]) for (const ending of ['completed', 'voluntary-leave', 'disconnected']) {
+  test(`414 ${memory ? 'Memory' : 'SQLite'} shuffled seats keep frozen score ownership through response expiry and ${ending}`, async t => {
+    // Zero selects an actual different seat order, unlike max-1 which never shuffles.
+    const f = await fixture(t, { memory, serverRandomInt: () => 0 }), e = await f.open(), host = await f.start(e);
+    const initial = await saved(e, host), stops = [];
+    assert.notDeepEqual(initial.game.players.map(player => player.id), initial.matchParticipants.map(player => player.playerId));
+    for (const user of users.slice(0, 3)) stops.push(await e.rooms.subscribe(host.roomCode, user, () => {}));
+    const leader = initial.matchParticipants.find(player => player.playerId === initial.game.turnPlayerId);
+    const firstCard = initial.game.players.find(player => player.id === leader.playerId).hand[0];
+    await f.act(e, host.roomCode, leader.userKey, 'play', { cardIds: [firstCard] });
+    assert.equal((await saved(e, host)).turnClock.kind, 'response');
+    f.advance(5000); await e.rooms.sweep();
+    const expired = await saved(e, host);
+    assert.equal(expired.turnClock, null); assert.equal(expired.clockAdvance.kind, 'response');
+    if (ending === 'completed') {
+      for (let actions = 0; actions < 324 && (await saved(e, host)).phase === 'playing'; actions++) {
+        const snapshot = await saved(e, host), actor = snapshot.matchParticipants.find(player => player.playerId === snapshot.game.turnPlayerId);
+        if (snapshot.game.target) await f.act(e, host.roomCode, actor.userKey, 'pass');
+        else await f.act(e, host.roomCode, actor.userKey, 'play', { cardIds: [snapshot.game.players.find(player => player.id === actor.playerId).hand[0]] });
+      }
+      assert.equal((await saved(e, host)).phase, 'finished');
+    } else if (ending === 'voluntary-leave') {
+      const view = await e.rooms.getView(host.roomCode, users[0]);
+      const input = { type: 'leave', requestId: 'shuffled-leave', expectedRevision: view.revision };
+      assert.equal((await e.rooms.action(host.roomCode, users[0], input)).left, true);
+      assert.equal((await e.rooms.action(host.roomCode, users[0], input)).left, true);
+    } else {
+      await stops[0](); f.advance(120000); await e.rooms.sweep();
+      const cancelled = await saved(e, host);
+      assert.equal(cancelled.phase, 'waiting'); assert.equal(cancelled.lastMatchResult.reason, 'disconnected');
+    }
+    const ledger = await ledgers(e); assert.equal(ledger.length, 1);
+    assert.deepEqual(ledger[0].participants.map(player => player.userKey), users.slice(0, 3));
+    assert.deepEqual(ledger[0].deltas.map(delta => delta.userKey), users.slice(0, 3));
+    assert.equal(ledger[0].deltas.reduce((sum, delta) => sum + delta.delta, 0), 0);
+    if (ending === 'voluntary-leave') assert.deepEqual(ledger[0].deltas.map(delta => delta.delta), [-10, 5, 5]);
+    else if (ending === 'disconnected') assert.ok(ledger[0].deltas.every(delta => delta.delta === 0));
+    else {
+      const result = (await saved(e, host)).game.result;
+      assert.deepEqual(ledger[0].deltas.map(delta => delta.delta), initial.matchParticipants.map(player =>
+        result.deltas.find(delta => delta.playerId === player.playerId).points));
+    }
+    for (const user of users.slice(0, 3)) {
+      const expected = ledger[0].deltas.find(delta => delta.userKey === user).delta;
+      assert.equal((await balance(e, user)).total, expected);
+      const history = await e.history.get(user); assert.equal(history.items.length, 1);
+      assert.equal(history.items[0].self.score, expected); assert.equal(history.items[0].self.balanceAfter, expected);
+    }
+    if (!memory) {
+      verifyLiveStore({ sourcePath: f.path, key: f.key, gameRegistry: registry, now: f.now });
+      if (ending === 'voluntary-leave') {
+        // Exercise the cross-ledger reference check directly as well: keeping
+        // the same identities and zero sum cannot legitimize another seat's score.
+        const terminal = await saved(e, host);
+        const check = room => validateScoreRecoveryReferences({ rooms: [room], summaries: [], state: { reservations: [], ledgers: ledger } });
+        assert.equal(check(terminal), true);
+        for (const defect of ['points', 'duplicate-seat', 'foreign-seat']) {
+          const changed = structuredClone(terminal), entries = changed.game.result.deltas;
+          if (defect === 'points') {
+            const loser = entries.find(entry => entry.points < 0), winner = entries.find(entry => entry.points > 0);
+            [loser.points, winner.points] = [winner.points, loser.points];
+          } else entries[0].playerId = defect === 'duplicate-seat' ? entries[1].playerId : 'f'.repeat(32);
+          assert.throws(() => check(changed), /Score recovery reference mismatch/, defect);
+        }
+      }
+    }
+  });
+}
 
 test('414 real SQLite room start reserves once, deals 108, hides other hands and leaves normal turns unlimited', async t => {
   const f = await fixture(t), e = await f.open(), host = await f.start(e);

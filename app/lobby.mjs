@@ -1,9 +1,9 @@
 import { api, normalizeCode, rememberMembership, recentSeats, forgetMembership } from './room-client.mjs';
 import { loadAccount, accountState, accountGeneration, onAccountChange, logoutAccount, watchAccountLifecycle, reauthenticationHref } from './account-client.mjs';
-import { roomPhaseLabel, exitConsequence, createExitRequest, historyOutcome, historyPoints } from './lobby-model.mjs';
+import { roomPhaseLabel, exitConsequence, createExitRequest, historyOutcome, historyPoints, historyBalanceLabel } from './lobby-model.mjs';
 import { gamePath } from './entry-path.mjs';
 import { gameName, roomHref, gameDetails } from './game-routing.mjs';
-import { gamePresentation, gamePresentations } from './games/catalog.mjs';
+import { gamePresentation, creatableGamePresentations } from './games/catalog.mjs';
 const $=id=>document.getElementById(id);
 const raw=new URLSearchParams(location.search).get('room');
 const incoming=/^\d{6}$/.test(raw || '')?raw:'';
@@ -78,7 +78,8 @@ function clearHistory() {
 function renderExit() {
   if(!exitState) return;
   $('lobby-exit-title').textContent=`退出房间 ${exitState.seat.roomCode}？`;
-  $('lobby-exit-description').textContent=exitConsequence(exitState.view.phase,{role:exitState.view.selfRole});
+  $('lobby-exit-description').textContent=exitConsequence(exitState.view.phase,{role:exitState.view.selfRole,
+    gameType:exitState.view.gameType,playerCount:exitState.view.matchPlayers?.length || exitState.view.players?.length});
 }
 async function prepareExit(seat,button) {
   if(!privateReady) return;
@@ -113,16 +114,16 @@ async function loadHistory(append=false) {
       const row=document.createElement('details');row.className='history-match';
       const summary=document.createElement('summary'),title=document.createElement('strong'),time=document.createElement('span');
       title.textContent=`${gameName(item.game)} · ${historyOutcome(item)}`;time.textContent=dateText(item.endedAt);summary.append(title,time);
-      const meta=document.createElement('p');meta.textContent=`房间 ${item.roomCode} · ${historyScore(item,item.self?.score ?? item.self?.remainingPoints)}`;
+      const meta=document.createElement('p');meta.textContent=`房间 ${item.roomCode} · ${historyScore(item,item.self?.score ?? item.self?.remainingPoints)}${historyBalanceLabel(item.self)?` · ${historyBalanceLabel(item.self)}`:''}`;
       const players=document.createElement('ul');
-      for(const player of item.players || []) {const li=document.createElement('li');li.textContent=`${player.nickname || '朋友'} · ${historyOutcome({status:item.status,self:{outcome:player.outcome}})} · ${historyScore(item,player.score ?? player.remainingPoints)}`;players.append(li);}
+      for(const player of item.players || []) {const li=document.createElement('li');li.textContent=`${player.nickname || '朋友'} · ${historyOutcome({game:item.game,reason:item.reason,status:item.status,self:{outcome:player.outcome}})} · ${historyScore(item,player.score ?? player.remainingPoints)}${historyBalanceLabel(player)?` · ${historyBalanceLabel(player)}`:''}`;players.append(li);}
       row.append(summary,meta,players);$('history-list').append(row);
     }
     const stats=data.stats || {};const count=key=>Number.isSafeInteger(stats[key]) && stats[key]>=0?stats[key]:0;
     $('history-stats').textContent=`近 ${data.retentionDays || 180} 天：${count('completed')} 局完成 · ${count('wins')} 胜 · ${count('draws')} 平 · ${count('losses')} 负${count('aborted')?` · ${count('aborted')} 局中止`:''}`;
     historyCursor=typeof data.nextCursor==='string'?data.nextCursor:null;
     $('history-more').hidden=!historyCursor;
-    $('history-status').textContent=historySeen.size?'中止局不计输赢。点开一局查看结果。':'还没有战绩。玩完的结果会留在这里，中止局不计输赢。';
+    $('history-status').textContent=historySeen.size?'点开一局查看结果。中止局按对应玩法处理；414主动离席会记赔分。':'还没有战绩。玩完的结果会留在这里。';
   } catch(error) {
     if(sequence!==historySequence || !privateLive(generation,epoch)) return;
     $('history-status').textContent=error.message;$('history-retry').hidden=false;
@@ -209,12 +210,12 @@ async function enter(form,join) {
 $('create-form').addEventListener('submit',event=>{event.preventDefault();enter(event.currentTarget,false);});
 function updateCreateGame() {
   const game=gameDetails($('create-game').value);
-  $('create-game-description').textContent=`${game.name} · ${game.minPlayers===game.maxPlayers?game.minPlayers:`${game.minPlayers}～${game.maxPlayers}`} 人 · ${gamePresentation($('create-game').value).scoreKind === 'score' ? '一人画，大家同时猜' : '每人回合 30 分钟'}`;
+  $('create-game-description').textContent=`${game.name} · ${game.minPlayers===game.maxPlayers?game.minPlayers:`${game.minPlayers}～${game.maxPlayers}`} 人 · ${gamePresentation($('create-game').value).createHint}`;
 }
 // Preserve the current choice while the registered games supply the options.
 function refreshGameChoices(state) {
 const previousGameChoice = $('create-game').value;
-const games = gamePresentations().filter(game => game.gameType !== 'draw-and-guess' || state.drawingEnabled);
+const games = creatableGamePresentations(state);
 $('create-game').replaceChildren(...games.map(game => {
   const option = document.createElement('option'); option.value = game.gameType; option.textContent = game.name; return option;
 }));

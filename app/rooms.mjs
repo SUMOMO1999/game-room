@@ -143,14 +143,23 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
     room.matchEndedAt = typeof adapter.matchSummary === 'function' ? room.game.result.settledAt : now();
     const result = status === 'completed' || typeof adapter.matchSummary === 'function' ? room.game.result : null;
     const extra = typeof adapter.matchSummary === 'function' ? adapter.matchSummary(room.game) : null;
+    // Game seating may be shuffled independently of the frozen account list.
+    // Ledger deltas must follow that list, not the game's presentation order.
+    let deltas;
+    if (extra) {
+      const byPlayer = new Map(extra.deltas.map(({ playerId, points }) => [playerId, points]));
+      if (byPlayer.size !== extra.deltas.length || byPlayer.size !== room.matchParticipants.length) {
+        fail(500, 'INVALID_SETTLEMENT', '计分参与者与固定名单不一致。');
+      }
+      deltas = room.matchParticipants.map(({ playerId, userKey }) => {
+        if (!userKey || !byPlayer.has(playerId)) fail(500, 'INVALID_SETTLEMENT', '计分参与者缺少固定账号。');
+        return { userKey, delta: byPlayer.get(playerId) };
+      });
+    }
     const summary = { matchId: room.matchId, roomId: room.roomId ?? digest(room.code).slice(0, 32), roomCode: room.code,
       game: room.gameType, ruleVersion: room.game.ruleVersion, startedAt: room.matchStartedAt, endedAt: room.matchEndedAt,
       status, reason, ...(room.matchStartedAt === null ? { legacy: true } : {}),
-      ...(extra ? { ...extra, deltas: extra.deltas.map(({ playerId, points }) => {
-        const participant = room.matchParticipants.find(player => player.playerId === playerId);
-        if (!participant?.userKey) fail(500, 'INVALID_SETTLEMENT', '计分参与者缺少固定账号。');
-        return { userKey: participant.userKey, delta: points };
-      }) } : {}),
+      ...(extra ? { ...extra, deltas } : {}),
       players: (room.matchParticipants ?? []).filter((player) => player.userKey).map((player) => ({
         userKey: player.userKey, seatId: player.playerId, nickname: player.name,
         ...adapter.playerResult(result, player.playerId),

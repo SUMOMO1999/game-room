@@ -172,6 +172,7 @@ export function createPoker414Adapter() {
     spectatorView: game => core.projectGame(game, { role: 'spectator' }), stateProblem: core.gameProblem,
     roomDefaults: () => ({ rolesEnabled: true, spectators: [], turnClock: null }),
     roomView: room => ({ commonActions: { pause: false, retainSeatOnReturn: false },
+      resultParticipants: (room.matchParticipants ?? []).map(({ playerId, name }) => ({ playerId, name })),
       ...(room.lastMatchResult ? { lastMatchResult: structuredClone(room.lastMatchResult) } : {}) }),
     playersChanged(room) { if (room.phase === 'waiting') for (const player of room.players) player.ready = false; },
     configurationSupportProblem: () => problem(409, 'CONFIGURATION_UNSUPPORTED', '两副牌414使用固定规则。'),

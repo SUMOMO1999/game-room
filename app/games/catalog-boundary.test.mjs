@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
-import { createPresentationCatalog, gamePresentations, gamePresentation } from './catalog.mjs';
+import { createPresentationCatalog, gamePresentations, gamePresentation, creatableGamePresentations } from './catalog.mjs';
 import { gameInfo, gameAdapter } from '../game-registry.mjs';
 import { gameDetails, roomHref } from '../game-routing.mjs';
 import { publicAssetPaths } from '../../server/public-assets.mjs';
@@ -26,8 +26,10 @@ const privatePaths = ['server/games/rummikub/adapter.mjs', 'server/games/army-fl
   'army-rules.mjs', 'rooms.mjs', 'game-registry.mjs', 'games/catalog-boundary.test.mjs',
   'games/rummikub/test-support/secret.mjs', 'games/rummikub/fixtures/secret.mjs',
   'infra/game-room-identity-batch.conf'];
-// 414 is a local-only candidate until its authenticated room adapter is wired.
-const unreleased414Paths = ['poker414-preview.html', ...['cards.mjs','art.mjs','rules.mjs','patterns.mjs','page-ui.mjs','preview.mjs','styles.css','test-support/preview-fixtures.mjs'].map(file => `games/poker414-2/${file}`)];
+// Public 414 presentation can read saved rooms while new creation stays gated.
+// The authoritative engine, adapters and local-only fixture previews stay private.
+const private414Paths = ['poker414-preview.html', 'server/games/poker414-2/adapter.mjs',
+  ...['rules.mjs','rules.test.mjs','preview.mjs','test-support/preview-fixtures.mjs'].map(file => `games/poker414-2/${file}`)];
 function metadataOnly(value) {
   if (value === null || ['string', 'number', 'boolean'].includes(typeof value)) return true;
   if (Array.isArray(value)) return value.every(metadataOnly);
@@ -37,7 +39,7 @@ function metadataOnly(value) {
 test('browser game catalog contains only immutable presentation metadata matching server types, routes and capacities', () => {
   const source = readFileSync(join(projectRoot, 'app/games/catalog.mjs'), 'utf8').replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
   assert.equal(/\bimport\s*(?:\(|[{*'"\w])/.test(source), false, 'catalog must not import an executable game module');
-  const allowed = ['gameType', 'name', 'page', 'minPlayers', 'maxPlayers', 'practicePage', 'scoreKind', 'timeout', 'assets', 'route'].sort();
+  const allowed = ['gameType', 'name', 'page', 'minPlayers', 'maxPlayers', 'practicePage', 'scoreKind', 'timeout', 'assets', 'route', 'createHint', 'availabilityFlag'].sort();
   for (const game of gamePresentations()) {
     assert.deepEqual(Object.keys(game).sort(), allowed); assert.equal(metadataOnly(game), true);
     assert.equal(Object.isFrozen(game), true); assert.equal(Object.isFrozen(game.assets), true);
@@ -69,7 +71,10 @@ test('all declared public paths exist; old aliases and canonical modules are pub
   for (const game of gamePresentations()) for (const path of [game.page, game.practicePage, ...game.assets].filter(Boolean)) assert.ok(assets.includes(path), path);
   for (const path of ['rules.mjs', 'games/rummikub/rules.mjs', 'table-layout.mjs', 'games/rummikub/table-layout.mjs',
     'army-board.mjs', 'games/army-flip/board.mjs', 'army-presentation.mjs', 'games/army-flip/presentation.mjs']) assert.ok(assets.includes(path), path);
-  for (const path of unreleased414Paths) assert.equal(assets.includes(path), false, path);
+  for (const path of private414Paths) {
+    assert.equal(assets.includes(path), false, path);
+    assert.throws(() => publicAssetPaths([{assets:[path]}],[]), TypeError, path);
+  }
   for (const path of privatePaths) {
     assert.equal(assets.includes(path), false, path);
     assert.throws(() => publicAssetPaths([{ assets: [path] }], []), TypeError, path);
@@ -123,14 +128,24 @@ for (const mode of ['legacy', 'unified']) test(`${mode} HTTP serves canonical an
     server = createUnifiedServer(runtime); host = new URL(settings.origin).host;
   }
   const base = await listen(server, t); host ??= new URL(base).host;
-  for (const path of ['games/catalog.mjs', 'rules.mjs', 'games/rummikub/rules.mjs', 'army-board.mjs', 'games/army-flip/board.mjs']) {
+  for (const path of ['games/catalog.mjs', 'rules.mjs', 'games/rummikub/rules.mjs', 'army-board.mjs', 'games/army-flip/board.mjs',
+    ...gamePresentation('poker414-2').assets]) {
     const response = await request(base, '/' + path, host);
     assert.equal(response.status, 200, path); assert.equal(response.headers['cache-control'], 'no-store');
     assert.equal(response.body, readFileSync(join(projectRoot, 'app', path), 'utf8'));
   }
-  for (const path of [...privatePaths, ...unreleased414Paths]) {
+  for (const path of [...privatePaths, ...private414Paths]) {
     const response = await request(base, '/' + path, host);
     assert.equal(response.status, 404, path); assert.equal(response.headers['cache-control'], 'no-store');
     assert.equal(response.body.includes('private authoritative state'), false, path);
   }
+});
+
+test('414 routes and history metadata exist while creation requires an explicit server capability', () => {
+  assert.equal(roomHref('123456','poker414-2'),'./poker414.html?code=123456');
+  assert.equal(gamePresentation('poker414-2').practicePage,null);
+  assert.match(gamePresentation('poker414-2').createHint,/不限时/);
+  for(const value of [undefined,false,'true',1]) assert.equal(creatableGamePresentations({drawingEnabled:true,poker414Enabled:value}).some(game=>game.gameType==='poker414-2'),false);
+  assert.equal(creatableGamePresentations({drawingEnabled:true,poker414Enabled:true}).length,5);
+  assert.deepEqual(creatableGamePresentations().map(game=>game.gameType),['rummikub','army-flip','flying-chess']);
 });
