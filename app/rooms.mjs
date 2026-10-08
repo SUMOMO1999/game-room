@@ -79,12 +79,16 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
   const closedRooms = new Map();
   const expiry = (room) => room.lastActiveAt + (room.phase === 'paused' ? pausedTtlMs : ttlMs);
   const adapterFor = (room) => gameRegistry.gameAdapter(room.gameType, { gameEngine });
-  const activityTypes = new Set([...COMMON_ACTIONS, ...gameRegistry.activityTypes(), 'finished', 'timeout']);
-  const currentPlayer = (room) => room.game?.players[room.game.turnIndex]?.id;
+  const activityTypes = new Set([...COMMON_ACTIONS, ...gameRegistry.activityTypes(), 'finished', 'timeout', 'cancelled']);
+  const currentPlayer = (room) => room.game?.turnPlayerId ?? room.game?.players[room.game.turnIndex]?.id ?? null;
   function startClock(room, firstPlayerId = currentPlayer(room), durationMs = turnTimeoutMs) {
     const adapter = adapterFor(room);
     if (typeof adapter.gameClock === 'function') {
       const stage = adapter.gameClock(room.game);
+      if (stage && Object.hasOwn(stage, 'kind')) {
+        room.turnClock = { version: 3, kind: stage.kind, id: stage.id, deadlineAt: stage.deadlineAt, matchId: room.matchId };
+        return;
+      }
       room.turnClock = stage ? { version: 2, durationMs: stage.durationMs, remainingMs: stage.remainingMs,
         startedAt: stage.startedAt, deadlineAt: stage.deadlineAt, pausedAt: stage.pausedAt,
         firstPlayerId, matchId: room.matchId, round: room.game.round, playerId: currentPlayer(room), stageKey: stage.key } : null;
@@ -96,9 +100,11 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
   }
   function syncClock(room) {
     const clock = room.turnClock;
+    if (!['playing', 'paused'].includes(room.phase)) { if (Object.hasOwn(room, 'turnClock')) room.turnClock = null; return; }
+    // Phase clocks may appear after an ordinary untimed turn. Their explicit
+    // null is a policy, not evidence that the game has no future deadlines.
+    if (typeof adapterFor(room).gameClock === 'function') { startClock(room, clock?.firstPlayerId); return; }
     if (!clock) return;
-    if (!['playing', 'paused'].includes(room.phase)) { room.turnClock = null; return; }
-    if (typeof adapterFor(room).gameClock === 'function') { startClock(room, clock.firstPlayerId); return; }
     if (room.game.round !== clock.round || currentPlayer(room) !== clock.playerId) {
       startClock(room, clock.firstPlayerId, clock.durationMs);
     } else if (room.phase === 'paused' && clock.pausedAt === null) {
@@ -133,12 +139,18 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
   function conclude(room, status, reason) {
     ensureMatch(room);
     if (!room.matchId || room.matchEndedAt !== undefined) return;
-    room.matchEndedAt = now();
-    const result = status === 'completed' ? room.game.result : null;
     const adapter = adapterFor(room);
+    room.matchEndedAt = typeof adapter.matchSummary === 'function' ? room.game.result.settledAt : now();
+    const result = status === 'completed' || typeof adapter.matchSummary === 'function' ? room.game.result : null;
+    const extra = typeof adapter.matchSummary === 'function' ? adapter.matchSummary(room.game) : null;
     const summary = { matchId: room.matchId, roomId: room.roomId ?? digest(room.code).slice(0, 32), roomCode: room.code,
       game: room.gameType, ruleVersion: room.game.ruleVersion, startedAt: room.matchStartedAt, endedAt: room.matchEndedAt,
       status, reason, ...(room.matchStartedAt === null ? { legacy: true } : {}),
+      ...(extra ? { ...extra, deltas: extra.deltas.map(({ playerId, points }) => {
+        const participant = room.matchParticipants.find(player => player.playerId === playerId);
+        if (!participant?.userKey) fail(500, 'INVALID_SETTLEMENT', '计分参与者缺少固定账号。');
+        return { userKey: participant.userKey, delta: points };
+      }) } : {}),
       players: (room.matchParticipants ?? []).filter((player) => player.userKey).map((player) => ({
         userKey: player.userKey, seatId: player.playerId, nickname: player.name,
         ...adapter.playerResult(result, player.playerId),
@@ -148,12 +160,46 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
     if (summary.players.length === room.game.players.length && summary.players.length >= 2
         && !room.pendingRecords.some((record) => record.matchId === summary.matchId)) room.pendingRecords.push(summary);
   }
-  function abort(room, reason = 'player-left') {
-    if (!['playing', 'paused'].includes(room.phase)) return;
+  function resetForWaiting(room) {
+    room.game = null; room.phase = 'waiting'; room.pauseVote = null;
+    if (Object.hasOwn(room, 'turnClock')) room.turnClock = null;
+    for (const key of ['matchId', 'matchStartedAt', 'matchEndedAt', 'matchParticipants', 'abortedResult', 'clockAdvance']) delete room[key];
+    for (const entry of room.players) entry.ready = false;
+  }
+  function abort(room, reason = 'player-left', playerId = null) {
+    if (!['playing', 'paused'].includes(room.phase)) return false;
+    const adapter = adapterFor(room);
+    if (typeof adapter.lifecycleTransition === 'function') {
+      const resolvedReason = reason === 'player-left' ? 'voluntary-leave' : reason === 'expired' ? 'room-expired' : reason;
+      const result = adapter.lifecycleTransition(room.game, { reason: resolvedReason, playerId, now: now() });
+      if (!result.ok) fail(409, result.code ?? 'INVALID_LIFECYCLE', result.error);
+      if (result.changed === false) return false;
+      room.game = result.state; room.phase = result.roomPhase; room.pauseVote = null;
+      conclude(room, 'aborted', room.game.result.reason);
+      room.turnClock = null;
+      if (result.returnToWaiting) {
+        room.lastMatchResult = { matchId: room.matchId, reason: room.game.result.reason, result: structuredClone(room.game.result) };
+        resetForWaiting(room);
+      }
+      return true;
+    }
     conclude(room, 'aborted', reason);
     room.phase = 'aborted'; room.pauseVote = null;
     if (Object.hasOwn(room, 'turnClock')) room.turnClock = null;
     room.abortedResult = { reason, winnerIds: [], scores: [], tie: false, aborted: true };
+    return true;
+  }
+  // A trusted caller supplies the current match fence after checking storage and
+  // presence versions. No client action is allowed to declare another seat lost.
+  function applyLifecycle(code, { matchId, reason, playerId = null } = {}) {
+    const room = rooms.get(code);
+    if (!room || !matchId || room.matchId !== matchId || !['playing', 'paused'].includes(room.phase)) return false;
+    if (!['disconnected', 'server-recovery', 'room-expired'].includes(reason)) fail(400, 'INVALID_LIFECYCLE', '系统生命周期原因无效。');
+    if (typeof adapterFor(room).lifecycleTransition !== 'function') return false;
+    if (!abort(room, reason, playerId)) return false;
+    room.revision += 1; room.lastActiveAt = now();
+    activity(room, null, 'cancelled', '本局已取消，不计分。请重新准备。');
+    broadcast(room); return true;
   }
   function finishListeners(room, reason) {
     const listeners = [...room.listeners.values()].flatMap((set) => [...set]);
@@ -193,7 +239,7 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
     const game = room.game ? structuredClone(selfRole==='player'
       ? adapterFor(room).privateView(room.game, player.id, { phase: room.phase, now: now() })
       : adapterFor(room).spectatorView(room.game, { phase: room.phase, now: now() })) : null;
-    if (game && room.phase === 'aborted') { game.status = 'aborted'; game.result = structuredClone(room.abortedResult); game.winnerId = null; }
+    if (game && room.phase === 'aborted' && typeof adapterFor(room).lifecycleTransition !== 'function') { game.status = 'aborted'; game.result = structuredClone(room.abortedResult); game.winnerId = null; }
     if (game && room.phase === 'paused') game.status = 'paused';
     return {
       roomCode: room.code, phase: room.phase, revision: room.revision,
@@ -291,10 +337,25 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
       // Only an explicit business policy can use its immutable stage identity
       // instead of an unrelated player's latest room revision. Durable storage
       // still commits by CAS and retries against the current game state.
-      if (!adapter.concurrentActionTypes?.includes(input.type) && input.expectedRevision !== room.revision) fail(409, 'REVISION_CONFLICT', '房间已更新，请同步后重试。');
-      if (room.phase === 'playing' && room.turnClock && now() >= room.turnClock.deadlineAt
-          && !['leave', 'transferHost'].includes(input.type)) fail(409, 'TURN_TIMEOUT', '本回合时间已到，正在换人，请同步后继续。');
+      if (input.expectedRevision !== room.revision) {
+        const advanced = room.clockAdvance;
+        const onlyClockAdvanced = adapter.clockAdvanceActionTypes?.includes(input.type) && advanced?.kind === 'response'
+          && advanced.matchId === room.matchId && input.expectedRevision === advanced.fromRevision && room.revision === advanced.toRevision;
+        if (!adapter.concurrentActionTypes?.includes(input.type) && !onlyClockAdvanced) fail(409, 'REVISION_CONFLICT', '房间已更新，请同步后重试。');
+        if (typeof adapter.actionConcurrencyProblem === 'function') {
+          const issue = adapter.actionConcurrencyProblem(room, player.id, input, { now: now() });
+          if (issue) fail(issue.status, issue.code, issue.message);
+        }
+      }
+      const deadline = typeof adapter.actionDeadline === 'function' ? adapter.actionDeadline(room, input)
+        : room.phase === 'playing' && !['leave', 'transferHost'].includes(input.type) ? room.turnClock?.deadlineAt : null;
+      if (deadline != null && now() >= deadline) fail(409, typeof adapter.actionDeadline === 'function' ? 'RESPONSE_EXPIRED' : 'TURN_TIMEOUT',
+        typeof adapter.actionDeadline === 'function' ? '机会已结束，请同步后继续。' : '本回合时间已到，正在换人，请同步后继续。');
       const spectator=!(room.players.some(entry=>entry.id===player.id));
+      if (COMMON_ACTIONS.has(input.type) && typeof adapter.commonActionProblem === 'function') {
+        const issue = adapter.commonActionProblem(room, player.id, input, { now: now(), role: spectator ? 'spectator' : 'player' });
+        if (issue) fail(issue.status, issue.code, issue.message);
+      }
       if(spectator && !['leave','set-role'].includes(input.type)) fail(403,'SPECTATOR_READ_ONLY','观众可以聊天和退出，不能操作对局。');
       if(input.type==='set-role' && room.phase!=='waiting') fail(409,'ROOM_LOCKED','开局前才能切换玩家和观众。');
       if (['ready', 'start','configure'].includes(input.type) && room.phase !== 'waiting') {
@@ -319,33 +380,29 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
         adapter.playersChanged(room);
       } else if (input.type === 'ready') player.ready = input.ready;
       else if (input.type === 'start') {
+        roomType(room.gameType); // Restorable games may still be closed to new matches.
         if (player.id !== room.hostId) fail(403, 'HOST_REQUIRED', '只有房主可以开始对局。');
         if (room.players.length < adapter.minPlayers || room.players.length > adapter.maxPlayers || !room.players.every((entry) => entry.ready)) {
           fail(409, 'NOT_READY', `需要${adapter.minPlayers === adapter.maxPlayers ? adapter.minPlayers : `${adapter.minPlayers}～${adapter.maxPlayers}`}人加入，且所有人准备后才能开始。`);
         }
-        const newMatchId = randomBytes(16).toString('hex');
+        const newMatchId = randomBytes(16).toString('hex'), startedAt = now();
         room.game = adapter.createGame(room.players.map(({ id, name }) => ({ id, name })),
-          adapter.gameOptions(room, { ...gameOptions, serverRandomInt, now: now(), matchId: newMatchId }));
+          adapter.gameOptions(room, { ...gameOptions, serverRandomInt, now: startedAt, matchId: newMatchId }));
         room.phase = 'playing';
-        room.matchId = newMatchId; room.matchStartedAt = now(); delete room.matchEndedAt;
+        room.matchId = newMatchId; room.matchStartedAt = startedAt; delete room.matchEndedAt;
         room.matchParticipants = room.players.map(({ id, userKey, name }) => ({ playerId: id, ...(userKey ? { userKey } : {}), name }));
-        room.pauseVote = null; delete room.abortedResult;
+        room.pauseVote = null; delete room.abortedResult; delete room.clockAdvance; delete room.lastMatchResult;
         const durationMs = adapter.turnTimeoutMs(turnTimeoutMs);
-        if (durationMs > 0 && adapter.supportsTimeout(room.game)) startClock(room, currentPlayer(room), durationMs);
+        if (typeof adapter.gameClock === 'function' || durationMs > 0 && adapter.supportsTimeout(room.game)) startClock(room, currentPlayer(room), durationMs);
         else delete room.turnClock;
       } else if (input.type === 'rematch') {
         if (player.id !== room.hostId) fail(403, 'HOST_REQUIRED', '只有房主可以发起下一局。');
         if (!['finished', 'aborted'].includes(room.phase)) fail(409, 'GAME_NOT_FINISHED', '本局结束后才能再来一局。');
-        room.game = null;
-        room.phase = 'waiting';
+        resetForWaiting(room);
         if (typeof adapter.rematchRoomUpdates === 'function') Object.assign(room, adapter.rematchRoomUpdates(room, gameOptions));
-        if (Object.hasOwn(room, 'turnClock')) room.turnClock = null;
-        for (const key of ['matchId', 'matchStartedAt', 'matchEndedAt', 'matchParticipants', 'abortedResult']) delete room[key];
-        room.pauseVote = null;
-        for (const entry of room.players) entry.ready = false;
       } else if (input.type === 'leave') {
         const endedActiveGame = !spectator && ['playing', 'paused'].includes(room.phase);
-        if(!spectator) {abort(room);room.pauseVote = null;}
+        if(!spectator) {abort(room, 'player-left', player.id);room.pauseVote = null;}
         const receiptKey = player.userKey ?? player.tokenHash;
         room.leaveReceipts ??= {};
         room.leaveReceipts[receiptKey] = { fingerprint, requestId: input.requestId, at: now(), result: { view: null, left: true } };
@@ -360,7 +417,7 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
           const host = room.players.find((entry) => entry.id === room.hostId);
           if (host) activity(room, player, 'transferHost', `${host.name}接任房主。`);
         }
-        activity(room, player, 'leave', `${player.name}退出房间。${endedActiveGame ? '本局中止，不计输赢。' : ''}`);
+        activity(room, player, 'leave', `${player.name}退出房间。${endedActiveGame ? typeof adapter.lifecycleTransition === 'function' ? '本局已结束，离席计分已确认。' : '本局中止，不计输赢。' : ''}`);
         room.revision += 1;
         room.lastActiveAt = now();
         for (const listener of departing) {
@@ -388,7 +445,7 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
       } else {
         if (room.phase !== 'playing') fail(409, room.phase === 'paused' ? 'GAME_PAUSED' : 'GAME_NOT_PLAYING', room.phase === 'paused' ? '对局已暂停，继续后才能出牌。' : '当前没有进行中的对局。');
         const result = adapter.applyGameAction(room.game, player.id, input, { serverRandomInt, now: now(), phase: room.phase });
-        if (!result.ok) fail(409, 'INVALID_GAME_ACTION', result.error);
+        if (!result.ok) fail(409, result.code ?? 'INVALID_GAME_ACTION', result.error);
         if (result.guessResult !== undefined) {
           if (typeof adapter.receiptResultProblem !== 'function' || adapter.receiptResultProblem(result.guessResult)) fail(500, 'INVALID_RECEIPT', '游戏反馈暂时无法保存。');
           guessResult = structuredClone(result.guessResult);
@@ -431,11 +488,13 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
   function applyTurnTimeout(code, fence) {
     const room = rooms.get(code), clock = room?.turnClock;
     if (!clock || room.phase !== 'playing' || now() < clock.deadlineAt || now() >= expiry(room)
-        || !fence || ['matchId', 'round', 'playerId', 'deadlineAt', ...(clock.version === 2 ? ['stageKey'] : [])].some((key) => fence[key] !== clock[key])) return false;
-    const player = room.players.find(({ id }) => id === clock.playerId), adapter = adapterFor(room);
+        || !fence || (clock.version === 3 ? ['matchId', 'kind', 'id', 'deadlineAt'] : ['matchId', 'round', 'playerId', 'deadlineAt', ...(clock.version === 2 ? ['stageKey'] : [])]).some((key) => fence[key] !== clock[key])) return false;
+    const player = room.players.find(({ id }) => id === (clock.playerId ?? currentPlayer(room))), adapter = adapterFor(room);
     const timeoutText = adapter.describeTimeout(room.game, player);
     const result = adapter.applyTimeout(room.game, clock.playerId, { now: now(), serverRandomInt });
     if (!result.ok) fail(500, 'INVALID_TIMEOUT', result.error);
+    if (result.changed === false) return false;
+    if (clock.version === 3) room.clockAdvance = { fromRevision: room.revision, toRevision: room.revision + 1, clockId: clock.id, kind: clock.kind, matchId: room.matchId };
     room.game = result.state;
     if (room.game.status === 'finished') { room.phase = 'finished'; room.pauseVote = null; conclude(room, 'completed', room.game.result.reason); }
     activity(room, player, 'timeout', timeoutText);
@@ -549,7 +608,7 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
     if (data.schemaVersion === 1 && !['waiting', 'playing', 'finished'].includes(data.phase)
         || ['playing', 'paused', 'finished', 'aborted'].includes(data.phase) && !data.game
         || data.phase === 'waiting' && data.game !== null
-        || data.game && data.game.status !== (data.phase === 'finished' ? 'finished' : 'playing')
+        || data.game && data.game.status !== (typeof adapter.gameStatusForRoomPhase === 'function' ? adapter.gameStatusForRoomPhase(data.phase) : data.phase === 'finished' ? 'finished' : 'playing')
         || data.hostSinceAt !== undefined && !Number.isFinite(data.hostSinceAt)
         || data.matchId !== undefined && !/^[a-f0-9]{32}$/.test(data.matchId)
         || data.matchStartedAt !== undefined && data.matchStartedAt !== null && !Number.isFinite(data.matchStartedAt)
@@ -563,7 +622,7 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
           || typeof entry.actorName !== 'string' || [...entry.actorName].length > 16 || /\p{Cc}/u.test(entry.actorName)
           || typeof entry.text !== 'string' || entry.text.length > 160 || /\p{Cc}/u.test(entry.text)))
         || data.pendingRecords !== undefined && (!Array.isArray(data.pendingRecords) || data.pendingRecords.some((record) => !/^[a-f0-9]{32}$/.test(record.matchId ?? '') || !['completed', 'aborted'].includes(record.status)))
-        || data.phase === 'aborted' && (!data.abortedResult?.aborted || data.abortedResult.winnerIds?.length || data.abortedResult.scores?.length)
+        || data.phase === 'aborted' && typeof adapter.lifecycleTransition !== 'function' && (!data.abortedResult?.aborted || data.abortedResult.winnerIds?.length || data.abortedResult.scores?.length)
         || data.pauseVote && (data.phase !== 'playing' || !Array.isArray(data.pauseVote.agreedIds)
           || !data.players.some((player) => player.id === data.pauseVote.requestedBy)
           || new Set(data.pauseVote.agreedIds).size !== data.pauseVote.agreedIds.length
@@ -646,5 +705,5 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
     closedRooms.clear();
   }
   return { createRoom, joinRoom, getView, action, subscribe, sweep, close,
-    createTrustedRoom, joinTrustedRoom, getTrustedView, trustedAction, exportSnapshot, importSnapshot, expireRoom, applyTurnTimeout };
+    createTrustedRoom, joinTrustedRoom, getTrustedView, trustedAction, exportSnapshot, importSnapshot, expireRoom, applyTurnTimeout, applyLifecycle };
 }

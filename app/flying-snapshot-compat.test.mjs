@@ -137,12 +137,12 @@ test('schema9 serializer preserves spectators and request receipts without leaki
   assert.equal(snapshotFormatProblem(result, syntheticFlyingAdapter), false);
 });
 
-test('current candidate reads/writes schema10 and thirteen scopes while retaining schema8/9 nine-scope releases', () => {
-  assert.deepEqual(CURRENT_DATA_COMPATIBILITY.roomSnapshots.read, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-  assert.deepEqual(CURRENT_DATA_COMPATIBILITY.roomSnapshots.write, [2, 3, 4, 5, 6, 7, 8, 9, 10]);
+test('current candidate reads/writes schema11 and sixteen scopes while retaining schema8/9 nine-scope releases', () => {
+  assert.deepEqual(CURRENT_DATA_COMPATIBILITY.roomSnapshots.read, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+  assert.deepEqual(CURRENT_DATA_COMPATIBILITY.roomSnapshots.write, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
   const historicalScopes = ['game-profiles', 'room-invites', 'rooms', 'room-memberships', 'room-registry', 'room-requests', 'room-chat', 'game-history', 'history-index'];
   assert.deepEqual(CURRENT_DATA_COMPATIBILITY.backupScopes.read,
-    [...historicalScopes, 'wordbank-packs', 'wordbank-releases', 'wordbank-index', 'draw-canvases']);
+    [...historicalScopes, 'wordbank-packs', 'wordbank-releases', 'wordbank-index', 'draw-canvases', 'game-score-ledger', 'game-score-balances', 'game-score-meta']);
   assert.deepEqual(CURRENT_DATA_COMPATIBILITY.backupScopes.write, CURRENT_DATA_COMPATIBILITY.backupScopes.read);
   const manifest = (id, compatibility) => ({ format: 1, project: 'game-room', releaseId: id.repeat(20), containsSecrets: false,
     containsUserData: false, identityPolicy: 'agora-account-security-v1', dataCompatibility: compatibility });

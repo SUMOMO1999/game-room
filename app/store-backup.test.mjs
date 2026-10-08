@@ -118,7 +118,8 @@ test('backup/verify/restore command line uses an owner-only key file and never e
     return JSON.parse(output.stdout);
   }
   assert.equal(run('store-backup.mjs', [f.backup]).recordCount, 1);
-  assert.equal(run('store-backup.mjs', ['--verify', f.backup]).verified, true);
+  const verified = run('store-backup.mjs', ['--verify', f.backup]);
+  assert.equal(verified.verified, true); assert.equal(verified.scoresIncluded, true);
   assert.equal(run('store-restore.mjs', [f.backup, f.restored, '--offline']).authSessionsRestored, false);
 });
 

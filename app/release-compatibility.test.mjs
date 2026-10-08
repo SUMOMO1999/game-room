@@ -128,6 +128,26 @@ test('schema9 unhealthy activation never starts the prior schema8 code or rolls 
   assert.ok(!f.commands().includes(`start game-room.service ${f.priorDir}`));
 });
 
+test('schema11 and permanent score scopes forbid rollback to the published schema10 thirteen-scope package', t => {
+  const prior = current();
+  prior.roomSnapshots.read = prior.roomSnapshots.read.filter(version => version <= 10);
+  prior.roomSnapshots.write = prior.roomSnapshots.write.filter(version => version <= 10);
+  for (const direction of ['read', 'write']) prior.backupScopes[direction] = prior.backupScopes[direction].filter(scope => !scope.startsWith('game-score-'));
+  assert.equal(prior.backupScopes.read.length, 13);
+  assert.equal(current().backupScopes.read.length, 16);
+  const f = fixture(t, { prior });
+  assert.equal(activationPolicy(f.candidateManifest, f.priorManifest), 'rollback-forbidden');
+  const result = f.run();
+  assert.equal(result.status, 1); assert.match(result.stderr, /AUTOMATIC ROLLBACK FORBIDDEN/);
+  assert.equal(realpathSync(f.link), f.candidateDir);
+  assert.equal(readFileSync(f.database, 'utf8'), 'candidate-data-retained');
+  assert.ok(!f.commands().includes(`start game-room.service ${f.priorDir}`));
+  assert.equal(compareReleaseCompatibility(manifest(candidateId, prior), manifest(priorId, current())).forwardCompatible, false);
+  // Merely understanding schema11 is insufficient when the recovery package drops scores.
+  prior.roomSnapshots = current().roomSnapshots;
+  assert.equal(compareReleaseCompatibility(manifest(candidateId, prior), manifest(priorId, current())).forwardCompatible, false);
+});
+
 test('attempting schema8 code against a schema9 prior stops before preflight, backup, service or current changes', t => {
   const old = current(); old.roomSnapshots = { read: [1, 2, 3, 4, 5, 6, 7, 8], write: [2, 3, 4, 5, 6, 7, 8] };
   const f = fixture(t, { candidate: old, prior: current() }), identityPolicy = 'agora-account-security-v1';

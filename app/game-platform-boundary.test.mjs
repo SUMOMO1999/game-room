@@ -179,3 +179,57 @@ test('corrupt historical game-type and rule-version mixtures retain the original
     }
   }
 });
+
+test('an unrelated no-card engine gains dynamic clocks, non-current responses and its own lifecycle result explicitly', t => {
+  const base = syntheticAdapter();
+  const adapter = { ...base, actionTypes: ['choose', 'respond'], concurrentActionTypes: ['respond'],
+    actionFields: type => type === 'choose' ? ['choice'] : type === 'respond' ? ['windowId'] : null,
+    createGame(players, options) { return { ...base.createGame(players, options), window: null, respondedBy: null }; },
+    privateView(game, playerId) { return { ...base.privateView(game, playerId), respondedBy: game.respondedBy }; },
+    roomDefaults: () => ({ turnClock: null }), turnTimeoutMs: () => 0,
+    commonActionProblem: (room, playerId, action) => action.type === 'pause' ? problem(409, 'NO_PAUSE', '此游戏不提供暂停。') : null,
+    gameClock: game => game.window ? { kind: 'answer', id: game.window.id, deadlineAt: game.window.deadlineAt } : null,
+    actionDeadline: (room, action) => action.type === 'respond' ? room.game.window?.deadlineAt ?? null : null,
+    actionConcurrencyProblem(room, playerId, action) {
+      return !room.game.window || action.windowId !== room.game.window.id || playerId === room.game.players[room.game.turnIndex].id
+        ? problem(409, 'STALE_QUESTION', '本题已改变。') : null;
+    },
+    applyGameAction(game, playerId, action, { now }) {
+      const state = structuredClone(game);
+      if (action.type === 'choose') {
+        if (game.players[game.turnIndex].id !== playerId) return { ok: false, error: '当前不能提问。' };
+        state.window = { id: `question-${game.revision}`, deadlineAt: now + 1000 };
+      } else {
+        if (!game.window || game.window.id !== action.windowId || game.players[game.turnIndex].id === playerId) return { ok: false, error: '当前不能回答。' };
+        state.window = null; state.respondedBy = playerId;
+      }
+      state.revision++; return { ok: true, state };
+    },
+    applyTimeout(game) { return { ok: true, state: { ...structuredClone(game), window: null, revision: game.revision + 1 } }; },
+    describeTimeout: () => '回答机会结束，提问者继续。',
+    lifecycleTransition(game, { reason }) { return { ok: true, state: { ...structuredClone(game), status: 'finished', window: null,
+      result: { reason, outcomes: {}, unfinishedChoicePreserved: true } }, roomPhase: 'finished', returnToWaiting: false }; },
+  };
+  const f = fixture({ gameType: adapter.gameType, gameRegistry: createGameRegistry([adapter]) }); t.after(() => f.store.close()); f.start();
+  assert.equal(f.view().turnClock, null); assert.throws(() => f.act(0, 'pause'), error => error.code === 'NO_PAUSE');
+  f.act(0, 'choose', { choice: 1 }); const clock = f.view().turnClock;
+  assert.equal(clock.version, 3); assert.equal(clock.kind, 'answer');
+  const intent = { type: 'respond', requestId: 'different-engine-response', expectedRevision: f.view(1).revision, windowId: clock.id };
+  f.store.joinTrustedRoom(f.host.roomCode, users[2], '观众');
+  f.store.trustedAction(f.host.roomCode, users[1], intent);
+  assert.equal(f.view().game.respondedBy, f.view(1).selfId); assert.equal(f.view().turnClock, null);
+  f.act(0, 'choose', { choice: 2 }); const second = f.view().turnClock; f.set(second.deadlineAt);
+  assert.equal(f.store.applyTurnTimeout(f.host.roomCode, second), true);
+  assert.equal(f.view().game.turnIndex, 0); assert.equal(f.view().turnClock, null);
+  assert.equal(f.store.applyLifecycle(f.host.roomCode, { matchId: f.view().matchId, reason: 'server-recovery' }), true);
+  assert.equal(f.view().phase, 'finished'); assert.equal(f.view().game.result.unfinishedChoicePreserved, true);
+  assert.equal(JSON.stringify(f.view()).includes('remainingPoints'), false);
+});
+
+test('malformed optional clock, lifecycle and retry policies fail registration', () => {
+  for (const fields of [{ gameClock: true }, { lifecycleTransition: true }, { recoverOnStartup: true },
+    { businessCasAttempts: 0 }, { disconnectTimeoutMs: 120000 }, { clockAdvanceActionTypes: ['choose'] },
+    { maxSnapshotBytes: -1 }, { accountingPolicy: { accountGroup: 'a', scoringVersion: 'v1' } }]) {
+    assert.throws(() => createGameRegistry([{ ...syntheticAdapter(), ...fields }]), /适配器不完整/);
+  }
+});

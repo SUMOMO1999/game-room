@@ -36,7 +36,7 @@ for(const phase of ['waiting','drawing'])test(`whole drawing ${phase} restores i
   }
   const original=(await f.storage.read('rooms',f.host.view.roomId)).value.snapshot;
   const artifact=join(f.dir,'business.sqlite'),restored=join(f.dir,'restored.sqlite');
-  const report=await backupStore({sourcePath:f.path,destinationPath:artifact,key:f.key,now});assert.equal(report.scopes.length,13);
+  const report=await backupStore({sourcePath:f.path,destinationPath:artifact,key:f.key,now});assert.equal(report.scopes.length,16);
   assert.equal(verifyBackup({sourcePath:artifact,key:f.key}).manifest.authSessionsIncluded,false);
   restoreStore({sourcePath:artifact,destinationPath:restored,key:f.key,offline:true});
   const child=`import {EncryptedStore,SQLiteAdapter} from './server/storage.mjs';import {createRuntime} from './server/runtime.mjs';import {readSettings} from './server/config.mjs';import {closeRuntime} from './server/production.mjs';

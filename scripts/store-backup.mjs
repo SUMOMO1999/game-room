@@ -5,8 +5,8 @@ try {
   const key = readStoreKey();
   if (!key) throw new Error('A stable server-only store key is required');
   if (args.length === 2 && args[0] === '--verify') {
-    const { manifest } = verifyBackup({ sourcePath: args[1], key });
-    console.log(JSON.stringify({ verified: true, ...manifest }));
+    const { manifest, scoresIncluded } = verifyBackup({ sourcePath: args[1], key });
+    console.log(JSON.stringify({ verified: true, ...manifest, scoresIncluded }));
   } else if (args.length === 1 && process.env.GAME_ROOM_STORE_PATH) {
     console.log(JSON.stringify(await backupStore({ sourcePath: process.env.GAME_ROOM_STORE_PATH,
       destinationPath: args[0], key })));

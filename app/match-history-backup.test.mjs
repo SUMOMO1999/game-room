@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { EncryptedStore, SQLiteAdapter, identityKey } from '../server/storage.mjs';
 import { createMatchHistory, HISTORY_RETENTION_MS } from '../server/match-history.mjs';
-import { backupStore, verifyBackup, restoreStore, LEGACY_RECOVERY_SCOPES, CHAT_RECOVERY_SCOPES, RECOVERY_SCOPES } from '../server/backup.mjs';
+import { backupStore, verifyBackup, restoreStore, LEGACY_RECOVERY_SCOPES, CHAT_RECOVERY_SCOPES, HISTORY_RECOVERY_SCOPES, DRAWING_RECOVERY_SCOPES, RECOVERY_SCOPES } from '../server/backup.mjs';
 
 const a = identityKey('urn:synthetic-history-backup', 'a'), b = identityKey('urn:synthetic-history-backup', 'b');
 const id = (number) => number.toString(16).padStart(32, '0');
@@ -71,6 +71,20 @@ for (const scopes of [LEGACY_RECOVERY_SCOPES, CHAT_RECOVERY_SCOPES]) test(`signe
   db.prepare('UPDATE game_metadata SET value=? WHERE name=?').run(JSON.stringify(signed), 'backup-manifest'); db.close();
   assert.equal(verifyBackup({ sourcePath: f.backupPath, key: f.key }).historyIncluded, false);
   assert.equal(f.restore().historyIncluded, false); assert.deepEqual((await f.open(f.restoredPath).history.get(a)).items, []);
+});
+
+for (const scopes of [LEGACY_RECOVERY_SCOPES, CHAT_RECOVERY_SCOPES, HISTORY_RECOVERY_SCOPES, DRAWING_RECOVERY_SCOPES])
+test(`legacy ${scopes.length}-scope recovery explicitly excludes permanent scores and cannot overwrite an existing store`, async t => {
+  const f = await fixture(t); await f.storage.put('game-profiles', a, { userKey: a, nickname: '原资料' }); await f.backup();
+  const db = new DatabaseSync(f.backupPath);
+  const { signature, ...manifest } = JSON.parse(db.prepare('SELECT value FROM game_metadata WHERE name=?').get('backup-manifest').value);
+  manifest.scopes = scopes;
+  db.prepare('UPDATE game_metadata SET value=? WHERE name=?').run(JSON.stringify({ ...manifest,
+    signature: createHmac('sha256', f.key).update('game-room-backup:v1\0').update(JSON.stringify(manifest)).digest('hex') }), 'backup-manifest'); db.close();
+  assert.equal(verifyBackup({ sourcePath: f.backupPath, key: f.key }).scoresIncluded, false);
+  assert.equal(f.restore().scoresIncluded, false);
+  assert.throws(() => restoreStore({ sourcePath: f.backupPath, destinationPath: f.sourcePath, key: f.key, offline: true }), /Destination already exists/);
+  assert.deepEqual((await f.storage.read('game-profiles', a)).value, { userKey: a, nickname: '原资料' });
 });
 
 test('a signed old manifest cannot smuggle result scopes; invalid result or index retention fails before publishing a backup', async (t) => {
