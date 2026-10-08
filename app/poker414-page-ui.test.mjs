@@ -156,6 +156,13 @@ test('414 members refresh read-only totals and expired response triggers one rea
   const f = await mount(t), view = normalized('response'); view.serverTime = view.response.deadlineAt;
   f.ui.applyView(view); for (const tick of f.timers) tick(); assert.deepEqual(f.refreshes, [{ reason: 'response-expired' }]); assert.equal(f.actions.length, 0);
   f.node('p414-members').click(); assert.deepEqual(f.refreshes[1], { reason: 'scores' }); assert.match(f.node('p414-inspector-content').textContent, /待确认/);
+  const memberText = f.node('p414-inspector-content').textContent;
+  let previousIndex = -1;
+  for (const [index, id] of view.actionOrder.entries()) {
+    const player = view.players.find(item => item.id === id);
+    const found = memberText.indexOf(`${index + 1} · ${player.name}`);
+    assert.ok(found > previousIndex); previousIndex = found;
+  }
   f.ui.applyView({ ...view, players: view.players.map(player => ({ ...player, total: 123 })) });
   assert.match(f.node('p414-inspector-content').textContent, /123/); assert.equal(f.node('p414-inspector-dialog').open, true);
   f.ui.destroy(); assert.equal(f.timers.size, 0);

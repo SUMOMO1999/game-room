@@ -6,9 +6,12 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
 import { readSettings, readStoreKey, isSystemdStoreCredential } from '../server/config.mjs';
-import { prepareProduction, runtimeVersions } from '../server/production.mjs';
+import { prepareProduction, runtimeVersions, closeRuntime } from '../server/production.mjs';
 import { createUnifiedServer } from '../server/unified-http.mjs';
-import { identityKey } from '../server/storage.mjs';
+import { identityKey, EncryptedStore, SQLiteAdapter } from '../server/storage.mjs';
+import { createDurableRoomStore } from '../server/durable-rooms.mjs';
+import { createGameRegistry, defaultGameRegistry } from './game-registry.mjs';
+import { createGameScores, SCORE_SCOPES } from '../server/game-scores.mjs';
 
 function directory(t) { const dir = mkdtempSync(path.join(tmpdir(), 'game-production-')); t.after(() => rmSync(dir, { recursive: true, force: true })); return dir; }
 const base = () => ({ NODE_ENV: 'production', GAME_ROOM_AUTH_MODE: 'cognito', GAME_ROOM_CLIENT_ID: 'ownclient12345678' });
@@ -53,6 +56,64 @@ test('first drawing boot awaits wordbank and canvas initialization before accept
   try {assert.equal(a.liveStoreValidation.counts['wordbank-releases'],1);assert.equal(a.liveStoreValidation.counts['draw-canvases'],1);
     assert.equal((await a.wordbanks.getRelease({userKey:'a'.repeat(64),member:true},'dg-base',1)).words.length,560);
   }finally{a.preview?.close();await a.canvases.close();await a.chat.close();await a.rooms.close();a.storage.close();}
+});
+
+async function interrupted414(t) {
+  const dir = directory(t), key = randomBytes(32), storePath = path.join(dir, 'interrupted.sqlite');
+  const env = { ...base(), GAME_ROOM_STORE_PATH: storePath, GAME_ROOM_STORE_KEY: key.toString('base64url') };
+  const users = [0, 1, 2].map(index => identityKey('urn:production-414-recovery', String(index)));
+  const storage = new EncryptedStore(new SQLiteAdapter(storePath), key);
+  const gameRegistry = createGameRegistry(['poker414-2'].map(defaultGameRegistry.gameAdapter));
+  const rooms = createDurableRoomStore({ storage, gameRegistry, pollIntervalMs: 0 });
+  let sequence = 0;
+  async function action(code, user, type, extra = {}) {
+    const view = await rooms.getView(code, user);
+    return rooms.action(code, user, { type, requestId: `production-${++sequence}`, expectedRevision: view.revision, ...extra });
+  }
+  async function start() {
+    const host = await rooms.createRoom(users[0], '启动甲', `create-${++sequence}`, 'poker414-2');
+    for (const user of users.slice(1)) await rooms.joinRoom(host.roomCode, user, '启动伙伴', `join-${++sequence}`);
+    for (const user of users) await action(host.roomCode, user, 'ready', { ready: true });
+    await action(host.roomCode, users[0], 'start'); return host;
+  }
+  try {
+    const completed = await start(); await action(completed.roomCode, users[0], 'leave');
+    const active = await start(), before = (await storage.read('rooms', active.view.roomId)).value.snapshot;
+    return { env, users, key, storePath, active, before };
+  } finally { await rooms.close(); storage.close(); }
+}
+
+test('production preflight completes interrupted 414 cancellation before reporting ready and preserves prior points', async t => {
+  const fixture = await interrupted414(t), runtime = await prepareProduction(fixture.env);
+  try {
+    // Deliberately inspect raw persisted state first: calling rooms.getView here
+    // would itself await ready and conceal a premature production return.
+    const snapshot = (await runtime.storage.read('rooms', fixture.active.view.roomId)).value.snapshot;
+    assert.equal(snapshot.phase, 'waiting'); assert.equal(snapshot.lastMatchResult.reason, 'server-recovery');
+    assert.equal(snapshot.lastMatchResult.matchId, fixture.before.matchId);
+    assert.deepEqual(snapshot.players.map(player => player.id), fixture.before.players.map(player => player.id));
+    const scores = createGameScores({ storage: runtime.storage });
+    assert.deepEqual((await Promise.all(fixture.users.map(user => scores.readBalance(user)))).map(value => value.total), [-10, 5, 5]);
+    const ledger = await runtime.storage.scan(SCORE_SCOPES.ledger);
+    assert.equal(ledger.length, 2);
+    assert.deepEqual(ledger.find(row => row.value.reason === 'server-recovery').value.deltas.map(row => row.delta), [0, 0, 0]);
+  } finally { await closeRuntime(runtime); }
+});
+
+test('production preflight rejects failed 414 recovery without reporting ready or changing committed points', async t => {
+  const fixture = await interrupted414(t), original = SQLiteAdapter.prototype.compareAndSwapMany;
+  const failure = new Error('Synthetic startup transaction unavailable'); let writes = 0;
+  SQLiteAdapter.prototype.compareAndSwapMany = async function () { writes++; throw failure; };
+  try { await assert.rejects(prepareProduction(fixture.env), error => error === failure); }
+  finally { SQLiteAdapter.prototype.compareAndSwapMany = original; }
+  assert.ok(writes > 0);
+  const storage = new EncryptedStore(new SQLiteAdapter(fixture.storePath), fixture.key);
+  try {
+    assert.deepEqual((await storage.read('rooms', fixture.active.view.roomId)).value.snapshot, fixture.before);
+    assert.equal((await storage.scan(SCORE_SCOPES.ledger)).length, 1);
+    const scores = createGameScores({ storage });
+    assert.deepEqual((await Promise.all(fixture.users.map(user => scores.readBalance(user)))).map(value => value.total), [-10, 5, 5]);
+  } finally { storage.close(); }
 });
 function request(port, pathname, headers = {}, method = 'GET') {
   return new Promise((resolve, reject) => { const req = http.request({ host: '127.0.0.1', port, path: pathname, method, headers: { Host: 'game.sumomoli.com', ...headers } }, res => { let body = ''; res.on('data', chunk => body += chunk); res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body })); }); req.on('error', reject); req.end(); });

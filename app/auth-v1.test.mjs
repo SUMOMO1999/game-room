@@ -49,8 +49,21 @@ test('production requires dedicated client, secure identity, durable path and st
 
 test('returnTo permits only exact local invitation routes and rejects encoded or duplicate escape', () => {
   const origin = 'https://game.sumomoli.com';
-  for (const path of ['/', '/?room=123456', '/room.html?code=000000', '/army.html?code=001234']) assert.equal(safeReturnTo(path, origin), path);
+  for (const path of ['/', '/?room=123456', '/room.html?code=000000', '/army.html?code=001234', '/poker414.html?code=123456']) assert.equal(safeReturnTo(path, origin), path);
   for (const path of ['https://evil.example/', '//evil.example', '/\\evil.example', '/?room=123456&room=654321', '/?room=%31%32%33%34%35%36', '/?room=123456%2526evil=1', '/room.html?code=123456&role=host', '/army.html?code=123456&side=red', '/army.html?code=123456#fake', '/army.html?code=%31%32%33%34%35%36', '/?room=12345', '/\n', '/auth/callback', '/?room=123456#evil']) assert.equal(safeReturnTo(path, origin), '/');
+});
+
+test('414 production entry is opt-in with unified accounts and rejects ambiguous flag values', () => {
+  assert.equal(readSettings({ GAME_ROOM_AUTH_MODE: 'mock' }).poker414Enabled, false);
+  assert.equal(readSettings({ GAME_ROOM_AUTH_MODE: 'mock', GAME_ROOM_POKER414_ENABLED: '0' }).poker414Enabled, false);
+  assert.equal(readSettings({ GAME_ROOM_AUTH_MODE: 'mock', GAME_ROOM_POKER414_ENABLED: '1' }).poker414Enabled, true);
+  const production = { NODE_ENV: 'production', GAME_ROOM_AUTH_MODE: 'cognito', GAME_ROOM_CLIENT_ID: 'ownclient12345678',
+    GAME_ROOM_STORE_PATH: '/tmp/game.sqlite', GAME_ROOM_STORE_KEY: randomBytes(32).toString('base64url') };
+  assert.equal(readSettings({ ...production, GAME_ROOM_POKER414_ENABLED: '1' }).poker414Enabled, true);
+  for (const value of ['', 'true', 'yes', 1]) assert.throws(() => readSettings({ GAME_ROOM_AUTH_MODE: 'mock', GAME_ROOM_POKER414_ENABLED: value }), /explicit/);
+  for (const mode of ['legacy', 'disabled']) assert.throws(() => readSettings({ GAME_ROOM_AUTH_MODE: mode, GAME_ROOM_POKER414_ENABLED: '1' }), /unified/);
+  for (const path of ['/poker414.html?code=123456&role=host', '/poker414.html?code=123456&code=654321', '/poker414.html?code=%31%32%33%34%35%36'])
+    assert.equal(safeReturnTo(path, 'https://game.sumomoli.com'), '/');
 });
 
 test('Cognito authorization requests only openid and binds PKCE S256, state, nonce and exact callback', async () => {

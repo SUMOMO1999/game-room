@@ -49,12 +49,15 @@ export function readSettings(env = process.env) {
   const production = env.NODE_ENV === 'production';
   const drawingFlag = env.GAME_ROOM_DRAWING_ENABLED;
   if (drawingFlag !== undefined && !['0', '1'].includes(drawingFlag)) throw new Error('Drawing entry requires an explicit 0 or 1');
+  const poker414Flag = env.GAME_ROOM_POKER414_ENABLED;
+  if (poker414Flag !== undefined && !['0', '1'].includes(poker414Flag)) throw new Error('414 entry requires an explicit 0 or 1');
   const agoraFlag = env.GAME_ROOM_AGORA_ENTRY_ENABLED;
   if (agoraFlag !== undefined && agoraFlag !== '0' && agoraFlag !== '1') throw new Error('Agora game entry requires an explicit 0 or 1');
   const agoraEntryEnabled = agoraFlag === '1';
   if (agoraEntryEnabled && !production) throw new Error('Configured Agora game entry is production-only');
   const mode = env.GAME_ROOM_AUTH_MODE || (production ? 'disabled' : 'legacy');
   if (!['legacy', 'disabled', 'mock', 'cognito'].includes(mode)) throw new Error('Invalid game-room identity mode');
+  if (poker414Flag === '1' && !['mock', 'cognito'].includes(mode)) throw new Error('414 requires unified member accounts');
   const refreshFlag = env.GAME_ROOM_SESSION_REFRESH_ENABLED;
   if (refreshFlag !== undefined && !['0', '1'].includes(refreshFlag)) throw new Error('Session refresh requires an explicit 0 or 1');
   const sessionRefreshEnabled = refreshFlag === '1';
@@ -85,6 +88,7 @@ export function readSettings(env = process.env) {
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Invalid game-room port');
   const settings = {
     drawingEnabled: drawingFlag === '1',
+    poker414Enabled: poker414Flag === '1',
     identityBatchEnabled,
     identityCheckIntervalMs,
     ...(identityBatchEnabled ? { identityBatchKeyId: env.GAME_ROOM_IDENTITY_BATCH_KEY_ID,
@@ -126,6 +130,6 @@ export function readSettings(env = process.env) {
 // URL text is checked before parsing: encoded delimiters and duplicate parameters never enter a transaction.
 export function safeReturnTo(value, origin) {
   if (typeof value !== 'string' || value.length > 80 || /[\\\x00-\x20\x7f%#]/.test(value)) return '/';
-  if (!/^(?:\/|\/\?room=\d{6}|\/words(?:\.html)?|\/(?:room|army|flying|drawing)\.html\?code=\d{6})$/.test(value)) return '/';
+  if (!/^(?:\/|\/\?room=\d{6}|\/words(?:\.html)?|\/(?:room|army|flying|drawing|poker414)\.html\?code=\d{6})$/.test(value)) return '/';
   try { return new URL(value, origin).origin === origin ? value : '/'; } catch { return '/'; }
 }

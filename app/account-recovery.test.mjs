@@ -42,6 +42,15 @@ test('game availability requires explicit server booleans and is withdrawn durin
   assert.equal(account.accountState().poker414Enabled, false);
 });
 
+test('each game room can return from login without allowing arbitrary paths or extra role fields', async t => {
+  const { account } = await fixture(t);
+  for (const name of ['room', 'army', 'flying', 'drawing', 'poker414']) {
+    const path = `/${name}.html?code=123456`;
+    assert.equal(new URL(account.loginHref(path), 'http://localhost').searchParams.get('returnTo'), path);
+    assert.equal(new URL(account.loginHref(path + '&role=host'), 'http://localhost').searchParams.get('returnTo'), '/');
+  }
+});
+
 test('503 hides all private account state and fences old replies while preserving only the local draft namespace', async t => {
   const { account, data, authenticate } = await fixture(t);
   await authenticate();

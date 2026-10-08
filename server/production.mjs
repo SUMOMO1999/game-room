@@ -40,6 +40,9 @@ export async function prepareProduction(env = process.env) {
     const disk = statfsSync(dirname(settings.storePath));
     if (disk.bavail * disk.bsize < 256 * 1024 * 1024) throw new Error('Insufficient persistent disk space');
     await runtime.storage.adapter.get('health-check');
+    // Startup recovery can settle interrupted games. Do not report readiness
+    // or validate the initialized store until those atomic commits finish.
+    await runtime.rooms.ready;
     await runtime.wordbankReady;
     await runtime.canvases?.ready;
     // Recheck the compatible initialized state without replacing the original
