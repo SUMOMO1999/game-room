@@ -4,8 +4,10 @@ const MAX_VOICES = 12;
 const CUE_BOOST = 1.75;
 const MAX_MIX_PEAK = 0.5;
 const PRIORITY_CUES = new Set(['turn','win','loss','draw-result']);
-const PUBLIC_ACTION_CUES = new Set(['placement','flip','move','collision','roll','launch','flight','plane-finish']);
-const LIMITS = { select: 90, sort: 250, undo: 180, restore: 250, split: 200, merge: 200, ready: 250, start: 700, pause: 400, resume: 400, flip: 100, move: 90, collision: 160, placement: 90, draw: 160, roll: 160, launch: 180, flight: 180, 'plane-finish': 350, turn: 1000, commit: 240, invalid: 500, chat: 850, win: 1500, loss: 1500, 'draw-result': 1500 };
+const PUBLIC_ACTION_CUES = new Set(['placement','flip','move','collision','roll','launch','flight','plane-finish',
+  'card-hook','card-fork','card-bomb','card-rocket','card-pass']);
+const LIMITS = { select: 90, sort: 250, undo: 180, restore: 250, split: 200, merge: 200, ready: 250, start: 700, pause: 400, resume: 400, flip: 100, move: 90, collision: 160, placement: 90, draw: 160, roll: 160, launch: 180, flight: 180, 'plane-finish': 350, turn: 1000, commit: 240, invalid: 500, chat: 850, win: 1500, loss: 1500, 'draw-result': 1500,
+  'card-hook': 180, 'card-fork': 180, 'card-bomb': 300, 'card-rocket': 450, 'card-pass': 160 };
 
 // Original, short synthesized cues. No recordings, music, downloads or account data.
 // [start offset, duration, pitch, end pitch, peak gain, oscillator shape]
@@ -28,6 +30,14 @@ const CUES = {
   'plane-finish': [[0, 0.10, 659, 659, 0.09, 'triangle'], [0.12, 0.17, 988, 988, 0.10, 'sine']],
   collision: [[0, 0.09, 170, 100, 0.14, 'triangle'], [0.006, 0.075, 930, 350, 0.08, 'triangle'], [0.11, 0.10, 260, 170, 0.10, 'triangle']],
   placement: [[0, 0.055, 670, 330, 0.13, 'triangle'], [0.006, 0.045, 1100, 780, 0.035, 'sine']],
+  // Card responses use different contours: a rising pair for hook, three dry
+  // alternating taps for fork, low impact for bomb, lift-off for rocket, and a
+  // quiet downward tone for pass. Existing device/gesture limits still apply.
+  'card-hook': [[0, 0.065, 540, 660, 0.095, 'triangle'], [0.08, 0.12, 880, 1100, 0.09, 'sine']],
+  'card-fork': [[0, 0.045, 760, 660, 0.10, 'triangle'], [0.06, 0.045, 480, 420, 0.10, 'triangle'], [0.12, 0.065, 760, 900, 0.10, 'triangle']],
+  'card-bomb': [[0, 0.15, 120, 60, 0.14, 'triangle'], [0.015, 0.08, 680, 130, 0.07, 'triangle'], [0.18, 0.10, 170, 95, 0.09, 'triangle']],
+  'card-rocket': [[0, 0.22, 240, 960, 0.10, 'sine'], [0.24, 0.07, 1200, 1500, 0.085, 'triangle'], [0.33, 0.13, 1500, 1800, 0.075, 'sine']],
+  'card-pass': [[0, 0.09, 420, 280, 0.06, 'sine']],
   draw: [[0, 0.055, 380, 510, 0.10, 'triangle'], [0.065, 0.05, 510, 640, 0.075, 'triangle']],
   turn: [[0, 0.14, 523.25, 523.25, 0.10, 'sine'], [0.16, 0.18, 783.99, 783.99, 0.10, 'sine']],
   commit: [[0, 0.12, 659.25, 659.25, 0.085, 'sine'], [0.09, 0.14, 783.99, 783.99, 0.075, 'sine']],
@@ -334,7 +344,8 @@ export function createGameAudio({ storage = defaultStorage(), AudioContext = def
   }
   function bindPreview({select,button,status} = {}) {
     if (!select || !button || !status) return () => {};
-    const names={select:'选牌',sort:'整理',undo:'撤销',restore:'还原',split:'拆组',merge:'拼组',ready:'准备',start:'开局',pause:'暂停',resume:'继续',placement:'落牌',draw:'摸牌',turn:'轮到你',commit:'确认出牌',invalid:'操作失败',chat:'发言',win:'获胜',loss:'落败','draw-result':'和局',flip:'翻棋',move:'走棋',collision:'碰撞'};
+    const names={select:'选牌',sort:'整理',undo:'撤销',restore:'还原',split:'拆组',merge:'拼组',ready:'准备',start:'开局',pause:'暂停',resume:'继续',placement:'落牌',draw:'摸牌',turn:'轮到你',commit:'确认出牌',invalid:'操作失败',chat:'发言',win:'获胜',loss:'落败','draw-result':'和局',flip:'翻棋',move:'走棋',collision:'碰撞',
+      'card-hook':'勾牌','card-fork':'叉牌','card-bomb':'炸弹','card-rocket':'火箭','card-pass':'不出'};
     let active=true;
     const updateStatus=value=>{if(active)status.textContent=!value.supported?'设备不支持音效':value.muted?'音效关':value.volume===0?'音量 0':`${Math.round(value.volume*100)}%`;};
     const unsubscribe=onStateChange(updateStatus);updateStatus(state());

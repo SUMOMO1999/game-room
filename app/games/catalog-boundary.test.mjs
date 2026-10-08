@@ -26,6 +26,8 @@ const privatePaths = ['server/games/rummikub/adapter.mjs', 'server/games/army-fl
   'army-rules.mjs', 'rooms.mjs', 'game-registry.mjs', 'games/catalog-boundary.test.mjs',
   'games/rummikub/test-support/secret.mjs', 'games/rummikub/fixtures/secret.mjs',
   'infra/game-room-identity-batch.conf'];
+// 414 is a local-only candidate until its authenticated room adapter is wired.
+const unreleased414Paths = ['poker414-preview.html', ...['cards.mjs','art.mjs','rules.mjs','patterns.mjs','page-ui.mjs','preview.mjs','styles.css','test-support/preview-fixtures.mjs'].map(file => `games/poker414-2/${file}`)];
 function metadataOnly(value) {
   if (value === null || ['string', 'number', 'boolean'].includes(typeof value)) return true;
   if (Array.isArray(value)) return value.every(metadataOnly);
@@ -67,6 +69,7 @@ test('all declared public paths exist; old aliases and canonical modules are pub
   for (const game of gamePresentations()) for (const path of [game.page, game.practicePage, ...game.assets].filter(Boolean)) assert.ok(assets.includes(path), path);
   for (const path of ['rules.mjs', 'games/rummikub/rules.mjs', 'table-layout.mjs', 'games/rummikub/table-layout.mjs',
     'army-board.mjs', 'games/army-flip/board.mjs', 'army-presentation.mjs', 'games/army-flip/presentation.mjs']) assert.ok(assets.includes(path), path);
+  for (const path of unreleased414Paths) assert.equal(assets.includes(path), false, path);
   for (const path of privatePaths) {
     assert.equal(assets.includes(path), false, path);
     assert.throws(() => publicAssetPaths([{ assets: [path] }], []), TypeError, path);
@@ -125,7 +128,7 @@ for (const mode of ['legacy', 'unified']) test(`${mode} HTTP serves canonical an
     assert.equal(response.status, 200, path); assert.equal(response.headers['cache-control'], 'no-store');
     assert.equal(response.body, readFileSync(join(projectRoot, 'app', path), 'utf8'));
   }
-  for (const path of privatePaths) {
+  for (const path of [...privatePaths, ...unreleased414Paths]) {
     const response = await request(base, '/' + path, host);
     assert.equal(response.status, 404, path); assert.equal(response.headers['cache-control'], 'no-store');
     assert.equal(response.body.includes('private authoritative state'), false, path);

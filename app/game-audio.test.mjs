@@ -89,7 +89,7 @@ function bindActualPageGestures(filename, document, audio) {
 }
 
 test('actual game entries unlock on the first trusted touch release, share one context, and stay closed after disposal', async t => {
-  for (const filename of ['app.mjs', 'army-room.mjs', 'army-practice.mjs', 'games/flying-chess/page-ui.mjs']) {
+  for (const filename of ['app.mjs', 'army-room.mjs', 'army-practice.mjs', 'games/flying-chess/page-ui.mjs', 'games/poker414-2/page-ui.mjs']) {
     for (const release of ['pointerup', 'touchend']) await t.test(`${filename}: ${release}`, async subtest => {
       const pending = deferred(), f = fixture({ resumePending: pending });
       subtest.after(() => f.audio.close());
@@ -539,7 +539,8 @@ test('a timed-out notification resume cannot revive audio or replay after the ne
   assert.equal(f.timers.size, 0); await f.audio.close();
 });
 
-const ACTION_CUES=['select','sort','undo','restore','split','merge','ready','start','pause','resume','flip','move','collision'];
+const CARD_ACTION_CUES=['card-hook','card-fork','card-bomb','card-rocket','card-pass'];
+const ACTION_CUES=['select','sort','undo','restore','split','merge','ready','start','pause','resume','flip','move','collision',...CARD_ACTION_CUES];
 const gainPeak=node=>Math.max(0,...node.gain.calls.filter(call=>call[0]==='exponential').map(call=>call[1]));
 const masterValue=context=>context.gains[0].gain.calls.filter(call=>['set','target'].includes(call[0])).at(-1)[1];
 
@@ -579,7 +580,7 @@ test('turn and result cues preempt crowded action sounds and quieter local click
 });
 
 test('a public action scheduled in the same event survives the following turn or result cue',async()=>{
-  for(const action of ['placement','flip','move','collision'])for(const priority of ['turn','win','loss','draw-result']){
+  for(const action of ['placement','flip','move','collision',...CARD_ACTION_CUES])for(const priority of ['turn','win','loss','draw-result']){
     const f=fixture();await f.audio.unlock();f.audio.setVolume(1);
     assert.equal(f.audio.play('select'),true);const old=[...f.contexts[0].oscillators];
     assert.equal(f.audio.play(action),true);const actionSources=f.contexts[0].oscillators.slice(old.length);
@@ -632,6 +633,33 @@ test('action throttling schedules one selection sound for rapid taps, then allow
   const f=fixture();await f.audio.unlock();assert.equal(f.audio.play('select'),true);
   for(let i=0;i<40;i++)assert.equal(f.audio.play('select'),false);
   assert.equal(f.contexts[0].oscillators.length,1);f.finish();f.advance(100);assert.equal(f.audio.play('select'),true);await f.audio.close();
+});
+
+test('card response cues throttle repeated events independently and permit the next deliberate action', async () => {
+  for (const kind of CARD_ACTION_CUES) {
+    const f = fixture(); await f.audio.unlock();
+    assert.equal(f.audio.play(kind), true, kind);
+    const count = f.contexts[0].oscillators.length;
+    for (let repeat = 0; repeat < 20; repeat++) assert.equal(f.audio.play(kind), false, kind);
+    assert.equal(f.contexts[0].oscillators.length, count);
+    f.finish(); f.advance(1000);
+    assert.equal(f.audio.play(kind), true, kind);
+    await f.audio.close();
+  }
+});
+
+test('card cue auditions identify all five actions while retaining the common saved volume', async () => {
+  const f = fixture({ preference: '{"version":1,"volume":0.3,"muted":false}' });
+  const button = new EventTarget(), select = { value: '' }, status = { textContent: '' };
+  const unbind = f.audio.bindPreview({ button, select, status });
+  for (const [kind, label] of [['card-hook', '勾牌'], ['card-fork', '叉牌'], ['card-bomb', '炸弹'], ['card-rocket', '火箭'], ['card-pass', '不出']]) {
+    select.value = kind; button.dispatchEvent(new Event('click'));
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(status.textContent, `试听：${label} · 30%`);
+    f.finish(); f.advance(1000);
+  }
+  assert.equal(f.writes.length, 0);
+  unbind(); await f.audio.close();
 });
 
 test('audition uses the current saved level, respects silence, and requires a real fresh browser activation',async()=>{
