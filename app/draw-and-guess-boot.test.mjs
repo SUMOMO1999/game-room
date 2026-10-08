@@ -52,6 +52,16 @@ async function fixture(t,{missingId=null,playing=false}={}) {
 test('real account → boot → shared chat → room/canvas → SSE reaches a usable waiting page',async t=>{
   const f=await fixture(t);assert.equal(f.document.getElementById('drawing-gate').hidden,true);assert.equal(f.document.getElementById('drawing-waiting').hidden,false);assert.equal(f.document.getElementById('chat-legacy-note').hidden,true);assert.equal(f.document.getElementById('chat-toggle').hidden,false);assert.ok(f.calls.includes(`/api/rooms/${CODE}/canvas`));assert.ok(f.calls.includes(`/api/rooms/${CODE}/events`));assert.equal(f.document.getElementById('drawing-ready').disabled,false);
 });
+test('waiting room code and invitation do not depend on the compact connection label and clear when access is concealed',async t=>{
+  const f=await fixture(t),code=f.document.getElementById('drawing-room-code'),copy=f.document.getElementById('drawing-waiting-copy');
+  assert.equal(code.hidden,false);assert.equal(code.textContent,'房间 '+CODE);assert.equal(copy.disabled,false);
+  let invitation;f.window.navigator.clipboard={async writeText(value){invitation=value;}};
+  copy.dispatchEvent(new Event('click'));await settle();
+  assert.equal(invitation,`http://127.0.0.1/?room=${CODE}`);assert.equal(f.actions.length,0);
+  await f.revalidate({error:'expired'},401);
+  assert.equal(code.hidden,true);assert.equal(code.textContent,'');assert.equal(copy.disabled,true);
+  await f.revalidate(auth());assert.equal(code.hidden,false);assert.equal(code.textContent,'房间 '+CODE);
+});
 test('missing required shared-chat DOM cannot leave an infinite loader or private nodes',async t=>{
   const f=await fixture(t,{missingId:'chat-legacy-note'});assert.match(f.document.getElementById('drawing-root').textContent,/房间暂时无法恢复/);assert.match(f.document.getElementById('drawing-root').textContent,/重新载入.*返回大厅/);assert.equal(f.document.getElementById('drawing-guess-input'),null);assert.equal(f.calls.some(url=>url.includes('/canvas')),false);
 });

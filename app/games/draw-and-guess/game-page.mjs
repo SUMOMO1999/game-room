@@ -54,7 +54,7 @@ export function createDrawingGamePage({mode='room',root=globalThis.document?.get
       <nav class="drawing-header-actions" data-chat-notice-anchor><span id="drawing-connection" class="drawing-connection"></span>
       <button id="chat-toggle" class="chat-toggle" aria-controls="room-chat" aria-expanded="false" hidden>聊两句 <span id="chat-unread" class="chat-unread" hidden></span></button>
       <button id="drawing-settings" type="button">设置</button><button id="drawing-exit" type="button" aria-label="${practice?'返回大厅':'退出房间'}">×</button></nav></header>
-    <div class="drawing-stage-bar"><strong id="drawing-stage" role="status">正在恢复…</strong><span id="drawing-hint" class="drawing-hint" hidden></span><span id="drawing-round"></span>
+    <div class="drawing-stage-bar"><span id="drawing-room-code" class="drawing-room-code" hidden></span><strong id="drawing-stage" role="status">正在恢复…</strong><span id="drawing-hint" class="drawing-hint" hidden></span><span id="drawing-round"></span>
       <span id="turn-clock" hidden><span id="turn-clock-time"></span><small id="turn-clock-action"></small></span></div>
     <main class="drawing-main"><section class="drawing-canvas-panel" aria-label="共享画布" data-chat-dismiss-notices>
       <div id="drawing-canvas-slot" class="canvas-slot drawing-canvas-slot">
@@ -62,13 +62,13 @@ export function createDrawingGamePage({mode='room',root=globalThis.document?.get
       <aside class="drawing-sidebar"><section id="drawing-gate" class="drawing-card"><h1>你画我猜</h1><p id="drawing-gate-text">正在核验账号…</p>
         <a id="drawing-login" hidden>登录并恢复</a><a id="drawing-reauth" class="account-reauth-link" hidden>去 Agora 验证账号</a><button id="drawing-recover" hidden>重新连接</button></section>
       <section id="drawing-waiting" class="drawing-card" hidden><h2>大家一起画，一起猜。</h2><p id="drawing-waiting-text"></p>
-        <div class="drawing-actions"><button id="drawing-ready" class="primary-button">准备好了</button><button id="drawing-start" class="primary-button">开始游戏</button><button id="drawing-role">改为观战</button></div>
+        <div class="drawing-actions"><button id="drawing-ready" class="primary-button">准备好了</button><button id="drawing-start" class="primary-button">开始游戏</button><button id="drawing-role">改为观战</button><button id="drawing-waiting-copy">复制邀请</button></div>
         <p id="drawing-waiting-config"></p><button id="drawing-config-open">房间玩法设置</button><a href="./words">管理词库 →</a></section>
       <section id="drawing-choosing" class="drawing-card" hidden><h2>选一个，画给朋友看。</h2><div id="drawing-candidates" class="drawing-candidates"></div></section>
       <section id="drawing-tools" class="drawing-tools" hidden><div class="drawing-tool-heading"><button id="drawing-acquire" class="primary-button">拿起画笔</button><button id="drawing-tools-toggle" aria-expanded="false">画笔工具</button></div>
         <div id="drawing-tool-panel" hidden><div class="drawing-tool-row drawing-paint-controls"><button data-tool="pen" aria-pressed="true">画笔</button><button data-tool="eraser" aria-pressed="false">橡皮</button>
           <select id="drawing-color" aria-label="画笔颜色"></select><select id="drawing-width" aria-label="画笔粗细"><option value="4">细</option><option value="10" selected>中</option><option value="22">粗</option></select></div>
-          <div id="drawing-palette" class="drawing-palette"></div><div class="drawing-tool-row"><button id="drawing-undo">撤销</button><button id="drawing-redo">重做</button><button id="drawing-clear">清空</button></div></div>
+          <div id="drawing-palette" class="drawing-palette"></div><div class="drawing-tool-row"><button id="drawing-undo" title="撤销最后一笔" aria-label="撤销最后一笔">撤销</button><button id="drawing-redo" title="恢复刚刚撤销的一笔" aria-label="恢复刚刚撤销的一笔">恢复</button><button id="drawing-clear" title="清空整张画布，重新画" aria-label="清空整张画布，重新画">清空</button></div></div>
       </section>
       <form id="drawing-guess-form" class="drawing-guess-form" hidden><label for="drawing-guess-input">输入答案</label><div class="drawing-guess-row"><input id="drawing-guess-input" maxlength="128" autocomplete="off" spellcheck="false" enterkeyhint="send" aria-describedby="drawing-guess-feedback"><button id="drawing-guess-send" class="primary-button" type="submit">猜！</button></div><p id="drawing-guess-feedback" role="status" aria-live="polite"></p><button id="drawing-hide-keyboard" type="button" hidden>收起键盘</button></form>
       <section id="drawing-reveal" class="drawing-card" hidden><p>本题答案</p><h2 id="drawing-answer"></h2><p id="drawing-aliases"></p><p id="drawing-turn-result"></p></section>
@@ -83,7 +83,7 @@ export function createDrawingGamePage({mode='room',root=globalThis.document?.get
         <p id="chat-legacy-note" hidden>当前本机预览不提供联网聊天；正式登录后的朋友房间可聊天。</p><button id="drawing-roster-open" ${practice?'hidden':''}>成员与分数</button><a href="./" ${practice?'data-practice-exit':''}>${practice?'返回大厅':'返回大厅，保留席位'}</a><button id="drawing-copy" ${practice?'hidden':''}>复制邀请</button><button id="drawing-pause" ${practice?'hidden':''}>同意暂停</button>
         <button id="drawing-resume" hidden>继续对局</button><button id="drawing-host" hidden>接任房主</button><label id="drawing-transfer-label" hidden>转交房主<select id="drawing-next-host"></select><button id="drawing-transfer">转交</button></label>
         <button id="drawing-logout" ${practice?'hidden':''}>退出棋牌室登录</button><p id="drawing-menu-status" role="status"></p></div></section></div></dialog>
-    <dialog id="drawing-rules-dialog" class="drawing-dialog"><div class="dialog-heading"><h2>经典你画我猜</h2><button data-close="drawing-rules-dialog" aria-label="关闭规则">×</button></div><div class="drawing-dialog-body"><p>2～8人，每人轮流画，其他人同时猜。默认每人2题，选词15秒，绘画120秒，揭晓8秒。</p><p>选一个词后用画表达。不能直接写答案、拼音或通过聊天透题。所有猜者答对，或时间到，就揭晓。</p><p>首次猜中得100～200分，越早猜中分越多。每有一人猜中，画者得25分。同题只计一次；相同总分并列，全局无人猜中则没有赢家。</p><p>猜词只匹配正文及明确别名。答案请用猜词框；普通聊天不判答案。观众可看图和聊天，不能画或猜。</p><p>画者可使用画笔、橡皮、颜色、粗细、整笔撤销与重做。断线未确认笔迹丢弃，恢复先取已保存画布。换设备需明确接管。</p><p>返回大厅保留席位；进行中玩家明确退出房间会中止本局。暂停须全体玩家同意，继续使用剩余时间。</p></div></dialog>
+    <dialog id="drawing-rules-dialog" class="drawing-dialog"><div class="dialog-heading"><h2>经典你画我猜</h2><button data-close="drawing-rules-dialog" aria-label="关闭规则">×</button></div><div class="drawing-dialog-body"><p>2～8人，每人轮流画，其他人同时猜。默认每人2题，选词15秒，绘画120秒，揭晓8秒。</p><p>选一个词后用画表达。不能直接写答案、拼音或通过聊天透题。所有猜者答对，或时间到，就揭晓。</p><p>首次猜中得100～200分，越早猜中分越多。每有一人猜中，画者得25分。同题只计一次；相同总分并列，全局无人猜中则没有赢家。</p><p>猜词只匹配正文及明确别名。答案请用猜词框；普通聊天不判答案。观众可看图和聊天，不能画或猜。</p><p>画者可使用画笔、橡皮、颜色、粗细。撤销移除最后一笔；恢复放回刚刚撤销的一笔；清空清除整张画布及撤销记录，可重新画。断线未确认笔迹丢弃，恢复先取已保存画布。换设备需明确接管。</p><p>返回大厅保留席位；进行中玩家明确退出房间会中止本局。暂停须全体玩家同意，继续使用剩余时间。</p></div></dialog>
     <dialog id="drawing-leave-dialog" class="drawing-dialog"><h2>${practice?'返回大厅？':'退出房间？'}</h2><p id="drawing-leave-note"></p><p id="drawing-leave-status" role="status"></p><div class="drawing-actions"><button data-close="drawing-leave-dialog">继续留在这里</button><button id="drawing-leave-confirm" class="primary-button">${practice?'返回大厅':'确认退出'}</button></div></dialog>
     <dialog id="drawing-clear-dialog" class="drawing-dialog"><h2>清空这张画布？</h2><p>清除已确认的笔迹和撤销记录。题目、分数与时间保持。</p><div class="drawing-actions"><button data-close="drawing-clear-dialog">继续画</button><button id="drawing-clear-confirm">确认清空</button></div></dialog>
     <dialog id="drawing-roster-dialog" class="drawing-dialog"><div class="dialog-heading"><h2>绘画顺序与分数</h2><button data-close="drawing-roster-dialog" aria-label="关闭成员">×</button></div><div id="drawing-roster-full" class="drawing-dialog-body"></div></dialog>
@@ -182,8 +182,12 @@ export function createDrawingGamePage({mode='room',root=globalThis.document?.get
       $('drawing-rematch').disabled=!available()||view.hostId!==view.selfId;}
     renderRoster($('drawing-players'));if($('drawing-roster-dialog').open)renderRoster($('drawing-roster-full'),true);
     $('drawing-connection').textContent=practice?'仅本机':`${connection==='online'?'已连接':'连接恢复中'}${view?.roomCode?' · '+view.roomCode:''}`;
+    const showRoomCode=!practice&&view?.phase==='waiting'&&!!view.roomCode;
+    $('drawing-room-code').hidden=!showRoomCode;
+    $('drawing-room-code').textContent=showRoomCode?'房间 '+view.roomCode:'';
     $('drawing-exit').disabled=leaving||!practice&&!view;
     $('drawing-copy').disabled=!view;
+    $('drawing-waiting-copy').disabled=!view?.roomCode;
     $('drawing-pause').hidden=practice||!view||view.selfRole==='spectator'||!['playing','paused'].includes(view.phase);
     $('drawing-pause').textContent=view?.phase==='paused'?'继续对局':view?.pause?.agreedIds?.includes(view.selfId)?'撤回暂停同意':'同意暂停';
     $('drawing-resume').hidden=view?.phase!=='paused'||view?.selfRole==='spectator';
@@ -220,7 +224,8 @@ export function createDrawingGamePage({mode='room',root=globalThis.document?.get
   listen($('drawing-resume'),'click',()=>act('resume'));
   listen($('drawing-host'),'click',()=>act('transferHost',{playerId:view?.selfId}));
   listen($('drawing-transfer'),'click',()=>act('transferHost',{playerId:$('drawing-next-host').value}));
-  listen($('drawing-copy'),'click',async()=>{const href=new URL(`./?room=${view?.roomCode}`,win.location.href).href;try{await win.navigator.clipboard.writeText(href);feedback('邀请链接已复制。');}catch{feedback('房间号 '+(view?.roomCode??''));}});
+  async function copyInvitation(){if(!view?.roomCode)return;const href=new URL(`./?room=${view.roomCode}`,win.location.href).href;try{await win.navigator.clipboard.writeText(href);feedback('邀请链接已复制。');}catch{feedback('房间号 '+(view?.roomCode??''));}}
+  listen($('drawing-copy'),'click',copyInvitation);listen($('drawing-waiting-copy'),'click',copyInvitation);
   listen($('drawing-recover'),'click',onRecover);listen($('drawing-refresh'),'click',onRefresh);listen($('drawing-retry'),'click',onRetry);
   async function loadConfigRelease() {
     const epoch=++configEpoch,pack=packs.find(pack=>pack.id===$('drawing-pack').value),roomId=view?.roomId;configRelease=null;$('drawing-config-save').disabled=true;
