@@ -55,6 +55,12 @@ export function readSettings(env = process.env) {
   if (agoraEntryEnabled && !production) throw new Error('Configured Agora game entry is production-only');
   const mode = env.GAME_ROOM_AUTH_MODE || (production ? 'disabled' : 'legacy');
   if (!['legacy', 'disabled', 'mock', 'cognito'].includes(mode)) throw new Error('Invalid game-room identity mode');
+  const refreshFlag = env.GAME_ROOM_SESSION_REFRESH_ENABLED;
+  if (refreshFlag !== undefined && !['0', '1'].includes(refreshFlag)) throw new Error('Session refresh requires an explicit 0 or 1');
+  const sessionRefreshEnabled = refreshFlag === '1';
+  if (sessionRefreshEnabled && mode !== 'cognito') throw new Error('Session refresh requires the dedicated Cognito client');
+  const days = env.GAME_ROOM_SESSION_MAX_DAYS ?? '30';
+  if (!/^(?:[1-9]|[12][0-9]|30)$/.test(days)) throw new Error('Session retention requires 1 to 30 whole days');
   const batchFlag = env.GAME_ROOM_IDENTITY_BATCH_ENABLED;
   if (batchFlag !== undefined && !['0', '1'].includes(batchFlag)) throw new Error('Identity batch requires an explicit 0 or 1');
   const identityBatchEnabled = batchFlag === '1';
@@ -84,6 +90,7 @@ export function readSettings(env = process.env) {
     ...(identityBatchEnabled ? { identityBatchKeyId: env.GAME_ROOM_IDENTITY_BATCH_KEY_ID,
       identityBatchKeyFile: env.GAME_ROOM_IDENTITY_BATCH_KEY_FILE } : {}),
     production, mode, origin: origin.origin, host, port, secureCookies: origin.protocol === 'https:',
+    sessionRefreshEnabled, sessionMaxDays: Number(days),
     callback: `${origin.origin}/auth/callback`, postLogout: `${origin.origin}/`,
     cookieName: origin.protocol === 'https:' ? '__Host-game-room-session' : 'game-room-dev-session',
     transactionCookieName: origin.protocol === 'https:' ? '__Host-game-room-transaction' : 'game-room-dev-transaction',

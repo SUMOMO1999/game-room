@@ -4,6 +4,7 @@ import { opaqueId, identityKey } from './storage.mjs';
 import { entryFor, entryPath, entryReturnTo, recordMatchesEntry, requestContext } from './entry-context.mjs';
 import { createIdentityCheckContext, identityCheckContextFor } from './identity-check-context.mjs';
 import { OutputGuardConflict, SessionOutputConflict } from './room-output-fence.mjs';
+import { SessionRenewal } from './session-renewal.mjs';
 
 export function requestHeader(request, name) {
   const value = request.headers?.get ? request.headers.get(name) : request.headers?.[name.toLowerCase()];
@@ -19,7 +20,7 @@ const equalSecret = (first, second) => typeof first === 'string' && typeof secon
 const identityFields = (session) => ({ issuer: session.issuer, sub: session.sub, accessToken: session.accessToken,
   authTime: session.authTime, clientId: session.clientId, expiresAt: session.expiresAt });
 const authorizationLineage = session => createHash('sha256').update(JSON.stringify(Object.fromEntries(
-  Object.keys(session).filter(field => field !== 'idleUntil' && field !== 'lastIdentityCheck').sort()
+  Object.keys(session).filter(field => !['idleUntil', 'lastIdentityCheck', 'refreshLease', 'refreshRetryAfter'].includes(field)).sort()
     .map(field => [field, session[field]])))).digest('hex');
 
 function assertOutputSessionRecord(session, record, now) {
@@ -27,6 +28,7 @@ function assertOutputSessionRecord(session, record, now) {
   if (record.value.userKey !== session.userKey || record.value.issuer !== session.issuer
     || record.value.sub !== session.sub) throw new IdentityFailure();
   if (record.value.expiresAt <= now || record.value.idleUntil <= now) throw new IdentityFailure();
+  if (record.value.sessionVersion === 2 && record.value.sessionExpiresAt <= now) throw new IdentityFailure();
   if (!equalSecret(session.authorizationLineage, authorizationLineage(record.value))) throw new IdentityFailure(503);
   if (record.version !== session.authorizationVersion) throw new SessionOutputConflict();
 }
@@ -38,6 +40,8 @@ export class SessionService {
     if (!Number.isInteger(authorizationTimeoutMs) || authorizationTimeoutMs <= 0 || authorizationTimeoutMs > 10000) throw new TypeError('Invalid identity deadline');
     this.authorizationTimeoutMs = authorizationTimeoutMs;
     this.provider = provider || (settings.mode === 'cognito' ? new CognitoProvider(settings, { now }) : settings.mode === 'mock' ? new MockProvider(settings, { now }) : null);
+    this.renewal = new SessionRenewal({ store, provider: this.provider, settings, now,
+      invalidateCurrent: (id, record) => this.invalidateCurrent(id, record) });
   }
   get loginReady() { return Boolean(this.provider && ['cognito', 'mock'].includes(this.settings.mode)); }
   get usesBatchIdentity() { return this.provider?.usesBatchIdentity === true; }
@@ -78,11 +82,11 @@ export class SessionService {
         || !Number.isFinite(user.expiresAt) || user.expiresAt <= this.now()) throw new IdentityFailure();
     return { ...identity, authTime: user.authTime, clientId: user.clientId, expiresAt: Math.min(identity.expiresAt, user.expiresAt) };
   }
-  async authorize(request, { fresh = false, touch = true, context, signal } = {}) {
+  async authorize(request, { fresh = false, touch = true, entryProbe = false, resume = false, expectedIdentity, context, signal } = {}) {
     context ??= identityCheckContextFor(request);
     const ownedContext = this.usesBatchIdentity && !context
       ? createIdentityCheckContext({ timeoutMs: Math.min(8000, this.authorizationTimeoutMs), now: this.now, signal }) : null;
-    try { return await withIdentityDeadline((deadline) => this.authorizeWithin(request, { fresh, touch }, deadline),
+    try { return await withIdentityDeadline((deadline) => this.authorizeWithin(request, { fresh, touch, entryProbe, resume, expectedIdentity }, deadline),
       { timeoutMs: this.authorizationTimeoutMs, now: this.now, signal, context: context || ownedContext }); }
     catch (error) {
       if (error instanceof IdentityFailure && error.status === 503) this.notify(requestCookie(request, entryFor(request, this.settings).cookieName), null, 503);
@@ -93,7 +97,7 @@ export class SessionService {
   async entryStatus(request) {
     // This navigation marker never replaces the persisted game identity key or
     // authorizes a user supplied identity. Only the current entry's session can.
-    const session = await this.authorize(request, { fresh: true, touch: false });
+    const session = await this.authorize(request, { fresh: true, touch: false, entryProbe: true });
     return { identityFingerprint: createHash('sha256').update(session.issuer + '\0' + session.sub).digest('hex') };
   }
   async resume(request, url) {
@@ -103,7 +107,11 @@ export class SessionService {
         || !/^[a-f0-9]{64}$/.test(url.searchParams.get('expectedIdentity') || '')) throw new IdentityFailure(400, 'invalid_entry_request');
     const entry = entryFor(request, this.settings), returnTo = entryReturnTo(url.searchParams.get('returnTo'), entry);
     let current;
-    try { current = await this.entryStatus(request); }
+    try {
+      const session = await this.authorize(request, { fresh: true, touch: false, entryProbe: true,
+        resume: true, expectedIdentity: url.searchParams.get('expectedIdentity') });
+      current = { identityFingerprint: createHash('sha256').update(session.issuer + '\0' + session.sub).digest('hex') };
+    }
     catch (error) {
       // A cold entry still uses the original OAuth route. Resume itself must not
       // create a transaction, clear cookies, or silently replay a login.
@@ -113,27 +121,45 @@ export class SessionService {
     if (!equalSecret(current.identityFingerprint, url.searchParams.get('expectedIdentity'))) throw new IdentityFailure(409, 'entry_identity_changed');
     return { status: 303, headers: { 'cache-control': 'no-store', location: entryPath(entry, returnTo) }, body: null };
   }
-  async authorizeWithin(request, { fresh, touch }, deadline) {
+  async authorizeWithin(request, { fresh, touch, entryProbe = false, resume = false, expectedIdentity }, deadline) {
     if (!this.loginReady) throw new IdentityFailure(503, 'login_not_configured');
     const id = requestCookie(request, entryFor(request, this.settings).cookieName);
     if (!id) throw new IdentityFailure();
     for (let attempt = 0; attempt < 6; attempt++) {
-      const record = await deadline.wait(() => this.store.read('sessions', id));
+      let record = await deadline.wait(() => this.store.read('sessions', id));
       if (!record) { this.notify(id, null, 401); throw new IdentityFailure(); }
-      const session = record.value; const now = this.now();
-      const before = { expiresAt: session.expiresAt, authTime: session.authTime, clientId: session.clientId };
+      let session = record.value; const now = this.now();
       if (!recordMatchesEntry(session, entryFor(request, this.settings)) || session.phase !== 'active') throw new IdentityFailure();
-      if (session.expiresAt <= now || session.idleUntil <= now) {
+      const persistent = this.renewal.persistent(session);
+      if (persistent) {
+        if (!this.renewal.valid(session) || this.renewal.cutoff(session) <= now) {
+          if (await deadline.wait(() => this.invalidateCurrent(id, record))) throw new IdentityFailure();
+          continue;
+        }
+        // Dormant credentials can identify an entry, but an existing stream or
+        // readonly private request cannot revive its short business window.
+        if (session.idleUntil <= now && !touch && !entryProbe) throw new IdentityFailure();
+        try { record = await this.renewal.ready(id, record, deadline); }
+        catch (error) {
+          if (error instanceof IdentityFailure && error.status === 401
+              && !await deadline.wait(() => this.invalidateCurrent(id, record))) continue;
+          throw error instanceof IdentityFailure ? error : new IdentityFailure(503);
+        }
+        if (!record) continue;
+        session = record.value;
+        if (!recordMatchesEntry(session, entryFor(request, this.settings)) || session.phase !== 'active') throw new IdentityFailure();
+      } else if (session.expiresAt <= now || session.idleUntil <= now) {
         if (await deadline.wait(() => this.invalidateCurrent(id, record))) throw new IdentityFailure();
         continue;
       }
+      const before = { expiresAt: session.expiresAt, authTime: session.authTime, clientId: session.clientId };
       {
         try {
           const user = await deadline.wait(() => this.provider.check(identityFields(session),
             { signal: deadline.signal, context: deadline.triggeredAtMs === undefined ? undefined : deadline }));
           const verified = this.checkedIdentity(identityFields(session), user);
           if (session.userKey !== identityKey(session.issuer, session.sub)) throw new IdentityFailure();
-          session.expiresAt = verified.expiresAt;
+          session.expiresAt = persistent ? Math.min(verified.expiresAt, this.renewal.cutoff(session)) : verified.expiresAt;
           if (this.settings.mode === 'cognito') { session.authTime = verified.authTime; session.clientId = verified.clientId; }
         } catch (error) {
           const status = error instanceof IdentityFailure && error.status === 401 ? 401 : 503;
@@ -141,19 +167,21 @@ export class SessionService {
           throw new IdentityFailure(status);
         }
         // The online call may complete after either expiry or a concurrent logout.
-        if (session.expiresAt <= this.now() || session.idleUntil <= this.now()) {
+        if (session.expiresAt <= this.now() || !persistent && session.idleUntil <= this.now()) {
           if (await deadline.wait(() => this.invalidateCurrent(id, record))) throw new IdentityFailure();
           continue;
         }
         session.lastIdentityCheck = this.now();
       }
+      if (expectedIdentity !== undefined && !equalSecret(expectedIdentity,
+        createHash('sha256').update(session.issuer + '\0' + session.sub).digest('hex'))) throw new IdentityFailure(409, 'entry_identity_changed');
       session.idleUntil = Math.min(session.expiresAt, session.idleUntil);
       const upgrade = session.expiresAt !== before.expiresAt || session.authTime !== before.authTime || session.clientId !== before.clientId;
       // Frequent drawing/guess requests still perform a fresh online check.
       // Only idle-renewal writes are coalesced, avoiding unrelated session CAS
       // changes forcing every recipient to redo an in-flight policy check.
       const touchWindow = Math.min(30000, this.settings.idleMs / 10);
-      const renewIdle = touch && (!this.usesBatchIdentity
+      const renewIdle = (touch || persistent && resume) && (!this.usesBatchIdentity
         || Math.min(session.expiresAt, this.now() + this.settings.idleMs) - session.idleUntil >= touchWindow);
       if (!renewIdle && !upgrade) {
         // Read-only output/watchdog checks do not contend on an otherwise unchanged session.
@@ -161,7 +189,10 @@ export class SessionService {
         if (!current) { this.notify(id, session, 401); throw new IdentityFailure(); }
         if (current.version !== record.version) continue; // A changed session must acquire a new policy check.
         deadline.assert();
-        if (session.expiresAt <= this.now() || session.idleUntil <= this.now()) {
+        if (session.expiresAt <= this.now() || session.idleUntil <= this.now() && !(persistent && entryProbe)) {
+          // The fresh check can cross the short idle deadline. Stop this output
+          // without deleting the longer retained credential needed for resume.
+          if (persistent && session.expiresAt > this.now() && this.renewal.cutoff(session) > this.now()) throw new IdentityFailure();
           if (await deadline.wait(() => this.invalidateCurrent(id, record))) throw new IdentityFailure();
           continue;
         }
@@ -172,7 +203,7 @@ export class SessionService {
         // The successful CAS has a new version. Re-read on a late expiry instead
         // of deleting a concurrently renewed record with this older snapshot.
         if (session.expiresAt <= this.now() || session.idleUntil <= this.now()) continue;
-        if (this.usesBatchIdentity) {
+        if (this.usesBatchIdentity || persistent) {
           const saved = await deadline.wait(() => this.store.read('sessions', id));
           if (!saved) throw new IdentityFailure();
           // A post-CAS read supplies the version for this one output's final
@@ -219,7 +250,8 @@ export class SessionService {
   }
   async writeSession(id, record, value, deadline) {
     deadline.assert();
-    const expiresAt = Math.min(value.expiresAt ?? record.expiresAt, value.idleUntil ?? record.expiresAt);
+    const expiresAt = this.renewal.persistent(value) ? this.renewal.cutoff(value)
+      : Math.min(value.expiresAt ?? record.expiresAt, value.idleUntil ?? record.expiresAt);
     if (this.store.guardedCAS) return this.store.guardedCAS('sessions', id, record.version, value, expiresAt,
       { scope: 'sessions', id, version: record.version, validUntil: deadline.validUntil });
     if (this.settings.mode === 'cognito') throw new IdentityFailure(503);
@@ -260,7 +292,8 @@ export class SessionService {
     const entry = entryFor(request, this.settings), currentId = requestCookie(request, entry.cookieName);
     const current = currentId ? await this.store.get('sessions', currentId) : null;
     const identityAnchor = current && recordMatchesEntry(current, entry) && current.phase === 'active'
-      && current.expiresAt > this.now() && current.idleUntil > this.now()
+      && (this.renewal.persistent(current) ? this.renewal.valid(current) && this.renewal.cutoff(current) > this.now()
+        : current.expiresAt > this.now() && current.idleUntil > this.now())
       && current.userKey === identityKey(current.issuer, current.sub)
       ? { userKey: current.userKey, issuer: current.issuer, sub: current.sub } : null;
     const { url: location, transaction } = await this.provider.begin(returnTo, { entry: entryFor(request, this.settings) });
@@ -284,7 +317,8 @@ export class SessionService {
     if (!id) return;
     const current = await deadline.wait(() => this.store.get('sessions', id));
     if (current && recordMatchesEntry(current, entry) && current.phase === 'active'
-        && current.expiresAt > this.now() && current.idleUntil > this.now()
+        && (this.renewal.persistent(current) ? this.renewal.valid(current) && this.renewal.cutoff(current) > this.now()
+          : current.expiresAt > this.now() && current.idleUntil > this.now())
         && current.userKey !== userKey) throw new IdentityFailure(409, 'account_switch_requires_logout');
   }
   async callbackWithin(request, url, deadline, confirmed) {
@@ -315,11 +349,20 @@ export class SessionService {
       if (identity.expiresAt <= this.now() || (this.settings.mode === 'cognito' && identity.issuer !== this.settings.issuer)) throw new IdentityFailure();
       const verifiedUserKey = identityKey(identity.issuer, identity.sub);
       await this.assertAccountContinuation(request, verifiedUserKey, deadline, transaction);
-      const now = this.now(); const expiresAt = Math.min(identity.expiresAt, now + this.settings.absoluteMs);
+      const now = this.now();
+      const persistent = this.settings.sessionRefreshEnabled && this.settings.mode === 'cognito';
+      const sessionExpiresAt = persistent ? Math.min(identity.refreshExpiresAt, now + this.settings.sessionMaxDays * 86_400_000) : null;
+      if (persistent && (!Number.isSafeInteger(identity.refreshIssuedAt) || identity.refreshIssuedAt > now
+          || !Number.isSafeInteger(sessionExpiresAt) || sessionExpiresAt <= now
+          || typeof identity.refreshToken !== 'string' || !identity.refreshToken || identity.refreshToken.length > 8192)) throw new IdentityFailure(503);
+      const expiresAt = Math.min(identity.expiresAt, persistent ? sessionExpiresAt : now + this.settings.absoluteMs);
       const idleUntil = Math.min(expiresAt, now + this.settings.idleMs);
       session = { phase: 'active', entryKey: entryFor(request, this.settings).key, userKey: verifiedUserKey, issuer: identity.issuer, sub: identity.sub, accessToken: identity.accessToken,
         ...(this.settings.mode === 'cognito' ? { authTime: identity.authTime, clientId: identity.clientId } : {}),
+        ...(persistent ? { sessionVersion: 2, sessionExpiresAt, refreshIssuedAt: identity.refreshIssuedAt,
+          refreshExpiresAt: identity.refreshExpiresAt, refreshToken: identity.refreshToken } : {}),
         csrf: opaqueId(), createdAt: now, expiresAt, idleUntil, lastIdentityCheck: now };
+      if (persistent && !this.renewal.valid(session)) throw new IdentityFailure(503);
       const final = { ...claimed.value, phase: 'completed' };
       if (!await deadline.wait(() => this.store.replaceCAS('transactions', transactionId, claimed.version, final, claimed.expiresAt))) throw new IdentityFailure(401, 'invalid_callback');
       // Logout and activation compete on this same reserved record. CAS cannot reinsert a deleted candidate.
@@ -330,7 +373,7 @@ export class SessionService {
       const activeTransaction = await deadline.wait(() => this.store.read('transactions', transactionId));
       const activeSession = await deadline.wait(() => this.store.get('sessions', id));
       if (!activeTransaction || activeTransaction.value.phase !== 'completed' || activeTransaction.value.candidateSessionId !== id || !activeSession || !recordMatchesEntry(activeSession, entryFor(request, this.settings)) || transaction.expiresAt <= this.now() || identity.expiresAt <= this.now()) throw new IdentityFailure(401, 'invalid_callback');
-      headers['set-cookie'].push(this.cookie(entryFor(request, this.settings).cookieName, id, (expiresAt - now) / 1000, request));
+      headers['set-cookie'].push(this.cookie(entryFor(request, this.settings).cookieName, id, ((persistent ? sessionExpiresAt : expiresAt) - now) / 1000, request));
       headers.location = entryPath(entryFor(request, this.settings), entryReturnTo(transaction.returnTo, entryFor(request, this.settings)));
       return { status: 303, headers, body: null };
     } catch (error) { await this.invalidate(id, session); if (confirmedReturnTo) error.returnTo = confirmedReturnTo; throw error; }

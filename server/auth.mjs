@@ -7,6 +7,7 @@ import { createIdentityCheckContext } from './identity-check-context.mjs';
 
 const validSubject = (value) => typeof value === 'string' && value.length > 0 && value.length <= 256 && !/[\x00-\x1f\x7f]/.test(value);
 const validSeconds = (value) => Number.isSafeInteger(value) && value >= 0;
+const validRefreshToken = value => typeof value === 'string' && value.length > 0 && value.length <= 8192 && !/[\x00-\x20\x7f]/.test(value);
 
 export class IdentityFailure extends Error {
   constructor(status = 401, code = status === 503 ? 'identity_unavailable' : 'login_required') { super(code); this.status = status; this.code = code; }
@@ -111,6 +112,7 @@ export class CognitoProvider {
   }
   async complete(url, transaction, { signal } = {}) {
     return withIdentityDeadline(async (deadline) => {
+      const refreshIssuedAt = this.now();
       let tokens;
       try { tokens = await deadline.wait(oidc.authorizationCodeGrant(this.config, url, { pkceCodeVerifier: transaction.codeVerifier, expectedState: transaction.state, expectedNonce: transaction.nonce, idTokenExpected: true })); }
       catch (error) {
@@ -119,8 +121,51 @@ export class CognitoProvider {
         throw new IdentityFailure(unavailable ? 503 : 401);
       }
       const identity = await deadline.wait(this.verifyTokens(tokens, transaction.nonce, { signal: deadline.signal }));
-      return identity;
+      if (!this.settings.sessionRefreshEnabled) return identity;
+      if (!validRefreshToken(tokens.refresh_token)) throw new IdentityFailure(503);
+      return { ...identity, refreshToken: tokens.refresh_token, refreshIssuedAt,
+        refreshExpiresAt: refreshIssuedAt + this.settings.sessionMaxDays * 86_400_000 };
     }, { timeoutMs: this.checkTimeoutMs, signal });
+  }
+  async refresh(session, { signal, context } = {}) {
+    if (session?.issuer !== this.settings.issuer || session.clientId !== this.settings.clientId
+        || !validSubject(session.sub) || !validRefreshToken(session.refreshToken)) throw new IdentityFailure();
+    return withIdentityDeadline(async deadline => {
+      let tokens;
+      const config = new oidc.Configuration(this.config.serverMetadata(), this.settings.clientId, this.config.clientMetadata(), oidc.None());
+      config.timeout = this.config.timeout;
+      const fetcher = this.config[oidc.customFetch] || this.fetcher;
+      config[oidc.customFetch] = (url, options) => fetcher(url, { ...options, redirect: 'error',
+        signal: options?.signal ? AbortSignal.any([options.signal, deadline.signal]) : deadline.signal });
+      try { tokens = await deadline.wait(oidc.refreshTokenGrant(config, session.refreshToken)); }
+      catch (error) {
+        if (error instanceof IdentityFailure) throw error;
+        const rejected = error.error === 'invalid_grant' && error.status === 400
+          || error.code === 'OAUTH_JWT_CLAIM_COMPARISON_FAILED';
+        throw new IdentityFailure(rejected ? 401 : 503);
+      }
+      if (typeof tokens.id_token !== 'string' || !tokens.id_token || typeof tokens.access_token !== 'string'
+          || tokens.token_type?.toLowerCase() !== 'bearer') throw new IdentityFailure(503);
+      let id;
+      try { ({ payload: id } = await deadline.wait(jwtVerify(tokens.id_token, this.jwks, {
+        issuer: this.settings.issuer, audience: this.settings.clientId, algorithms: ['RS256'],
+        currentDate: new Date(this.now()), requiredClaims: ['exp', 'iat', 'sub', 'auth_time', 'token_use'],
+      }))); }
+      catch (error) {
+        if (error instanceof IdentityFailure) throw error;
+        if (error.code === 'ERR_JWKS_TIMEOUT' || error instanceof TypeError) throw new IdentityFailure(503);
+        throw new IdentityFailure();
+      }
+      const access = await deadline.wait(this.verifyAccess(tokens.access_token, { signal: deadline.signal }));
+      const seconds = Math.floor(this.now() / 1000);
+      if (!validSeconds(id.exp) || !validSeconds(id.iat) || id.iat > seconds + 60 || id.exp <= id.iat
+          || id.exp <= seconds || id.exp > Math.floor(Number.MAX_SAFE_INTEGER / 1000)
+          || id.token_use !== 'id' || id.sub !== session.sub || access.sub !== session.sub
+          || id.auth_time !== session.authTime || access.authTime !== session.authTime) throw new IdentityFailure();
+      if (tokens.refresh_token !== undefined && !validRefreshToken(tokens.refresh_token)) throw new IdentityFailure(503);
+      return { ...access, authTime: session.authTime, expiresAt: Math.min(id.exp * 1000, access.expiresAt),
+        ...(tokens.refresh_token === undefined ? {} : { refreshToken: tokens.refresh_token }) };
+    }, { timeoutMs: this.checkTimeoutMs, signal, context });
   }
   async check(identity, { signal, context } = {}) {
     const ownedContext = this.usesBatchIdentity && !context
