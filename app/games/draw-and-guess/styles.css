@@ -49,7 +49,7 @@ body.drawing-body{margin:0;padding:0;background:var(--theme-base,#173d31);color:
 }
 @media (orientation:landscape) and (max-height:320px){.drawing-players{display:none}}
 @media (orientation:landscape) and (max-height:360px){#drawing-tool-panel .drawing-palette{display:none}.drawing-header{height:44px}.drawing-stage-bar strong{font-size:11px}.drawing-stage-bar .drawing-hint{font-size:11px}.drawing-stage-bar #drawing-round{display:none}.drawing-page .drawing-tools{gap:4px}.drawing-card{gap:4px}.drawing-guess-form label{display:none}}
-@media (orientation:landscape) and (max-width:780px) and (max-height:500px){.drawing-paint-controls{display:grid;grid-template-columns:repeat(2,minmax(44px,1fr))}#drawing-tool-panel .drawing-palette{display:none}}
+@media (orientation:landscape) and (max-width:1000px) and (max-height:500px){.drawing-paint-controls{display:grid;grid-template-columns:repeat(2,minmax(44px,1fr))}#drawing-tool-panel .drawing-palette{display:none}}
 .drawing-keyboard-open .drawing-players,.drawing-keyboard-open .drawing-feedback,.drawing-keyboard-open .drawing-footer{display:none}.drawing-keyboard-open .drawing-page{grid-template-rows:44px 22px minmax(0,1fr)}
 .drawing-keyboard-open .drawing-sidebar{max-height:none}.drawing-keyboard-open .drawing-guess-form{padding:7px}.drawing-keyboard-open .drawing-canvas-panel{padding:4px}
 .drawing-dialog-body label.drawing-check{display:flex;align-items:center;gap:8px}.drawing-check input{width:22px;min-height:22px;height:22px;padding:0;flex:none}
