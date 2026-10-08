@@ -2,18 +2,21 @@ import { DatabaseSync, backup } from 'node:sqlite';
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { lstatSync, mkdirSync, mkdtempSync, linkSync, rmSync, chmodSync } from 'node:fs';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 import { decryptStoredRecord, encryptionKeyId, recordKey } from './storage.mjs';
 import { createRoomStore } from '../app/rooms.mjs';
 import { validateChatSnapshot } from './chat.mjs';
 import { validateMatchSummary, validateHistoryRecord, validateHistoryIndex } from './match-history.mjs';
 import { validateDrawAndGuessWordbankSnapshot, validateDrawAndGuessWordbankState } from './content/draw-and-guess-wordbank.mjs';
 import { validateCanvasRecord, validateCanvasCollection } from './games/draw-and-guess/canvas-service.mjs';
+import { SCORE_SCOPES, SCORE_FOREVER, scoreRecordId, validateScoreState } from './game-scores.mjs';
 
 // Explicit recovery boundary. Session/token/PKCE/presence records never enter the delivered artifact.
 export const LEGACY_RECOVERY_SCOPES = Object.freeze(['game-profiles', 'room-invites', 'rooms', 'room-memberships', 'room-registry', 'room-requests']);
 export const CHAT_RECOVERY_SCOPES = Object.freeze([...LEGACY_RECOVERY_SCOPES, 'room-chat']);
 export const HISTORY_RECOVERY_SCOPES = Object.freeze([...CHAT_RECOVERY_SCOPES, 'game-history', 'history-index']);
-export const RECOVERY_SCOPES = Object.freeze([...HISTORY_RECOVERY_SCOPES, 'wordbank-packs', 'wordbank-releases', 'wordbank-index', 'draw-canvases']);
+export const DRAWING_RECOVERY_SCOPES = Object.freeze([...HISTORY_RECOVERY_SCOPES, 'wordbank-packs', 'wordbank-releases', 'wordbank-index', 'draw-canvases']);
+export const RECOVERY_SCOPES = Object.freeze([...DRAWING_RECOVERY_SCOPES, 'game-score-ledger', 'game-score-balances', 'game-score-meta']);
 const EPHEMERAL_SCOPES = new Set(['sessions', 'transactions', 'room-presence']);
 const SELECT = 'SELECT key,revision,expires_ms AS expiresAt,version AS v,payload FROM game_records ORDER BY key';
 const SCHEMA = 'CREATE TABLE game_records (key TEXT PRIMARY KEY,revision TEXT NOT NULL,expires_ms REAL NOT NULL,version INTEGER NOT NULL,payload TEXT NOT NULL); CREATE TABLE game_metadata (name TEXT PRIMARY KEY,value TEXT NOT NULL);';
@@ -33,7 +36,7 @@ function paths(source, destination) {
   if (exists(destination) || exists(`${destination}-wal`) || exists(`${destination}-shm`)) throw new Error('Destination already exists; refusing to overwrite');
   mkdirSync(dirname(destination), { recursive: true, mode: 0o700 });
 }
-function checkedRows(db, key, { artifact = false, checkedAt = Date.now() } = {}) {
+function checkedRows(db, key, { artifact = false, checkedAt = Date.now(), gameRegistry } = {}) {
   if (!Buffer.isBuffer(key) || key.length !== 32) throw new Error('Recovery requires the existing 32-byte encryption key');
   const integrity = db.prepare('PRAGMA integrity_check').all();
   if (integrity.length !== 1 || Object.values(integrity[0])[0] !== 'ok') throw new Error('Database integrity check failed');
@@ -49,12 +52,17 @@ function checkedRows(db, key, { artifact = false, checkedAt = Date.now() } = {})
   }
   const rows = db.prepare(SELECT).all();
   const wordbankState = { packs: [], releases: [], index: [] }, canvases = [];
-  const drawingRooms=[], drawingSummaries=[];
+  const drawingRooms=[], drawingSummaries=[], scoreRows=[], scoreRooms=[], scoreSummaries=[];
   for (const row of rows) {
     if (!/^[A-Za-z0-9-]+:[a-f0-9]{64}$/.test(row.key) || typeof row.revision !== 'string') throw new Error('Invalid backup record');
     const scope = scopeOf(row);
     if (!RECOVERY_SCOPES.includes(scope) && (!EPHEMERAL_SCOPES.has(scope) || artifact)) throw new Error('Unrecognized recovery scope');
     const value = decryptStoredRecord(key, row.key, row);
+    if (Object.values(SCORE_SCOPES).includes(scope)) {
+      const id = scoreRecordId(scope, value);
+      if (recordKey(scope, id) !== row.key || row.expiresAt !== SCORE_FOREVER) throw new Error('Score identity or retention mismatch');
+      scoreRows.push({ scope, value, payloadBytes: Buffer.byteLength(row.payload, 'utf8'), expiresAt: row.expiresAt });
+    }
     if (['wordbank-packs', 'wordbank-releases', 'wordbank-index'].includes(scope)) {
       validateDrawAndGuessWordbankSnapshot(scope, value);
       const id = scope === 'wordbank-packs' ? value.id : scope === 'wordbank-releases' ? `${value.packId}:${value.version}` : value.userKey ? `owner-${value.userKey}` : 'quota';
@@ -69,19 +77,21 @@ function checkedRows(db, key, { artifact = false, checkedAt = Date.now() } = {})
     if (scope === 'game-profiles' && (!/^[a-f0-9]{64}$/.test(value.userKey ?? '') || recordKey(scope, value.userKey) !== row.key)) throw new Error('Profile identity mismatch');
     if (scope === 'rooms' && value.snapshot) {
       if (!/^[a-f0-9]{32}$/.test(value.snapshot.roomId ?? '') || recordKey(scope, value.snapshot.roomId) !== row.key) throw new Error('Room identity mismatch');
-      createRoomStore().importSnapshot(value.snapshot);
+      createRoomStore({ gameRegistry }).importSnapshot(value.snapshot);
       if (value.snapshot.gameType === 'draw-and-guess') drawingRooms.push(value.snapshot);
+      if (value.snapshot.gameType === 'poker414-2') scoreRooms.push(value.snapshot);
     }
     if (scope === 'room-requests' && value.snapshot) {
       if (value.kind !== 'create' || value.status !== 'pending' || value.snapshot.phase !== 'waiting'
           || value.snapshot.code !== value.code || value.snapshot.roomId !== value.roomId) throw new Error('Pending room identity mismatch');
-      createRoomStore().importSnapshot(value.snapshot);
+      createRoomStore({ gameRegistry }).importSnapshot(value.snapshot);
       if (value.snapshot.gameType === 'draw-and-guess' && row.expiresAt>checkedAt) drawingRooms.push(value.snapshot);
     }
     if (scope === 'rooms') {
       for (const summary of [...(value.snapshot?.pendingRecords ?? []), ...(value.pendingRecords ?? [])]) {
-        validateMatchSummary(summary);
+        validateMatchSummary(summary, { gameRegistry });
         if(summary.game==='draw-and-guess') drawingSummaries.push(summary);
+        if(summary.game==='poker414-2') scoreSummaries.push(summary);
         if (recordKey(scope, summary.roomId) !== row.key) throw new Error('Pending match room identity mismatch');
       }
     }
@@ -90,8 +100,9 @@ function checkedRows(db, key, { artifact = false, checkedAt = Date.now() } = {})
       if (recordKey(scope, value.roomId) !== row.key) throw new Error('Chat room identity mismatch');
     }
     if (scope === 'game-history') {
-      validateHistoryRecord(value);
+      validateHistoryRecord(value, { gameRegistry });
       if(value.summary.game==='draw-and-guess') drawingSummaries.push(value.summary);
+      if(value.summary.game==='poker414-2') scoreSummaries.push(value.summary);
       if (recordKey(scope, value.summary.matchId) !== row.key || row.expiresAt !== value.summary.endedAt + 180 * 86400000) throw new Error('History identity or retention mismatch');
     }
     if (scope === 'history-index') {
@@ -103,7 +114,53 @@ function checkedRows(db, key, { artifact = false, checkedAt = Date.now() } = {})
   validateDrawAndGuessWordbankState(wordbankState);
   if (canvases.length) validateCanvasCollection(canvases);
   validateDrawingRecoveryReferences({rooms:drawingRooms,canvases,wordbankState,summaries:drawingSummaries});
+  validateScoreRecoveryReferences({ rooms: scoreRooms, summaries: scoreSummaries, state: validateScoreState(scoreRows) });
   return rows;
+}
+
+/** Room/history TTLs may expire independently of permanent scores. Only live
+ * reservations and existing terminal references require the corresponding row. */
+export function validateScoreRecoveryReferences({ rooms, summaries, state }) {
+  const same = isDeepStrictEqual;
+  const originals = new Map(state.ledgers.filter(ledger => ledger.settlementVersion === 0).map(ledger => [ledger.matchId, ledger]));
+  const ledgerFor = matchId => originals.get(matchId);
+  const roomByMatch = new Map(rooms.filter(room => room.matchId).map(room => [`${room.roomId}:${room.matchId}`, room]));
+  const reservedMatches = new Set(state.reservations.map(reservation => `${reservation.roomId}:${reservation.matchId}`));
+  const participants = room => room.matchParticipants.map(player => ({ userKey: player.userKey, seatId: player.playerId }));
+  const fail = () => { throw new Error('Score recovery reference mismatch'); };
+  for (const reservation of state.reservations) {
+    const room = roomByMatch.get(`${reservation.roomId}:${reservation.matchId}`);
+    if (!room || room.phase !== 'playing' || room.matchStartedAt !== reservation.startedAt
+        || room.game.ruleVersion !== reservation.ruleVersion || room.game.scoringVersion !== reservation.scoringVersion
+        || !same(participants(room), reservation.participants)) fail();
+  }
+  function checkResult(roomId, matchId, result) {
+    const ledger = ledgerFor(matchId);
+    if (!ledger || ledger.roomId !== roomId || ledger.reason !== result.reason || ledger.endedAt !== result.settledAt
+        || ledger.ruleVersion !== result.ruleVersion || ledger.scoringVersion !== result.scoringVersion
+        || result.deltas.length !== ledger.participants.length
+        || result.deltas.some((entry, index) => entry.playerId !== ledger.participants[index].seatId || entry.points !== ledger.resultingDeltas[index].delta)) fail();
+    return ledger;
+  }
+  for (const room of rooms) {
+    if (room.phase === 'playing') {
+      if (!reservedMatches.has(`${room.roomId}:${room.matchId}`)) fail();
+    } else if (room.game?.result) {
+      const ledger = checkResult(room.roomId, room.matchId, room.game.result);
+      if (!same(participants(room), ledger.participants) || ledger.status !== (room.phase === 'finished' ? 'completed' : 'aborted')) fail();
+    }
+    if (room.lastMatchResult) checkResult(room.roomId, room.lastMatchResult.matchId, room.lastMatchResult.result);
+  }
+  for (const summary of summaries) {
+    const ledger = ledgerFor(summary.matchId);
+    if (!ledger || ledger.roomId !== summary.roomId || ledger.endedAt !== summary.endedAt || ledger.reason !== summary.reason
+        || ledger.status !== summary.status || ledger.ruleVersion !== summary.ruleVersion || ledger.scoringVersion !== summary.scoringVersion
+        || ledger.accountGroup !== summary.accountGroup || ledger.settlementVersion !== summary.settlementVersion
+        || !same(ledger.participants, summary.players.map(player => ({ userKey: player.userKey, seatId: player.seatId })))
+        || !same(ledger.resultingDeltas, summary.deltas)
+        || !same(ledger.balancesAfter, summary.players.map(player => ({ userKey: player.userKey, total: player.balanceAfter })))) fail();
+  }
+  return true;
 }
 
 /** Current empty paper needs no stored row. Retired questions stay recoverable
@@ -152,12 +209,12 @@ function openRead(path) {
 }
 
 /** Read-only consistent validation before a candidate may serve the existing business database. */
-export function verifyLiveStore({ sourcePath, key, now = Date.now } = {}) {
+export function verifyLiveStore({ sourcePath, key, now = Date.now, gameRegistry } = {}) {
   checkSource(sourcePath);
   const db = openRead(sourcePath);
   try {
     db.exec('BEGIN');
-    const rows = checkedRows(db, key, { artifact: false,checkedAt:now() });
+    const rows = checkedRows(db, key, { artifact: false,checkedAt:now(), gameRegistry });
     const counts = {};
     for (const row of rows) counts[scopeOf(row)] = (counts[scopeOf(row)] ?? 0) + 1;
     return { recordCount: rows.length, scopes: Object.keys(counts).sort(), counts };
@@ -167,7 +224,7 @@ export function verifyLiveStore({ sourcePath, key, now = Date.now } = {}) {
 }
 
 /** SQLite online backup API captures committed WAL data without copying a changing main file. */
-export async function backupStore({ sourcePath, destinationPath, key, now = Date.now } = {}) {
+export async function backupStore({ sourcePath, destinationPath, key, now = Date.now, gameRegistry } = {}) {
   paths(sourcePath, destinationPath);
   const temporary = mkdtempSync(join(dirname(destinationPath), '.game-backup-'));
   let source, snapshot;
@@ -179,7 +236,7 @@ export async function backupStore({ sourcePath, destinationPath, key, now = Date
     chmodSync(snapshotPath, 0o600);
     snapshot = openRead(snapshotPath);
     const checkedAt=now();
-    const allRows = checkedRows(snapshot, key,{checkedAt});
+    const allRows = checkedRows(snapshot, key,{checkedAt, gameRegistry});
     const rows = allRows.filter((row) => RECOVERY_SCOPES.includes(scopeOf(row)));
     const manifest = { format: 1, keyId: encryptionKeyId(key), createdAt: checkedAt, recordCount: rows.length,
       scopes: RECOVERY_SCOPES, digest: digestRows(rows), authSessionsIncluded: false };
@@ -188,7 +245,7 @@ export async function backupStore({ sourcePath, destinationPath, key, now = Date
     const path = join(temporary, 'business.sqlite');
     writeDatabase(path, rows, { 'key-id': manifest.keyId, 'backup-manifest': JSON.stringify(signed) });
     const output = openRead(path);
-    try { checkedRows(output, key, { artifact: true }); } finally { output.close(); }
+    try { checkedRows(output, key, { artifact: true, gameRegistry }); } finally { output.close(); }
     publish(path, destinationPath);
     return { ...manifest, path: destinationPath, excludedRecords: allRows.length - rows.length };
   } finally {
@@ -197,11 +254,11 @@ export async function backupStore({ sourcePath, destinationPath, key, now = Date
   }
 }
 
-export function verifyBackup({ sourcePath, key } = {}) {
+export function verifyBackup({ sourcePath, key, gameRegistry } = {}) {
   checkSource(sourcePath);
   const db = openRead(sourcePath);
   try {
-    const rows = checkedRows(db, key, { artifact: true });
+    const rows = checkedRows(db, key, { artifact: true, gameRegistry });
     const encoded = db.prepare('SELECT value FROM game_metadata WHERE name=?').get('backup-manifest')?.value;
     const parsed = JSON.parse(encoded ?? 'null');
     if (!parsed || typeof parsed !== 'object') throw new Error('Backup manifest missing');
@@ -212,17 +269,19 @@ export function verifyBackup({ sourcePath, key } = {}) {
       || manifest.format !== 1 || manifest.keyId !== encryptionKeyId(key)
       || manifest.recordCount !== rows.length || manifest.digest !== digestRows(rows)
       || manifest.authSessionsIncluded !== false
-      || ![RECOVERY_SCOPES, HISTORY_RECOVERY_SCOPES, CHAT_RECOVERY_SCOPES, LEGACY_RECOVERY_SCOPES].some((scopes) => JSON.stringify(manifest.scopes) === JSON.stringify(scopes))
+      || ![RECOVERY_SCOPES, DRAWING_RECOVERY_SCOPES, HISTORY_RECOVERY_SCOPES, CHAT_RECOVERY_SCOPES, LEGACY_RECOVERY_SCOPES].some((scopes) => JSON.stringify(manifest.scopes) === JSON.stringify(scopes))
       || rows.some((row) => !manifest.scopes.includes(scopeOf(row)))) throw new Error('Backup manifest verification failed');
-    return { manifest, rows, chatIncluded: manifest.scopes.includes('room-chat'), historyIncluded: manifest.scopes.includes('game-history') && manifest.scopes.includes('history-index') };
+    return { manifest, rows, chatIncluded: manifest.scopes.includes('room-chat'),
+      historyIncluded: manifest.scopes.includes('game-history') && manifest.scopes.includes('history-index'),
+      scoresIncluded: ['game-score-ledger', 'game-score-balances', 'game-score-meta'].every(scope => manifest.scopes.includes(scope)) };
   } finally { db.close(); }
 }
 
 /** Creates a fresh database only. The operator stops the BFF and switches its configured path afterwards. */
-export function restoreStore({ sourcePath, destinationPath, key, offline = false } = {}) {
+export function restoreStore({ sourcePath, destinationPath, key, offline = false, gameRegistry } = {}) {
   if (offline !== true) throw new Error('Restore requires explicit offline confirmation');
   paths(sourcePath, destinationPath);
-  const { manifest, rows, chatIncluded, historyIncluded } = verifyBackup({ sourcePath, key });
+  const { manifest, rows, chatIncluded, historyIncluded, scoresIncluded } = verifyBackup({ sourcePath, key, gameRegistry });
   const temporary = mkdtempSync(join(dirname(destinationPath), '.game-restore-'));
   try {
     const path = join(temporary, 'restored.sqlite');
@@ -230,6 +289,6 @@ export function restoreStore({ sourcePath, destinationPath, key, offline = false
     writeDatabase(path, rows, { 'key-id': manifest.keyId });
     publish(path, destinationPath);
     return { path: destinationPath, recordCount: rows.length, keyId: manifest.keyId,
-      backupCreatedAt: manifest.createdAt, authSessionsRestored: false, chatIncluded, historyIncluded };
+      backupCreatedAt: manifest.createdAt, authSessionsRestored: false, chatIncluded, historyIncluded, scoresIncluded };
   } finally { rmSync(temporary, { recursive: true, force: true }); }
 }

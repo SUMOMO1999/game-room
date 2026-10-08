@@ -13,6 +13,11 @@ const order = (a, b) => b.endedAt - a.endedAt || b.matchId.localeCompare(a.match
 const fail = (code, message = '战绩暂时无法读取，请稍后重试。', status = 503) => { throw new RoomError(status, code, message); };
 const text = (value, max) => typeof value === 'string' && value === value.normalize('NFC').trim()
   && [...value].length > 0 && [...value].length <= max && !/\p{Cc}/u.test(value);
+// Validation decides the field whitelist first. Comparing all accepted fields
+// prevents a future adapter field from silently changing an archived result.
+const canonicalValue = value => Array.isArray(value) ? value.map(canonicalValue)
+  : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonicalValue(value[key])])) : value;
+const canonicalSummary = value => JSON.stringify(canonicalValue({ ...value, legacy: !!value.legacy }));
 
 /** Server-only archival contract. Reject extra fields so private racks cannot enter a summary. */
 export function validateMatchSummary(summary, { gameRegistry = defaultGameRegistry } = {}) {
@@ -20,7 +25,7 @@ export function validateMatchSummary(summary, { gameRegistry = defaultGameRegist
   try { adapter = gameRegistry.gameAdapter(summary?.game); }
   catch { throw new Error('Invalid match history summary'); }
   if (!summary || typeof summary !== 'object' || Array.isArray(summary)
-      || Object.keys(summary).some((key) => !fields.has(key))
+      || Object.keys(summary).some((key) => !fields.has(key) && !adapter.historySummaryFields?.includes(key))
       || !HEX32.test(summary.matchId ?? '') || !HEX32.test(summary.roomId ?? '') || !/^\d{6}$/.test(summary.roomCode ?? '')
       || summary.game !== adapter.gameType || !adapter.ruleVersions.includes(summary.ruleVersion)
       || summary.legacy !== undefined && typeof summary.legacy !== 'boolean'
@@ -38,6 +43,7 @@ export function validateMatchSummary(summary, { gameRegistry = defaultGameRegist
         || adapter.historyPlayerProblem(summary.status, player))) {
     throw new Error('Invalid match history summary');
   }
+  if (adapter.historySummaryProblem?.(summary)) throw new Error('Invalid match history summary');
   if (summary.status === 'completed') {
     const wins = summary.players.filter((player) => player.outcome === 'win').length;
     const draws = summary.players.filter((player) => player.outcome === 'draw').length;
@@ -47,7 +53,7 @@ export function validateMatchSummary(summary, { gameRegistry = defaultGameRegist
 }
 
 export function validateHistoryRecord(value, options) {
-  if (![1, 2].includes(value?.schemaVersion) || Object.keys(value).some((key) => !['schemaVersion', 'summary'].includes(key))) throw new Error('Invalid history record');
+  if (![1, 2, 3].includes(value?.schemaVersion) || Object.keys(value).some((key) => !['schemaVersion', 'summary'].includes(key))) throw new Error('Invalid history record');
   validateMatchSummary(value.summary, options);
   if (value.schemaVersion !== ((options?.gameRegistry || defaultGameRegistry).gameAdapter(value.summary.game).historySchemaVersion ?? 1)) throw new Error('Invalid history record version');
   return value;
@@ -102,11 +108,7 @@ export function createMatchHistory({ storage, now = Date.now, maxCasAttempts = 1
     const archived = await storage.read('game-history', summary.matchId);
     if (!archived || archived.expiresAt !== expiresAt) fail('HISTORY_CORRUPT');
     validateHistoryRecord(archived.value, { gameRegistry });
-    // Canonical fixed-field serialization avoids treating harmless object key order as a different result.
-    const canonical = (value) => JSON.stringify([value.matchId, value.roomId, value.roomCode, value.game, value.ruleVersion,
-      value.startedAt, value.endedAt, value.status, value.reason, !!value.legacy, value.players.map((player) =>
-        [player.userKey, player.seatId, player.nickname, player.outcome, player.remainingPoints, player.score, player.rank])]);
-    if (canonical(archived.value.summary) !== canonical(summary)) fail('HISTORY_CONFLICT');
+    if (canonicalSummary(archived.value.summary) !== canonicalSummary(summary)) fail('HISTORY_CONFLICT');
     for (const player of summary.players) {
       let saved = false;
       for (let attempt = 0; attempt < maxCasAttempts; attempt++) {
@@ -158,6 +160,10 @@ export function createMatchHistory({ storage, now = Date.now, maxCasAttempts = 1
       return { matchId: summary.matchId, roomCode: summary.roomCode, game: summary.game, ruleVersion: summary.ruleVersion,
         startedAt: summary.startedAt, endedAt: summary.endedAt, status: summary.status, reason: summary.reason,
         ...(summary.legacy ? { legacy: true } : {}),
+        ...(summary.accountGroup === undefined ? {} : {
+          accountGroup: summary.accountGroup, scoringVersion: summary.scoringVersion, settlementVersion: summary.settlementVersion,
+          deltas: summary.deltas.map(({ userKey: key, delta }) => ({ nickname: summary.players.find(player => player.userKey === key).nickname, delta })),
+        }),
         self: { outcome: self.outcome, remainingPoints: self.remainingPoints, ...extra(self) },
         players: summary.players.map(player => ({ nickname: player.nickname, outcome: player.outcome, remainingPoints: player.remainingPoints, ...extra(player) })) };
     });

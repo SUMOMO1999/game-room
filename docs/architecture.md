@@ -22,7 +22,7 @@
 
 `createGameRegistry` 可注入独立适配器，房间平台本身不按游戏名分支。旧拉密测试的 engine 注入由拉密适配器明确承接，不是所有游戏共有能力。浏览器[目录](../app/games/catalog.mjs)只含公开名字、路由、人数、提示和资源路径，不能放入状态、服务器实现或秘密配置。
 
-[历史格式兼容](../server/room-snapshot-compat.mjs)保持 schema1～8 的读取与映射；飞行棋采用独立 schema9，包含角色、完整比赛参与者及回合时钟。正式包声明读1～9／写2～9，旧两款按原格式保存；实际验证不支持schema9的旧包不能作为已写schema9的回退目标，不以清库解决兼容。实际生产存档不会因浏览器重排布局而改变版本。
+[历史格式兼容](../server/room-snapshot-compat.mjs)保留旧格式读取与映射；飞行棋schema9、你画我猜schema10和414候选schema11分别由各适配器校验。旧游戏按原格式保存；不支持新格式的旧包不能作为已写新格式后的回退目标，不以清库解决兼容。浏览器重排布局不改变共享存档格式。
 
 平台只在可信构造参数提供 `serverRandomInt`；游戏适配器在当前玩家、阶段与房间权限检查后采样。持久层把候选动作、骰面和回执一起提交，失败CAS候选不广播；提交时的期限由同事务守卫检查。游戏 `round` 代表整段回合，连续六点不增加 `round`，所以共通时钟不重置。
 
@@ -40,7 +40,7 @@
 
 ## 边界怎样防止退化
 
-[第三游戏平台测试](../app/game-platform-boundary.test.mjs)保留没有牌池、手牌、棋盘或拉密分数的合成游戏，并由[真实飞行棋平台测试](../app/flying-platform.test.mjs)验证实际第三款的随机、两阶段动作、角色、期限、SQLite并发、新Node进程恢复和一次结算。[目录测试](../app/games/catalog-boundary.test.mjs)验证明确资源清单、真实 HTTP 的公开/私有边界，以及发布包排除嵌套测试和夹具。[控制器测试](../app/platform-controllers.test.mjs)验证时钟一次到期、页面旧结果失效、退出重试、音频和视口清理。原两款游戏的规则与完整流程测试继续保留。本地服务端注册与前台目录现均含三款，三款完整房间／练习页面均已接入正式大厅。浏览器保存的游戏类型不能丢失或把显式未知类型降级成拉密。[页面流程测试](../app/flying-page-flow.test.mjs)验证未知动作期间退出、同身份恢复、跨身份清选择和真实 HTTP 资源闭包；[实局备份测试](../app/flying-backup.test.mjs)在独立新路径恢复六阶段而不恢复会话。
+[第三游戏平台测试](../app/game-platform-boundary.test.mjs)保留没有牌池、手牌、棋盘或拉密分数的合成游戏，并由[真实飞行棋平台测试](../app/flying-platform.test.mjs)验证实际第三款的随机、两阶段动作、角色、期限、SQLite并发、新Node进程恢复和一次结算。[目录测试](../app/games/catalog-boundary.test.mjs)验证明确资源清单、真实 HTTP 的公开/私有边界，以及发布包排除嵌套测试和夹具。[控制器测试](../app/platform-controllers.test.mjs)验证时钟一次到期、页面旧结果失效、退出重试、音频和视口清理。原两款游戏的规则与完整流程测试继续保留。前三款的完整房间／练习页面均已接入大厅；后续游戏可读、新建和公开页面分别验收，不能由服务端注册推断前端已经接通。浏览器保存的游戏类型不能丢失或把显式未知类型降级成拉密。[页面流程测试](../app/flying-page-flow.test.mjs)验证未知动作期间退出、同身份恢复、跨身份清选择和真实 HTTP 资源闭包；[实局备份测试](../app/flying-backup.test.mjs)在独立新路径恢复六阶段而不恢复会话。
 
 测试递归发现 `app/` 的 `.test.mjs` 文件，但不执行夹具目录。仅测试使用的 `app/test-support/runtime-source.mjs` 让页面测试读取兼容入口后的实际实现，它不进入发布包，也不对浏览器公开。结构拆分不能用删除旧断言替代兼容验证。
 
@@ -49,7 +49,7 @@
 
 第四款适配器通过显式阶段时钟和同时猜的业务前提扩展平台注册；旧三款仍严格room revision与原时钟。内容服务管理三类独立scope、共编草稿及不可变发布版本；房间只冻结最多120候选。设备画笔与有界笔画由独立canvas服务管理，提交以房间／presence／期限和canvas／额度的多记录事务守卫；未知笔迹只读恢复，不补写。具体设计、接口与开放门见[实现与发布范围](development-drawing.md)。
 
-本地完整包声明schema10及十三scope，并可读旧schema1～9与旧6／7／9scope备份；新的score/rank历史保持独立，旧牌分语义不改。首版正式flag默认关闭，合成HTTP/SSE／恢复证据不代替中央鲜度预算或真实设备。损坏原库先只读拒绝，不能由初始化修复后再声称预检通过。
+第四款当批完整包声明schema10及十三scope，并可读旧schema1～9与旧6／7／9scope备份；新的score/rank历史保持独立，旧牌分语义不改。首版正式flag默认关闭，合成HTTP/SSE／恢复证据不代替中央鲜度预算或真实设备。损坏原库先只读拒绝，不能由初始化修复后再声称预检通过。
 
 本地批量身份装配由 `server/identity-batch-runtime.mjs` 在启动时显式选择，默认关闭；独立机器签名只授权固定中央检查接口，不是共享 OAuth client 或 Cookie。`CognitoProvider` 先验真实 JWT，批传输只合并网络封包，每个检查保留独立 ref 和原始触发期限，完成许可不缓存。`SessionService` 保有会话版本与条件失效权；HTTP 和 SSE 仍须在输出前核对同一会话及房间／presence 版本。存储只读多 owner guard 不写数据或续期，SQLite 忙时立即拒绝本次输出，不阻塞到普通写入超时。高频请求只合并最多30秒的闲置续期写入，每次线上核验保持；正式启用另须中央实际路由、独立公钥、准入及容量就绪。
 
@@ -65,3 +65,13 @@
 
 
 绘画batch私有输出的正常会话续期与重登录边界：`SessionService.publicSession`只在server内部不可枚举地携带原存储版和授权lineage摘要。摘要包含saved session所有安全字段（只排除idleUntil／lastIdentityCheck），因此同主体但换token、CSRF、client、authTime、entry或activation metadata仍拒绝旧输出。最终检查先核主体及当前到期，再核摘要，只有纯idle续期版变化使用专门冲突。`prepareCurrentRoomOutput`的显式fresh回调与room只读重核合计最多一次，保持原context及最初id/userKey/issuer/sub/lineage；每次实际provider检查按独立ref与原units计数。batch SSE及canvas HTTP装配，旧HTTP/legacy不暗启；已提交领域写入不重做。新实现仍待最新冻结、完整Linux/原tar、同口径同步与正式中央容量验收，不能用历史制品通过覆盖。
+
+## 414的阶段、生命周期与积分合同
+
+第五款[414适配器](../server/games/poker414-2/adapter.mjs)采用可空`gameClock`：普通回合无时钟，发牌／勾叉阶段返回`{kind,id,deadlineAt}`，房间保存version3时钟。`actionDeadline`单独决定动作提交截止；`actionConcurrencyProblem`重新核对原意图，只对声明的动作或单次清窗开放严格兼容，不全局放宽revision。`commonActionProblem`显式拒绝414不支持的暂停、恢复和配置。其他四款沿用原策略；[不同机制的测试适配器](../app/game-platform-boundary.test.mjs)验证这些合同没有绑定牌池、当前玩家或414类型。
+
+`lifecycleTransition`负责游戏取消／赔分；共通房间保存固定参赛者和终局摘要，然后依结果回准备室或结算。`recoverOnStartup`与`disconnectTimeoutMs`独立声明，普通读取和设备重连不触发启动恢复。[持久房间](../server/durable-rooms.mjs)保有启动就绪门、presence竞争守卫和每游戏CAS预算；414最多首次加两次重读，旧游戏重试策略不改。
+
+[永久积分](../server/game-scores.mjs)管理账本、余额和版本／额度，不自行改房间；[提交器](../server/room-score-commit.mjs)组合房间、预留或终局积分变更并一次提交，提交后才广播与归档。更正生成新版本，只入差额，不覆盖原记录；战绩保存结算时余额，后续更正不改写历史画面。积分scope永久保留，旧战绩180天保留语义独立。备份对永久账本按提交次序重算余额，验证引用完整性。
+
+当前代码可读schema1～11、写原四款格式及414的schema11，备份涵盖16scope；旧6／7／9／13scope仍能读取并明确缺少哪些内容。注册表的已知适配器与`creationTypes`分别控制恢复和新房间／新开局；默认能读414但不允许创建或开始，不能因此绕过前台与发布验收。完整414操作页面和正式兼容回退候选仍按[实施计划](plans/poker414-2-v1.md)后续阶段完成。

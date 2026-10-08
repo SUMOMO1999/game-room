@@ -216,7 +216,7 @@ for (const sqlite of [false, true]) {
         assert.doesNotThrow(() => verifyLiveStore({ sourcePath: f.storePath, key: f.key }));
         const artifact = join(f.directory, 'waiting-cas-conflict-backup.sqlite');
         await backupStore({ sourcePath: f.storePath, destinationPath: artifact, key: f.key, now: f.now });
-        assert.equal(verifyBackup({ sourcePath: artifact, key: f.key }).manifest.scopes.length, 13);
+        assert.equal(verifyBackup({ sourcePath: artifact, key: f.key }).manifest.scopes.length, 16);
       }
       const duplicate = structuredClone(pack); duplicate.references.push(structuredClone(pack.references[0]));
       assert.throws(() => validateDrawAndGuessWordbankSnapshot('wordbank-packs', duplicate), TypeError);

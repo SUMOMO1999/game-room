@@ -3,14 +3,15 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const LEGACY_SCOPES = ['game-profiles', 'room-invites', 'rooms', 'room-memberships', 'room-registry', 'room-requests'];
-const CURRENT_SCOPES = [...LEGACY_SCOPES, 'room-chat', 'game-history', 'history-index', 'wordbank-packs', 'wordbank-releases', 'wordbank-index', 'draw-canvases'];
+const CURRENT_SCOPES = [...LEGACY_SCOPES, 'room-chat', 'game-history', 'history-index', 'wordbank-packs', 'wordbank-releases', 'wordbank-index', 'draw-canvases',
+  'game-score-ledger', 'game-score-balances', 'game-score-meta'];
 const LEGACY = { format: 1, roomSnapshots: { read: [1], write: [1] },
   backupScopes: { read: LEGACY_SCOPES, write: LEGACY_SCOPES } };
 
 // This declaration covers persistent room snapshots and the business backup /
 // recovery tools shipped with the same current link. Auth/presence stays ephemeral.
 export const CURRENT_DATA_COMPATIBILITY = Object.freeze({ format: 1,
-  roomSnapshots: Object.freeze({ read: Object.freeze([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]), write: Object.freeze([2, 3, 4, 5, 6, 7, 8, 9, 10]) }),
+  roomSnapshots: Object.freeze({ read: Object.freeze([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]), write: Object.freeze([2, 3, 4, 5, 6, 7, 8, 9, 10, 11]) }),
   backupScopes: Object.freeze({ read: Object.freeze([...CURRENT_SCOPES]), write: Object.freeze([...CURRENT_SCOPES]) }) });
 
 const invalid = (reason) => { throw new Error(`DATA_COMPATIBILITY_INVALID: ${reason}`); };
