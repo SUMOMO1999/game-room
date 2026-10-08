@@ -34,11 +34,11 @@ function storage() {
 }
 
 // A deliberately small DOM runs the actual account, room client and page modules.
-// Geometry/animation frames are not simulated; these tests cover private rendering and fetch lifetimes.
+// Rectangles can be supplied for projection tests; CSS layout still belongs to browser QA.
 function dom(html) {
   const nodes=new Map();let document;
   class Node extends EventTarget {
-    constructor(tag='div'){super();this.tagName=tag.toUpperCase();this.children=[];this.parentNode=null;this.attributes={};this.dataset={};this.hidden=false;this.disabled=false;this.value='';this.open=false;this._text='';this._class='';this.style={setProperty(){}};
+    constructor(tag='div'){super();this.tagName=tag.toUpperCase();this.children=[];this.parentNode=null;this.attributes={};this.dataset={};this.hidden=false;this.disabled=false;this.value='';this.open=false;this._text='';this._class='';this.style={setProperty(name,value){this[name]=value;}};
       this.classList={contains:name=>this._class.split(/\s+/).includes(name),toggle:(name,force)=>{
         const set=new Set(this._class.split(/\s+/).filter(Boolean)),enabled=force??!set.has(name);enabled?set.add(name):set.delete(name);this._class=[...set].join(' ');return enabled;
       },add:(...names)=>names.forEach(name=>this.classList.toggle(name,true)),remove:(...names)=>names.forEach(name=>this.classList.toggle(name,false))};}
@@ -62,7 +62,7 @@ function dom(html) {
     closest(selector){return this.matches(selector)?this:this.parentNode?.closest(selector)??null;}
     showModal(){this.open=true;this.setAttribute('open','');}close(){this.open=false;this.removeAttribute('open');}focus(){}blur(){}
     get clientWidth(){return 560;}get clientHeight(){return 140;}
-    getBoundingClientRect(){return {left:0,top:0,right:560,bottom:140,width:560,height:140};}
+    getBoundingClientRect(){return this.bounds || {left:0,top:0,right:560,bottom:140,width:560,height:140};}
   }
   function parse(source,parent) {
     const stack=[parent],voids=new Set(['META','LINK','INPUT','IMG','BR','HR']);
@@ -96,12 +96,12 @@ function roomView(user=USER) {
       board:board.BOARD_CELLS.map(cell=>({cellId:cell.cellId,piece:cell.cellId==='r0c0'?{hidden:false,id:'synthetic-known',side:'red',kind:'engineer',label:'工兵'}:cell.cellId==='r1c0'||cell.terrain==='camp'?null:{hidden:true}})),
       turnPlayerId:self,round:5,revision:4,status:'playing',winnerId:null,result:null,drawOfferByPlayerId:null,lastAction:null,legalFlips:['r0c1'],legalMoves:[{from:'r0c0',to:'r1c0'}],capturedPieces:[]}};
 }
-async function fixture(t,{state=AUTH,query=''}={}) {
+async function fixture(t,{state=AUTH,query='',viewport={width:844,height:390},stageBounds,initialView,initialStateResponse,initialRoomResponse}={}) {
   const document=dom(await readFile(new URL('army.html',import.meta.url),'utf8'));
   const window=new EventTarget(),timers=clock(),sessionStorage=storage(),localStorage=storage();
   const location={hostname:'127.0.0.1',search:`?code=${CODE}${query}`,href:`http://127.0.0.1/army.html?code=${CODE}${query}`,replace(url){this.replaced=url;}};
-  let nextState=state,stateResponse=null,roomResponse=null,nextView=roomView(state.userKey),actionResponse=null;
-  const calls=[],streams=[],watchers=[];
+  let nextState=state,stateResponse=initialStateResponse?()=>initialStateResponse.promise:null,roomResponse=initialRoomResponse||null,nextView=initialView || roomView(state.userKey),actionResponse=null;
+  const calls=[],streams=[],watchers=[],viewportSyncs=[];
   const fetch=async(url,options={})=>{
     calls.push({url,options});
     if(url==='/api/state')return stateResponse?stateResponse().then(response=>response.clone()):json(nextState);
@@ -116,10 +116,15 @@ async function fixture(t,{state=AUTH,query=''}={}) {
     if(url==='/auth/logout')return json({ok:true});
     throw new Error(`Unexpected synthetic request: ${url}`);
   };
-  Object.assign(window,{innerWidth:844,innerHeight:390,visualViewport:null,setInterval:()=>0,clearInterval(){}});
+  Object.assign(window,{innerWidth:viewport.width,innerHeight:viewport.height,visualViewport:null,setInterval:()=>0,clearInterval(){}});
+  if(stageBounds)document.getElementById('army-board-stage').bounds=stageBounds;
   const context=vm.createContext({document,window,location,navigator:{},sessionStorage,localStorage,fetch,URL,URLSearchParams,Response,ReadableStream,TextDecoder,AbortController,DOMException,Event,EventTarget,structuredClone,performance,crypto,
     setTimeout:timers.setTimeout,clearTimeout:timers.clearTimeout,queueMicrotask,requestAnimationFrame:()=>0,
     ...roomClock,...roomSession,...roomAudioControls,...roomViewport,...board,...army,...presentation,...routing,...lobbyModel,gameViewport,createGameAudio});
+  context.mountGameViewport=options=>roomViewport.mountGameViewport({...options,sync:()=>{
+    options.sync();const svg=document.getElementById('army-lines');
+    viewportSyncs.push({viewBox:svg.getAttribute('viewBox'),lines:svg.querySelectorAll('line').map(line=>({...line.attributes}))});
+  }});
   const account=await moduleIn(context,'account-client.mjs');Object.assign(context,account);
   context.watchAccountLifecycle=options=>{const watcher=account.watchAccountLifecycle(options);watchers.push(watcher);return watcher;};
   Object.assign(context,await moduleIn(context,'room-client.mjs'));
@@ -127,7 +132,7 @@ async function fixture(t,{state=AUTH,query=''}={}) {
   let pageAPI;context.expose=value=>{pageAPI=value;};
   await moduleIn(context,'army-room.mjs','expose({client:()=>client,view:()=>view,selected:()=>selected,click:clickCell,action,clear:clearPrivate});');
   t.after(()=>{watchers.forEach(watcher=>watcher.stop());pageAPI.client()?.stop();});await settle();
-  return {account,document,window,timers,sessionStorage,calls,streams,pageAPI,location,get:id=>document.getElementById(id),
+  return {account,document,window,timers,sessionStorage,calls,streams,viewportSyncs,pageAPI,location,get:id=>document.getElementById(id),
     setState(value){nextState=value;stateResponse=null;roomResponse=null;nextView=roomView(value.userKey);},deferState(value){stateResponse=()=>value.promise;},deferRoom(value){roomResponse=value;},
     setAction(value){actionResponse=value;},setView(value){nextView=value;},
     push(value){streams.at(-1).controller.enqueue(new TextEncoder().encode(`event: view\ndata: ${JSON.stringify({view:value})}\n\n`));},
@@ -215,6 +220,80 @@ test('army viewport rules reserve one fixed non-scrolling board and preserve acc
   const html=await readFile(new URL('army.html',import.meta.url),'utf8');assert.match(html,/class="army-screen"/);assert.equal(html.includes('app.mjs'),false);assert.match(html,/army-resign-confirm/);assert.match(html,/viewport-fit=cover/);
 });
 
+test('actual portrait room boots the same verified seat into a full 5 by 12 board and uses logical move IDs',async t=>{
+  const f=await fixture(t,{viewport:{width:390,height:844},stageBounds:{width:230,height:552}});
+  assert.equal(f.pageAPI.view().selfId,'self');assert.equal(f.pageAPI.view().matchId,'synthetic-match');
+  assert.equal(f.document.body.classList.contains('portrait-board'),true);
+  assert.equal(f.get('army-lines').getAttribute('viewBox'),'0 0 500 1200');
+  assert.equal(f.get('army-board').style.width,'230px');assert.equal(f.get('army-board').style.height,'552px');
+  assert.equal(f.get('army-cells').children.length,60);
+  assert.equal(f.cell('r0c0').style.left,'10%');assert.equal(f.cell('r11c4').style.left,'90%');
+  assert.equal(f.cell('r11c4').style.top,`${1150/12}%`);
+  assert.equal(f.document.querySelector('.orientation-hint'),null);
+  f.pageAPI.click('r0c0');assert.equal(f.cell('r1c0').classList.contains('target'),true);
+  assert.equal(f.cell('r1c0').style.left,'10%');assert.equal(f.cell('r1c0').style.top,'12.5%');
+  f.cell('r1c0').dispatchEvent(new Event('click'));await settle();
+  const writes=f.calls.filter(call=>call.url.endsWith('/actions'));
+  assert.equal(writes.length,1);const body=JSON.parse(writes[0].options.body);
+  assert.equal(body.from,'r0c0');assert.equal(body.to,'r1c0');assert.equal(body.expectedRevision,1);
+});
+
+test('first portrait viewport paints matching roads before deferred identity and room snapshots arrive',async t=>{
+  const identity=deferred(),room=deferred();
+  const f=await fixture(t,{viewport:{width:390,height:844},initialStateResponse:identity,initialRoomResponse:room});
+  assert.equal(f.pageAPI.view(),null);assert.equal(f.calls.some(call=>call.url===`/api/rooms/${CODE}`),false);
+  assert.equal(f.viewportSyncs.length,1,'initial mount has no second resize to repair the SVG');
+  const first=f.viewportSyncs[0];assert.equal(first.viewBox,'0 0 500 1200');
+  assert.ok(first.lines.length>0,'room-independent roads are painted before authorization finishes');
+  const edge=board.ROAD_EDGES[0],byId=new Map(board.BOARD_CELLS.map(cell=>[cell.cellId,cell]));
+  const from=army.armyPoint(byId.get(edge[0]),army.armyBoardGeometry({width:390,height:844}));
+  const to=army.armyPoint(byId.get(edge[1]),army.armyBoardGeometry({width:390,height:844}));
+  assert.deepEqual(first.lines[0],{class:'army-road',x1:String(from.x),y1:String(from.y),x2:String(to.x),y2:String(to.y)});
+  identity.resolve(json(AUTH));await settle();assert.equal(f.pageAPI.view(),null);
+  assert.equal(f.get('army-lines').getAttribute('viewBox'),'0 0 500 1200');
+  room.resolve(json({view:roomView()}));await settle();
+  assert.equal(f.get('army-lines').getAttribute('viewBox'),'0 0 500 1200');
+  assert.equal(f.get('army-cells').children.length,60);assert.equal(f.viewportSyncs.length,1);
+  assert.equal(f.cell('r0c0').style.left,'10%');assert.equal(f.cell('r11c4').style.top,`${1150/12}%`);
+});
+
+test('actual room rotates portrait and landscape without clearing selection, changing state or reconnecting',async t=>{
+  const f=await fixture(t);f.pageAPI.click('r0c0');
+  const state=JSON.stringify(f.pageAPI.view()),client=f.pageAPI.client(),calls=f.calls.length;
+  for(const [width,height,viewBox,left,top] of [[768,1024,'0 0 500 1200','10%',`${50/12}%`],
+      [1024,768,'0 0 1200 500',`${50/12}%`,'10%'],[320,568,'0 0 500 1200','10%',`${50/12}%`]]) {
+    f.window.innerWidth=width;f.window.innerHeight=height;f.window.dispatchEvent(new Event('resize'));
+    assert.equal(f.get('army-lines').getAttribute('viewBox'),viewBox);
+    assert.equal(f.cell('r0c0').style.left,left);assert.equal(f.cell('r0c0').style.top,top);
+    assert.equal(f.cell('r0c0').getAttribute('aria-pressed'),'true');
+    assert.equal(f.cell('r1c0').classList.contains('target'),true);
+    assert.equal(f.pageAPI.selected(),'r0c0');assert.equal(JSON.stringify(f.pageAPI.view()),state);
+  }
+  assert.equal(f.pageAPI.client(),client);assert.equal(f.streams.length,1);assert.equal(f.calls.length,calls);
+});
+
+test('portrait v3 spectator bootstrap keeps all sixty public cells readonly and does not reveal dark identities',async t=>{
+  const view=transportRoomView();view.game.ruleVersion='army-flip-v3';view.game.version=3;
+  view.selfRole='spectator';view.game.legalMoves=[];view.game.legalFlips=[];view.game.legalPickups=[];
+  const f=await fixture(t,{initialView:view,viewport:{width:768,height:1024}});
+  assert.equal(f.get('army-lines').getAttribute('viewBox'),'0 0 500 1200');
+  assert.equal(f.get('army-cells').children.length,60);assert.ok(f.get('army-cells').children.every(cell=>cell.disabled));
+  assert.equal(f.cell('r0c2').textContent,'');assert.match(f.cell('r0c2').getAttribute('aria-label'),/未翻暗子/);
+  f.pageAPI.click('r0c0');assert.equal(f.calls.filter(call=>call.options.method==='POST').length,0);
+});
+
+test('portrait and landscape controls retain forty-four pixel entry points without an orientation overlay',async()=>{
+  const css=await readFile(new URL('army.css',import.meta.url),'utf8');
+  assert.match(css,/\.army-screen\.portrait-board \.army-board \{ aspect-ratio:5\/12; \}/);
+  assert.match(css,/\.army-screen\.portrait-board \.army-cell \{ width:18\.6%; height:7\.65%; \}/);
+  assert.match(css,/\.army-screen \.shell:not\(\.lobby-shell\) \.army-action-buttons button \{ min-width:44px; min-height:44px; \}/);
+  for(const selector of ['chat-toggle','game-settings-toggle','room-exit','exit-practice'])assert.ok(css.includes(selector));
+  assert.equal(/orientation-hint[^}]*display:flex/.test(css),false);
+  assert.equal(css.includes('(orientation:portrait)'),false,'the shared projection class also supports portrait tablets');
+  const practice=await readFile(new URL('army-practice.html',import.meta.url),'utf8');
+  assert.equal(practice.includes('.army-practice-screen.portrait-board'),false,'both pages share Army-owned geometry styles');
+});
+
 function transportRoomView() {
   const view=roomView();view.game.version=2;view.game.ruleVersion='army-flip-v2';
   view.game.flagTokens=[{side:'black',carrierId:null,cellId:'r0c0'}];
@@ -292,10 +371,10 @@ test('v2 spectator flags stay public and readonly, then all flag and base DOM di
   assert.equal(f.get('army-cells').children.length,0);assert.equal(f.get('army-cells').querySelectorAll('.army-flag-mark').length,0);assert.equal(f.get('army-cells').querySelectorAll('.army-base-label').length,0);
 });
 
-async function practiceFixture({snapshot,mounted=false,locks}={}) {
+async function practiceFixture({snapshot,mounted=false,locks,viewport={width:390,height:844}}={}) {
   const document=dom(await readFile(new URL('army-practice.html',import.meta.url),'utf8'));
   const window=new EventTarget(),timers=clock(),localStorage=storage();
-  Object.assign(window,{innerWidth:390,innerHeight:844,visualViewport:null,scrollX:0,scrollY:0,scrollTo(){}});
+  Object.assign(window,{innerWidth:viewport.width,innerHeight:viewport.height,visualViewport:null,scrollX:0,scrollY:0,scrollTo(){}});
   let changed,resumeCount=0,actionResponse=null,pageAPI,active=false,sessionOptions;
   let current=snapshot || {matchId:'synthetic-practice-v2',baseline:true,storageAvailable:true,game:transportRoomView().game};
   const actions=[],session={suspend(){active=false;},async resume(){active=true;resumeCount++;changed(current);},async restart(){},async act(action){if(!active)return {ok:false,error:'返回练习后再走棋。'};actions.push(action);return actionResponse?actionResponse(action):{ok:true};}};
@@ -310,6 +389,21 @@ async function practiceFixture({snapshot,mounted=false,locks}={}) {
   return {document,window,actions,pageAPI,get:id=>document.getElementById(id),cell:id=>document.getElementById('army-cells').children.find(node=>node.dataset.cellId===id),
     resumeCount:()=>resumeCount,sessionOptions,localStorage,setAction(handler){actionResponse=handler;},push(next){current=next;changed(next);}};
 }
+
+test('actual practice shares room projection and preserves selected logical cells through both rotations',async()=>{
+  const f=await practiceFixture({snapshot:{matchId:'restored-v1',baseline:true,storageAvailable:true,game:roomView().game}});
+  assert.equal(f.get('army-lines').getAttribute('viewBox'),'0 0 500 1200');
+  assert.equal(f.cell('r11c4').style.left,'90%');assert.equal(f.cell('r11c4').style.top,`${1150/12}%`);
+  await f.pageAPI.click('r0c0');assert.equal(f.pageAPI.selected(),'r0c0');
+  const before=JSON.stringify(f.pageAPI.view());
+  for(const [width,height,viewBox] of [[844,390,'0 0 1200 500'],[768,1024,'0 0 500 1200']]) {
+    f.window.innerWidth=width;f.window.innerHeight=height;f.window.dispatchEvent(new Event('resize'));
+    assert.equal(f.get('army-lines').getAttribute('viewBox'),viewBox);
+    assert.equal(f.pageAPI.selected(),'r0c0');assert.equal(f.cell('r1c0').classList.contains('target'),true);
+    assert.equal(JSON.stringify(f.pageAPI.view()),before);assert.equal(f.actions.length,0);
+  }
+  await f.pageAPI.click('r1c0');assert.deepEqual(JSON.parse(JSON.stringify(f.actions)),[{type:'move',from:'r0c0',to:'r1c0'}]);
+});
 
 test('actual mounted army practice isolates versioned save keys, lock and storage events while direct old keys remain compatible',async()=>{
   const lockCalls=[];

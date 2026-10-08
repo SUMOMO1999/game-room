@@ -1,4 +1,4 @@
-import { prepareProduction } from '../server/production.mjs';
+import { prepareProduction, closeRuntime } from '../server/production.mjs';
 
 process.umask(0o077);
 try {
@@ -6,6 +6,7 @@ try {
   try {
     console.log(JSON.stringify({ ok: true, origin: runtime.settings.origin, callback: runtime.settings.callback,
       postLogout: runtime.settings.postLogout, versions: runtime.versions, storeReady: true, clientConfigured: true,
+      identityBatchConfigured: runtime.settings.identityBatchEnabled,
       onlineClientValidation: 'pending-joint-acceptance' }));
-  } finally { runtime.preview?.close();await runtime.chat?.close(); await runtime.rooms.close(); runtime.storage.close(); }
+  } finally { await closeRuntime(runtime); }
 } catch (error) { console.error(`Preflight failed: ${error.message}`); process.exitCode = 1; }

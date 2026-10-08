@@ -8,7 +8,8 @@ const app = new URL('./', import.meta.url);
 test('install metadata and real PNG sizes are shared by every entry; practice restart stays in header', async () => {
   const manifest = JSON.parse(await readFile(new URL('manifest.webmanifest', app), 'utf8'));
   assert.equal(manifest.display, 'standalone');
-  assert.equal(manifest.orientation, 'landscape');
+  // Army friends rooms and practice must remain playable when launched upright.
+  assert.equal(manifest.orientation, 'any');
   assert.equal(manifest.start_url, './');
   assert.equal(manifest.scope, './');
   assert.equal(manifest.prefer_related_applications, false);

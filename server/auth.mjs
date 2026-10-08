@@ -3,6 +3,7 @@ import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { opaqueId } from './storage.mjs';
 import { IdentityPolicyClient } from './identity-policy-client.mjs';
 import { SHARED_ISSUER } from './config.mjs';
+import { createIdentityCheckContext } from './identity-check-context.mjs';
 
 const validSubject = (value) => typeof value === 'string' && value.length > 0 && value.length <= 256 && !/[\x00-\x1f\x7f]/.test(value);
 const validSeconds = (value) => Number.isSafeInteger(value) && value >= 0;
@@ -12,8 +13,16 @@ export class IdentityFailure extends Error {
 }
 
 // One deadline covers every await and retry. A late external response cannot continue an authorization.
-export async function withIdentityDeadline(task, { timeoutMs = 10000, signal: parentSignal, now = Date.now } = {}) {
+export async function withIdentityDeadline(task, { timeoutMs = 10000, signal: parentSignal, now = Date.now, context } = {}) {
   if (!Number.isInteger(timeoutMs) || timeoutMs <= 0 || timeoutMs > 10000) throw new TypeError('Invalid identity deadline');
+  if (context) {
+    if (typeof context.assert !== 'function' || typeof context.wait !== 'function'
+      || typeof context.restrict !== 'function' || !context.signal || parentSignal?.aborted) throw new IdentityFailure(503);
+    // The caller owns this context. Nested JWT/policy checks cannot dispose it
+    // or reset its original collection, queue and total deadlines.
+    context.restrict(timeoutMs);
+    return context.wait(() => task(context));
+  }
   const controller = new AbortController(), signal = controller.signal;
   const validUntil = now() + timeoutMs;
   const started = performance.now();
@@ -52,9 +61,10 @@ export class CognitoProvider {
       }
     } : keyResolver;
     this.fetcher = fetcher; this.config.timeout = 8;
-    this.policyClient = policyClient || new IdentityPolicyClient({ fetcher, now });
+    this.policyClient = policyClient || new IdentityPolicyClient({ fetcher, now, intervalMs: settings.identityCheckIntervalMs });
     this.checkTimeoutMs = checkTimeoutMs;
   }
+  get usesBatchIdentity() { return this.policyClient.usesBatchIdentity === true; }
   async begin(returnTo, { entry } = {}) {
     const codeVerifier = oidc.randomPKCECodeVerifier(); const state = oidc.randomState(); const nonce = oidc.randomNonce();
     const url = oidc.buildAuthorizationUrl(this.config, { redirect_uri: entry?.callback || this.settings.callback, scope: 'openid', response_type: 'code', code_challenge: await oidc.calculatePKCECodeChallenge(codeVerifier), code_challenge_method: 'S256', state, nonce });
@@ -78,7 +88,7 @@ export class CognitoProvider {
       }
     }, { timeoutMs: this.checkTimeoutMs, signal });
   }
-  async verifyAccess(accessToken, { signal } = {}) {
+  async verifyAccess(accessToken, { signal, context } = {}) {
     return withIdentityDeadline(async (deadline) => {
       try {
         if (typeof accessToken !== 'string' || !accessToken || accessToken.length > 16384 || /[\x00-\x20\x7f]/.test(accessToken)) throw new IdentityFailure();
@@ -97,7 +107,7 @@ export class CognitoProvider {
         if (error.code === 'ERR_JWKS_TIMEOUT' || error instanceof TypeError) throw new IdentityFailure(503);
         throw new IdentityFailure();
       }
-    }, { timeoutMs: this.checkTimeoutMs, signal });
+    }, { timeoutMs: this.checkTimeoutMs, signal, context });
   }
   async complete(url, transaction, { signal } = {}) {
     return withIdentityDeadline(async (deadline) => {
@@ -112,20 +122,25 @@ export class CognitoProvider {
       return identity;
     }, { timeoutMs: this.checkTimeoutMs, signal });
   }
-  async check(identity, { signal } = {}) {
-    return withIdentityDeadline(async (deadline) => {
+  async check(identity, { signal, context } = {}) {
+    const ownedContext = this.usesBatchIdentity && !context
+      ? createIdentityCheckContext({ timeoutMs: Math.min(8000, this.checkTimeoutMs), now: this.now, signal }) : null;
+    try { return await withIdentityDeadline(async (deadline) => {
       const expected = identity && { issuer: identity.issuer, sub: identity.sub, accessToken: identity.accessToken,
         authTime: identity.authTime, clientId: identity.clientId, expiresAt: identity.expiresAt };
       if (!expected || expected.issuer !== this.settings.issuer || !validSubject(expected.sub)) throw new IdentityFailure();
-      const verified = await deadline.wait(this.verifyAccess(expected.accessToken, { signal: deadline.signal }));
+      const verified = await deadline.wait(() => this.verifyAccess(expected.accessToken,
+        { signal: deadline.signal, context: context || ownedContext }));
       if (verified.issuer !== expected.issuer || verified.sub !== expected.sub
           || expected.authTime !== undefined && expected.authTime !== verified.authTime
           || expected.clientId !== undefined && expected.clientId !== verified.clientId
           || expected.expiresAt !== undefined && (!Number.isFinite(expected.expiresAt) || expected.expiresAt <= this.now())) throw new IdentityFailure();
-      const policy = await deadline.wait(this.policyClient.check(verified, { signal: deadline.signal }));
+      const policy = await deadline.wait(() => this.policyClient.check(verified,
+        { signal: deadline.signal, context: context || ownedContext }));
       if (verified.expiresAt <= this.now() || expected.expiresAt !== undefined && expected.expiresAt <= this.now()) throw new IdentityFailure();
       return { ...verified, policy };
-    }, { timeoutMs: this.checkTimeoutMs, signal });
+    }, { timeoutMs: this.checkTimeoutMs, signal, context: context || ownedContext }); }
+    finally { ownedContext?.dispose(); }
   }
 }
 

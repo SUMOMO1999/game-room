@@ -2,6 +2,8 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { CognitoProvider, MockProvider, IdentityFailure, withIdentityDeadline } from './auth.mjs';
 import { opaqueId, identityKey } from './storage.mjs';
 import { entryFor, entryPath, entryReturnTo, recordMatchesEntry, requestContext } from './entry-context.mjs';
+import { createIdentityCheckContext, identityCheckContextFor } from './identity-check-context.mjs';
+import { OutputGuardConflict, SessionOutputConflict } from './room-output-fence.mjs';
 
 export function requestHeader(request, name) {
   const value = request.headers?.get ? request.headers.get(name) : request.headers?.[name.toLowerCase()];
@@ -16,6 +18,18 @@ export function requestCookie(request, name) {
 const equalSecret = (first, second) => typeof first === 'string' && typeof second === 'string' && Buffer.byteLength(first) === Buffer.byteLength(second) && timingSafeEqual(Buffer.from(first), Buffer.from(second));
 const identityFields = (session) => ({ issuer: session.issuer, sub: session.sub, accessToken: session.accessToken,
   authTime: session.authTime, clientId: session.clientId, expiresAt: session.expiresAt });
+const authorizationLineage = session => createHash('sha256').update(JSON.stringify(Object.fromEntries(
+  Object.keys(session).filter(field => field !== 'idleUntil' && field !== 'lastIdentityCheck').sort()
+    .map(field => [field, session[field]])))).digest('hex');
+
+function assertOutputSessionRecord(session, record, now) {
+  if (!record || record.value.phase !== 'active') throw new IdentityFailure();
+  if (record.value.userKey !== session.userKey || record.value.issuer !== session.issuer
+    || record.value.sub !== session.sub) throw new IdentityFailure();
+  if (record.value.expiresAt <= now || record.value.idleUntil <= now) throw new IdentityFailure();
+  if (!equalSecret(session.authorizationLineage, authorizationLineage(record.value))) throw new IdentityFailure(503);
+  if (record.version !== session.authorizationVersion) throw new SessionOutputConflict();
+}
 
 export class SessionService {
   constructor(settings, { store, provider, now = () => Date.now(), authorizationTimeoutMs = 10000 } = {}) {
@@ -26,6 +40,7 @@ export class SessionService {
     this.provider = provider || (settings.mode === 'cognito' ? new CognitoProvider(settings, { now }) : settings.mode === 'mock' ? new MockProvider(settings, { now }) : null);
   }
   get loginReady() { return Boolean(this.provider && ['cognito', 'mock'].includes(this.settings.mode)); }
+  get usesBatchIdentity() { return this.provider?.usesBatchIdentity === true; }
   subscribeInvalidation(listener) { this.listeners.add(listener); return () => this.listeners.delete(listener); }
   notify(sessionId, session, status) { for (const listener of this.listeners) { try { listener({ sessionId, userKey: session?.userKey, status }); } catch {} } }
   cookie(name, value, seconds, request) {
@@ -63,12 +78,17 @@ export class SessionService {
         || !Number.isFinite(user.expiresAt) || user.expiresAt <= this.now()) throw new IdentityFailure();
     return { ...identity, authTime: user.authTime, clientId: user.clientId, expiresAt: Math.min(identity.expiresAt, user.expiresAt) };
   }
-  async authorize(request, { fresh = false, touch = true } = {}) {
-    try { return await withIdentityDeadline((deadline) => this.authorizeWithin(request, { fresh, touch }, deadline), { timeoutMs: this.authorizationTimeoutMs, now: this.now }); }
+  async authorize(request, { fresh = false, touch = true, context, signal } = {}) {
+    context ??= identityCheckContextFor(request);
+    const ownedContext = this.usesBatchIdentity && !context
+      ? createIdentityCheckContext({ timeoutMs: Math.min(8000, this.authorizationTimeoutMs), now: this.now, signal }) : null;
+    try { return await withIdentityDeadline((deadline) => this.authorizeWithin(request, { fresh, touch }, deadline),
+      { timeoutMs: this.authorizationTimeoutMs, now: this.now, signal, context: context || ownedContext }); }
     catch (error) {
       if (error instanceof IdentityFailure && error.status === 503) this.notify(requestCookie(request, entryFor(request, this.settings).cookieName), null, 503);
       throw error;
     }
+    finally { ownedContext?.dispose(); }
   }
   async entryStatus(request) {
     // This navigation marker never replaces the persisted game identity key or
@@ -109,7 +129,8 @@ export class SessionService {
       }
       {
         try {
-          const user = await deadline.wait(() => this.provider.check(identityFields(session), { signal: deadline.signal }));
+          const user = await deadline.wait(() => this.provider.check(identityFields(session),
+            { signal: deadline.signal, context: deadline.triggeredAtMs === undefined ? undefined : deadline }));
           const verified = this.checkedIdentity(identityFields(session), user);
           if (session.userKey !== identityKey(session.issuer, session.sub)) throw new IdentityFailure();
           session.expiresAt = verified.expiresAt;
@@ -128,7 +149,13 @@ export class SessionService {
       }
       session.idleUntil = Math.min(session.expiresAt, session.idleUntil);
       const upgrade = session.expiresAt !== before.expiresAt || session.authTime !== before.authTime || session.clientId !== before.clientId;
-      if (!touch && !upgrade) {
+      // Frequent drawing/guess requests still perform a fresh online check.
+      // Only idle-renewal writes are coalesced, avoiding unrelated session CAS
+      // changes forcing every recipient to redo an in-flight policy check.
+      const touchWindow = Math.min(30000, this.settings.idleMs / 10);
+      const renewIdle = touch && (!this.usesBatchIdentity
+        || Math.min(session.expiresAt, this.now() + this.settings.idleMs) - session.idleUntil >= touchWindow);
+      if (!renewIdle && !upgrade) {
         // Read-only output/watchdog checks do not contend on an otherwise unchanged session.
         const current = await deadline.wait(() => this.store.read('sessions', id));
         if (!current) { this.notify(id, session, 401); throw new IdentityFailure(); }
@@ -138,13 +165,21 @@ export class SessionService {
           if (await deadline.wait(() => this.invalidateCurrent(id, record))) throw new IdentityFailure();
           continue;
         }
-        return this.publicSession(id, session);
+        return this.publicSession(id, session, record.version);
       }
-      if (touch) session.idleUntil = Math.min(session.expiresAt, this.now() + this.settings.idleMs);
+      if (renewIdle) session.idleUntil = Math.min(session.expiresAt, this.now() + this.settings.idleMs);
       if (await deadline.wait(() => this.writeSession(id, record, session, deadline))) {
         // The successful CAS has a new version. Re-read on a late expiry instead
         // of deleting a concurrently renewed record with this older snapshot.
         if (session.expiresAt <= this.now() || session.idleUntil <= this.now()) continue;
+        if (this.usesBatchIdentity) {
+          const saved = await deadline.wait(() => this.store.read('sessions', id));
+          if (!saved) throw new IdentityFailure();
+          // A post-CAS read supplies the version for this one output's final
+          // fence. Any concurrent modification requires another fresh check.
+          if (JSON.stringify(saved.value) !== JSON.stringify(session)) continue;
+          return this.publicSession(id, session, saved.version);
+        }
         return this.publicSession(id, session);
       }
       // CAS failure never authorizes a stale result: reread the live record and recheck online.
@@ -152,9 +187,35 @@ export class SessionService {
     }
     throw new IdentityFailure(503);
   }
-  publicSession(id, session) {
-    return { id, userKey: session.userKey, csrf: session.csrf, issuer: session.issuer, sub: session.sub,
+  publicSession(id, session, version) {
+    const value = { id, userKey: session.userKey, csrf: session.csrf, issuer: session.issuer, sub: session.sub,
       expiresAt: session.expiresAt, idleUntil: session.idleUntil, lastIdentityCheck: session.lastIdentityCheck };
+    if (version !== undefined) Object.defineProperties(value, {
+      authorizationVersion: { value: version },
+      authorizationLineage: { value: authorizationLineage(session) },
+    });
+    return value;
+  }
+  async assertCurrent(session, { context, guards = [] } = {}) {
+    context?.assert();
+    const read = () => this.store.read('sessions', session.id);
+    const record = context ? await context.wait(read) : await read();
+    assertOutputSessionRecord(session, record, this.now());
+    const verify = () => this.store.verifyGuards({ guards: [
+      { scope: 'sessions', id: session.id, expectedVersion: session.authorizationVersion }, ...guards,
+    ], validUntil: Math.min(context?.validUntil ?? Number.MAX_SAFE_INTEGER, record.value.expiresAt, record.value.idleUntil) });
+    const valid = context ? await context.wait(verify) : await verify();
+    if (valid === false) {
+      // The initial session SELECT is outside the atomic multi-owner check.
+      // Classify a completed rejection against a new readonly session snapshot:
+      // a benign renewal needs fresh identity, not a wasted room-only retry.
+      // This read never grants output or creates another recovery budget.
+      const current = context ? await context.wait(read) : await read();
+      assertOutputSessionRecord(session, current, this.now());
+      throw new OutputGuardConflict();
+    }
+    if (valid !== true) throw new IdentityFailure(503);
+    context?.assert();
   }
   async writeSession(id, record, value, deadline) {
     deadline.assert();

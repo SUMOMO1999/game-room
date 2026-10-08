@@ -22,7 +22,7 @@ export function releaseSources(projectRoot = root) {
   }
   walk('app'); walk('server');
   for (const script of ['production-start.mjs','production-preflight.mjs','initialize-store-key.mjs','store-backup.mjs','store-restore.mjs','scheduled-backup.mjs','release-compatibility.mjs']) files.push(`scripts/${script}`);
-  for (const file of ['Caddyfile','game-room.service','game-room-backup.service','game-room-backup.timer','runtime.env.example','install-release.sh','activate-release.sh']) files.push(`infra/${file}`);
+  for (const file of ['Caddyfile','game-room.service','game-room-identity-batch.conf','game-room-backup.service','game-room-backup.timer','runtime.env.example','install-release.sh','activate-release.sh']) files.push(`infra/${file}`);
   return files.sort();
 }
 export function buildRelease({ projectRoot = root, outputRoot = join(root, 'dist') } = {}) {

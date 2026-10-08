@@ -1,0 +1,138 @@
+/* Display preferences only. No geometry, game state or semantic artwork lives
+   here: number tiles, jokers, army pieces/bases, planes and white paper keep
+   their own colors. Each theme shares the same restrained material system. */
+:is(html[data-game-theme=classic],.theme-preview[data-game-theme=classic]) {
+  --theme-texture:radial-gradient(ellipse at 40% 0,var(--theme-glow),transparent 70%),repeating-linear-gradient(0deg,var(--theme-grain) 0 1px,transparent 1px 4px),repeating-linear-gradient(90deg,var(--theme-grain) 0 1px,transparent 1px 5px);
+}
+:is(html[data-game-theme=midnight],.theme-preview[data-game-theme=midnight]) {
+  --theme-texture:radial-gradient(ellipse at 75% 0,var(--theme-glow),transparent 72%),repeating-linear-gradient(135deg,var(--theme-grain) 0 1px,transparent 1px 5px);
+}
+:is(html[data-game-theme=wine],.theme-preview[data-game-theme=wine]) {
+  --theme-texture:radial-gradient(ellipse at 30% 0,var(--theme-glow),transparent 78%),repeating-linear-gradient(0deg,var(--theme-grain) 0 1px,transparent 1px 5px),repeating-linear-gradient(90deg,var(--theme-grain) 0 1px,transparent 1px 7px);
+}
+:is(html[data-game-theme=slate],.theme-preview[data-game-theme=slate]) {
+  --theme-texture:radial-gradient(ellipse at 50% 0,var(--theme-glow),transparent 68%),repeating-linear-gradient(0deg,var(--theme-grain) 0 1px,transparent 1px 3px);
+}
+:is(html[data-game-theme=sand],.theme-preview[data-game-theme=sand]) {
+  --theme-texture:radial-gradient(ellipse at 50% 0,var(--theme-glow),transparent 75%),repeating-linear-gradient(0deg,var(--theme-grain) 0 1px,transparent 1px 4px),repeating-linear-gradient(90deg,var(--theme-grain) 0 1px,transparent 1px 6px);
+}
+:is(html[data-game-theme=blueprint],.theme-preview[data-game-theme=blueprint]) {
+  --theme-texture:radial-gradient(ellipse at 65% 0,var(--theme-glow),transparent 75%),repeating-linear-gradient(45deg,var(--theme-grain) 0 1px,transparent 1px 5px),repeating-linear-gradient(135deg,var(--theme-grain) 0 1px,transparent 1px 6px);
+}
+
+/* The picker previews the actual background/table/rack/action tokens, including
+   the table material. It remains a single accessible button per choice. */
+.theme-picker{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+html[data-game-theme] .theme-choice{
+  position:relative;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:80px auto;gap:9px;
+  min-width:0;min-height:128px!important;padding:8px!important;text-align:left;
+  background:var(--theme-surface)!important;color:var(--theme-ink)!important;
+  border:1px solid color-mix(in srgb,var(--theme-border) 55%,transparent)!important;border-radius:12px;
+  box-shadow:0 2px 5px var(--theme-shadow);isolation:isolate;
+}
+.theme-choice-copy{display:grid;gap:2px;min-width:0}
+.theme-choice strong{font-size:13px;line-height:1.45;color:var(--theme-ink)!important}
+.theme-choice small{font-size:10px;line-height:1.5;color:var(--theme-muted)!important}
+.theme-preview{position:relative;display:block;width:100%;min-width:0;height:80px;overflow:hidden;border-radius:7px;background:var(--theme-base);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--theme-border) 30%,transparent)}
+.theme-preview-table{position:absolute;inset:9px 10px 27px;display:grid;place-items:center;background-color:var(--theme-table);background-image:var(--theme-texture);border:1px solid color-mix(in srgb,var(--theme-border) 55%,transparent);border-radius:6px;box-shadow:inset 0 1px 0 var(--theme-glow),0 2px 4px var(--theme-shadow)}
+.theme-preview-tiles{display:flex;gap:3px;align-items:center}
+.theme-preview-tiles i{display:grid;place-items:center;width:14px;height:21px;border:1px solid #ddd6c6;border-bottom:2px solid #c5bdab;border-radius:3px;background:linear-gradient(#fffef7,#f6f0e0);font:700 12px/1 ui-monospace,monospace;font-style:normal;color:#da1725}
+.theme-preview-tiles i:nth-child(2){color:#065ed4}.theme-preview-tiles i:nth-child(3){color:#15171b}
+.theme-preview-rack{position:absolute;left:10px;bottom:9px;width:46%;height:10px;border:1px solid var(--theme-rack-edge);border-radius:3px;background:linear-gradient(#ffffff22,transparent),var(--theme-rack);box-shadow:0 1px 2px var(--theme-shadow)}
+.theme-preview-action{position:absolute;right:10px;bottom:7px;display:grid;place-items:center;height:18px;min-width:35px;border-radius:4px;background:var(--theme-accent);color:var(--theme-base);font-size:9px;font-weight:700}
+.theme-choice-check{display:none;position:absolute;right:5px;top:5px;width:21px;height:21px;place-items:center;border:2px solid var(--theme-surface);border-radius:50%;background:var(--theme-accent);color:var(--theme-base);font-size:12px;font-weight:800}
+html[data-game-theme] .theme-choice[aria-pressed=true]{border-color:var(--theme-accent)!important;outline:2px solid color-mix(in srgb,var(--theme-accent) 75%,var(--theme-ink));outline-offset:1px}
+.theme-choice[aria-pressed=true] .theme-choice-check{display:grid}
+.theme-note{font-size:11px;line-height:1.7;color:var(--theme-muted);margin:5px 0 10px}
+
+/* Page chrome and table cloth. Explicit classes, rather than a universal button
+   selector, keep interactive cards, chess cells and authored game art intact. */
+html[data-game-theme]:is(.army-root,.flying-root,.drawing-root),
+html[data-game-theme]:has(.game-screen,.army-screen,.flying-screen,.flying-body,.drawing-body,.lab-shell){background:var(--theme-base)!important}
+html[data-game-theme] :is(body.game-screen,body.army-screen,body.flying-screen,body.flying-body,body.drawing-body,.lab-shell,.game-screen .shell:not(.lobby-shell)){
+  background-color:var(--theme-base)!important;background-image:radial-gradient(ellipse at 35% 0,var(--theme-glow),transparent 70%)!important;
+  color:var(--theme-ink)!important;--green:var(--theme-accent);--muted:var(--theme-muted);--line:var(--theme-border);--lab-ink:var(--theme-ink);--lab-gold:var(--theme-accent);
+}
+html[data-game-theme] :is(.game-table,.army-table,.army-board-frame,.flying-board-panel,.drawing-canvas-panel,.lab-shell .canvas-slot){
+  background-color:var(--theme-table)!important;background-image:var(--theme-texture)!important;color:var(--theme-ink)!important;
+  border-color:color-mix(in srgb,var(--theme-border) 62%,transparent)!important;
+  box-shadow:inset 0 1px 0 var(--theme-glow),inset 0 -12px 30px var(--theme-shadow),0 4px 12px color-mix(in srgb,var(--theme-shadow) 50%,transparent)!important;
+}
+html[data-game-theme] :is(.flying-control-panel,.drawing-card,.drawing-tools,.drawing-guess-form,.drawing-recovery,.player-seat,.player,.army-player,.flying-player,.drawing-player,.sort-controls,#turn-banner,.flying-result,.room-result){
+  background-color:var(--theme-surface)!important;background-image:linear-gradient(var(--theme-glow),transparent 70%)!important;color:var(--theme-ink)!important;
+  border-color:color-mix(in srgb,var(--theme-border) 48%,transparent)!important;
+}
+html[data-game-theme] :is(.rack,.theme-preview-rack){
+  background-color:var(--theme-rack)!important;
+  background-image:linear-gradient(180deg,#ffffff1a,transparent 65%),repeating-linear-gradient(0deg,var(--theme-grain) 0 1px,transparent 1px 5px)!important;
+  border-color:var(--theme-rack-edge)!important;box-shadow:inset 0 1px 0 #ffffff45,inset 0 -3px 0 var(--theme-rack-edge),0 2px 6px var(--theme-shadow)!important;
+}
+
+/* Nonsemantic text had white/cream constants in the original dark game pages.
+   This explicit list supplies dark ink in light themes, including waiting states. */
+html[data-game-theme] :is(.brand,.brand strong,.lab-brand,.lab-brand span,.drawing-brand,.flying-brand,.game-heading h1,.rack-heading h2,.army-heading h1,.flying-turn,.flying-player-name,.flying-player-side,.drawing-stage-bar strong,.player-seat strong,.player strong,.army-player-identity,.army-player-role,.room-topbar a,.room-topbar strong,.room-waiting h2,.flying-waiting h2){color:var(--theme-ink)!important}
+html[data-game-theme] :is(.table-topline,.table-note,.meld-header,.meld-header small,.rack-heading p,.rack-heading h2 span,.rack-bottom,.rack-bottom .text-button,.round-summary>span,.turn-clock,.turn-clock-action,.flying-stage,.flying-clock,.flying-side-note,.flying-route-text,.flying-feedback,.flying-footer,.flying-player-detail,.flying-plane-position,.flying-die-empty,.flying-mode,.flying-connection,.lab-caption,.paint-status,.drawing-paint-status,.drawing-feedback,.drawing-player small,.drawing-guess-form label,.drawing-guess-form p,.player-seat .player-detail,.player-seat>span:not(.army-side):not(.player-avatar),.player small,.army-heading,.army-round,.army-action-bar,.room-topbar,.room-waiting .eyebrow,.room-waiting>p,.flying-waiting p,.header-actions .mode-badge,.feedback){color:var(--theme-muted)!important}
+/* Mounted pages also render classless IDs and small child labels. Map their
+   actual chrome nodes instead of relying on color inherited from a container. */
+html[data-game-theme] :is(#army-feedback,#practice-save-note,.army-action-bar>p,.preview-status,.spectator-list,.flying-brand>small,#flying-connection,.flying-player>small,.flying-plane-button>small,.flying-route,.flying-recovery,#flying-waiting>p){color:var(--theme-muted)!important}
+html[data-game-theme] :is(.room-topbar .text-button,.flying-player>strong,.flying-footer>a,#flying-gate>a){color:var(--theme-ink)!important}
+html[data-game-theme] #flying-turn{color:var(--theme-accent)!important}
+html[data-game-theme] .game-screen.in-game .spectator-list{background-color:var(--theme-control)!important}
+html[data-game-theme] .app-shell-status{background-color:var(--theme-control)!important;color:var(--theme-ink)!important}
+html[data-game-theme] :is(.app-install-intro,.app-install-note,.joker-config-form p,#inspector-note,#inspector-page,#room-options-note,.host-transfer-controls label,#room-menu-status,#leave-room-status,.activity-note,.room-activity-list time,.room-activity-list li span,.room-activity-list .activity-empty,.activity-pages span){color:var(--theme-muted)!important}
+/* The chat surface keeps its existing light message colors; its helper token
+   must therefore remain local rather than inherit the dark-table muted ink. */
+html[data-game-theme] .room-chat{--muted:#64745d}
+html[data-game-theme] :is(.game-screen,.army-screen,.flying-screen,.flying-body,.drawing-body,.lab-shell) :is(.quiet-button,.secondary-button,.room-exit,.practice-exit,.sort-button,.board-view-button,.sound-toggle,.chat-toggle,.app-shell-button,.round-summary strong,.game-settings-toggle,.flying-button,.flying-plane-button,.flying-recovery button,.flying-actions button,.flying-header-actions button,.flying-roster-heading button,.drawing-header-actions button,.drawing-tool-heading button,.drawing-tool-row button:not(.drawing-color-chip),.drawing-actions button,.drawing-recovery button,.drawing-guess-form>button,.drawing-guess-row button,.lab-header nav a,.lab-header nav button){
+  color:var(--theme-ink)!important;background:var(--theme-control)!important;border-color:color-mix(in srgb,var(--theme-border) 70%,transparent)!important;
+  box-shadow:inset 0 1px 0 var(--theme-glow);
+}
+html[data-game-theme] :is(.board-view-button[aria-pressed=true],.sort-button.active,.drawing-tool-row button[aria-pressed=true],.practice-lessons [aria-current=page],.chat-toggle[aria-expanded=true]){
+  background:var(--theme-accent)!important;color:var(--theme-base)!important;border-color:var(--theme-accent)!important;
+}
+html[data-game-theme] :is(.game-screen,.army-screen,.flying-screen,.flying-body,.drawing-body,.lab-shell) :is(.primary-button,.flying-primary,#commit:not(:disabled),#start-room:not(:disabled),#turn-banner.your-turn,.main-action){
+  background:var(--theme-accent)!important;color:var(--theme-base)!important;border-color:var(--theme-accent)!important;box-shadow:inset 0 1px 0 #ffffff22,0 2px 6px var(--theme-shadow)!important;
+}
+html[data-game-theme] :is(.game-screen,.army-screen,.flying-screen,.flying-body,.drawing-body) :is(.primary-button:disabled,.flying-primary:disabled,.secondary-button:disabled,.quiet-button:disabled,.board-view-button:disabled,.sort-button:disabled,.room-exit:disabled,.drawing-actions button:disabled,.drawing-tool-heading button:disabled,.drawing-tool-row button:disabled,.drawing-guess-row button:disabled,#start-room:disabled){
+  background:var(--theme-surface)!important;color:var(--theme-muted)!important;border-color:color-mix(in srgb,var(--theme-border) 35%,transparent)!important;box-shadow:none!important;opacity:1;
+}
+html[data-game-theme] .new-meld{color:var(--theme-muted)!important;border-color:color-mix(in srgb,var(--theme-border) 80%,transparent)!important;background:color-mix(in srgb,var(--theme-surface) 30%,transparent)!important}
+html[data-game-theme] .new-meld:hover{background:color-mix(in srgb,var(--theme-surface) 55%,transparent)!important}
+html[data-game-theme] .split-group{color:var(--theme-ink)!important}
+html[data-game-theme] :is(.split-group:not(:disabled):hover,.split-group[aria-pressed=true]){background:var(--theme-accent);color:var(--theme-base)!important}
+html[data-game-theme] :is(.army-heading strong,.flying-die-label,.player-turn-order){color:var(--theme-ink)!important;background:var(--theme-control)!important}
+html[data-game-theme] :is(.player-seat.current,.flying-player.current,.drawing-player.current,.player.active){background-color:color-mix(in srgb,var(--theme-accent) 13%,var(--theme-surface))!important;border-color:var(--theme-accent)!important}
+html[data-game-theme] .player-seat.current::after,html[data-game-theme] .small-dot{background:var(--theme-accent)!important;box-shadow:none}
+html[data-game-theme] .brand-mark i{background:var(--theme-accent);color:var(--theme-base)}
+html[data-game-theme] .chat-toggle.has-unread{border-color:var(--theme-accent)!important;box-shadow:0 0 0 2px color-mix(in srgb,var(--theme-accent) 48%,transparent)}
+html[data-game-theme] .chat-toggle.has-unread .chat-unread{background:var(--theme-accent)!important;color:var(--theme-base)!important}
+html[data-game-theme] :is(.flying-turn.is-self,.drawing-hint.private-word,.flying-result h2){color:var(--theme-accent)!important}
+html[data-game-theme] :is(.flying-plane-button.legal,.flying-plane-button.selected,.flying-plane-button[aria-pressed=true]){border-color:var(--theme-accent)!important;background:color-mix(in srgb,var(--theme-accent) 15%,var(--theme-surface))!important;color:var(--theme-ink)!important}
+html[data-game-theme] :is(.feedback.valid,.flying-feedback.pending){color:var(--theme-good)!important}
+html[data-game-theme] :is(.feedback.invalid,.flying-feedback.error,.flying-feedback[data-kind=error],.flying-error,.meld.invalid .meld-header small){color:var(--theme-bad)!important}
+html[data-game-theme] :is(.turn-clock.expired,.flying-clock.expired){color:var(--theme-bad)!important}
+
+/* Board routes are neutral chrome. Faction labels, flags, pieces and plane SVG
+   colors remain game-owned; only light cloth needs legible neutral roads. */
+html[data-game-theme] .army-road{stroke:color-mix(in srgb,var(--theme-ink) 45%,var(--theme-table))}
+html[data-game-theme] .army-rail{stroke:color-mix(in srgb,var(--theme-ink) 65%,var(--theme-table))}
+html[data-game-theme] .army-rail-line{stroke:var(--theme-table)}
+html[data-game-theme] .army-terrain{fill:var(--theme-table);stroke:color-mix(in srgb,var(--theme-ink) 60%,var(--theme-table))}
+html[data-game-theme] :is(.army-terrain.camp,.army-terrain.headquarters){stroke:var(--theme-accent)}
+
+/* Dialog surfaces use the same tokens. Exclusions are explicit where dialogs
+   can contain game objects; no rule recolors their contents or drawing ink. */
+html[data-game-theme] :is(.game-screen,.army-screen,.flying-screen,.flying-body,.drawing-body,.lab-shell) dialog{
+  background:var(--theme-surface)!important;color:var(--theme-ink)!important;border-color:color-mix(in srgb,var(--theme-border) 65%,transparent)!important;box-shadow:0 16px 48px var(--theme-shadow)!important;
+}
+html[data-game-theme] .game-settings-dialog[open] section{background:var(--theme-base);border-color:color-mix(in srgb,var(--theme-border) 42%,transparent)}
+html[data-game-theme] .game-settings-dialog[open] :is(h3,.theme-note,.sound-settings,#sound-preview-status,.color-assist-option,.color-assist-option span,.room-menu-actions>p){color:var(--theme-muted)!important}
+html[data-game-theme] .game-settings-dialog[open] :is(button:not(.theme-choice),a,select){color:var(--theme-ink);background-color:var(--theme-control);border-color:var(--theme-border)}
+html[data-game-theme] .game-settings-dialog[open] :is(.sound-settings select,#sound-preview-kind){color:var(--theme-ink)!important;background-color:var(--theme-control)!important}
+html[data-game-theme] .game-settings-dialog[open] .practice-lessons a:not([aria-current=page]){color:var(--theme-ink)!important}
+html[data-game-theme] .game-settings-dialog[open] :is(.sound-settings input,#sound-volume,.color-assist-option input){accent-color:var(--theme-accent)}
+html[data-game-theme] :is(.game-settings-dialog,.flying-page dialog,.drawing-page dialog,.army-dialog,.rules-dialog,.confirm-dialog) :is(.secondary-button,.close-button,.text-button,[data-close]){color:var(--theme-ink)!important;background:var(--theme-control)!important;border-color:var(--theme-border)!important}
+html[data-game-theme] :is(.flying-page dialog,.drawing-page dialog) :is(h2,h3,p,label){color:var(--theme-ink)}
+html[data-game-theme] :is(.game-screen,.army-screen,.flying-screen,.flying-body,.drawing-body,.lab-shell) :is(.quiet-button,.secondary-button,.primary-button,.board-view-button,.sort-button,.game-settings-toggle,.room-exit,.flying-button,.flying-primary,.drawing-tool-row button):focus-visible{outline-color:var(--theme-accent)}
+@media (hover:hover){html[data-game-theme] .theme-choice:not([aria-pressed=true]):hover{border-color:var(--theme-accent)!important;box-shadow:0 3px 8px var(--theme-shadow)}}
+@media (prefers-reduced-motion:reduce){.theme-choice{transition:none}}

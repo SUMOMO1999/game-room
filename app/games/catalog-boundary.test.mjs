@@ -24,7 +24,8 @@ const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const privatePaths = ['server/games/rummikub/adapter.mjs', 'server/games/army-flip/adapter.mjs',
   'games/rummikub/multiplayer.mjs', 'games/army-flip/rules.mjs', 'multiplayer-rules.mjs',
   'army-rules.mjs', 'rooms.mjs', 'game-registry.mjs', 'games/catalog-boundary.test.mjs',
-  'games/rummikub/test-support/secret.mjs', 'games/rummikub/fixtures/secret.mjs'];
+  'games/rummikub/test-support/secret.mjs', 'games/rummikub/fixtures/secret.mjs',
+  'infra/game-room-identity-batch.conf'];
 function metadataOnly(value) {
   if (value === null || ['string', 'number', 'boolean'].includes(typeof value)) return true;
   if (Array.isArray(value)) return value.every(metadataOnly);
@@ -84,10 +85,11 @@ test('release packaging recursively retains canonical runtime modules and exclud
     'app/games/demo/tests/test.mjs', 'app/games/demo/fixtures/data.mjs', 'server/test-support/secret.mjs',
     'server/games/demo/__fixtures__/secret.mjs',
     ...['production-start.mjs', 'production-preflight.mjs', 'initialize-store-key.mjs', 'store-backup.mjs', 'store-restore.mjs', 'scheduled-backup.mjs', 'release-compatibility.mjs'].map(file => `scripts/${file}`),
-    ...['Caddyfile', 'game-room.service', 'game-room-backup.service', 'game-room-backup.timer', 'runtime.env.example', 'install-release.sh', 'activate-release.sh'].map(file => `infra/${file}`)];
+    ...['Caddyfile', 'game-room.service', 'game-room-identity-batch.conf', 'game-room-backup.service', 'game-room-backup.timer', 'runtime.env.example', 'install-release.sh', 'activate-release.sh'].map(file => `infra/${file}`)];
   for (const path of fixtureFiles) { const target = join(root, path); mkdirSync(dirname(target), { recursive: true }); writeFileSync(target, 'synthetic packaging fixture\n'); }
   const sources = releaseSources(root);
   assert.ok(sources.includes('app/games/demo/public.mjs')); assert.ok(sources.includes('server/games/demo/adapter.mjs'));
+  assert.ok(sources.includes('infra/game-room-identity-batch.conf'));
   assert.equal(sources.some(path => /(?:^|\/)(?:test-support|tests|fixtures|__tests__|__fixtures__)(?:\/|$)|\.test\.mjs$/.test(path)), false);
   const release = buildRelease({ projectRoot: root, outputRoot: join(directory, 'artifacts') });
   const members = execFileSync('tar', ['-tzf', release.artifact], { encoding: 'utf8' }).trim().split('\n');

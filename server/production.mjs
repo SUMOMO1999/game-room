@@ -1,5 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
-import { statfsSync } from 'node:fs';
+import { lstatSync, statfsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { readSettings } from './config.mjs';
 import { createRuntime } from './runtime.mjs';
@@ -17,22 +17,35 @@ export function runtimeVersions() {
   if (version[0] < 3 || (version[0] === 3 && (version[1] < 51 || (version[1] === 51 && version[2] < 3)))) throw new Error('SQLite WAL fix is required');
   return { node: process.versions.node, sqlite };
 }
-async function closeRuntime(runtime) {
+export async function closeRuntime(runtime) {
   runtime.preview?.close();
-  try { await runtime.chat?.close(); }
-  finally { try { await runtime.rooms.close(); } finally { runtime.storage.close(); } }
+  try { try { await runtime.canvases?.close(); } finally { await runtime.chat?.close(); } }
+  finally { try { await runtime.rooms.close(); } finally {
+    try { await runtime.identityRuntime?.close(); } finally { runtime.storage.close(); }
+  } }
 }
 export async function prepareProduction(env = process.env) {
   const versions = runtimeVersions();
   const settings = readSettings(env);
   if (!settings.production) throw new Error('Production entry requires NODE_ENV=production');
-  const runtime = createRuntime(settings);
   let liveStoreValidation;
+  // Validate the original bytes before any domain initializer creates a seed
+  // or repairs an index. Only an absent database is eligible for first boot.
+  try {
+    lstatSync(settings.storePath);
+    liveStoreValidation = verifyLiveStore({ sourcePath: settings.storePath, key: settings.storeKey });
+  } catch (error) { if (error.code !== 'ENOENT') throw error; }
+  const runtime = createRuntime(settings, { identityEnv: env });
   try {
     const disk = statfsSync(dirname(settings.storePath));
     if (disk.bavail * disk.bsize < 256 * 1024 * 1024) throw new Error('Insufficient persistent disk space');
     await runtime.storage.adapter.get('health-check');
-    liveStoreValidation = verifyLiveStore({ sourcePath: settings.storePath, key: settings.storeKey });
+    await runtime.wordbankReady;
+    await runtime.canvases?.ready;
+    // Recheck the compatible initialized state without replacing the original
+    // read-only report for an existing database.
+    const initialized = verifyLiveStore({ sourcePath: settings.storePath, key: settings.storeKey });
+    liveStoreValidation ??= initialized;
   } catch (error) { try { await closeRuntime(runtime); } finally { throw error; } }
   return { ...runtime, versions, liveStoreValidation };
 }

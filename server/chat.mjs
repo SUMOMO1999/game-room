@@ -119,7 +119,8 @@ export function createRoomChat({ storage, rooms, now = Date.now, pollIntervalMs 
     const member = await rooms.getChatMember(code, userKey);
     if (member.roomId !== packet.roomId) fail(403, 'SEAT_REQUIRED', '请先加入这个房间。');
     const { value } = await load(member.roomId);
-    await rooms.getChatMember(code, userKey);
+    const current = await rooms.getChatMember(code, userKey);
+    if (current.roomId !== member.roomId || current.playerId !== member.playerId) fail(403, 'SEAT_REQUIRED', '请先加入这个房间。');
     const retained = new Set(value.messages.filter((message) => message.expiresAt > now()).map((message) => message.messageId));
     const messages = packet.messages.filter((message) => retained.has(message.messageId) && message.expiresAt > now());
     return { ...packet, messages, oldestSequence: value.messages.find((message) => message.expiresAt > now())?.chatSequence ?? null,
@@ -148,6 +149,10 @@ export function createRoomChat({ storage, rooms, now = Date.now, pollIntervalMs 
       value.rates.room.push(time); value.rates.room = value.rates.room.slice(-121);
       if (userKey in value.rates.users || Object.keys(value.rates.users).length < 1024) value.rates.users[userKey] = [...userAttempts, time].slice(-21);
       let error = retryAfter ? Object.assign(new RoomError(429, 'CHAT_RATE_LIMIT', '消息发送太快，请稍后再试。'), { retryAfter }) : validationError;
+      if (!error && typeof member.chatProblem === 'function') {
+        const blocked = member.chatProblem(text);
+        if (blocked) error = new RoomError(blocked.status, blocked.code, blocked.message);
+      }
       if (!error && previous) error = new RoomError(409, 'CHAT_REQUEST_ID_REUSED', '同一消息编号不能发送不同文字。');
       if (!error && Object.keys(value.requests).length >= maxRequests) {
         const earliest = Math.min(...Object.values(value.requests).map((request) => request.expiresAt));

@@ -27,7 +27,8 @@
   overscroll-behavior:contain;
 }
 .game-settings-dialog[open]::backdrop { background:#071d18aa; }
-.game-settings-dialog[open] .dialog-heading { display:flex; justify-content:space-between; align-items:center; gap:12px; margin:0 0 12px; }
+.game-settings-dialog[open] .dialog-heading { display:flex; justify-content:space-between; align-items:center; gap:12px; margin:0 0 12px; position:sticky; top:0; z-index:2; flex:none; background:var(--theme-surface,#173e32); }
+.game-settings-dialog[open] .dialog-heading::before { content:""; position:absolute; inset:-16px -16px 0; background:var(--theme-surface,#173e32); z-index:-1; pointer-events:none; }
 .game-settings-dialog[open] .dialog-heading h2 { margin:0; font-size:21px; }
 .game-settings-dialog[open] .close-button { width:44px; min-height:44px; color:#f2ead3; }
 .game-settings-dialog[open] .game-settings-body { display:grid; gap:14px; }
@@ -37,6 +38,8 @@
 .game-settings-dialog[open] button,
 .game-settings-dialog[open] a,
 .game-settings-dialog[open] select { min-height:44px; font-size:13px; }
+.game-settings-dialog[open] select,
+.game-settings-dialog[open] #sound-preview-kind { font-size:16px; }
 .game-settings-dialog[open] button { color:#f2ead3; background:#264f3f; border-color:#bacaaa55; }
 .game-settings-dialog[open] .sound-settings:has(#sound-preview) { display:grid; grid-template-columns:1fr auto; flex:1 0 100%; gap:10px; margin:6px 0 0; padding:0; border:0; color:#f2ead3; }
 .game-settings-dialog[open] .sound-settings:has(#sound-preview) > label { grid-column:1 / -1; grid-row:auto; white-space:normal; }

@@ -6,11 +6,14 @@ import { decryptStoredRecord, encryptionKeyId, recordKey } from './storage.mjs';
 import { createRoomStore } from '../app/rooms.mjs';
 import { validateChatSnapshot } from './chat.mjs';
 import { validateMatchSummary, validateHistoryRecord, validateHistoryIndex } from './match-history.mjs';
+import { validateDrawAndGuessWordbankSnapshot, validateDrawAndGuessWordbankState } from './content/draw-and-guess-wordbank.mjs';
+import { validateCanvasRecord, validateCanvasCollection } from './games/draw-and-guess/canvas-service.mjs';
 
 // Explicit recovery boundary. Session/token/PKCE/presence records never enter the delivered artifact.
 export const LEGACY_RECOVERY_SCOPES = Object.freeze(['game-profiles', 'room-invites', 'rooms', 'room-memberships', 'room-registry', 'room-requests']);
 export const CHAT_RECOVERY_SCOPES = Object.freeze([...LEGACY_RECOVERY_SCOPES, 'room-chat']);
-export const RECOVERY_SCOPES = Object.freeze([...CHAT_RECOVERY_SCOPES, 'game-history', 'history-index']);
+export const HISTORY_RECOVERY_SCOPES = Object.freeze([...CHAT_RECOVERY_SCOPES, 'game-history', 'history-index']);
+export const RECOVERY_SCOPES = Object.freeze([...HISTORY_RECOVERY_SCOPES, 'wordbank-packs', 'wordbank-releases', 'wordbank-index', 'draw-canvases']);
 const EPHEMERAL_SCOPES = new Set(['sessions', 'transactions', 'room-presence']);
 const SELECT = 'SELECT key,revision,expires_ms AS expiresAt,version AS v,payload FROM game_records ORDER BY key';
 const SCHEMA = 'CREATE TABLE game_records (key TEXT PRIMARY KEY,revision TEXT NOT NULL,expires_ms REAL NOT NULL,version INTEGER NOT NULL,payload TEXT NOT NULL); CREATE TABLE game_metadata (name TEXT PRIMARY KEY,value TEXT NOT NULL);';
@@ -30,31 +33,55 @@ function paths(source, destination) {
   if (exists(destination) || exists(`${destination}-wal`) || exists(`${destination}-shm`)) throw new Error('Destination already exists; refusing to overwrite');
   mkdirSync(dirname(destination), { recursive: true, mode: 0o700 });
 }
-function checkedRows(db, key, { artifact = false } = {}) {
+function checkedRows(db, key, { artifact = false, checkedAt = Date.now() } = {}) {
   if (!Buffer.isBuffer(key) || key.length !== 32) throw new Error('Recovery requires the existing 32-byte encryption key');
   const integrity = db.prepare('PRAGMA integrity_check').all();
   if (integrity.length !== 1 || Object.values(integrity[0])[0] !== 'ok') throw new Error('Database integrity check failed');
   const saved = db.prepare('SELECT value FROM game_metadata WHERE name=?').get('key-id');
   if (saved?.value !== encryptionKeyId(key)) throw new Error('Backup encryption key mismatch');
+  if(artifact) {
+    // Restore checks use the captured backup time, never today's clock: an
+    // expired pending create marker cannot revive a waiting-room dependency.
+    const encoded=db.prepare('SELECT value FROM game_metadata WHERE name=?').get('backup-manifest')?.value;
+    const manifest=JSON.parse(encoded??'null');
+    if(!manifest||!Number.isFinite(manifest.createdAt))throw new Error('Backup time missing');
+    checkedAt=manifest.createdAt;
+  }
   const rows = db.prepare(SELECT).all();
+  const wordbankState = { packs: [], releases: [], index: [] }, canvases = [];
+  const drawingRooms=[], drawingSummaries=[];
   for (const row of rows) {
     if (!/^[A-Za-z0-9-]+:[a-f0-9]{64}$/.test(row.key) || typeof row.revision !== 'string') throw new Error('Invalid backup record');
     const scope = scopeOf(row);
     if (!RECOVERY_SCOPES.includes(scope) && (!EPHEMERAL_SCOPES.has(scope) || artifact)) throw new Error('Unrecognized recovery scope');
     const value = decryptStoredRecord(key, row.key, row);
+    if (['wordbank-packs', 'wordbank-releases', 'wordbank-index'].includes(scope)) {
+      validateDrawAndGuessWordbankSnapshot(scope, value);
+      const id = scope === 'wordbank-packs' ? value.id : scope === 'wordbank-releases' ? `${value.packId}:${value.version}` : value.userKey ? `owner-${value.userKey}` : 'quota';
+      if (recordKey(scope, id) !== row.key || row.expiresAt !== Number.MAX_SAFE_INTEGER) throw new Error('Wordbank identity or retention mismatch');
+      wordbankState[scope === 'wordbank-packs' ? 'packs' : scope === 'wordbank-releases' ? 'releases' : 'index'].push(value);
+    }
+    if (scope === 'draw-canvases') {
+      validateCanvasRecord(value);
+      if (recordKey(scope, value.kind === 'quota' ? 'quota' : value.canvasId) !== row.key || row.expiresAt !== Number.MAX_SAFE_INTEGER) throw new Error('Canvas identity or retention mismatch');
+      canvases.push(value);
+    }
     if (scope === 'game-profiles' && (!/^[a-f0-9]{64}$/.test(value.userKey ?? '') || recordKey(scope, value.userKey) !== row.key)) throw new Error('Profile identity mismatch');
     if (scope === 'rooms' && value.snapshot) {
       if (!/^[a-f0-9]{32}$/.test(value.snapshot.roomId ?? '') || recordKey(scope, value.snapshot.roomId) !== row.key) throw new Error('Room identity mismatch');
       createRoomStore().importSnapshot(value.snapshot);
+      if (value.snapshot.gameType === 'draw-and-guess') drawingRooms.push(value.snapshot);
     }
     if (scope === 'room-requests' && value.snapshot) {
       if (value.kind !== 'create' || value.status !== 'pending' || value.snapshot.phase !== 'waiting'
           || value.snapshot.code !== value.code || value.snapshot.roomId !== value.roomId) throw new Error('Pending room identity mismatch');
       createRoomStore().importSnapshot(value.snapshot);
+      if (value.snapshot.gameType === 'draw-and-guess' && row.expiresAt>checkedAt) drawingRooms.push(value.snapshot);
     }
     if (scope === 'rooms') {
       for (const summary of [...(value.snapshot?.pendingRecords ?? []), ...(value.pendingRecords ?? [])]) {
         validateMatchSummary(summary);
+        if(summary.game==='draw-and-guess') drawingSummaries.push(summary);
         if (recordKey(scope, summary.roomId) !== row.key) throw new Error('Pending match room identity mismatch');
       }
     }
@@ -64,6 +91,7 @@ function checkedRows(db, key, { artifact = false } = {}) {
     }
     if (scope === 'game-history') {
       validateHistoryRecord(value);
+      if(value.summary.game==='draw-and-guess') drawingSummaries.push(value.summary);
       if (recordKey(scope, value.summary.matchId) !== row.key || row.expiresAt !== value.summary.endedAt + 180 * 86400000) throw new Error('History identity or retention mismatch');
     }
     if (scope === 'history-index') {
@@ -72,7 +100,34 @@ function checkedRows(db, key, { artifact = false } = {}) {
           || row.expiresAt !== Math.max(...value.entries.map((entry) => entry.endedAt + 180 * 86400000))) throw new Error('History index identity or retention mismatch');
     }
   }
+  validateDrawAndGuessWordbankState(wordbankState);
+  if (canvases.length) validateCanvasCollection(canvases);
+  validateDrawingRecoveryReferences({rooms:drawingRooms,canvases,wordbankState,summaries:drawingSummaries});
   return rows;
+}
+
+/** Current empty paper needs no stored row. Retired questions stay recoverable
+ * until sweep, and must still belong to a known live or archived match. */
+export function validateDrawingRecoveryReferences({rooms,canvases,wordbankState,summaries}) {
+  const live=new Map(rooms.map(room=>[room.roomId,room]));
+  const archived=new Set(summaries.map(summary=>`${summary.roomId}:${summary.matchId}`));
+  for(const canvas of canvases.filter(value=>value.kind==='canvas')) {
+    const room=live.get(canvas.roomId),number=/^dg-turn-([1-9]\d{0,2})$/.exec(canvas.turnId);
+    if(!number || Number(number[1])>40) throw new Error('Invalid canvas question reference');
+    if(room?.matchId===canvas.matchId) {
+      if(Number(number[1])>room.game.turnNumber) throw new Error('Future canvas question reference');
+    } else if(!archived.has(`${canvas.roomId}:${canvas.matchId}`)) throw new Error('Orphan canvas match reference');
+  }
+  for(const room of rooms.filter(room=>room.phase==='waiting')) {
+    const selection=room.drawConfig.contentSelection;
+    if(selection===null) continue; // Pure-engine fixtures have no adopted pack.
+    const pack=wordbankState.packs.find(value=>value.id===selection.packId);
+    const release=wordbankState.releases.find(value=>value.packId===selection.packId&&value.version===selection.version);
+    if(!pack || !release || !pack.references.some(ref=>ref.referenceId===`room-${room.roomId}`&&ref.version===selection.version)
+      || selection.categoryIds.some(id=>!release.categories.some(category=>category.id===id&&category.status==='active')))
+      throw new Error('Waiting room release reference mismatch');
+  }
+  return true;
 }
 function writeDatabase(path, rows, metadata) {
   const db = new DatabaseSync(path);
@@ -97,12 +152,12 @@ function openRead(path) {
 }
 
 /** Read-only consistent validation before a candidate may serve the existing business database. */
-export function verifyLiveStore({ sourcePath, key } = {}) {
+export function verifyLiveStore({ sourcePath, key, now = Date.now } = {}) {
   checkSource(sourcePath);
   const db = openRead(sourcePath);
   try {
     db.exec('BEGIN');
-    const rows = checkedRows(db, key, { artifact: false });
+    const rows = checkedRows(db, key, { artifact: false,checkedAt:now() });
     const counts = {};
     for (const row of rows) counts[scopeOf(row)] = (counts[scopeOf(row)] ?? 0) + 1;
     return { recordCount: rows.length, scopes: Object.keys(counts).sort(), counts };
@@ -123,9 +178,10 @@ export async function backupStore({ sourcePath, destinationPath, key, now = Date
     source.close(); source = null;
     chmodSync(snapshotPath, 0o600);
     snapshot = openRead(snapshotPath);
-    const allRows = checkedRows(snapshot, key);
+    const checkedAt=now();
+    const allRows = checkedRows(snapshot, key,{checkedAt});
     const rows = allRows.filter((row) => RECOVERY_SCOPES.includes(scopeOf(row)));
-    const manifest = { format: 1, keyId: encryptionKeyId(key), createdAt: now(), recordCount: rows.length,
+    const manifest = { format: 1, keyId: encryptionKeyId(key), createdAt: checkedAt, recordCount: rows.length,
       scopes: RECOVERY_SCOPES, digest: digestRows(rows), authSessionsIncluded: false };
     const signed = { ...manifest, signature: sign(key, manifest) };
     snapshot.close(); snapshot = null;
@@ -156,7 +212,7 @@ export function verifyBackup({ sourcePath, key } = {}) {
       || manifest.format !== 1 || manifest.keyId !== encryptionKeyId(key)
       || manifest.recordCount !== rows.length || manifest.digest !== digestRows(rows)
       || manifest.authSessionsIncluded !== false
-      || ![RECOVERY_SCOPES, CHAT_RECOVERY_SCOPES, LEGACY_RECOVERY_SCOPES].some((scopes) => JSON.stringify(manifest.scopes) === JSON.stringify(scopes))
+      || ![RECOVERY_SCOPES, HISTORY_RECOVERY_SCOPES, CHAT_RECOVERY_SCOPES, LEGACY_RECOVERY_SCOPES].some((scopes) => JSON.stringify(manifest.scopes) === JSON.stringify(scopes))
       || rows.some((row) => !manifest.scopes.includes(scopeOf(row)))) throw new Error('Backup manifest verification failed');
     return { manifest, rows, chatIncluded: manifest.scopes.includes('room-chat'), historyIncluded: manifest.scopes.includes('game-history') && manifest.scopes.includes('history-index') };
   } finally { db.close(); }

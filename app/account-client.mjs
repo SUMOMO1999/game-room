@@ -79,7 +79,7 @@ function normalize(value) {
   } : null;
   const recentRooms = authenticated && Array.isArray(value.recentRooms)
     ? value.recentRooms.map(normalizeRecentRoom).filter(Boolean).slice(0, 8) : [];
-  return { mode: value.mode, loginReady: value.loginReady === true, authenticated,
+  return { mode: value.mode, loginReady: value.loginReady === true, drawingEnabled: value.drawingEnabled === true, authenticated,
     userKey: authenticated ? value.userKey : null, csrf: authenticated ? value.csrf : null,
     profile, recentRooms, expiresAt: authenticated ? value.expiresAt : null,
     idleUntil: authenticated ? value.idleUntil : null, failureStatus: null,

@@ -21,7 +21,25 @@ export function armyFlagMarks(game,cellId) {
     ground:flags.filter(flag=>flag.carrierId===null && flag.cellId===cellId).map(flag=>flag.side),
     carried:piece && !piece.hidden && piece.id ? flags.filter(flag=>flag.carrierId===piece.id).map(flag=>flag.side) : []};
 }
-export function armyPoint(cell) { return { x: (cell.row + .5) * 100, y: (cell.column + .5) * 100 }; }
+// Display geometry belongs to Army presentation, never to its logical cell IDs.
+const armyLandscape = Object.freeze({ portrait:false, columns:12, rows:5, viewBox:'0 0 1200 500' });
+const armyPortrait = Object.freeze({ portrait:true, columns:5, rows:12, viewBox:'0 0 500 1200' });
+export function armyBoardGeometry({ width = 12, height = 5 } = {}) {
+  return Number.isFinite(width) && Number.isFinite(height) && height > width ? armyPortrait : armyLandscape;
+}
+export function armyPoint(cell, geometry = armyLandscape) {
+  return geometry?.portrait ? { x:(cell.column + .5) * 100, y:(cell.row + .5) * 100 }
+    : { x:(cell.row + .5) * 100, y:(cell.column + .5) * 100 };
+}
+export function armyCellPosition(cell, geometry = armyLandscape) {
+  const point = armyPoint(cell, geometry);
+  return { left:point.x / geometry.columns, top:point.y / geometry.rows };
+}
+export function fitArmyBoard({ width, height }, geometry = armyLandscape) {
+  const positive = value => Number.isFinite(value) ? Math.max(0, value) : 0;
+  const unit = Math.min(positive(width) / geometry.columns, positive(height) / geometry.rows);
+  return { unit, width:unit * geometry.columns, height:unit * geometry.rows };
+}
 export function armyPieceLabel(piece) {
   return !piece ? '空位' : piece.hidden ? '未翻暗子' : `${armySideLabel(piece.side)} ${piece.label || '棋子'}`;
 }

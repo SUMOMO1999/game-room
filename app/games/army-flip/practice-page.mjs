@@ -3,7 +3,7 @@ import { mountGameViewport } from '../../platform/room-viewport.mjs';
 import { entryBase, entryStorageKey } from '../../entry-path.mjs';
 import { createPracticeSession, PRACTICE_SELF, PRACTICE_STORAGE_KEY, PRACTICE_V2_STORAGE_KEY, PRACTICE_LEGACY_STORAGE_KEY } from './practice-engine.mjs';
 import { BOARD_CELLS, ROAD_EDGES, RAIL_EDGES } from './board.mjs';
-import { armySideLabel, armyAssignmentText, armyCellLabel, armyTargets, armyIntent,
+import { armySideLabel, armyAssignmentText, armyBoardGeometry, armyPoint, armyCellPosition, fitArmyBoard, armyCellLabel, armyTargets, armyIntent,
   armyTransition, armyResultText, armyLastActionText, armyUsesFlagTransport, armyFlagMarks, armyPickups, armyRulePages, armyRuleModeLabel } from './presentation.mjs';
 import { createGameAudio } from '../../game-audio.mjs';
 import { gameViewport } from '../../game-viewport.mjs';
@@ -11,7 +11,7 @@ import { gameViewport } from '../../game-viewport.mjs';
 const $ = id => document.getElementById(id);
 const audio = createGameAudio();
 const cellMap = new Map(BOARD_CELLS.map(cell => [cell.cellId, cell]));
-let view = null, selected = null, portrait = false, boardSignature = '', rulePage = 0;
+let view = null, selected = null, boardGeometry = armyBoardGeometry(), boardSignature = '', rulePage = 0;
 let leaving = false, resultDismissed = false, actionGesture = false, toastTimer;
 let pickupDialog=null;
 const available = () => !document.hidden && !leaving && !document.querySelector('dialog[open]');
@@ -68,40 +68,35 @@ function applySnapshot(snapshot) {
   if(publicCue && publicCue!==cue)audio.play(publicCue, { gesture: actionGesture });
   if (cue) audio.play(cue, { gesture: actionGesture });
 }
-function point(cell) {
-  return portrait ? { x: (cell.column + .5) * 100, y: (cell.row + .5) * 100 }
-    : { x: (cell.row + .5) * 100, y: (cell.column + .5) * 100 };
-}
 function drawRoads() {
   const line = (edges, name) => edges.map(([from, to]) => {
-    const a = point(cellMap.get(from)), b = point(cellMap.get(to));
+    const a = armyPoint(cellMap.get(from), boardGeometry), b = armyPoint(cellMap.get(to), boardGeometry);
     return `<line class="${name}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>`;
   }).join('');
-  $('army-lines').setAttribute('viewBox', portrait ? '0 0 500 1200' : '0 0 1200 500');
+  $('army-lines').setAttribute('viewBox', boardGeometry.viewBox);
   $('army-lines').innerHTML = line(ROAD_EDGES, 'army-road') + line(RAIL_EDGES, 'army-rail')
     + line(RAIL_EDGES, 'army-rail-line') + BOARD_CELLS.map(cell => {
-      const { x, y } = point(cell), className = `army-terrain ${cell.terrain}`;
+      const { x, y } = armyPoint(cell, boardGeometry), className = `army-terrain ${cell.terrain}`;
       return cell.terrain === 'camp' ? `<ellipse class="${className}" cx="${x}" cy="${y}" rx="31" ry="32"/>`
         : `<rect class="${className}" x="${x - 29}" y="${y - 26}" width="58" height="52" rx="${cell.terrain === 'headquarters' ? 3 : 8}"/>`;
     }).join('');
 }
 function fitBoard() {
-  const bounds = $('army-board-stage').getBoundingClientRect(), columns = portrait ? 5 : 12, rows = portrait ? 12 : 5;
-  const unit = Math.max(0, Math.min(bounds.width / columns, bounds.height / rows));
-  $('army-board').style.width = `${unit * columns}px`; $('army-board').style.height = `${unit * rows}px`;
+  const { unit, width, height } = fitArmyBoard($('army-board-stage').getBoundingClientRect(), boardGeometry);
+  $('army-board').style.width = `${width}px`; $('army-board').style.height = `${height}px`;
   $('army-board').style.setProperty('--army-unit', `${unit}px`);
 }
 function renderBoard() {
   if (!view) return;
   const game = view.game, active = canAct(), targets = active ? armyTargets(game, selected) : new Set();
-  const signature = JSON.stringify([game.ruleVersion,game.board, game.lastAction,game.flagTokens,game.legalPickups,game.legalFlips,game.legalMoves, selected, active, portrait]);
+  const signature = JSON.stringify([game.ruleVersion,game.board, game.lastAction,game.flagTokens,game.legalPickups,game.legalFlips,game.legalMoves, selected, active, boardGeometry.portrait]);
   if (signature === boardSignature) return;
   boardSignature = signature;
   $('army-cells').replaceChildren(...game.board.map(item => {
-    const cell = cellMap.get(item.cellId), p = point(cell), piece = item.piece,flags=armyFlagMarks(game,item.cellId),pickups=active?armyPickups(game,item.cellId):[];
+    const cell = cellMap.get(item.cellId), position = armyCellPosition(cell, boardGeometry), piece = item.piece,flags=armyFlagMarks(game,item.cellId),pickups=active?armyPickups(game,item.cellId):[];
     const button = element('button', `army-cell${piece ? ' has-piece' : ''}${flags.baseSide?' army-base '+flags.baseSide+'-base':''}${pickups.length?' pickup-ready':''}${selected === item.cellId ? ' selected' : ''}${targets.has(item.cellId) ? ' target' : ''}${[game.lastAction?.cellId, game.lastAction?.to].includes(item.cellId) ? ' last-action' : ''}`);
     button.type = 'button'; button.dataset.cellId = item.cellId;
-    button.style.left = `${p.x / (portrait ? 5 : 12)}%`; button.style.top = `${p.y / (portrait ? 12 : 5)}%`;
+    button.style.left = `${position.left}%`; button.style.top = `${position.top}%`;
     button.disabled = !active;
     button.setAttribute('aria-pressed', String(selected === item.cellId));
     button.setAttribute('aria-label', armyCellLabel(cell, piece, { selected: selected === item.cellId,
@@ -192,12 +187,12 @@ function renderRules() {
 }
 function showDialog(id) { session.suspend(); selected = null; renderBoard(); $(id).showModal(); }
 function syncViewport() {
-  const v = gameViewport({ width: innerWidth, height: innerHeight, visual: window.visualViewport });
+  const v = gameViewport({ width:window.innerWidth, height:window.innerHeight, visual:window.visualViewport });
   document.body.style.setProperty('--army-viewport-height', `${v.height}px`);
   document.body.style.setProperty('--army-viewport-width', `${v.width}px`);
-  const nextPortrait = v.height > v.width;
-  if (nextPortrait !== portrait || !boardSignature) {
-    portrait = nextPortrait; document.body.classList.toggle('portrait-board', portrait);
+  const geometry = armyBoardGeometry(v);
+  if (geometry !== boardGeometry || !boardSignature) {
+    boardGeometry = geometry; document.body.classList.toggle('portrait-board', geometry.portrait);
     drawRoads(); boardSignature = ''; renderBoard();
   }
   if (v.resetScroll) {

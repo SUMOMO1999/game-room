@@ -28,6 +28,14 @@ const entries = [
       'games/flying-chess/presentation.mjs', 'games/flying-chess/ui.css',
       'games/flying-chess/page-ui.mjs', 'games/flying-chess/game-page.mjs',
       'games/flying-chess/practice-engine.mjs', 'games/flying-chess/practice-page.mjs'] },
+  { gameType: 'draw-and-guess', name: '你画我猜', page: 'drawing.html', minPlayers: 2, maxPlayers: 8,
+    practicePage: 'drawing-practice.html', scoreKind: 'score',
+    timeout: { action: '阶段自动继续', hint: '选词、绘画和揭晓按各自倒计时自动推进' },
+    assets: ['drawing.html', 'drawing-practice.html', 'words.html', 'games/draw-and-guess/game-page.mjs',
+      'games/draw-and-guess/canvas-view.mjs', 'games/draw-and-guess/styles.css',
+      'games/draw-and-guess/practice-page.mjs', 'games/draw-and-guess/practice-engine.mjs', 'draw-and-guess-practice.mjs', 'games/draw-and-guess/wordbank-page.mjs',
+      'games/draw-and-guess/wordbank.css', 'games/draw-and-guess/matcher.mjs',
+      'games/draw-and-guess/request-intent.mjs'] },
 ];
 
 function safePage(page) { return typeof page === 'string' && /^[a-z][a-z0-9-]*\.html$/.test(page); }
@@ -44,7 +52,7 @@ export function createPresentationCatalog(definitions) {
       || !Number.isSafeInteger(item.minPlayers) || !Number.isSafeInteger(item.maxPlayers)
       || item.minPlayers < 1 || item.maxPlayers < item.minPlayers
       || item.practicePage !== null && !safePage(item.practicePage)
-      || !['points', 'outcome'].includes(item.scoreKind)
+      || !['points', 'outcome', 'score'].includes(item.scoreKind)
       || !item.timeout || typeof item.timeout.action !== 'string' || !item.timeout.action
       || typeof item.timeout.hint !== 'string' || !item.timeout.hint
       || Object.keys(item.timeout).some(field => !['action', 'hint'].includes(field))

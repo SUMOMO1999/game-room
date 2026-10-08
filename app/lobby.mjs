@@ -17,7 +17,7 @@ const returnTo=incoming?`/?room=${incoming}`:'/';
 $('account-login').href=gamePath(`/auth/login?returnTo=${encodeURIComponent(returnTo)}`);
 function notice(message) { $('lobby-notice').textContent=message;$('lobby-notice').hidden=false; }
 function go(seat) { location.href=roomHref(seat.roomCode,seat.view?.gameType || seat.gameType); }
-function historyScore(item,points) {return gamePresentation(item.game).scoreKind==='outcome'?'仅记录胜负':historyPoints(points);}
+function historyScore(item,points) {const kind=gamePresentation(item.game).scoreKind;return kind==='outcome'?'仅记录胜负':kind==='score'?(Number.isSafeInteger(points)?`${points} 分`:'本局未计分'):historyPoints(points);}
 let renderedGeneration=-1;
 let exitState=null;
 let historySequence=0,historyCursor=null,historyLoading=false,historyRefreshQueued=false;
@@ -113,9 +113,9 @@ async function loadHistory(append=false) {
       const row=document.createElement('details');row.className='history-match';
       const summary=document.createElement('summary'),title=document.createElement('strong'),time=document.createElement('span');
       title.textContent=`${gameName(item.game)} · ${historyOutcome(item)}`;time.textContent=dateText(item.endedAt);summary.append(title,time);
-      const meta=document.createElement('p');meta.textContent=`房间 ${item.roomCode} · ${historyScore(item,item.self?.remainingPoints)}`;
+      const meta=document.createElement('p');meta.textContent=`房间 ${item.roomCode} · ${historyScore(item,item.self?.score ?? item.self?.remainingPoints)}`;
       const players=document.createElement('ul');
-      for(const player of item.players || []) {const li=document.createElement('li');li.textContent=`${player.nickname || '朋友'} · ${historyOutcome({status:item.status,self:{outcome:player.outcome}})} · ${historyScore(item,player.remainingPoints)}`;players.append(li);}
+      for(const player of item.players || []) {const li=document.createElement('li');li.textContent=`${player.nickname || '朋友'} · ${historyOutcome({status:item.status,self:{outcome:player.outcome}})} · ${historyScore(item,player.score ?? player.remainingPoints)}`;players.append(li);}
       row.append(summary,meta,players);$('history-list').append(row);
     }
     const stats=data.stats || {};const count=key=>Number.isSafeInteger(stats[key]) && stats[key]>=0?stats[key]:0;
@@ -138,6 +138,8 @@ function drawAccount() {
   if(changed && privateReady) concealLobby();
   const restored=!privateReady;renderedGeneration=accountGeneration();
   const state=accountState(),legacy=state.mode==='legacy';
+  refreshGameChoices(state);
+  if ($('wordbank-link')) $('wordbank-link').hidden = !state.drawingEnabled;
   privateReady=legacy || state.authenticated;
   $('lobby-forms').hidden=!(legacy || state.authenticated);
   $('account-panel').hidden=legacy;
@@ -207,14 +209,19 @@ async function enter(form,join) {
 $('create-form').addEventListener('submit',event=>{event.preventDefault();enter(event.currentTarget,false);});
 function updateCreateGame() {
   const game=gameDetails($('create-game').value);
-  $('create-game-description').textContent=`${game.name} · ${game.minPlayers===game.maxPlayers?game.minPlayers:`${game.minPlayers}～${game.maxPlayers}`} 人 · 每人回合 30 分钟`;
+  $('create-game-description').textContent=`${game.name} · ${game.minPlayers===game.maxPlayers?game.minPlayers:`${game.minPlayers}～${game.maxPlayers}`} 人 · ${gamePresentation($('create-game').value).scoreKind === 'score' ? '一人画，大家同时猜' : '每人回合 30 分钟'}`;
 }
 // Preserve the current choice while the registered games supply the options.
+function refreshGameChoices(state) {
 const previousGameChoice = $('create-game').value;
-$('create-game').replaceChildren(...gamePresentations().map(game => {
+const games = gamePresentations().filter(game => game.gameType !== 'draw-and-guess' || state.drawingEnabled);
+$('create-game').replaceChildren(...games.map(game => {
   const option = document.createElement('option'); option.value = game.gameType; option.textContent = game.name; return option;
 }));
-$('create-game').value = gamePresentations().some(game => game.gameType === previousGameChoice) ? previousGameChoice : gamePresentations()[0].gameType;
+$('create-game').value = games.some(game => game.gameType === previousGameChoice) ? previousGameChoice : games[0].gameType;
+updateCreateGame();
+}
+refreshGameChoices(accountState());
 $('create-game').addEventListener('change',updateCreateGame);
 updateCreateGame();
 $('join-form').addEventListener('submit',event=>{event.preventDefault();enter(event.currentTarget,true);});

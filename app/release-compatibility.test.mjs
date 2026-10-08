@@ -45,11 +45,24 @@ stat() { printf '0\\n'; }
 readlink() { ${quote(process.execPath)} -e "try { process.stdout.write(require('node:fs').realpathSync(process.argv[1])); } catch {}" "$2"; }
 mv() { [ "$1" = '-Tf' ] || return 99; ${quote(process.execPath)} -e "require('node:fs').renameSync(process.argv[1],process.argv[2]);" "$2" "$3"; }
 systemd-run() { printf 'preflight\\n' >> ${quote(log)}; }
+backup_invocation=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 systemctl() {
-  local current; current=$(readlink -f ${quote(link)})
-  printf '%s %s %s\\n' "$1" "$2" "$current" >> ${quote(log)}
-  if [ "$1" = start ] && [ "$2" = game-room-backup.service ] && [ '${Number(backupFails)}' = 1 ]; then return 1; fi
-  if [ "$1" = start ] && [ "$2" = game-room.service ] && [ "$current" = ${quote(candidateDir)} ]; then
+  local current operation=$1 unit="\${@: -1}"; current=$(readlink -f ${quote(link)})
+  if [ "$operation" = show ]; then
+    [ "$#" = 5 ] && [ "$2" = --property=ActiveState ] && [ "$3" = --property=InvocationID ] && [ "$4" = --property=Result ] && [ "$unit" = game-room-backup.service ] || return 99
+    printf 'ActiveState=inactive\\nInvocationID=%s\\nResult=success\\n' "$backup_invocation"
+    return 0
+  fi
+  printf '%s %s %s\\n' "$operation" "$unit" "$current" >> ${quote(log)}
+  if [ "$operation" = start ] && [ "$unit" = game-room-backup.service ]; then
+    [ "$#" = 3 ] && [ "$2" = --no-block ] || return 99
+    if [ '${Number(backupFails)}' = 1 ]; then return 1; fi
+    # This compatibility fixture completes a distinct backup immediately.
+    # Running, activating, failure and timeout lifecycles use the dedicated
+    # actual-shell production-activation-order fixture instead.
+    backup_invocation=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+  fi
+  if [ "$operation" = start ] && [ "$unit" = game-room.service ] && [ "$current" = ${quote(candidateDir)} ]; then
     printf 'candidate-data-retained' > ${quote(database)}
     if [ '${Number(startFails)}' = 1 ]; then return 1; fi
   fi

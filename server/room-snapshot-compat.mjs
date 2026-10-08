@@ -1,14 +1,22 @@
 // Historical room envelope only. Game state and configuration belong to adapters.
-// Keep schema 1..8 readable; schema9 belongs only to flying-chess. Existing
+// Keep schema 1..8 readable; schema9 belongs to flying-chess and schema10 to
+// draw-and-guess. Existing
 // games retain their historical per-feature write versions.
-export const snapshotHasRoles = data => [4, 5, 6, 7, 8, 9].includes(data?.schemaVersion);
+export const snapshotHasRoles = data => [4, 5, 6, 7, 8, 9, 10].includes(data?.schemaVersion);
 export function snapshotGameType(data) {
   if (snapshotHasRoles(data)) return data.gameType;
   return data.schemaVersion === 3 ? 'army-flip' : 'rummikub';
 }
+// Only the server's narrow authority API uses this binding. Historical full
+// imports retain their original contract; schema10 canvas identities require
+// the stable saved room ID rather than a legacy synthesized one.
+export function snapshotAuthorityBindingProblem(data, { roomId, code }) {
+  return data.code !== code || data.roomId !== undefined && data.roomId !== roomId
+    || data.schemaVersion === 10 && data.roomId !== roomId;
+}
 export function snapshotFormatProblem(data, adapter) {
   const hasRoles = snapshotHasRoles(data);
-  return ![1, 2, 3, 4, 5, 6, 7, 8, 9].includes(data?.schemaVersion)
+  return ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10].includes(data?.schemaVersion)
     // These historical envelope guards preceded game dispatch. Keep their
     // ordering even for a corrupt snapshot carrying another game's type so
     // the existing INVALID_SNAPSHOT response stays identical.
@@ -17,9 +25,11 @@ export function snapshotFormatProblem(data, adapter) {
     || ![6, 7].includes(data.schemaVersion) && data.game?.ruleVersion === 'army-flip-v3'
     || data.schemaVersion === 9 && (data.gameType !== 'flying-chess' || adapter.gameType !== 'flying-chess')
     || data.schemaVersion !== 9 && data.gameType === 'flying-chess'
+    || data.schemaVersion === 10 && (data.gameType !== 'draw-and-guess' || adapter.gameType !== 'draw-and-guess')
+    || data.schemaVersion !== 10 && data.gameType === 'draw-and-guess'
     || adapter.snapshotProblem(data)
-    || ![7, 8, 9].includes(data.schemaVersion) && Object.hasOwn(data, 'turnClock')
-    || [7, 9].includes(data.schemaVersion) && !Object.hasOwn(data, 'turnClock')
+    || ![7, 8, 9, 10].includes(data.schemaVersion) && Object.hasOwn(data, 'turnClock')
+    || [7, 9, 10].includes(data.schemaVersion) && !Object.hasOwn(data, 'turnClock')
     || (hasRoles ? data.gameType !== adapter.gameType || !Array.isArray(data.spectators)
       : data.schemaVersion === 3 ? data.gameType !== adapter.gameType : data.gameType !== undefined && data.gameType !== adapter.gameType)
     || !hasRoles && data.spectators !== undefined;

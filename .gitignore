@@ -23,3 +23,7 @@ AGENTS.md
 
 # Local implementation plan includes private deployment/acceptance evidence.
 /docs/plans/flying-chess-v1.md
+
+# Local AI instructions and private drawing release plan
+.cursor/
+/docs/plans/draw-and-guess-v1.md

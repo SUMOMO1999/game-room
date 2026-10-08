@@ -9,7 +9,8 @@ import { createGameAudio } from '../../game-audio.mjs';
 import { gameErrorMessage, roomExitExplanation, orderedRoomPlayers } from '../../platform/room-presentation.mjs';
 import { roomHref } from '../../game-routing.mjs';
 import { BOARD_CELLS, ROAD_EDGES, RAIL_EDGES } from './board.mjs';
-import { armySideLabel, armyAssignmentText, armyPoint, armyCellLabel, armyTargets, armyIntent, armyTransition, armyResultText, armyLastActionText, armyUsesFlagTransport, armyFlagMarks, armyPickups, armyRulePages, armyRuleModeLabel } from './presentation.mjs';
+import { armySideLabel, armyAssignmentText, armyBoardGeometry, armyPoint, armyCellPosition, fitArmyBoard, armyCellLabel, armyTargets, armyIntent, armyTransition, armyResultText, armyLastActionText, armyUsesFlagTransport, armyFlagMarks, armyPickups, armyRulePages, armyRuleModeLabel } from './presentation.mjs';
+import { gameViewport } from '../../game-viewport.mjs';
 
 const $ = id => document.getElementById(id);
 const roomCode = new URLSearchParams(location.search).get('code') || '';
@@ -18,6 +19,7 @@ let loginConflictNotified = false;
 const audio = createGameAudio();
 let view = null, client = null, chat = null, connection = 'offline', selected = null, busy = false, leaving = false;
 let baseline = true, boardSignature = '', activityPage = 0, rulePage = 0;
+let boardGeometry = armyBoardGeometry();
 let pickupDialog=null;
 const roomSession = createRoomSession({ document, accountGeneration, accountState, getClient: () => client });
 const roomExit = createRoomExit({ session: roomSession, roomCode, getClient: () => client, getView: () => view, forgetMembership,
@@ -48,27 +50,35 @@ const canvasPin = mountCanvasPin({ document, pinOnFocus: true,
   containers: [document.querySelector('.shell'), document.querySelector('main'), $('room-play'), $('room-players'), $('army-board-stage')] });
 function syncViewport() {
   canvasPin.pin();
-  const viewport = window.visualViewport;
-  document.body.style.setProperty('--army-viewport-height', `${viewport?.height || window.innerHeight}px`);
-  document.body.style.setProperty('--army-viewport-width', `${viewport?.width || window.innerWidth}px`);
+  const viewport = gameViewport({ width:window.innerWidth, height:window.innerHeight, visual:window.visualViewport });
+  document.body.style.setProperty('--army-viewport-height', `${viewport.height}px`);
+  document.body.style.setProperty('--army-viewport-width', `${viewport.width}px`);
+  const geometry = armyBoardGeometry(viewport);
+  if (geometry !== boardGeometry) {
+    boardGeometry = geometry;
+    document.body.classList.toggle('portrait-board', geometry.portrait);
+    boardSignature = '';
+    drawRoads();
+    if (view?.game) renderBoard();
+  }
   fitBoard();
 }
 function fitBoard() {
-  const bounds = $('army-board-stage').getBoundingClientRect();
-  const unit = Math.max(0, Math.min(bounds.width / 12, bounds.height / 5));
-  $('army-board').style.width = `${unit * 12}px`; $('army-board').style.height = `${unit * 5}px`;
+  const { unit, width, height } = fitArmyBoard($('army-board-stage').getBoundingClientRect(), boardGeometry);
+  $('army-board').style.width = `${width}px`; $('army-board').style.height = `${height}px`;
   $('army-board').style.setProperty('--army-unit', `${unit}px`);
 }
 function drawRoads() {
   function lines(edges, className) {
     return edges.map(edge => {
       const from = cellMap.get(edge[0]), to = cellMap.get(edge[1]); if (!from || !to) return '';
-      const a = armyPoint(from), b = armyPoint(to);
+      const a = armyPoint(from, boardGeometry), b = armyPoint(to, boardGeometry);
       return `<line class="${className}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>`;
     }).join('');
   }
+  $('army-lines').setAttribute('viewBox', boardGeometry.viewBox);
   $('army-lines').innerHTML = lines(ROAD_EDGES, 'army-road') + lines(RAIL_EDGES, 'army-rail') + lines(RAIL_EDGES, 'army-rail-line') + BOARD_CELLS.map(cell => {
-    const point = armyPoint(cell), className = `army-terrain ${cell.terrain}`;
+    const point = armyPoint(cell, boardGeometry), className = `army-terrain ${cell.terrain}`;
     return cell.terrain === 'camp' ? `<ellipse class="${className}" cx="${point.x}" cy="${point.y}" rx="31" ry="32"/>`
       : `<rect class="${className}" x="${point.x-29}" y="${point.y-26}" width="58" height="52" rx="${cell.terrain==='headquarters'?3:8}"/>`;
   }).join('');
@@ -76,15 +86,15 @@ function drawRoads() {
 function renderBoard() {
   if (!view?.game) return;
   const game = view.game, active = canAct(), targets = active ? armyTargets(game, selected) : new Set();
-  const signature = JSON.stringify([game.ruleVersion,game.board, selected, active, game.legalFlips, game.legalMoves,game.legalPickups,game.flagTokens, game.lastAction]);
+  const signature = JSON.stringify([game.ruleVersion,game.board, selected, active, game.legalFlips, game.legalMoves,game.legalPickups,game.flagTokens, game.lastAction, boardGeometry.portrait]);
   if (signature === boardSignature) return;
   boardSignature = signature;
   const cells = game.board.map(item => {
     const cell = cellMap.get(item.cellId); if (!cell) return null;
-    const point = armyPoint(cell), piece = item.piece, flags=armyFlagMarks(game,item.cellId),pickups=active?armyPickups(game,item.cellId):[];
+    const position = armyCellPosition(cell, boardGeometry), piece = item.piece, flags=armyFlagMarks(game,item.cellId),pickups=active?armyPickups(game,item.cellId):[];
     const button = element('button', `army-cell${piece?' has-piece':''}${flags.baseSide?' army-base '+flags.baseSide+'-base':''}${pickups.length?' pickup-ready':''}${selected===item.cellId?' selected':''}${targets.has(item.cellId)?' target':''}${[game.lastAction?.cellId,game.lastAction?.to].includes(item.cellId)?' last-action':''}`);
     button.type = 'button'; button.setAttribute('data-cell-id', item.cellId);
-    button.style.left = `${point.x / 12}%`; button.style.top = `${point.y / 5}%`;
+    button.style.left = `${position.left}%`; button.style.top = `${position.top}%`;
     button.disabled = !active;
     button.setAttribute('aria-pressed', String(selected === item.cellId));
     button.setAttribute('aria-label', armyCellLabel(cell, piece, { selected:selected===item.cellId,target:targets.has(item.cellId),canFlip:active&&game.legalFlips.includes(item.cellId),game }));

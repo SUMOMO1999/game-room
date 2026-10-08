@@ -137,19 +137,24 @@ test('schema9 serializer preserves spectators and request receipts without leaki
   assert.equal(snapshotFormatProblem(result, syntheticFlyingAdapter), false);
 });
 
-test('candidate adds schema9 to read/write, preserves every historic capability and the same nine backup scopes', () => {
-  assert.deepEqual(CURRENT_DATA_COMPATIBILITY.roomSnapshots.read, [1, 2, 3, 4, 5, 6, 7, 8, 9]);
-  assert.deepEqual(CURRENT_DATA_COMPATIBILITY.roomSnapshots.write, [2, 3, 4, 5, 6, 7, 8, 9]);
+test('current candidate reads/writes schema10 and thirteen scopes while retaining schema8/9 nine-scope releases', () => {
+  assert.deepEqual(CURRENT_DATA_COMPATIBILITY.roomSnapshots.read, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  assert.deepEqual(CURRENT_DATA_COMPATIBILITY.roomSnapshots.write, [2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  const historicalScopes = ['game-profiles', 'room-invites', 'rooms', 'room-memberships', 'room-registry', 'room-requests', 'room-chat', 'game-history', 'history-index'];
   assert.deepEqual(CURRENT_DATA_COMPATIBILITY.backupScopes.read,
-    ['game-profiles', 'room-invites', 'rooms', 'room-memberships', 'room-registry', 'room-requests', 'room-chat', 'game-history', 'history-index']);
+    [...historicalScopes, 'wordbank-packs', 'wordbank-releases', 'wordbank-index', 'draw-canvases']);
   assert.deepEqual(CURRENT_DATA_COMPATIBILITY.backupScopes.write, CURRENT_DATA_COMPATIBILITY.backupScopes.read);
   const manifest = (id, compatibility) => ({ format: 1, project: 'game-room', releaseId: id.repeat(20), containsSecrets: false,
     containsUserData: false, identityPolicy: 'agora-account-security-v1', dataCompatibility: compatibility });
-  const old = copy(CURRENT_DATA_COMPATIBILITY); old.roomSnapshots = { read: [1, 2, 3, 4, 5, 6, 7, 8], write: [2, 3, 4, 5, 6, 7, 8] };
-  assert.deepEqual(compareReleaseCompatibility(manifest('a', CURRENT_DATA_COMPATIBILITY), manifest('b', old)),
-    { forwardCompatible: true, rollbackCompatible: false, initial: false, priorLegacy: false });
-  assert.deepEqual(compareReleaseCompatibility(manifest('b', old), manifest('a', CURRENT_DATA_COMPATIBILITY)),
-    { forwardCompatible: false, rollbackCompatible: true, initial: false, priorLegacy: false });
+  for (const lastSchema of [8, 9]) {
+    const old = copy(CURRENT_DATA_COMPATIBILITY);
+    old.roomSnapshots = { read: Array.from({ length: lastSchema }, (_, index) => index + 1), write: Array.from({ length: lastSchema - 1 }, (_, index) => index + 2) };
+    old.backupScopes = { read: [...historicalScopes], write: [...historicalScopes] };
+    assert.deepEqual(compareReleaseCompatibility(manifest('a', CURRENT_DATA_COMPATIBILITY), manifest('b', old)),
+      { forwardCompatible: true, rollbackCompatible: false, initial: false, priorLegacy: false });
+    assert.deepEqual(compareReleaseCompatibility(manifest('b', old), manifest('a', CURRENT_DATA_COMPATIBILITY)),
+      { forwardCompatible: false, rollbackCompatible: true, initial: false, priorLegacy: false });
+  }
 });
 
 test('actual schema9 waiting and started rooms round-trip stable seats, spectators and first-player clock', t => {

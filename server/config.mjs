@@ -47,12 +47,28 @@ export function readStoreKey(env = process.env) {
 
 export function readSettings(env = process.env) {
   const production = env.NODE_ENV === 'production';
+  const drawingFlag = env.GAME_ROOM_DRAWING_ENABLED;
+  if (drawingFlag !== undefined && !['0', '1'].includes(drawingFlag)) throw new Error('Drawing entry requires an explicit 0 or 1');
   const agoraFlag = env.GAME_ROOM_AGORA_ENTRY_ENABLED;
   if (agoraFlag !== undefined && agoraFlag !== '0' && agoraFlag !== '1') throw new Error('Agora game entry requires an explicit 0 or 1');
   const agoraEntryEnabled = agoraFlag === '1';
   if (agoraEntryEnabled && !production) throw new Error('Configured Agora game entry is production-only');
   const mode = env.GAME_ROOM_AUTH_MODE || (production ? 'disabled' : 'legacy');
   if (!['legacy', 'disabled', 'mock', 'cognito'].includes(mode)) throw new Error('Invalid game-room identity mode');
+  const batchFlag = env.GAME_ROOM_IDENTITY_BATCH_ENABLED;
+  if (batchFlag !== undefined && !['0', '1'].includes(batchFlag)) throw new Error('Identity batch requires an explicit 0 or 1');
+  const identityBatchEnabled = batchFlag === '1';
+  // The faster legacy-check schedule is opt-in only after Agora's dedicated
+  // route allocation is installed and read back. Existing starts stay at 4rps.
+  const identityInterval = env.GAME_ROOM_IDENTITY_CHECK_INTERVAL_MS;
+  if (identityInterval !== undefined && !['125', '250'].includes(identityInterval))
+    throw new Error('Identity check interval requires an explicit 125 or 250');
+  const identityCheckIntervalMs = Number(identityInterval ?? '250');
+  if (identityCheckIntervalMs === 125 && (mode !== 'cognito' || identityBatchEnabled))
+    throw new Error('Faster identity checks require the legacy Cognito provider');
+  if (identityBatchEnabled && (mode !== 'cognito'
+      || !/^[a-z][a-z0-9._-]{0,63}$/.test(env.GAME_ROOM_IDENTITY_BATCH_KEY_ID || '')
+      || !isAbsolute(env.GAME_ROOM_IDENTITY_BATCH_KEY_FILE || ''))) throw new Error('Identity batch requires a dedicated signing key and Cognito mode');
   const origin = new URL(env.GAME_ROOM_ORIGIN || (production ? 'https://game.sumomoli.com' : `http://127.0.0.1:${env.GAME_ROOM_PORT || 4177}`));
   if (!['http:', 'https:'].includes(origin.protocol) || origin.username || origin.password || origin.pathname !== '/' || origin.search || origin.hash) throw new Error('Expected an exact game-room origin');
   if (production && (mode !== 'cognito' || origin.protocol !== 'https:')) throw new Error('Production requires HTTPS Cognito authentication');
@@ -62,6 +78,11 @@ export function readSettings(env = process.env) {
   const port = Number(env.GAME_ROOM_PORT || 4177);
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Invalid game-room port');
   const settings = {
+    drawingEnabled: drawingFlag === '1',
+    identityBatchEnabled,
+    identityCheckIntervalMs,
+    ...(identityBatchEnabled ? { identityBatchKeyId: env.GAME_ROOM_IDENTITY_BATCH_KEY_ID,
+      identityBatchKeyFile: env.GAME_ROOM_IDENTITY_BATCH_KEY_FILE } : {}),
     production, mode, origin: origin.origin, host, port, secureCookies: origin.protocol === 'https:',
     callback: `${origin.origin}/auth/callback`, postLogout: `${origin.origin}/`,
     cookieName: origin.protocol === 'https:' ? '__Host-game-room-session' : 'game-room-dev-session',
@@ -98,6 +119,6 @@ export function readSettings(env = process.env) {
 // URL text is checked before parsing: encoded delimiters and duplicate parameters never enter a transaction.
 export function safeReturnTo(value, origin) {
   if (typeof value !== 'string' || value.length > 80 || /[\\\x00-\x20\x7f%#]/.test(value)) return '/';
-  if (!/^(?:\/|\/\?room=\d{6}|\/(?:room|army)\.html\?code=\d{6})$/.test(value)) return '/';
+  if (!/^(?:\/|\/\?room=\d{6}|\/words(?:\.html)?|\/(?:room|army|flying|drawing)\.html\?code=\d{6})$/.test(value)) return '/';
   try { return new URL(value, origin).origin === origin ? value : '/'; } catch { return '/'; }
 }

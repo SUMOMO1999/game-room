@@ -1,3 +1,5 @@
+import { mountGameThemePicker } from './game-theme.mjs';
+
 // Settings owns only its panel and event lifecycle. Audio, rules, room business
 // controls and device preferences retain their original nodes and owners.
 export function mountRoomSettings({ document, buttonId, dialogId, controlIds = [],
@@ -43,6 +45,7 @@ export function mountRoomSettings({ document, buttonId, dialogId, controlIds = [
     expanded();
   }
   button.classList.add('game-settings-toggle'); dialog.classList.add('game-settings-dialog');
+  const removeThemePicker = mountGameThemePicker(document, dialog);
   button.setAttribute('aria-controls', dialogId); button.setAttribute('aria-haspopup', 'dialog'); expanded();
   for (const { control, target } of definitions) {
     placements.push({ control, parent: control.parentElement, next: control.nextSibling });
@@ -66,6 +69,7 @@ export function mountRoomSettings({ document, buttonId, dialogId, controlIds = [
   return { open, close, destroy() {
     if (destroyed) return;
     close({ restoreFocus: false }); destroyed = true; removers.forEach(remove => remove());
+    removeThemePicker();
     for (const { control, parent, next } of [...placements].reverse()) {
       if (!parent) continue;
       if (next?.parentElement === parent && parent.insertBefore) parent.insertBefore(control, next);

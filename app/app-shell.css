@@ -1,3 +1,5 @@
+@import url("./platform/control-geometry.css");
+
 .app-shell-tools { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 8px; padding: 0 0 12px; }
 .app-shell-tools[hidden] { display: none; }
 .agora-entry-return { display:inline-flex; align-items:center; justify-content:center; min-height:44px; box-sizing:border-box; font-size:12px; text-decoration:none; }

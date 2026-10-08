@@ -182,11 +182,14 @@ test('SQLite restart retains v4 schema8, stable seats and new opening scoring, a
   assert.equal((await c.storage.scan('game-history')).length,1);
 });
 
-test('schema8 capability forbids rollback to schema7 while preserving all nine backup scopes',()=>{
+test('current capability forbids rollback to schema7 while preserving all historical nine backup scopes',()=>{
   const current=structuredClone(CURRENT_DATA_COMPATIBILITY),prior=structuredClone(current);
   prior.roomSnapshots={read:[1,2,3,4,5,6,7],write:[2,3,4,5,6,7]};
+  const historicalScopes=['game-profiles','room-invites','rooms','room-memberships','room-registry','room-requests','room-chat','game-history','history-index'];
+  prior.backupScopes={read:[...historicalScopes],write:[...historicalScopes]};
   const manifest=(id,dataCompatibility)=>({format:1,project:'game-room',releaseId:id.repeat(20),containsSecrets:false,containsUserData:false,dataCompatibility});
   assert.equal(compareReleaseCompatibility(manifest('a',current),manifest('b',prior)).rollbackCompatible,false);
   assert.equal(compareReleaseCompatibility(manifest('a',current),manifest('b',prior)).forwardCompatible,true);
-  assert.deepEqual(current.backupScopes,prior.backupScopes);assert.equal(current.backupScopes.write.length,9);
+  assert.equal(current.backupScopes.write.length,13);assert.equal(prior.backupScopes.write.length,9);
+  for(const direction of ['read','write'])assert.deepEqual(current.backupScopes[direction].slice(0,9),prior.backupScopes[direction]);
 });

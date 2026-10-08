@@ -1,6 +1,7 @@
 import { createHash, randomBytes, randomInt } from 'node:crypto';
 import { createRoomStore, RoomError, DEFAULT_TURN_TIMEOUT_MS } from '../app/rooms.mjs';
 import { defaultGameRegistry } from '../app/game-registry.mjs';
+import { snapshotGameType, snapshotAuthorityBindingProblem } from './room-snapshot-compat.mjs';
 
 const FOREVER = Number.MAX_SAFE_INTEGER;
 const hash = (value) => createHash('sha256').update(value).digest('hex');
@@ -32,16 +33,16 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
   pausedTtlMs = 7 * 24 * 60 * 60 * 1000, leaveRetentionMs = 24 * 60 * 60 * 1000, hostTakeoverGraceMs = 60000,
   maxRooms = 100, gameOptions = {}, gameEngine, pollIntervalMs = 1000, presenceTtlMs = 10000,
   maxCasAttempts = 100, turnTimeoutMs = DEFAULT_TURN_TIMEOUT_MS, gameRegistry = defaultGameRegistry,
-  serverRandomInt = randomInt } = {}) {
+  serverRandomInt = randomInt, prepareRoom = async snapshot => snapshot, prepareAction = async () => ({}) } = {}) {
   if (!storage?.read || !storage?.replaceCAS || !storage?.guardedCAS || !storage?.putIfAbsent || !storage?.remove) throw new TypeError('Durable rooms require an atomic encrypted store.');
   if (!(ttlMs > 0) || !(presenceTtlMs > 0) || !(maxRooms > 0)) throw new TypeError('Invalid room limits.');
-  const local = new Map();
+  const local = new Map(), authorityMetadata = new Map();
   let closed = false;
   let pollingFlight = null;
   let history = null, historyFlight = null;
   const expiry = (snapshot) => snapshot.lastActiveAt + (snapshot.phase === 'paused' ? pausedTtlMs : ttlMs);
-  function engine(snapshot) {
-    const store = createRoomStore({ now, ttlMs, pausedTtlMs, leaveRetentionMs, gameOptions, turnTimeoutMs,
+  function engine(snapshot, preparedOptions = {}) {
+    const store = createRoomStore({ now, ttlMs, pausedTtlMs, leaveRetentionMs, gameOptions: { ...gameOptions, ...preparedOptions }, turnTimeoutMs,
       gameRegistry, serverRandomInt, ...(gameEngine ? { gameEngine } : {}) });
     if (snapshot) store.importSnapshot(snapshot);
     return store;
@@ -78,11 +79,16 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
   async function resolvedRoom(code) {
     if (typeof code !== 'string' || !/^\d{6}$/.test(code)) fail(404, 'ROOM_NOT_FOUND', '房间不存在或已失效。');
     const invitation = await storage.read('room-invites', code);
+    if (invitation?.value.retired) fail(404, 'ROOM_NOT_FOUND', '房间不存在或已失效。');
     const roomId = invitation?.value.roomId;
+    const invitationGuard = invitation ? { scope: 'room-invites', id: code, expectedVersion: invitation.version } : null;
     for (let attempt = 0; attempt < maxCasAttempts; attempt += 1) {
       const record = roomId ? await storage.read('rooms', roomId) : null;
+      // Storage revisions, rather than the game's business revision, identify
+      // a validated snapshot. Missing/corrupt or replaced rows invalidate it.
+      if (authorityMetadata.get(roomId)?.version !== record?.version) authorityMetadata.delete(roomId);
       if (!record?.value.snapshot) fail(404, 'ROOM_NOT_FOUND', '房间不存在或已失效。');
-      if (now() < expiry(record.value.snapshot)) return { roomId, record };
+      if (now() < expiry(record.value.snapshot)) return { roomId, record, invitationGuard };
       // An action or pause may have committed after this read. A failed expiry CAS must retry the new room.
       if (await storage.replaceCAS('rooms', roomId, record.version, terminalRecord(record.value, 'expired'), FOREVER)) {
         fail(404, 'ROOM_NOT_FOUND', '房间不存在或已失效。');
@@ -104,7 +110,9 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
     return Object.fromEntries(Object.entries(value.connections).map(([playerId, connections]) => [playerId, Object.values(connections).some((until) => until > now())]));
   }
   function project(snapshot, userKey, trustedContext = { connected: {}, hostCanTakeOver: false }) {
-    return engine(snapshot).getTrustedView(snapshot.code, userKey, trustedContext);
+    const projection = engine(snapshot);
+    try { return projection.getTrustedView(snapshot.code, userKey, trustedContext); }
+    finally { projection.close(); }
   }
   async function membership(snapshot, userKey) {
     const view = project(snapshot, userKey, await context(snapshot));
@@ -188,7 +196,10 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
       if (!(await storage.putIfAbsent('room-invites', code, { roomId }, FOREVER))) continue;
       const roomEngine = engine();
       roomEngine.createTrustedRoom(userKey, name, { code, roomId, gameType });
-      const proposal = { kind: 'create', fingerprint, roomId, code, status: 'pending', snapshot: roomEngine.exportSnapshot(code) };
+      const snapshot = await prepareRoom(roomEngine.exportSnapshot(code), userKey, { expiresAt: now() + pausedTtlMs });
+      // Validate trusted content assembly before a pending create becomes durable.
+      engine(snapshot);
+      const proposal = { kind: 'create', fingerprint, roomId, code, status: 'pending', snapshot };
       if (await storage.putIfAbsent('room-requests', operationKey, proposal, now() + leaveRetentionMs)) { operation = proposal; break; }
       // A losing request's invitation remains a tombstone. Old invitation codes never point at a new room.
     }
@@ -248,11 +259,121 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
   }
   async function getChatMember(code, userKey) {
     identity(userKey);
+    if (closed) fail(503, 'STORE_CLOSED', '服务正在重启，请稍后重试。');
     const { roomId, record } = await resolvedRoom(code);
-    const view = engine(record.value.snapshot).getTrustedView(code, userKey);
+    if (closed) fail(503, 'STORE_CLOSED', '服务正在重启，请稍后重试。');
+    const authority = roomAuthority(roomId, code, record);
+    const member = authority.members.find(player => player.userKey === userKey);
+    if (!member) fail(403, 'SEAT_REQUIRED', '请先加入这个房间。');
     const profile = (await storage.read('game-profiles', userKey))?.value;
-    return { roomId, playerId: view.selfId, name: profile?.nickname || [...view.players,...(view.spectators ?? [])].find((player) => player.id === view.selfId).name,
-      guard: { scope: 'rooms', id: roomId, version: record.version, validUntil: expiry(record.value.snapshot) } };
+    if (closed) fail(503, 'STORE_CLOSED', '服务正在重启，请稍后重试。');
+    if (now() >= authority.expiresAt) fail(404, 'ROOM_NOT_FOUND', '房间不存在或已失效。');
+    // The cache holds only validated member metadata. The current saved game
+    // stays local to this call so a new question cannot reuse an old answer gate.
+    const game = record.value.snapshot.game, adapter = gameRegistry.gameAdapter(authority.gameType);
+    return { roomId, playerId: member.seatId, name: profile?.nickname || member.name,
+      ...(typeof adapter.chatProblem === 'function' && game
+        ? { chatProblem: text => adapter.chatProblem(game, text) } : {}),
+      guard: { scope: 'rooms', id: roomId, version: record.version, validUntil: authority.expiresAt } };
+  }
+  // Server-only context for domain services which must commit against the
+  // same saved room and membership. No HTTP handler serializes this object.
+  function roomAuthority(roomId, code, record) {
+    const cached = authorityMetadata.get(roomId);
+    if (cached?.version === record.version && cached.code === code) {
+      authorityMetadata.delete(roomId); authorityMetadata.set(roomId, cached);
+      return cached.value;
+    }
+    authorityMetadata.delete(roomId);
+    const snapshot = record.value.snapshot, validator = engine();
+    try {
+      // Keep the complete import contract, including private-view validation.
+      // Import may add legacy defaults: metadata intentionally uses the original
+      // saved snapshot instead of exporting or retaining the temporary engine.
+      validator.importSnapshot(snapshot);
+      if (snapshotAuthorityBindingProblem(snapshot, { roomId, code })) {
+        fail(500, 'INVALID_SNAPSHOT', '房间保存的标识无效。');
+      }
+    } catch (error) {
+      if (error instanceof RoomError && error.code === 'INVALID_SNAPSHOT') throw error;
+      fail(500, 'INVALID_SNAPSHOT', '房间保存内容无效。');
+    } finally { validator.close(); }
+    const game = snapshot.game;
+    const value = Object.freeze({
+      gameType: gameRegistry.normalizeGameType(snapshotGameType(snapshot)),
+      members: Object.freeze([
+        ...snapshot.players.map(player => Object.freeze({ userKey: player.userKey, seatId: player.id, role: 'player', name: nickname(player.name) })),
+        ...(snapshot.spectators ?? []).map(player => Object.freeze({ userKey: player.userKey, seatId: player.id, role: 'spectator', name: nickname(player.name) })),
+      ]),
+      matchId: snapshot.matchId ?? null, turnId: game?.turnId ?? null,
+      phase: game?.stage ?? snapshot.phase, roomPhase: snapshot.phase,
+      drawerSeatId: game?.turnPlayerId ?? null,
+      deadline: game?.stageClock?.deadlineAt ?? snapshot.turnClock?.deadlineAt ?? null,
+      paused: snapshot.phase === 'paused', expiresAt: expiry(snapshot),
+    });
+    authorityMetadata.set(roomId, Object.freeze({ version: record.version, code, value }));
+    if (authorityMetadata.size > 64) authorityMetadata.delete(authorityMetadata.keys().next().value);
+    return value;
+  }
+  async function getGameContext(code, userKey, { includeView = true } = {}) {
+    identity(userKey);
+    if (!includeView && closed) fail(503, 'STORE_CLOSED', '服务正在重启，请稍后重试。');
+    const { roomId, record, invitationGuard } = await resolvedRoom(code);
+    const snapshot = record.value.snapshot;
+    if (!includeView) {
+      if (closed) fail(503, 'STORE_CLOSED', '服务正在重启，请稍后重试。');
+      const authority = roomAuthority(roomId, code, record), trusted = await context({ roomId,
+        hostId: snapshot.hostId, hostSinceAt: snapshot.hostSinceAt, lastActiveAt: snapshot.lastActiveAt });
+      if (closed) fail(503, 'STORE_CLOSED', '服务正在重启，请稍后重试。');
+      // The full path reaches getRoom's TTL sweep after presence has awaited.
+      // Match that fence here without turning an elapsed drawing deadline into
+      // loss of read-only recovery access to the saved canvas.
+      if (now() >= authority.expiresAt) fail(404, 'ROOM_NOT_FOUND', '房间不存在或已失效。');
+      const member = authority.members.find(player => player.userKey === userKey);
+      if (!member) fail(403, 'SEAT_REQUIRED', '请先加入这个房间。');
+      return {
+        roomId, seatId: member.seatId, role: member.role, gameType: authority.gameType,
+        roomRecord: { version: record.version, expiresAt: record.expiresAt },
+        invitationGuard,
+        roomGuard: { scope: 'rooms', id: roomId, expectedVersion: record.version },
+        presenceGuard: { scope: 'room-presence', id: roomId,
+          expectedVersion: trusted.presenceRecord?.version ?? null, validUntil: authority.expiresAt },
+        matchId: authority.matchId, turnId: authority.turnId, phase: authority.phase, roomPhase: authority.roomPhase,
+        drawerSeatId: authority.drawerSeatId, deadline: authority.deadline, paused: authority.paused, expiresAt: authority.expiresAt,
+      };
+    }
+    const trusted = await context(snapshot);
+    const view = project(snapshot, userKey, trusted);
+    const game = snapshot.game;
+    return {
+      roomId, seatId: view.selfId, role: view.selfRole,
+      view,
+      roomRecord: { version: record.version, expiresAt: record.expiresAt },
+      invitationGuard,
+      roomGuard: { scope: 'rooms', id: roomId, expectedVersion: record.version },
+      presenceGuard: { scope: 'room-presence', id: roomId,
+        expectedVersion: trusted.presenceRecord?.version ?? null, validUntil: expiry(snapshot) },
+      matchId: snapshot.matchId ?? null, turnId: game?.turnId ?? null,
+      phase: game?.stage ?? snapshot.phase, roomPhase: snapshot.phase,
+      drawerSeatId: game?.turnPlayerId ?? null,
+      deadline: game?.stageClock?.deadlineAt ?? snapshot.turnClock?.deadlineAt ?? null,
+      paused: snapshot.phase === 'paused', expiresAt: expiry(snapshot),
+    };
+  }
+  // Read-only server contract for content GC. Even an expired waiting snapshot
+  // remains protected until room sweep commits its tombstone. This never renews
+  // a room or admits a player; the revision guard fences concurrent adoption.
+  async function getContentReference({ packId, referenceId, version }) {
+    const id = /^room-([a-f0-9]{32})$/.exec(referenceId ?? '')?.[1];
+    if (!id) return null;
+    const record = await storage.read('rooms', id), snapshot = record?.value.snapshot;
+    const selection = snapshot?.drawConfig?.contentSelection;
+    if (snapshot?.gameType !== 'draw-and-guess' || snapshot.phase !== 'waiting'
+      || selection?.packId !== packId || selection.version !== version) return null;
+    const deadline = expiry(snapshot);
+    return { expiresAt: deadline > now() ? deadline : now() + ttlMs,
+      guard: { scope: 'rooms', id, expectedVersion: record.version,
+        ...(deadline > now() ? { validUntil: deadline } : {}) } };
   }
   async function action(code, userKey, input) {
     identity(userKey);
@@ -269,7 +390,9 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
       const { roomId, record } = await resolvedRoom(code);
       if (record.value.snapshot.phase === 'playing' && record.value.snapshot.turnClock
           && now() >= record.value.snapshot.turnClock.deadlineAt) { await advanceExpiredTurn(roomId); continue; }
-      const roomEngine = engine(record.value.snapshot);
+      engine(record.value.snapshot).getTrustedView(code, userKey);
+      const prepared = await prepareAction(copy(record.value.snapshot), userKey, input, { expiresAt: now() + pausedTtlMs });
+      const roomEngine = engine(record.value.snapshot, prepared);
       // A stable presence revision fences a reconnect racing an offline-host takeover.
       if (input.type === 'transferHost') await editPresence(roomId, () => {});
       const trustedContext = await context(record.value.snapshot);
@@ -304,7 +427,7 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
         const next = { ...previous }; delete next[roomId]; return next;
       }).catch(() => {}); // A failed index cleanup cannot turn a committed departure into a failure.
       await flushPendingRecords().catch(() => {});
-      return result.left ? result : { view: project(snapshot, userKey, await context(snapshot)) };
+      return result.left ? result : { view: project(snapshot, userKey, await context(snapshot)), ...(result.guessResult ? { guessResult: result.guessResult } : {}) };
     }
     fail(503, 'STORE_BUSY', '房间正在同步，请稍后重试。');
   }
@@ -334,19 +457,29 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
       return;
     }
     const trustedContext = await context(record.value.snapshot);
-    for (const listener of [...listeners]) {
-      let view;
-      try { view = project(record.value.snapshot, listener.userKey, trustedContext); }
-      catch (error) {
-        if (error instanceof RoomError && error.code === 'SEAT_REQUIRED') { end(listener, '你已离开房间。'); continue; }
-        throw error;
-      }
-      const { serverTime, ...stableView } = view;
-      const signature = JSON.stringify(stableView);
-      if (!listener.active || signature === listener.signature) continue;
-      listener.signature = signature;
-      try { listener.onView(view); } catch { /* Isolate transport callbacks. */ }
+    if (closed || now() >= expiry(record.value.snapshot)) {
+      for (const listener of [...listeners]) end(listener, closed ? '本机服务已停止。' : '房间长时间没有活动，已回收。');
+      return;
     }
+    // One immutable saved state owns this synchronous publication. Each member
+    // still receives a newly projected private view, as in the in-memory room.
+    // No engine or private projection is retained across publications.
+    const projection = engine(record.value.snapshot);
+    try {
+      for (const listener of [...listeners]) {
+        let view;
+        try { view = projection.getTrustedView(record.value.snapshot.code, listener.userKey, trustedContext); }
+        catch (error) {
+          if (error instanceof RoomError && error.code === 'SEAT_REQUIRED') { end(listener, '你已离开房间。'); continue; }
+          throw error;
+        }
+        const { serverTime, ...stableView } = view;
+        const signature = JSON.stringify(stableView);
+        if (!listener.active || signature === listener.signature) continue;
+        listener.signature = signature;
+        try { listener.onView(view); } catch { /* Isolate transport callbacks. */ }
+      }
+    } finally { projection.close(); }
   }
   async function advanceExpiredTurn(roomId) {
     for (let attempt = 0; attempt < maxCasAttempts; attempt += 1) {
@@ -486,6 +619,7 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
   timer?.unref();
   async function close() {
     closed = true;
+    authorityMetadata.clear();
     if (timer) clearInterval(timer);
     if (pollingFlight) await pollingFlight.catch(() => {});
     for (const [roomId, listeners] of local) {
@@ -497,5 +631,5 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
     }
     local.clear();
   }
-  return { ensureProfile, setProfile, recentRooms, createRoom, joinRoom, getView, getChatMember, action, subscribe, sweep, close, setHistory, flushPendingRecords };
+  return { ensureProfile, setProfile, recentRooms, createRoom, joinRoom, getView, getChatMember, getGameContext, getContentReference, action, subscribe, sweep, close, setHistory, flushPendingRecords };
 }

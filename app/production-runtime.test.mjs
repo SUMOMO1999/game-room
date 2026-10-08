@@ -47,6 +47,13 @@ test('production runtime initializes once, restores profile and rejects wrong ke
   await assert.rejects(prepareProduction({ ...env, GAME_ROOM_STORE_KEY: randomBytes(32).toString('base64url') }));
   assert.match(runtimeVersions().sqlite, /^3\./);
 });
+test('first drawing boot awaits wordbank and canvas initialization before accepting the persistent store',async t=>{
+  const dir=directory(t),env={...base(),GAME_ROOM_DRAWING_ENABLED:'1',GAME_ROOM_STORE_PATH:path.join(dir,'drawing.sqlite'),GAME_ROOM_STORE_KEY:randomBytes(32).toString('base64url')};
+  const a=await prepareProduction(env);
+  try {assert.equal(a.liveStoreValidation.counts['wordbank-releases'],1);assert.equal(a.liveStoreValidation.counts['draw-canvases'],1);
+    assert.equal((await a.wordbanks.getRelease({userKey:'a'.repeat(64),member:true},'dg-base',1)).words.length,560);
+  }finally{a.preview?.close();await a.canvases.close();await a.chat.close();await a.rooms.close();a.storage.close();}
+});
 function request(port, pathname, headers = {}, method = 'GET') {
   return new Promise((resolve, reject) => { const req = http.request({ host: '127.0.0.1', port, path: pathname, method, headers: { Host: 'game.sumomoli.com', ...headers } }, res => { let body = ''; res.on('data', chunk => body += chunk); res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body })); }); req.on('error', reject); req.end(); });
 }

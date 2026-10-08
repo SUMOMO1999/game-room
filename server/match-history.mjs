@@ -32,7 +32,7 @@ export function validateMatchSummary(summary, { gameRegistry = defaultGameRegist
       || new Set(summary.players.map((player) => player?.userKey)).size !== summary.players.length
       || new Set(summary.players.map((player) => player?.seatId)).size !== summary.players.length
       || summary.players.some((player) => !player || typeof player !== 'object' || Array.isArray(player)
-        || Object.keys(player).some((key) => !playerFields.has(key))
+        || Object.keys(player).some((key) => !playerFields.has(key) && !adapter.historyPlayerFields?.includes(key))
         || !HEX64.test(player.userKey ?? '') || !HEX32.test(player.seatId ?? '') || !text(player.nickname, 16)
         || !['win', 'draw', 'loss', 'unscored'].includes(player.outcome)
         || adapter.historyPlayerProblem(summary.status, player))) {
@@ -47,8 +47,9 @@ export function validateMatchSummary(summary, { gameRegistry = defaultGameRegist
 }
 
 export function validateHistoryRecord(value, options) {
-  if (value?.schemaVersion !== 1 || Object.keys(value).some((key) => !['schemaVersion', 'summary'].includes(key))) throw new Error('Invalid history record');
+  if (![1, 2].includes(value?.schemaVersion) || Object.keys(value).some((key) => !['schemaVersion', 'summary'].includes(key))) throw new Error('Invalid history record');
   validateMatchSummary(value.summary, options);
+  if (value.schemaVersion !== ((options?.gameRegistry || defaultGameRegistry).gameAdapter(value.summary.game).historySchemaVersion ?? 1)) throw new Error('Invalid history record version');
   return value;
 }
 
@@ -97,14 +98,14 @@ export function createMatchHistory({ storage, now = Date.now, maxCasAttempts = 1
     // Replaying an expired outbox acknowledges it without resurrecting its record or retention period.
     if (expiresAt <= now()) return { matchId: summary.matchId, expired: true };
     if (summary.endedAt > now()) throw new Error('Match cannot end in the future');
-    await storage.putIfAbsent('game-history', summary.matchId, { schemaVersion: 1, summary }, expiresAt);
+    await storage.putIfAbsent('game-history', summary.matchId, { schemaVersion: gameRegistry.gameAdapter(summary.game).historySchemaVersion ?? 1, summary }, expiresAt);
     const archived = await storage.read('game-history', summary.matchId);
     if (!archived || archived.expiresAt !== expiresAt) fail('HISTORY_CORRUPT');
     validateHistoryRecord(archived.value, { gameRegistry });
     // Canonical fixed-field serialization avoids treating harmless object key order as a different result.
     const canonical = (value) => JSON.stringify([value.matchId, value.roomId, value.roomCode, value.game, value.ruleVersion,
       value.startedAt, value.endedAt, value.status, value.reason, !!value.legacy, value.players.map((player) =>
-        [player.userKey, player.seatId, player.nickname, player.outcome, player.remainingPoints])]);
+        [player.userKey, player.seatId, player.nickname, player.outcome, player.remainingPoints, player.score, player.rank])]);
     if (canonical(archived.value.summary) !== canonical(summary)) fail('HISTORY_CONFLICT');
     for (const player of summary.players) {
       let saved = false;
@@ -145,17 +146,20 @@ export function createMatchHistory({ storage, now = Date.now, maxCasAttempts = 1
       if (summary.status === 'aborted') { stats.aborted++; continue; }
       stats.completed++;
       const outcome = summary.players.find((player) => player.userKey === userKey).outcome;
-      stats[{ win: 'wins', draw: 'draws', loss: 'losses' }[outcome]]++;
+      const stat = { win: 'wins', draw: 'draws', loss: 'losses' }[outcome];
+      if (stat) stats[stat]++;
     }
     const remaining = before ? summaries.filter((summary) => order(summary, before) > 0) : summaries;
     const page = remaining.slice(0, limit);
     const items = page.map((summary) => {
       const self = summary.players.find((player) => player.userKey === userKey);
+      const extra = player => Object.fromEntries((gameRegistry.gameAdapter(summary.game).historyPlayerFields || [])
+        .filter(field => Object.hasOwn(player, field)).map(field => [field, player[field]]));
       return { matchId: summary.matchId, roomCode: summary.roomCode, game: summary.game, ruleVersion: summary.ruleVersion,
         startedAt: summary.startedAt, endedAt: summary.endedAt, status: summary.status, reason: summary.reason,
         ...(summary.legacy ? { legacy: true } : {}),
-        self: { outcome: self.outcome, remainingPoints: self.remainingPoints },
-        players: summary.players.map(({ nickname, outcome, remainingPoints }) => ({ nickname, outcome, remainingPoints })) };
+        self: { outcome: self.outcome, remainingPoints: self.remainingPoints, ...extra(self) },
+        players: summary.players.map(player => ({ nickname: player.nickname, outcome: player.outcome, remainingPoints: player.remainingPoints, ...extra(player) })) };
     });
     return { items, nextCursor: remaining.length > limit ? encodeCursor(userKey, page.at(-1)) : null,
       stats, retentionDays: HISTORY_RETENTION_DAYS };

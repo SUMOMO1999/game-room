@@ -1,13 +1,46 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { BOARD_CELLS, ROAD_EDGES, RAIL_EDGES } from './army-board.mjs';
-import { armyAssignmentText, armySideLabel, armyPoint, armyCellLabel, armyTargets, armyIntent, armyTransition, armyResultText, armyLastActionText, armyUsesFlagTransport, armyBaseSide, armyFlagMarks, armyPickups, armyRulePages, armyRuleModeLabel } from './army-presentation.mjs';
+import { armyAssignmentText, armySideLabel, armyBoardGeometry, armyPoint, armyCellPosition, fitArmyBoard, armyCellLabel, armyTargets, armyIntent, armyTransition, armyResultText, armyLastActionText, armyUsesFlagTransport, armyBaseSide, armyFlagMarks, armyPickups, armyRulePages, armyRuleModeLabel } from './army-presentation.mjs';
 const game={status:'playing',turnPlayerId:'me',players:[{id:'me',side:'red'},{id:'friend',side:'black'}],board:[{cellId:'r0c0',piece:{hidden:false,side:'red',label:'工兵'}},{cellId:'r0c1',piece:{hidden:true}},{cellId:'r1c0',piece:null},{cellId:'r0c2',piece:{hidden:false,side:'black',label:'司令'}}],legalMoves:[{from:'r0c0',to:'r1c0'}],legalFlips:['r0c1']};
 const view={selfId:'me',roomId:'room',matchId:'match',phase:'playing',revision:1,game:{...game,revision:1}};
 test('logical board is transposed once into a complete landscape grid with engine topology unchanged',()=>{
   const points=BOARD_CELLS.map(armyPoint);assert.equal(new Set(points.map(p=>p.x)).size,12);assert.equal(new Set(points.map(p=>p.y)).size,5);
   assert.ok(points.every(p=>p.x>0&&p.x<1200&&p.y>0&&p.y<500));
   assert.equal(ROAD_EDGES.length,133);assert.equal(RAIL_EDGES.length,35);
+});
+test('portrait projection is a bijection of all sixty stable cells and preserves every road and rail length',()=>{
+  const before=structuredClone(BOARD_CELLS),portrait=armyBoardGeometry({width:768,height:1024}),landscape=armyBoardGeometry({width:1024,height:768});
+  assert.ok(Object.isFrozen(portrait));assert.deepEqual([portrait.columns,portrait.rows,portrait.viewBox],[5,12,'0 0 500 1200']);
+  const points=BOARD_CELLS.map(cell=>armyPoint(cell,portrait));
+  assert.equal(new Set(points.map(point=>`${point.x},${point.y}`)).size,60);
+  assert.equal(new Set(points.map(point=>point.x)).size,5);assert.equal(new Set(points.map(point=>point.y)).size,12);
+  const byId=new Map(BOARD_CELLS.map(cell=>[cell.cellId,cell]));
+  for(const [from,to] of [...ROAD_EDGES,...RAIL_EDGES]) {
+    const a=armyPoint(byId.get(from),landscape),b=armyPoint(byId.get(to),landscape),c=armyPoint(byId.get(from),portrait),d=armyPoint(byId.get(to),portrait);
+    assert.equal((a.x-b.x)**2+(a.y-b.y)**2,(c.x-d.x)**2+(c.y-d.y)**2);
+  }
+  assert.deepEqual(BOARD_CELLS,before);
+});
+test('display corners and whole-cell percentages map to original logical IDs in both orientations',()=>{
+  const first=BOARD_CELLS.find(cell=>cell.cellId==='r0c0'),last=BOARD_CELLS.find(cell=>cell.cellId==='r11c4');
+  const portrait=armyBoardGeometry({width:390,height:844});
+  assert.deepEqual(armyPoint(first),{x:50,y:50});assert.deepEqual(armyPoint(last),{x:1150,y:450});
+  assert.deepEqual(armyPoint(last,portrait),{x:450,y:1150});
+  assert.deepEqual(armyCellPosition(first,portrait),{left:10,top:50/12});
+  assert.deepEqual(armyCellPosition(last,portrait),{left:90,top:1150/12});
+  assert.deepEqual(armyCellPosition(last),{left:1150/12,top:90});
+  assert.equal(armyBoardGeometry({width:844,height:390}),armyBoardGeometry());
+});
+test('fit uses both measured bounds without stretching or NaN, including small phones and portrait tablets',()=>{
+  for(const [width,height] of [[320,400],[390,650],[744,850],[900,330]]) {
+    const geometry=armyBoardGeometry({width,height}),size=fitArmyBoard({width,height},geometry);
+    assert.ok(size.width<=width&&size.height<=height);
+    assert.equal(size.width/geometry.columns,size.height/geometry.rows);
+    assert.ok(Math.abs(size.width-width)<1e-9||Math.abs(size.height-height)<1e-9);
+  }
+  assert.deepEqual(fitArmyBoard({width:230,height:552},armyBoardGeometry({width:390,height:844})),{unit:46,width:230,height:552});
+  for(const bounds of [{width:0,height:200},{width:-1,height:200},{width:Infinity,height:NaN}])assert.deepEqual(fitArmyBoard(bounds),{unit:0,width:0,height:0});
 });
 test('each supported assignment has explicit distinct current-engine semantics',()=>{
   assert.match(armyAssignmentText('two-flips'),/自己连续两次翻到同色/);assert.match(armyAssignmentText('first-flip'),/首枚/);assert.notEqual(armyAssignmentText('two-flips'),armyAssignmentText('first-flip'));

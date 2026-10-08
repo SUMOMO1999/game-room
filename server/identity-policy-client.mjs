@@ -4,7 +4,7 @@ import { IdentityFailure } from './auth.mjs';
 export const IDENTITY_POLICY_ENDPOINT = 'https://agora.sumomoli.com/api/identity/check';
 export const IDENTITY_POLICY_ISSUER = 'https://cognito-idp.ap-northeast-1.amazonaws.com/ap-northeast-1_HvamEWPsq';
 const FIELDS = ['version', 'revokedBefore', 'issuer', 'sub', 'clientId', 'authTime'];
-const INTERVAL_MS = 250;
+const DEFAULT_INTERVAL_MS = 250;
 const QUEUE_MS = 4000;
 const DEADLINE_MS = 8000;
 const seconds = value => Number.isSafeInteger(value) && value >= 0;
@@ -21,15 +21,17 @@ export class IdentityPolicyClient {
   #pumpTimer = null;
   #scheduler;
 
-  constructor({ endpoint = IDENTITY_POLICY_ENDPOINT, fetcher = fetch, now = () => Date.now(),
+  constructor({ endpoint = IDENTITY_POLICY_ENDPOINT, fetcher = fetch, now = () => Date.now(), intervalMs = DEFAULT_INTERVAL_MS,
     scheduler = { setTimeout: globalThis.setTimeout, clearTimeout: globalThis.clearTimeout } } = {}) {
-    if (endpoint !== IDENTITY_POLICY_ENDPOINT || typeof fetcher !== 'function' || typeof now !== 'function'
+    if (endpoint !== IDENTITY_POLICY_ENDPOINT || ![125, DEFAULT_INTERVAL_MS].includes(intervalMs)
+      || typeof fetcher !== 'function' || typeof now !== 'function'
       || typeof scheduler?.setTimeout !== 'function' || typeof scheduler?.clearTimeout !== 'function') {
       throw new TypeError('Invalid identity policy client configuration');
     }
     this.endpoint = IDENTITY_POLICY_ENDPOINT;
     this.fetcher = fetcher;
     this.now = now;
+    this.intervalMs = intervalMs;
     this.#scheduler = { setTimeout: scheduler.setTimeout.bind(scheduler), clearTimeout: scheduler.clearTimeout.bind(scheduler) };
     Object.freeze(this);
   }
@@ -120,7 +122,7 @@ export class IdentityPolicyClient {
       if (entry.expected.expiresAt !== undefined && entry.expected.expiresAt <= current) {
         this.#queue.shift(); this.#finish(entry, undefined, new IdentityFailure(401)); continue;
       }
-      const wait = this.#lastSent + INTERVAL_MS - current;
+      const wait = this.#lastSent + this.intervalMs - current;
       if (wait > 0) {
         this.#pumpTimer = this.#scheduler.setTimeout(() => this.#pump(), wait);
         return;

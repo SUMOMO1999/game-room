@@ -9,7 +9,7 @@ import { EncryptedStore, SQLiteAdapter, identityKey } from '../server/storage.mj
 import { createDurableRoomStore } from '../server/durable-rooms.mjs';
 import { createRoomChat } from '../server/chat.mjs';
 import { createMatchHistory } from '../server/match-history.mjs';
-import { verifyLiveStore, RECOVERY_SCOPES } from '../server/backup.mjs';
+import { verifyLiveStore, HISTORY_RECOVERY_SCOPES } from '../server/backup.mjs';
 import { prepareProduction } from '../server/production.mjs';
 
 const users = [identityKey('urn:synthetic-live-preflight', 'a'), identityKey('urn:synthetic-live-preflight', 'b')];
@@ -61,7 +61,7 @@ test('live validation accepts paused schema2 and all nine business scopes plus e
   await f.storage.put('sessions', 'synthetic-cookie', { accessToken: 'synthetic-live-secret' }, 20000);
   await f.storage.put('transactions', 'synthetic-pkce', { verifier: 'synthetic-live-verifier' }, 20000);
   const before = await f.capture(), result = verifyLiveStore({ sourcePath: f.sourcePath, key: f.key });
-  assert.ok(RECOVERY_SCOPES.every((scope) => result.scopes.includes(scope))); assert.equal(result.counts['game-history'], 1);
+  assert.ok(HISTORY_RECOVERY_SCOPES.every((scope) => result.scopes.includes(scope))); assert.equal(result.counts['game-history'], 1);
   assert.equal(result.counts['history-index'], 2); assert.equal(result.counts.sessions, 1); assert.equal(result.counts.transactions, 1);
   for (const text of [...users, '合成只读预检聊天', 'synthetic-live-secret', 'synthetic-live-verifier', 'payload']) assert.equal(JSON.stringify(result).includes(text), false);
   assert.deepEqual(await f.capture(), before);
@@ -91,7 +91,7 @@ test('production preparation rejects damaged business state before serving and l
   await f.storage.put('unreviewed-scope', 'synthetic', { broken: true });
   const before = await f.capture();
   await assert.rejects(prepareProduction({ NODE_ENV: 'production', GAME_ROOM_AUTH_MODE: 'cognito', GAME_ROOM_CLIENT_ID: 'ownclient12345678',
-    GAME_ROOM_STORE_PATH: f.sourcePath, GAME_ROOM_STORE_KEY: f.key.toString('base64url') }), /Unrecognized recovery scope/);
+    GAME_ROOM_DRAWING_ENABLED: '1', GAME_ROOM_STORE_PATH: f.sourcePath, GAME_ROOM_STORE_KEY: f.key.toString('base64url') }), /Unrecognized recovery scope/);
   assert.deepEqual(await f.capture(), before);
   const independent = new DatabaseSync(f.sourcePath, { readOnly: true });
   try { assert.deepEqual(independent.prepare(SELECT).all(), before.rows); } finally { independent.close(); }

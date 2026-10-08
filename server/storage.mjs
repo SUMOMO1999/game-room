@@ -10,6 +10,54 @@ export const recordKey = (scope, id) => `${scope}:${createHash('sha256').update(
 const live = (record, now) => record && record.expiresAt > now;
 export const encryptionKeyId = (key) => createHash('sha256').update('game-room-storage-key:v1\0').update(key).digest('hex');
 
+export const MAX_TRANSACTION_RECORDS = 64;
+export const MAX_TRANSACTION_BYTES = 32 * 1024 * 1024;
+const transactionScope = /^[a-z][a-z0-9-]{0,63}$/;
+const transactionRevision = /^[A-Za-z0-9_-]{43}$/;
+const transactionKey = /^[a-z][a-z0-9-]{0,63}:[a-f0-9]{64}$/;
+const transactionError = () => new TypeError('Invalid atomic storage transaction');
+const plainObject = value => value && typeof value === 'object' && !Array.isArray(value)
+  && [Object.prototype, null].includes(Object.getPrototypeOf(value));
+function checkedFields(value, fields) {
+  if (!plainObject(value) || Object.keys(value).some(field => !fields.includes(field))) throw transactionError();
+}
+function transactionClock(now) {
+  const current = now();
+  if (!Number.isFinite(current)) throw new TypeError('Atomic storage requires a finite clock');
+  return current;
+}
+const expectedRecord = (record, version, time) => version === null
+  ? !live(record, time) : live(record, time) && record.revision === version;
+function checkedAtomic({ changes, guards, validUntil }, { readOnly = false } = {}) {
+  if (!Array.isArray(changes) || (readOnly ? changes.length !== 0 : !changes.length) || changes.length > MAX_TRANSACTION_RECORDS
+      || !Array.isArray(guards) || readOnly && !guards.length || guards.length > MAX_TRANSACTION_RECORDS || !Number.isFinite(validUntil)) throw transactionError();
+  const prerequisites = new Map(), changed = new Set(); let bytes = 0;
+  for (const item of [...guards, ...changes]) {
+    if (typeof item?.key !== 'string' || !transactionKey.test(item.key) || !(item.expectedVersion === null
+        || typeof item.expectedVersion === 'string' && transactionRevision.test(item.expectedVersion))
+        || item.validUntil !== undefined && !Number.isFinite(item.validUntil)) throw transactionError();
+    const previous = prerequisites.get(item.key);
+    if (previous && previous.expectedVersion !== item.expectedVersion) throw transactionError();
+    prerequisites.set(item.key, { key: item.key, expectedVersion: item.expectedVersion,
+      validUntil: Math.min(validUntil, item.validUntil ?? validUntil, previous?.validUntil ?? validUntil) });
+  }
+  for (const change of changes) {
+    if (changed.has(change.key)) throw transactionError(); changed.add(change.key);
+    if (change.record !== null) {
+      const record = change.record;
+      if (record?.v !== 1 || typeof record.revision !== 'string' || !transactionRevision.test(record.revision) || !Number.isFinite(record.expiresAt)
+          || record.revision === change.expectedVersion || typeof record.payload !== 'string' || !/^[A-Za-z0-9_-]+$/.test(record.payload)) throw transactionError();
+      bytes += Buffer.byteLength(record.payload);
+    }
+  }
+  if (prerequisites.size > MAX_TRANSACTION_RECORDS || bytes > MAX_TRANSACTION_BYTES) throw transactionError();
+  return [...prerequisites.values()];
+}
+function atomicConditions(prerequisites, originals, changes, time) {
+  return prerequisites.every(item => time < item.validUntil && expectedRecord(originals.get(item.key), item.expectedVersion, time))
+    && changes.every(change => change.record === null || change.record.expiresAt > time);
+}
+
 // Unlike application reads, startup and recovery must distinguish damaged data from absent data.
 export function decryptStoredRecord(key, storageKey, record) {
   if (record?.v !== 1 || !Number.isFinite(record.expiresAt) || !/^[A-Za-z0-9_-]+$/.test(record.payload ?? '')) throw new Error('Invalid encrypted record');
@@ -64,6 +112,34 @@ export class MemoryAdapter {
     if (!this.records.has(key) && this.records.size >= this.capacity) throw new Error('Local store capacity reached');
     // No await between the condition and mutation: this is atomic within the MemoryAdapter process.
     this.records.set(key, record); return true;
+  }
+  async compareAndSwapMany(transaction, now = this.now) {
+    if (typeof now !== 'function') throw transactionError();
+    const prerequisites = checkedAtomic(transaction), time = transactionClock(now);
+    const originals = new Map(prerequisites.map(item => [item.key, this.records.get(item.key)]));
+    if (!atomicConditions(prerequisites, originals, transaction.changes, time)) return false;
+    const commitTime = transactionClock(now);
+    // Recheck the actual map before applying; no await or mutation occurs before
+    // all prerequisites, expirations and the resulting capacity are satisfied.
+    const current = new Map(prerequisites.map(item => [item.key, this.records.get(item.key)]));
+    if (!atomicConditions(prerequisites, current, transaction.changes, commitTime)) return false;
+    const next = new Map([...this.records].filter(([, record]) => live(record, commitTime)));
+    for (const change of transaction.changes) {
+      if (change.record === null) next.delete(change.key); else next.set(change.key, change.record);
+    }
+    if (next.size > this.capacity) throw new Error('Local store capacity reached');
+    if (!atomicConditions(prerequisites, new Map(prerequisites.map(item => [item.key, this.records.get(item.key)])), transaction.changes, transactionClock(now))) return false;
+    this.records = next; return true;
+  }
+  async verifyGuards(transaction, now = this.now) {
+    if (typeof now !== 'function') throw transactionError();
+    const prerequisites = checkedAtomic(transaction, { readOnly: true });
+    const matches = () => {
+      const time = transactionClock(now);
+      const current = new Map(prerequisites.map(item => [item.key, this.records.get(item.key)]));
+      return atomicConditions(prerequisites, current, [], time);
+    };
+    return matches() && matches();
   }
   close() {}
 }
@@ -132,6 +208,55 @@ export class SQLiteAdapter {
       this.db.exec('COMMIT'); return changed;
     } catch (error) { try { this.db.exec('ROLLBACK'); } catch {} throw error; }
   }
+  async compareAndSwapMany(transaction, now = this.now) {
+    if (typeof now !== 'function') throw transactionError();
+    const prerequisites = checkedAtomic(transaction);
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      const time = transactionClock(now);
+      const originals = new Map(prerequisites.map(item => [item.key, this.select.get(item.key)]));
+      if (!atomicConditions(prerequisites, originals, transaction.changes, time)) { this.db.exec('ROLLBACK'); return false; }
+      for (const change of transaction.changes) {
+        if (change.record === null) this.deleteStatement.run(change.key);
+        else this.write.run(change.key, change.record.revision, change.record.expiresAt, change.record.v, change.record.payload);
+      }
+      const commitTime = transactionClock(now);
+      // BEGIN IMMEDIATE excludes other writers. Original records must still be
+      // alive at commit, including overwritten/deleted prerequisites. Recheck
+      // unchanged guards and exact proposed rows to catch transactional side
+      // effects; a failed COMMIT throws, never reports a successful ack.
+      const changed = new Map(transaction.changes.map(change => [change.key, change.record]));
+      if (!atomicConditions(prerequisites, originals, transaction.changes, commitTime)
+          || prerequisites.some(item => {
+            const row = this.select.get(item.key);
+            if (!changed.has(item.key)) return !expectedRecord(row, item.expectedVersion, commitTime);
+            const proposed = changed.get(item.key);
+            return proposed === null ? Boolean(row) : !row || row.revision !== proposed.revision || row.expiresAt !== proposed.expiresAt
+              || row.v !== proposed.v || row.payload !== proposed.payload;
+          })) { this.db.exec('ROLLBACK'); return false; }
+      if (!atomicConditions(prerequisites, originals, transaction.changes, transactionClock(now))) { this.db.exec('ROLLBACK'); return false; }
+      this.db.exec('COMMIT'); return true;
+    } catch (error) { try { this.db.exec('ROLLBACK'); } catch {} throw error; }
+  }
+  async verifyGuards(transaction, now = this.now) {
+    if (typeof now !== 'function') throw transactionError();
+    const prerequisites = checkedAtomic(transaction, { readOnly: true });
+    // Fail fast on a concurrent writer: this synchronous SQLite call cannot
+    // otherwise be interrupted by the original monotonic authorization timer.
+    const busyTimeout = this.db.prepare('PRAGMA busy_timeout').get().timeout;
+    this.db.exec('PRAGMA busy_timeout=0');
+    try {
+      this.db.exec('BEGIN IMMEDIATE');
+      const matches = () => {
+        const time = transactionClock(now);
+        const current = new Map(prerequisites.map(item => [item.key, this.select.get(item.key)]));
+        return atomicConditions(prerequisites, current, [], time);
+      };
+      if (!matches() || !matches()) { this.db.exec('ROLLBACK'); return false; }
+      this.db.exec('COMMIT'); return true;
+    } catch (error) { try { this.db.exec('ROLLBACK'); } catch {} throw error; }
+    finally { this.db.exec(`PRAGMA busy_timeout=${busyTimeout}`); }
+  }
   purgeExpired(now = this.now()) {
     if (!Number.isFinite(now)) throw new Error('Expiration cleanup requires a finite time');
     return this.db.prepare('DELETE FROM game_records WHERE expires_ms<=?').run(now).changes;
@@ -180,6 +305,60 @@ export class EncryptedStore {
         || !(version === null || typeof version === 'string') || !this.adapter.guardedCAS) throw new Error('Atomic guarded storage is required');
     return this.adapter.guardedCAS(recordKey(scope, id), this.encode(scope, id, value, expiresAt), version,
       { key: recordKey(guard.scope, guard.id), version: guard.version, validUntil: guard.validUntil }, this.now);
+  }
+  async compareAndSwapMany(input) {
+    checkedFields(input, ['changes', 'guards', 'validUntil']);
+    const { changes, guards = [], validUntil = Number.MAX_SAFE_INTEGER } = input;
+    if (!Array.isArray(changes) || !changes.length || changes.length > MAX_TRANSACTION_RECORDS
+        || !Array.isArray(guards) || guards.length > MAX_TRANSACTION_RECORDS || !Number.isFinite(validUntil)
+        || typeof this.now !== 'function' || !this.adapter.compareAndSwapMany) throw transactionError();
+    const checked = (item, fields) => {
+      checkedFields(item, fields);
+      if (typeof item.scope !== 'string' || !transactionScope.test(item.scope) || typeof item.id !== 'string' || !item.id || Buffer.byteLength(item.id) > 1024
+          || /\p{Cc}|\p{Cs}/u.test(item.id) || !(item.expectedVersion === null
+            || typeof item.expectedVersion === 'string' && transactionRevision.test(item.expectedVersion)))
+        throw transactionError();
+      return { key: recordKey(item.scope, item.id), expectedVersion: item.expectedVersion };
+    };
+    const encodedChanges = changes.map(change => {
+      const prepared = checked(change, ['scope', 'id', 'expectedVersion', 'value', 'expiresAt']);
+      if (change.value === null) {
+        if (change.expiresAt !== undefined) throw transactionError();
+        return { ...prepared, record: null };
+      }
+      if (!plainObject(change.value)) throw transactionError();
+      if (change.expiresAt !== undefined && !Number.isFinite(change.expiresAt)) throw transactionError();
+      return { ...prepared, record: this.encode(change.scope, change.id, change.value,
+        change.expiresAt === undefined ? Number.MAX_SAFE_INTEGER : change.expiresAt) };
+    });
+    const encodedGuards = guards.map(item => {
+      const prepared = checked(item, ['scope', 'id', 'expectedVersion', 'validUntil']);
+      if (item.validUntil !== undefined && !Number.isFinite(item.validUntil)) throw transactionError();
+      return { ...prepared, ...(item.validUntil !== undefined ? { validUntil: item.validUntil } : {}) };
+    });
+    // This validates duplicate/overlapping keys and byte bounds before any
+    // adapter opens a transaction. Business scope allowlists remain upstream.
+    const transaction = { changes: encodedChanges, guards: encodedGuards, validUntil };
+    checkedAtomic(transaction);
+    return this.adapter.compareAndSwapMany(transaction, this.now);
+  }
+  async verifyGuards(input) {
+    checkedFields(input, ['guards', 'validUntil']);
+    const { guards, validUntil = Number.MAX_SAFE_INTEGER } = input;
+    if (!Array.isArray(guards) || !guards.length || guards.length > MAX_TRANSACTION_RECORDS
+      || !Number.isFinite(validUntil) || typeof this.adapter.verifyGuards !== 'function') throw transactionError();
+    const encoded = guards.map(item => {
+      checkedFields(item, ['scope', 'id', 'expectedVersion', 'validUntil']);
+      if (typeof item.scope !== 'string' || !transactionScope.test(item.scope) || typeof item.id !== 'string'
+        || !item.id || Buffer.byteLength(item.id) > 1024 || /\p{Cc}|\p{Cs}/u.test(item.id)
+        || !(item.expectedVersion === null || typeof item.expectedVersion === 'string' && transactionRevision.test(item.expectedVersion))
+        || item.validUntil !== undefined && !Number.isFinite(item.validUntil)) throw transactionError();
+      return { key: recordKey(item.scope, item.id), expectedVersion: item.expectedVersion,
+        ...(item.validUntil !== undefined ? { validUntil: item.validUntil } : {}) };
+    });
+    const transaction = { changes: [], guards: encoded, validUntil };
+    checkedAtomic(transaction, { readOnly: true });
+    return this.adapter.verifyGuards(transaction, this.now);
   }
   async take(scope, id) { return this.decode(scope, id, await this.adapter.take(recordKey(scope, id))); }
   async remove(scope, id, version) { return this.adapter.remove(recordKey(scope, id), version); }

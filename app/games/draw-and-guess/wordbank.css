@@ -1,0 +1,37 @@
+.wordbank-body {margin:0;background:#eef2e9;color:#252c28;font-family:Inter,-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;line-height:1.5;overflow-y:auto;}
+.wordbank-page {box-sizing:border-box;width:min(1120px,100%);margin:0 auto;padding:24px max(20px,env(safe-area-inset-right)) calc(64px + env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left));color:var(--ink,#252c28);}
+.wordbank-page *, .wordbank-page *::before,.wordbank-page *::after {box-sizing:border-box;}
+.wordbank-heading h1 {font-size:clamp(26px,4vw,42px);line-height:1.25;margin:16px 0 12px;}
+.wordbank-note {color:var(--muted,#677169);font-size:14px;line-height:1.65;overflow-wrap:anywhere;margin:8px 0;}
+.wordbank-section {background:var(--paper,#fcfaf5);border:1px solid var(--line,#e2e4dc);border-radius:18px;padding:22px;margin:18px 0;}
+.wordbank-section h2 {margin:0 0 12px;font-size:21px;}
+.wordbank-section h3 {font-size:17px;margin:20px 0 10px;}
+.wordbank-toolbar,.wordbank-grid {display:flex;align-items:flex-end;flex-wrap:wrap;gap:12px;margin:12px 0;}
+.wordbank-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));}
+.wordbank-page label {display:flex;flex-direction:column;gap:6px;min-width:0;font-size:13px;font-weight:600;flex:1;}
+.wordbank-page input,.wordbank-page select,.wordbank-page textarea {width:100%;max-width:100%;min-height:46px;border:1px solid var(--line,#d7dcd2);border-radius:10px;padding:11px 12px;background:var(--paper,#fffdf7);color:var(--ink,#252c28);font:inherit;font-size:16px;}
+.wordbank-page textarea {resize:vertical;min-height:160px;line-height:1.65;}
+.wordbank-page button,.wordbank-page a.primary-button {min-height:44px;min-width:44px;white-space:normal;line-height:1.35;margin:5px 5px 5px 0;padding:11px 15px;touch-action:manipulation;cursor:pointer;}
+.wordbank-page .primary-button {background:#234d3f;color:#fffdf7;border:1px solid #234d3f;border-radius:10px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;font:inherit;font-size:14px;font-weight:600;}
+.wordbank-page .secondary-button {background:#fffdf7;color:#234d3f;border:1px solid #ccd5c8;border-radius:10px;font:inherit;font-size:14px;}
+.wordbank-page .quiet-link {color:#31584a;text-decoration:none;font-size:14px;}
+.wordbank-page .eyebrow {color:#6d7b69;font-size:11px;letter-spacing:.16em;margin:24px 0 8px;}
+.wordbank-page button:disabled {opacity:.55;cursor:wait;}
+.wordbank-status {min-height:28px;line-height:1.6;font-size:14px;overflow-wrap:anywhere;}
+.wordbank-warning {border:1px solid #c99336;background:#fff5da;border-radius:14px;padding:18px;margin:16px 0;color:#674411;}
+.wordbank-category-list {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+.wordbank-category-row {display:flex;align-items:flex-end;gap:8px;min-width:0;}
+.wordbank-word-row {display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line,#e2e4dc);}
+.wordbank-word-row>div {flex:1;min-width:0;overflow-wrap:anywhere;}
+.wordbank-word-row strong {font-size:17px;}
+.wordbank-word-row .wordbank-note {font-size:12px;margin-bottom:0;}
+.wordbank-word-row button {flex:none;}
+.wordbank-error {color:#9a2525;line-height:1.5;overflow-wrap:anywhere;}
+.wordbank-queued,.wordbank-history,.wordbank-preview,.wordbank-import-preview {font-size:14px;line-height:1.6;overflow-wrap:anywhere;}
+.wordbank-queued {max-height:260px;overflow:auto;padding-left:22px;}
+.wordbank-history {max-height:350px;overflow:auto;}
+.wordbank-preview:not(:empty),.wordbank-import-preview:not(:empty) {background:#f0f4ec;border-radius:12px;padding:14px;margin:12px 0;}
+.wordbank-page [hidden] {display:none!important;}
+.wordbank-page :focus-visible {outline:3px solid #638063;outline-offset:3px;}
+@media(max-width:700px) {.wordbank-page {padding-top:18px;}.wordbank-section {padding:17px;}.wordbank-category-list,.wordbank-grid {grid-template-columns:1fr;}.wordbank-toolbar label {flex-basis:100%;}.wordbank-category-row {flex-wrap:wrap;}.wordbank-category-row label {flex-basis:100%;}.wordbank-word-row {gap:7px;}.wordbank-word-row button {padding:10px 11px;}.wordbank-heading h1 {font-size:29px;}}
+@media(max-height:480px) and (orientation:landscape) {.wordbank-page {padding-top:12px;}.wordbank-heading h1 {font-size:26px;}.wordbank-section {padding:15px;}.wordbank-page input,.wordbank-page textarea {scroll-margin-block:20px;}}

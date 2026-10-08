@@ -3,6 +3,7 @@
 import { createRummikubAdapter } from '../server/games/rummikub/adapter.mjs';
 import { createArmyFlipAdapter } from '../server/games/army-flip/adapter.mjs';
 import { createFlyingChessAdapter } from '../server/games/flying-chess/adapter.mjs';
+import { createDrawAndGuessAdapter } from '../server/games/draw-and-guess/adapter.mjs';
 import { requireAdapter } from '../server/games/adapter-contract.mjs';
 
 export function createGameRegistry(adapters) {
@@ -29,7 +30,7 @@ export function createGameRegistry(adapters) {
     activityTypes: () => [...new Set([...catalog.values()].flatMap(adapter => adapter.actionTypes))] });
 }
 
-export const defaultGameRegistry = createGameRegistry([createRummikubAdapter(), createArmyFlipAdapter(), createFlyingChessAdapter()]);
+export const defaultGameRegistry = createGameRegistry([createRummikubAdapter(), createArmyFlipAdapter(), createFlyingChessAdapter(), createDrawAndGuessAdapter()]);
 // Historical exports and default game remain available to existing callers.
 export const normalizeGameType = defaultGameRegistry.normalizeGameType;
 export const gameInfo = defaultGameRegistry.gameInfo;
