@@ -176,7 +176,7 @@ export function moveRackTilesToSlot(orderIds, movedIds, layout, slot = {}) {
 }
 
 /** Device-private coordinates describe the fraction of a tile's movable area
- * within its saved canvas. The whole canvas and tile size scale together. */
+ * within its saved canvas. Reading projections never replace these points. */
 export function normalizeRackPositions(value, availableIds) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
   const allowed = new Set(uniqueIds(availableIds));
@@ -223,8 +223,61 @@ export function normalizeRackBasis(value) {
   return {width,height,tileWidth,tileHeight};
 }
 
-/** Normal fitting remains the default. Free-positioned tiles share one canvas
- * transform: rotation cannot introduce overlap by shrinking only coordinates.
+function rackBounds(rects) {
+  const x=Math.min(...rects.map(rect=>rect.x)),y=Math.min(...rects.map(rect=>rect.y));
+  return {x,y,width:Math.max(...rects.map(rect=>rect.x+rect.width))-x,
+    height:Math.max(...rects.map(rect=>rect.y+rect.height))-y};
+}
+
+// Nearby tiles on the same rail form an intact spatial group. Existing overlap
+// also joins groups, so a reading projection cannot alter their stacking.
+function rackSpatialGroups(rects, basis) {
+  const remaining=new Set(rects),groups=[];
+  for(const first of rects) {
+    if(!remaining.delete(first))continue;
+    const members=[first];
+    for(let index=0;index<members.length;index++)for(const other of remaining) {
+      const rect=members[index],horizontalGap=Math.max(rect.x,other.x)
+        -Math.min(rect.x+rect.width,other.x+other.width);
+      if(overlapArea(rect,other)>EPSILON || Math.abs(rect.y-other.y)<=basis.tileHeight/2
+        && horizontalGap<=basis.tileWidth*.6) {
+        remaining.delete(other);members.push(other);
+      }
+    }
+    groups.push({...rackBounds(members),rects:members});
+  }
+  return groups.sort((a,b)=>a.y-b.y || a.x-b.x);
+}
+
+/** Fit intact manual groups in spatial reading order, keeping their internal
+ * distances and z order. Only the returned display rectangles are reflowed. */
+function reflowRackGroups(rects, basis, width, height, maximumScale) {
+  const groups=rackSpatialGroups(rects,basis),gap=basis.tileWidth;
+  const pack=scale=>{
+    const availableWidth=width/scale,packed=[];
+    let x=0,y=0,rowHeight=0;
+    for(const group of groups) {
+      if(x && x+group.width>availableWidth+EPSILON){x=0;y+=rowHeight+gap;rowHeight=0;}
+      if(group.width>availableWidth+EPSILON || (y+group.height)*scale>height+EPSILON)return null;
+      for(const rect of group.rects)packed.push({...rect,x:(x+rect.x-group.x)*scale,
+        y:(y+rect.y-group.y)*scale,width:rect.width*scale,height:rect.height*scale});
+      x+=group.width+gap;rowHeight=Math.max(rowHeight,group.height);
+    }
+    return packed;
+  };
+  let low=0,high=maximumScale;
+  if(pack(high))low=high;
+  else for(let iteration=0;iteration<36;iteration++) {
+    const middle=(low+high)/2;
+    if(pack(middle))low=middle;else high=middle;
+  }
+  const packed=pack(low),bounds=rackBounds(packed),offsetX=Math.max(0,(width-bounds.width)/2);
+  return {scale:low,rects:packed.map(rect=>({...rect,x:rect.x+offsetX})),adaptiveReflow:true};
+}
+
+/** Normal fitting remains the default. A smaller screen first removes empty
+ * canvas margins, then reflows intact manual groups only for a useful reading
+ * gain. Saved positions and basis remain unchanged until an explicit move.
  * New/returned IDs find a gap without displacing remembered tiles. */
 export function fitFreeRack(orderIds, remembered, options = {}) {
   const ids = uniqueIds(orderIds), width = dimension(options.width), height = dimension(options.height);
@@ -237,9 +290,10 @@ export function fitFreeRack(orderIds, remembered, options = {}) {
     return { ...fitted, rects, manual, basis, positions: Object.fromEntries(rects.map(rect => [rect.id,
       normalizedRect(rect, width, height, rect.z)])) };
   }
-  const scale=Math.min(width/basis.width,height/basis.height,
+  const maximumScale=Math.min(
     positive(options.tileWidth,DEFAULT_TILE_WIDTH)/basis.tileWidth,
     positive(options.tileHeight,DEFAULT_TILE_HEIGHT)/basis.tileHeight);
+  const scale=Math.min(width/basis.width,height/basis.height,maximumScale);
   const canvas={width:basis.width,height:basis.height,tileWidth:basis.tileWidth,tileHeight:basis.tileHeight,
     gap:fitted.gap/Math.max(scale,EPSILON)};
   const rects = ids.filter(id => positions[id]).map(id => ({ id,
@@ -251,10 +305,23 @@ export function fitFreeRack(orderIds, remembered, options = {}) {
     const rect = { ...emptyRackSpace(canvas, rects), id, z: z++ };
     rects.push(rect); positions[id] = normalizedRect(rect, basis.width, basis.height, rect.z);
   }
-  const byId = new Map(rects.map(rect => [rect.id, {...rect,x:rect.x*scale,y:rect.y*scale,
-    width:rect.width*scale,height:rect.height*scale}]));
-  const tileWidth=basis.tileWidth*scale,tileHeight=basis.tileHeight*scale;
-  return { ...fitted, tileWidth,tileHeight,scale,basis,rects:ids.map(id=>byId.get(id)),manual,positions,
+  const scaled=(rect,factor,x=0,y=0)=>({...rect,x:(rect.x-x)*factor,y:(rect.y-y)*factor,
+    width:rect.width*factor,height:rect.height*factor});
+  let display={scale,rects:rects.map(rect=>scaled(rect,scale))};
+  const resized=Math.abs(width-basis.width)>EPSILON || Math.abs(height-basis.height)>EPSILON;
+  if(width && height && resized && scale<maximumScale-EPSILON) {
+    const bounds=rackBounds(rects);
+    const projectedScale=Math.min(maximumScale,width/bounds.width,height/bounds.height);
+    if(projectedScale>scale+EPSILON)display={scale:projectedScale,
+      rects:rects.map(rect=>scaled(rect,projectedScale,bounds.x,bounds.y))};
+    if(display.scale<maximumScale*.75) {
+      const reflow=reflowRackGroups(rects,basis,width,height,maximumScale);
+      if(reflow.scale>=display.scale*1.25)display=reflow;
+    }
+  }
+  const byId=new Map(display.rects.map(rect=>[rect.id,rect]));
+  const tileWidth=basis.tileWidth*display.scale,tileHeight=basis.tileHeight*display.scale;
+  return { ...fitted, ...display, tileWidth,tileHeight,basis,rects:ids.map(id=>byId.get(id)),manual,positions,
     readable:fitted.readable && tileWidth+EPSILON>=positive(options.minReadableWidth,30)
       && tileHeight+EPSILON>=positive(options.minReadableHeight,44) };
 }

@@ -296,6 +296,38 @@ test('actual hand geometry rotation preserves normalized free placement and neve
     for(const rect of layout.rects){assert.ok(rect.x>=0 && rect.y>=0);assert.ok(rect.x+rect.width<=layout.width+1e-6);assert.ok(rect.y+rect.height<=layout.height+1e-6);}
   }
 });
+test('actual eight-tile free hand rotates readably without writing its saved placement, and an explicit drag saves the displayed canvas',async t=>{
+  const rack=[...LOOKUP.values()].filter(tile=>!tile.joker).slice(0,8).map(tile=>tile.id);
+  const view=tableView({rack,turn:'friend'}),f=await fixture(t,{initialView:view,geometry:true});
+  let width=366,height=316;
+  Object.defineProperties(f.get('rack'),{clientWidth:{get:()=>width},clientHeight:{get:()=>height}});f.frame();
+  for(const [index,id]of rack.entries()) {
+    f.pageAPI.move(id,'rack',null,{rackX:70+index%4*40,rackY:index<4?50:220,grabX:0,grabY:0,anchorId:id});f.frame();
+  }
+  const original=plain(f.pageAPI.rackLayout()),points=plain(f.pageAPI.rackPositions()),basis=plain(f.pageAPI.rackBasis());
+  const stored=[...f.sessionStorage.values],draft=plain(f.pageAPI.draft()),order=plain(f.pageAPI.rackOrder());
+  const rotate=(w,h)=>{width=w;height=h;f.window.dispatchEvent(new Event('resize'));f.frame();};
+  rotate(776,86);
+  const horizontal=plain(f.pageAPI.rackLayout());assert.equal(horizontal.adaptiveReflow,true);
+  assert.equal(horizontal.tileWidth,36.4);assert.equal(horizontal.readable,true);
+  assert.deepEqual(plain(f.pageAPI.rackPositions()),points);assert.deepEqual(plain(f.pageAPI.rackBasis()),basis);
+  assert.deepEqual([...f.sessionStorage.values],stored);assert.deepEqual(plain(f.pageAPI.draft()),draft);
+  assert.deepEqual(plain(f.pageAPI.rackOrder()),order);
+  rotate(366,316);assert.deepEqual(plain(f.pageAPI.rackLayout()).rects,original.rects);
+  rotate(776,86);
+  f.pageAPI.move(rack[1],'rack',null,{rackX:650,rackY:12,grabX:0,grabY:0,anchorId:rack[1]});f.frame();
+  const edited=plain(f.pageAPI.rackLayout());
+  for(const rect of edited.rects) {
+    const previous=horizontal.rects.find(other=>other.id===rect.id),moved=rect.id===rack[1];
+    assert.ok(Math.abs(rect.x-(moved?650:previous.x))<1e-6);
+    assert.ok(Math.abs(rect.y-(moved?12:previous.y))<1e-6);
+  }
+  const saved=JSON.parse([...f.sessionStorage.values.values()].find(value=>value.includes('rackBasis')));
+  assert.deepEqual(saved.rackBasis,{width:760,height:70,tileWidth:36.4,tileHeight:51.8});
+  assert.deepEqual(saved.rackPositions,plain(f.pageAPI.rackPositions()));
+  assert.deepEqual(plain(f.pageAPI.draft()),draft);assert.deepEqual(plain(f.pageAPI.rackOrder()),order);
+  f.timers.tick(1000);await settle();assert.equal(f.calls.filter(call=>call.url.endsWith('/actions') || call.url.endsWith('/preview')).length,0);
+});
 test('actual new draw and unsubmitted returned tile find free spaces without rearranging remembered hand tiles',async t=>{
   const original=tableView(),f=await fixture(t,{initialView:original,geometry:true});f.frame();
   f.pageAPI.move('red-9-a','rack',null,{rackX:470,rackY:62,grabX:0,grabY:0});f.frame();

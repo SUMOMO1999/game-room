@@ -1,14 +1,4 @@
 .site-header [data-settings-target] { display:none !important; }
-.site-header .game-settings-toggle,
-.site-header #leave-room,
-.site-header #exit-practice {
-  min-width:44px !important;
-  min-height:44px !important;
-  flex:none;
-  touch-action:manipulation;
-}
-.site-header:has(.game-settings-toggle) { min-height:44px !important; flex-basis:44px; }
-.site-header .game-settings-toggle { padding:6px 12px; font-size:13px; white-space:nowrap; }
 .game-settings-dialog[open] {
   box-sizing:border-box;
   display:flex;
@@ -41,6 +31,7 @@
 .game-settings-dialog[open] select,
 .game-settings-dialog[open] #sound-preview-kind { font-size:16px; }
 .game-settings-dialog[open] button { color:#f2ead3; background:#264f3f; border-color:#bacaaa55; }
+.game-settings-dialog[open] .room-menu-actions { align-items:start; }
 /* Navigation keeps link semantics but shares the action geometry after moving
    into settings. Theme colors alone cannot turn an inline link into a button. */
 .game-settings-dialog[open] .room-menu-actions > :is(button,a):not([hidden]) {
@@ -65,7 +56,7 @@
 }
 .game-settings-dialog[open] .sound-settings:has(#sound-preview) { display:grid; grid-template-columns:1fr auto; flex:1 0 100%; gap:10px; margin:6px 0 0; padding:0; border:0; color:#f2ead3; }
 .game-settings-dialog[open] .sound-settings:has(#sound-preview) > label { grid-column:1 / -1; grid-row:auto; white-space:normal; }
-.game-settings-dialog[open] .sound-settings:has(#sound-preview) #sound-volume { grid-column:1 / -1; grid-row:auto; width:100%; height:44px; min-height:44px; padding:0; accent-color:#e1bf70; }
+.game-settings-dialog[open] .sound-settings:has(#sound-preview) #sound-volume { grid-column:1 / -1; grid-row:auto; width:100%; height:44px; min-height:44px; padding:0; accent-color:var(--theme-accent,#e1bf70); }
 .game-settings-dialog[open] .sound-settings:has(#sound-preview) #sound-preview-kind { grid-column:1; grid-row:auto; width:100%; min-width:0; max-width:none; height:44px; color:#f2ead3; background:#183d32; }
 .game-settings-dialog[open] .sound-settings:has(#sound-preview) #sound-preview { grid-column:2; grid-row:auto; min-height:44px; padding:8px 12px; font-size:13px; }
 .game-settings-dialog[open] .sound-settings:has(#sound-preview) #sound-preview-status { grid-column:1 / -1; grid-row:auto; white-space:normal; color:#c5d1b8; font-size:12px; }

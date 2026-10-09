@@ -16,8 +16,6 @@ body.flying-screen,body.flying-body { margin:0; padding:0; width:var(--flying-wi
 .flying-header { display:flex; align-items:center; justify-content:space-between; gap:8px; min-width:0; min-height:44px; }
 .flying-brand { display:flex; align-items:center; gap:7px; flex:none; color:inherit; text-decoration:none; white-space:nowrap; font-size:15px; font-weight:750; }
 .flying-brand .brand-mark { flex:none; width:31px; height:29px; --brand-scale:.68; transform:none; }
-.flying-header-actions { display:flex; align-items:center; justify-content:flex-end; gap:5px; min-width:0; }
-.flying-header-actions button { flex:none; min-width:44px; white-space:nowrap; font-size:12px; padding:8px; }
 .flying-connection { min-width:0; max-width:170px; color:#c9d6bc; font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .flying-mode { font-size:11px; color:#d2debd; white-space:nowrap; }
 .flying-players { min-width:0; display:grid; grid-template-columns:repeat(var(--flying-player-count,4),minmax(0,1fr)); gap:6px; }
@@ -118,8 +116,6 @@ body.flying-screen,body.flying-body { margin:0; padding:0; width:var(--flying-wi
   .flying-brand { font-size:13px; }
   .flying-brand .brand-mark { display:none; }
   .flying-header { gap:5px; }
-  .flying-header-actions { gap:4px; }
-  .flying-header-actions button { font-size:11px; padding:7px 6px; }
   .flying-connection { max-width:74px; font-size:9px; }
   .flying-mode { display:none; }
   .flying-player { grid-template-columns:minmax(0,1fr); padding:5px; gap:2px; }
@@ -236,10 +232,8 @@ body.flying-screen,body.flying-body { margin:0; padding:0; width:var(--flying-wi
   .flying-page #flying-controls > .flying-feedback { max-height:32px; font-size:11px; line-height:1.4; }
 }
 @media (max-width:380px) and (orientation:portrait) {
-  .flying-header { flex-wrap:wrap; }
-  .flying-brand { width:100%; font-size:12px; }
+  .flying-brand { font-size:12px; }
   .flying-brand small { font-size:10px; }
-  .flying-header-actions { width:100%; justify-content:space-between; }
   .flying-page { gap:5px; padding-left:max(8px,env(safe-area-inset-left)); padding-right:max(8px,env(safe-area-inset-right)); }
   .flying-player > strong { font-size:10px; line-height:12px; }
   .flying-player > small { font-size:9px; line-height:11px; }
@@ -305,11 +299,8 @@ body.flying-screen,body.flying-body { margin:0; padding:0; width:var(--flying-wi
     grid-template-rows:44px minmax(0,1fr) auto; justify-content:center; gap:var(--flying-gap);
   }
   .flying-page .flying-header.site-header,.flying-main { display:contents; }
+  .flying-header-actions { grid-column:3; grid-row:1; width:100%; }
   .flying-brand { grid-column:1; grid-row:1; flex-direction:column; align-items:flex-start; justify-content:center; gap:1px; font-size:14px; }
-  .flying-header-actions { grid-column:3; grid-row:1; width:100%; gap:3px; }
-  .flying-header-actions button { flex:none; min-width:44px; height:44px; padding:5px 8px; font-size:11px; line-height:13px; white-space:nowrap; }
-  .flying-header-actions #flying-options,.flying-header-actions #chat-toggle { min-width:64px; }
-  .flying-header-actions #flying-exit { width:44px; }
   .flying-roster { grid-column:1; grid-row:2; gap:8px; }
   .flying-roster-heading { display:contents; }
   #flying-turn { order:-1; font-size:12px; line-height:1.4; color:#ffe7b0; }
@@ -334,7 +325,6 @@ body.flying-screen,body.flying-body { margin:0; padding:0; width:var(--flying-wi
 @media (max-height:330px) and (orientation:landscape) {
   .flying-page { --flying-left-min:72px; --flying-right-min:224px; --flying-gap:4px; }
   .flying-brand { font-size:12px; }
-  .flying-header-actions { gap:1px; }
   .flying-roster { gap:5px; }
   #flying-turn { font-size:10px; line-height:12px; }
   .flying-page .flying-players { gap:3px; }
@@ -359,8 +349,6 @@ body.flying-screen,body.flying-body { margin:0; padding:0; width:var(--flying-wi
 @media (max-width:380px) and (orientation:portrait) {
   .flying-header { flex-wrap:nowrap; }
   .flying-brand { width:auto; flex-direction:column; align-items:flex-start; gap:1px; }
-  .flying-header-actions { width:auto; flex:1; gap:3px; }
-  .flying-header-actions button { flex:1; padding:3px; }
   .flying-roster { display:grid; grid-template-columns:minmax(0,1fr) 49px; gap:3px 5px; }
   .flying-roster-heading { display:contents; }
   .flying-roster .flying-players { grid-column:1; grid-row:1; }
@@ -375,7 +363,7 @@ body.flying-screen,body.flying-body { margin:0; padding:0; width:var(--flying-wi
   .flying-page #flying-gate p { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:4; overflow:hidden; }
 }
 
-.flying-header-actions #flying-connection { flex:1; min-width:0; font-size:10px; line-height:13px; color:#c8d7b8; overflow-wrap:anywhere; }
+.flying-header-actions #flying-connection { font-size:10px; line-height:13px; color:#c8d7b8; }
 .flying-body .game-settings-dialog .room-menu-actions { grid-template-columns:1fr; }
 .flying-body .game-settings-dialog .room-menu-actions > * { min-width:0; }
 

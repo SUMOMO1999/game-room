@@ -50,10 +50,10 @@ export function createDrawingGamePage({mode='room',root=globalThis.document?.get
   if(!root)throw new Error('找不到你画我猜页面。');
   const practice=mode==='practice';doc.documentElement.classList.add('drawing-root');doc.body.classList.add('drawing-body','in-game');
   root.innerHTML=`<div class="drawing-page">
-    <header class="drawing-header site-header"><a href="./" ${practice?'data-practice-exit':''} class="drawing-brand">棋牌室 <small>你画我猜</small></a>
-      <nav class="drawing-header-actions" data-chat-notice-anchor><span id="drawing-connection" class="drawing-connection"></span>
-      <button id="chat-toggle" class="chat-toggle" aria-controls="room-chat" aria-expanded="false" hidden>聊两句 <span id="chat-unread" class="chat-unread" hidden></span></button>
-      <button id="drawing-settings" type="button">设置</button><button id="drawing-exit" type="button" aria-label="${practice?'返回大厅':'退出房间'}">×</button></nav></header>
+    <header class="drawing-header site-header room-header"><a href="./" ${practice?'data-practice-exit':''} class="drawing-brand">棋牌室 <small>你画我猜</small></a>
+      <nav class="drawing-header-actions room-toolbar" data-chat-notice-anchor><span id="drawing-connection" class="drawing-connection room-toolbar-status"></span><div class="room-toolbar-actions">
+      <button id="chat-toggle" class="chat-toggle room-toolbar-action" aria-controls="room-chat" aria-expanded="false" hidden>聊两句 <span id="chat-unread" class="chat-unread" hidden></span></button>
+      <button id="drawing-settings" class="room-toolbar-action" type="button">设置</button><button id="drawing-exit" class="room-toolbar-action room-toolbar-exit" type="button" aria-label="${practice?'返回大厅':'退出房间'}">×</button></div></nav></header>
     <div class="drawing-stage-bar"><span id="drawing-room-code" class="drawing-room-code" hidden></span><strong id="drawing-stage" role="status">正在恢复…</strong><span id="drawing-hint" class="drawing-hint" hidden></span><span id="drawing-round"></span>
       <span id="turn-clock" hidden><span id="turn-clock-time"></span><small id="turn-clock-action"></small></span></div>
     <main class="drawing-main"><section class="drawing-canvas-panel" aria-label="共享画布" data-chat-dismiss-notices>

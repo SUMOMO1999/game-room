@@ -1,5 +1,60 @@
 /* Shared controls own geometry. Game pieces, canvas and theme colours retain
    their own styles; moving a control into settings must not change its shape. */
+/* The status may shorten; the ordered action group keeps its intrinsic width.
+   Explicit groups also make hidden chat controls disappear without a gap. */
+.room-header .room-toolbar {
+  display: flex;
+  align-items: center;
+  flex: 0 1 auto;
+  min-width: 0;
+  gap: 8px;
+  margin-inline-start: auto;
+}
+.room-header .room-toolbar-status {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.room-toolbar-status > :last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.room-toolbar-status > :first-child:not(:last-child) { flex: none; }
+.room-header .room-toolbar-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-inline-start: auto;
+}
+.room-header .room-toolbar-actions > .room-toolbar-action {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  margin-block: 0;
+  padding: 8px 12px;
+  border-style: solid;
+  border-width: 1px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.3;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  touch-action: manipulation;
+}
+.room-header .room-toolbar-actions > .room-toolbar-exit { margin-inline-start: 2px; }
+.room-header .room-toolbar-action:focus-visible { outline-width: 3px; outline-offset: 2px; }
+
 :is(.primary-button, .secondary-button, .quiet-button, .text-button,
     .sort-button, .sound-toggle, .chat-toggle, .game-settings-toggle),
 .game-settings-dialog button:not(.theme-choice),
@@ -21,7 +76,7 @@
 
 /* A CSS cross avoids platform-specific text baselines and asymmetric legacy
    padding. Accessible names remain on the original controls. */
-:is(.close-button, .chat-close, .chat-notice-close, .room-exit, #flying-exit,
+:is(.close-button, .chat-close, .chat-notice-close, .room-exit, #flying-exit, #p414-exit,
     #drawing-settings-close, #drawing-exit,
     .dialog-heading > button[data-close][aria-label]) {
   position: relative;
@@ -38,10 +93,10 @@
   font-size: 0 !important;
   line-height: 1;
 }
-:is(.close-button, .chat-close, .chat-notice-close, .room-exit, #flying-exit,
+:is(.close-button, .chat-close, .chat-notice-close, .room-exit, #flying-exit, #p414-exit,
     #drawing-settings-close, #drawing-exit,
     .dialog-heading > button[data-close][aria-label])::before,
-:is(.close-button, .chat-close, .chat-notice-close, .room-exit, #flying-exit,
+:is(.close-button, .chat-close, .chat-notice-close, .room-exit, #flying-exit, #p414-exit,
     #drawing-settings-close, #drawing-exit,
     .dialog-heading > button[data-close][aria-label])::after {
   content: "";
@@ -55,7 +110,7 @@
   transform: translate(-50%, -50%) rotate(45deg);
   pointer-events: none;
 }
-:is(.close-button, .chat-close, .chat-notice-close, .room-exit, #flying-exit,
+:is(.close-button, .chat-close, .chat-notice-close, .room-exit, #flying-exit, #p414-exit,
     #drawing-settings-close, #drawing-exit,
     .dialog-heading > button[data-close][aria-label])::after {
   transform: translate(-50%, -50%) rotate(-45deg);
@@ -113,17 +168,17 @@ select:not([multiple]):not([size]):focus-visible {
     -webkit-appearance: auto;
     background-image: none !important;
   }
-  :is(.close-button, .chat-close, .chat-notice-close, .room-exit, #flying-exit,
+  :is(.close-button, .chat-close, .chat-notice-close, .room-exit, #flying-exit, #p414-exit,
       #drawing-settings-close, #drawing-exit,
       .dialog-heading > button[data-close][aria-label]) {
     font-size: 24px !important;
   }
   .practice-exit > span:first-child { font-size: 20px !important; }
-  :is(.close-button, .chat-close, .chat-notice-close, .room-exit, #flying-exit,
+  :is(.close-button, .chat-close, .chat-notice-close, .room-exit, #flying-exit, #p414-exit,
       #drawing-settings-close, #drawing-exit,
       .dialog-heading > button[data-close][aria-label],
       .practice-exit > span:first-child)::before,
-  :is(.close-button, .chat-close, .chat-notice-close, .room-exit, #flying-exit,
+  :is(.close-button, .chat-close, .chat-notice-close, .room-exit, #flying-exit, #p414-exit,
       #drawing-settings-close, #drawing-exit,
       .dialog-heading > button[data-close][aria-label],
       .practice-exit > span:first-child)::after {

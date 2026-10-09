@@ -83,11 +83,11 @@ html[data-game-theme] :is(.app-install-intro,.app-install-note,.joker-config-for
 /* The chat surface keeps its existing light message colors; its helper token
    must therefore remain local rather than inherit the dark-table muted ink. */
 html[data-game-theme] .room-chat{--muted:#64745d}
-html[data-game-theme] :is(.game-screen,.army-screen,.flying-screen,.flying-body,.drawing-body,.lab-shell) :is(.quiet-button,.secondary-button,.room-exit,.practice-exit,.sort-button,.board-view-button,.sound-toggle,.chat-toggle,.app-shell-button,.round-summary strong,.game-settings-toggle,.flying-button,.flying-plane-button,.flying-recovery button,.flying-actions button,.flying-header-actions button,.flying-roster-heading button,.drawing-header-actions button,.drawing-tool-heading button,.drawing-tool-row button:not(.drawing-color-chip),.drawing-actions button,.drawing-recovery button,.drawing-guess-form>button,.drawing-guess-row button,.lab-header nav a,.lab-header nav button){
+html[data-game-theme] :is(.game-screen,.army-screen,.flying-screen,.flying-body,.drawing-body,.p414-body,.lab-shell) :is(.room-toolbar-action,.quiet-button,.secondary-button,.room-exit,.practice-exit,.sort-button,.board-view-button,.sound-toggle,.chat-toggle,.app-shell-button,.round-summary strong,.game-settings-toggle,.flying-button,.flying-plane-button,.flying-recovery button,.flying-actions button,.flying-header-actions button,.flying-roster-heading button,.drawing-header-actions button,.drawing-tool-heading button,.drawing-tool-row button:not(.drawing-color-chip),.drawing-actions button,.drawing-recovery button,.drawing-guess-form>button,.drawing-guess-row button,.lab-header nav a,.lab-header nav button){
   color:var(--theme-ink)!important;background:var(--theme-control)!important;border-color:color-mix(in srgb,var(--theme-border) 70%,transparent)!important;
   box-shadow:inset 0 1px 0 var(--theme-glow);
 }
-html[data-game-theme] :is(.board-view-button[aria-pressed=true],.sort-button.active,.drawing-tool-row button[aria-pressed=true],.practice-lessons [aria-current=page],.chat-toggle[aria-expanded=true]){
+html[data-game-theme] :is(.game-screen,.army-screen,.flying-screen,.flying-body,.drawing-body,.p414-body,.lab-shell) :is(.board-view-button[aria-pressed=true],.sort-button.active,.drawing-tool-row button[aria-pressed=true],.practice-lessons [aria-current=page],.room-toolbar-action[aria-expanded=true]){
   background:var(--theme-accent)!important;color:var(--theme-base)!important;border-color:var(--theme-accent)!important;
 }
 /* Match the themed control's scope so its important colors cannot mask the
@@ -98,7 +98,7 @@ html[data-game-theme] .drawing-body .drawing-tool-row button[data-tool][aria-pre
 html[data-game-theme] :is(.game-screen,.army-screen,.flying-screen,.flying-body,.drawing-body,.lab-shell) :is(.primary-button,.flying-primary,#commit:not(:disabled),#start-room:not(:disabled),#turn-banner.your-turn,.main-action){
   background:var(--theme-accent)!important;color:var(--theme-base)!important;border-color:var(--theme-accent)!important;box-shadow:inset 0 1px 0 #ffffff22,0 2px 6px var(--theme-shadow)!important;
 }
-html[data-game-theme] :is(.game-screen,.army-screen,.flying-screen,.flying-body,.drawing-body) :is(.primary-button:disabled,.flying-primary:disabled,.secondary-button:disabled,.quiet-button:disabled,.board-view-button:disabled,.sort-button:disabled,.room-exit:disabled,.drawing-actions button:disabled,.drawing-tool-heading button:disabled,.drawing-tool-row button:disabled,.drawing-guess-row button:disabled,#start-room:disabled){
+html[data-game-theme] :is(.game-screen,.army-screen,.flying-screen,.flying-body,.drawing-body,.p414-body) :is(.room-toolbar-action:disabled,.primary-button:disabled,.flying-primary:disabled,.flying-actions button:disabled,.flying-plane-button:disabled,.secondary-button:disabled,.quiet-button:disabled,.board-view-button:disabled,.sort-button:disabled,.room-exit:disabled,.drawing-actions button:disabled,.drawing-tool-heading button:disabled,.drawing-tool-row button:disabled,.drawing-guess-row button:disabled,#start-room:disabled){
   background:var(--theme-surface)!important;color:var(--theme-muted)!important;border-color:color-mix(in srgb,var(--theme-border) 35%,transparent)!important;box-shadow:none!important;opacity:1;
 }
 html[data-game-theme] .new-meld{color:var(--theme-muted)!important;border-color:color-mix(in srgb,var(--theme-border) 80%,transparent)!important;background:color-mix(in srgb,var(--theme-surface) 30%,transparent)!important}
@@ -138,6 +138,6 @@ html[data-game-theme] .game-settings-dialog[open] .practice-lessons a:not([aria-
 html[data-game-theme] .game-settings-dialog[open] :is(.sound-settings input,#sound-volume,.color-assist-option input){accent-color:var(--theme-accent)}
 html[data-game-theme] :is(.game-settings-dialog,.flying-page dialog,.drawing-page dialog,.army-dialog,.rules-dialog,.confirm-dialog) :is(.secondary-button,.close-button,.text-button,[data-close]){color:var(--theme-ink)!important;background:var(--theme-control)!important;border-color:var(--theme-border)!important}
 html[data-game-theme] :is(.flying-page dialog,.drawing-page dialog) :is(h2,h3,p,label){color:var(--theme-ink)}
-html[data-game-theme] :is(.game-screen,.army-screen,.flying-screen,.flying-body,.drawing-body,.lab-shell) :is(.quiet-button,.secondary-button,.primary-button,.board-view-button,.sort-button,.game-settings-toggle,.room-exit,.flying-button,.flying-primary,.drawing-tool-row button):focus-visible{outline-color:var(--theme-accent)}
+html[data-game-theme] :is(.game-screen,.army-screen,.flying-screen,.flying-body,.drawing-body,.p414-body,.lab-shell) :is(.room-toolbar-action,.quiet-button,.secondary-button,.primary-button,.board-view-button,.sort-button,.game-settings-toggle,.room-exit,.flying-button,.flying-primary,.drawing-tool-row button):focus-visible{outline-color:var(--theme-accent)}
 @media (hover:hover){html[data-game-theme] .theme-choice:not([aria-pressed=true]):hover{border-color:var(--theme-accent)!important;box-shadow:0 3px 8px var(--theme-shadow)}}
 @media (prefers-reduced-motion:reduce){.theme-choice{transition:none}}

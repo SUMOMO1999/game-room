@@ -15,12 +15,22 @@
 </head>
 <body data-mode="room" class="game-screen">
   <div class="shell">
-    <header class="site-header">
+    <header class="site-header room-header">
       <a class="brand" href="./" aria-label="棋牌室首页">
         <span class="brand-mark" aria-hidden="true"><i>3</i><i>3</i></span>
         <span><strong>棋牌室</strong><small>GOOD COMPANY, GOOD GAMES.</small></span>
       </a>
-      <div class="header-actions"><span class="mode-badge"><span></span><span id="connection-label">连接中</span></span><button id="chat-toggle" class="chat-toggle" type="button" aria-controls="room-chat" aria-expanded="false" hidden>聊两句 <span id="chat-unread" class="chat-unread" hidden></span></button><button id="game-settings-toggle" class="quiet-button game-settings-toggle" type="button" data-room-settings data-settings-dialog="game-settings-dialog" data-settings-close="game-settings-close" aria-controls="game-settings-dialog" aria-haspopup="dialog" aria-expanded="false">设置</button><button id="sound-toggle" data-settings-target="game-settings-audio" class="sound-toggle" type="button" aria-pressed="false" aria-label="开启音效">音效关</button><button class="quiet-button" id="show-rules" data-settings-target="game-settings-help" data-settings-dismiss aria-label="玩法说明">规则</button><button id="room-options" data-settings-target="game-settings-room" data-settings-dismiss class="quiet-button room-options-toggle" type="button" aria-controls="room-options-dialog" aria-label="房间安排">房间安排</button><button id="leave-room" class="room-exit" type="button" aria-label="退出房间" title="退出房间" disabled>×</button></div>
+      <div class="header-actions room-toolbar">
+        <span class="mode-badge room-toolbar-status"><span></span><span id="connection-label">连接中</span></span>
+        <div class="room-toolbar-actions">
+          <button id="chat-toggle" class="chat-toggle room-toolbar-action" type="button" aria-controls="room-chat" aria-expanded="false" hidden>聊两句 <span id="chat-unread" class="chat-unread" hidden></span></button>
+          <button id="game-settings-toggle" class="quiet-button game-settings-toggle room-toolbar-action" type="button" data-room-settings data-settings-dialog="game-settings-dialog" data-settings-close="game-settings-close" aria-controls="game-settings-dialog" aria-haspopup="dialog" aria-expanded="false">设置</button>
+          <button id="sound-toggle" data-settings-target="game-settings-audio" class="sound-toggle" type="button" aria-pressed="false" aria-label="开启音效">音效关</button>
+          <button class="quiet-button" id="show-rules" data-settings-target="game-settings-help" data-settings-dismiss aria-label="玩法说明">规则</button>
+          <button id="room-options" data-settings-target="game-settings-room" data-settings-dismiss class="quiet-button room-options-toggle" type="button" aria-controls="room-options-dialog" aria-label="房间安排">房间安排</button>
+          <button id="leave-room" class="room-exit room-toolbar-action room-toolbar-exit" type="button" aria-label="退出房间" title="退出房间" disabled>×</button>
+        </div>
+      </div>
     </header>
 
     <main><p class="orientation-hint" role="note"><span aria-hidden="true">↻</span>把手机横过来，展开这一桌好牌。</p><div class="room-topbar"><a class="quiet-link" href="./">← 返回大厅</a><span>房间 <strong id="room-code">------</strong></span></div><p id="chat-legacy-note" class="chat-legacy-note" hidden>房间聊天可在统一账号预览中体验。</p><div id="room-players" class="room-players"></div><p id="spectator-list" class="spectator-list" hidden></p>
