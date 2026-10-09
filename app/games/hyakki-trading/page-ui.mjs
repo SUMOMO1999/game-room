@@ -2,7 +2,7 @@ import { renderCard, renderCardDetails, renderGoodsIcon } from './card-ui.mjs';
 import { mountArtFallback } from './art.mjs';
 import { gamePath } from '../../entry-path.mjs';
 import { GOODS, describeGoods } from './content.mjs';
-import { draftCategory } from './reference-content.mjs';
+import { draftCategory, REFERENCE_RULES } from './reference-content.mjs';
 import { createGameAudio } from '../../game-audio.mjs';
 import { mountRoomAudioControls } from '../../platform/room-audio-controls.mjs';
 import { mountRoomSettings } from '../../platform/room-settings.mjs';
@@ -25,7 +25,7 @@ export function mountHyakkiPreviewPage({ root, scenes, onScene, onAction, onLeav
     <main class="hy-play-area"><section class="hy-market-board" aria-labelledby="hy-stage-title"><div class="hy-stage"><div><span class="hy-eyebrow" id="hy-stage-kind">夜市营业中</span><h1 id="hy-stage-title">轮到你经营</h1></div><div class="hy-clock"><strong id="hy-clock">02:06</strong><small id="hy-clock-note">回合余时示例</small></div></div>
       <div id="hy-shared-table" class="hy-shared-table">
         <aside id="hy-piles" class="hy-piles" aria-label="公共牌区示意"><div class="hy-pile hy-pile--discard"><span>弃牌区</span><small>正面朝上</small></div><div class="hy-pile hy-pile--draw"><span>抽牌堆</span><small>统一牌背</small></div></aside>
-        <div class="hy-table-centre"><section id="hy-shared-track" class="hy-shared-track" aria-labelledby="hy-track-title"><header><h2 id="hy-track-title">共享行动条</h2><span id="hy-track-status">公用标记 · 位置示意</span></header><div class="hy-track-rail" role="img" aria-label="共享行动条与公用标记的布局示意，格数与位置待规则确认"><span class="hy-track-marker" aria-hidden="true"></span><span class="hy-track-direction" aria-hidden="true">→</span></div><p>抽看一张牌 → 公用标记前进 → 留牌或弃牌</p></section><div id="hy-current-effect" class="hy-current-effect" hidden></div><div id="hy-scene-content" class="hy-scene-content"></div></div>
+        <div class="hy-table-centre"><section id="hy-shared-track" class="hy-shared-track" aria-labelledby="hy-track-title"><header><h2 id="hy-track-title">共享行动条</h2><span id="hy-track-status">上限默认5 · 位置示意</span></header><div class="hy-track-rail" role="img" aria-label="共享行动条与公用标记的布局示意，默认上限5，当前进度为示意"><span class="hy-track-marker" aria-hidden="true"></span><span class="hy-track-direction" aria-hidden="true">→</span></div><p>看1张＋1点 → 弃掉可再看 · 留下即出牌</p></section><div id="hy-current-effect" class="hy-current-effect" hidden></div><div id="hy-scene-content" class="hy-scene-content"></div></div>
         <aside id="hy-public-stall" class="hy-public-stall"><button type="button" id="hy-view-market" class="hy-stall-summary" aria-label="公共货摊，查看货物库存与银两说明"><strong>公共货摊</strong><span id="hy-market" class="hy-market"></span><small>银两区 · 供给待核</small></button></aside>
       </div>
     </section>
@@ -35,7 +35,7 @@ export function mountHyakkiPreviewPage({ root, scenes, onScene, onAction, onLeav
     <p id="hy-feedback" class="hy-feedback" role="status" aria-live="polite">仅检查资源与操作；不连接正式房间，不保存牌局。</p>
     </main></div></div>
     <div id="hy-urgent-dock" class="hy-urgent-dock" hidden aria-label="聊天中的当前回应"><strong id="hy-urgent-title"></strong><div id="hy-urgent-actions"></div></div>
-    <dialog id="hy-options" class="hy-dialog"><div class="dialog-heading"><h2>设置</h2>${button('hy-options-close', '×', 'class="close-button" aria-label="关闭设置"')}</div><div class="hy-modal-response" data-modal-response hidden></div><div class="game-settings-body"><section><h3>本地样板</h3><p>全部房号、身份、牌面和聊天是合成示例，未接入规则引擎。现有五种行动沿用朋友稿，不是商业原版完整卡表；截图新增分类与道具区正在核对。时钟定格用于检查阅读，不是正式倒计时。</p><label for="hy-scene">检查局面</label><select id="hy-scene">${scenes.map(([id, title]) => `<option value="${id}">${escape(title)}</option>`).join('')}</select><div class="game-settings-controls">${button('hy-gallery', '实验卡牌图鉴')}${button('hy-peer-message', '模拟伙伴发言')}</div></section><section><h3>声音与玩法</h3><div class="game-settings-controls">${button('sound-toggle', '点按启声')}${button('hy-rules', '玩法说明')}</div><div class="sound-settings"><label for="sound-volume">音效音量</label><input type="range" id="sound-volume" min="0" max="100" step="5" value="45"><select id="sound-preview-kind" aria-label="试听声音"><option value="select">选牌</option><option value="draw">摸牌</option><option value="placement">买卖示例</option><option value="turn">本人回应</option><option value="chat">聊天</option><option value="win">结束</option></select>${button('sound-preview', '试听')}<span id="sound-preview-status" role="status"></span></div></section><section><h3>样板出口</h3><div class="game-settings-controls">${button('hy-leave-settings', '退出本地样板')}</div><p id="chat-legacy-note" hidden></p></section></div></dialog>
+    <dialog id="hy-options" class="hy-dialog"><div class="dialog-heading"><h2>设置</h2>${button('hy-options-close', '×', 'class="close-button" aria-label="关闭设置"')}</div><div class="hy-modal-response" data-modal-response hidden></div><div class="game-settings-body"><section><h3>本地样板</h3><p>全部房号、身份、牌面和聊天是合成示例，未接入规则引擎。手牌与动作仍用旧朋友稿检查布局；当前规则已分五类，完整牌文和引擎尚待补齐。时钟定格用于检查阅读，不是正式倒计时。</p><label for="hy-scene">检查局面</label><select id="hy-scene">${scenes.map(([id, title]) => `<option value="${id}">${escape(title)}</option>`).join('')}</select><div class="game-settings-controls">${button('hy-gallery', '实验卡牌图鉴')}${button('hy-peer-message', '模拟伙伴发言')}</div></section><section><h3>声音与玩法</h3><div class="game-settings-controls">${button('sound-toggle', '点按启声')}${button('hy-rules', '玩法说明')}</div><div class="sound-settings"><label for="sound-volume">音效音量</label><input type="range" id="sound-volume" min="0" max="100" step="5" value="45"><select id="sound-preview-kind" aria-label="试听声音"><option value="select">选牌</option><option value="draw">摸牌</option><option value="placement">买卖示例</option><option value="turn">本人回应</option><option value="chat">聊天</option><option value="win">结束</option></select>${button('sound-preview', '试听')}<span id="sound-preview-status" role="status"></span></div></section><section><h3>样板出口</h3><div class="game-settings-controls">${button('hy-leave-settings', '退出本地样板')}</div><p id="chat-legacy-note" hidden></p></section></div></dialog>
     <dialog id="hy-inspector" class="hy-dialog hy-inspector"><div class="dialog-heading"><h2 id="hy-inspector-title">查看卡牌</h2>${button('hy-inspector-close', '×', 'class="close-button" aria-label="关闭详情"')}</div><div class="hy-modal-response" data-modal-response hidden></div><div id="hy-inspector-content"></div></dialog>
     <dialog id="hy-leave" class="hy-dialog"><div class="dialog-heading"><h2>退出本地样板？</h2>${button('hy-leave-close', '×', 'class="close-button" aria-label="关闭退出确认"')}</div><p>这里只是合成页面。退出回到样板入口，没有正式席位或牌局需要清理。</p><div class="hy-dialog-actions">${button('hy-stay', '继续查看')}${button('hy-leave-confirm', '退出样板', 'class="hy-primary"')}</div></dialog>
     ${roomChatMarkup()}
@@ -74,10 +74,10 @@ export function mountHyakkiPreviewPage({ root, scenes, onScene, onAction, onLeav
   }
   function renderStage() {
     const texts = {
-      active: ['轮到你经营', '先选一张凭据，买入或卖出货物。'], six: ['轮到你经营', '六位伙伴按左侧顺序依次经营。'], dense: ['120张手牌阅读检查', '按类型筛选或翻页；旋转屏幕保留选中牌。'], practice: ['本机练习页面样板', '这里只检查练习界面；完整电脑对手尚未实现。'],
-      waiting: ['夜市即将开张', '2～6位玩家。准备后由房主开始，观众不会收到私牌。'], wait: ['灯笼铺老板正在经营', '对手手牌隐藏；可以查看市场和自己的牌。'],
+      active: ['轮到你经营', '先选一张凭据，买入或卖出货物。'], six: ['轮到你经营', '旧稿六人布局检查；新版多人规则待定。'], dense: ['120张手牌阅读检查', '按类型筛选或翻页；旋转屏幕保留选中牌。'], practice: ['本机练习页面样板', '这里只检查练习界面；完整电脑对手尚未实现。'],
+      waiting: ['夜市即将开张', '准备室样板。当前确认双人规则，多人扩展待定；观众不会收到私牌。'], wait: ['灯笼铺老板正在经营', '对手手牌隐藏；可以查看市场和自己的牌。'],
       defense: ['有人想拿走你的黄瓜', '你有10秒使用护身符，或放弃防御。'], bidder: ['黑市第2件 · 轮到你报价', '当前3两。只能加1两；放弃后本件不能再次加入。'],
-      'pending-leave': ['退出申请已记录', '这场三件拍卖结算后离席；已确认的报价仍要兑现。'], spectator: ['观战 · 灯笼铺老板经营', '只看公开市场、银两与摊位，不能查看其他人的手牌。'], paused: ['本局已暂停', '当前阶段和余时冻结；房主恢复后继续。'], offline: ['连接中断 · 保留当前画面', '恢复时先核对原操作。不会假称成功或重复扣款。'], result: ['百鬼收市 · 本局结束', '示范伙伴达到60两。以下仅为合成结算。'],
+      'pending-leave': ['退出申请已记录', '这场三件拍卖结算后离席；已确认的报价仍要兑现。'], spectator: ['观战 · 灯笼铺老板经营', '只看公开市场、银两与摊位，不能查看其他人的手牌。'], paused: ['本局已暂停', '当前阶段和余时冻结；房主恢复后继续。'], offline: ['连接中断 · 保留当前画面', '恢复时先核对原操作。不会假称成功或重复扣款。'], result: ['百鬼收市 · 本局结束', '以下仅为旧稿合成结果；新版须在回合末触发收市，再按先后手结算。'],
     };
     const [title, note] = texts[view.scene];
     $('hy-stage-title').textContent = title;
@@ -85,7 +85,7 @@ export function mountHyakkiPreviewPage({ root, scenes, onScene, onAction, onLeav
     $('hy-clock').textContent = isUrgent(view) ? `${view.countdown}秒` : view.phase !== 'playing' ? '—' : '02:06';
     $('hy-clock-note').textContent = isUrgent(view) ? '主动回合冻结02:06' : '定格时钟示例';
     const playing = view.phase === 'playing';
-    $('hy-track-status').textContent = isUrgent(view) ? `${view.scene === 'defense' ? '等待防御' : '轮到你报价'} · ${view.countdown}秒` : view.scene === 'paused' ? '本局暂停 · 位置示意' : view.scene === 'offline' ? '连接中断 · 保留画面' : '公用标记 · 位置示意';
+    $('hy-track-status').textContent = isUrgent(view) ? `${view.scene === 'defense' ? '等待防御' : '轮到你报价'} · ${view.countdown}秒` : view.scene === 'paused' ? '本局暂停 · 位置示意' : view.scene === 'offline' ? '连接中断 · 保留画面' : '上限默认5 · 位置示意';
     root.classList.toggle('hy-playing', playing);
     $('hy-piles').hidden = !playing;
     $('hy-public-stall').hidden = !playing;
@@ -214,7 +214,7 @@ export function mountHyakkiPreviewPage({ root, scenes, onScene, onAction, onLeav
   listen($('hy-rotation-exit'), 'click', () => onLeave());
   listen($('hy-peer-message'), 'click', () => onPeerMessage());
   listen($('hy-gallery'), 'click', () => { window.location.href = gamePath('/hyakki-catalog.html'); });
-  listen($('hy-rules'), 'click', () => inspector('百鬼商会 · 朋友稿实验规则', '<p>当前120张是朋友稿实验基线，尚非商业原版完整卡表。淘宝截图显示货物、摊位许可、人物、道具四个大类；人物与各道具的完整定义仍待核对。道具先放入道具区再按每回合条件使用，具体效果、费用与次数未补齐前不执行。桌面中央是共享行动条，货摊在旁边；抽看牌后公用标记前进，再留牌或弃牌。行动条格数与回合推进仍待完整规则，本页不把旧稿个人行动力冒充共享进度。下列旧规则仅用于现阶段朋友稿样板。</p><ol class="hy-rule-list"><li>2～6人。每人20两、4张牌、6格摊位。市场六种货物各20件。</li><li>每回合5行动，通常先花1行动摸牌。用货物凭据买入或卖出完整货物组，凭据随后弃置。</li><li>先完成一次动作并达到60两获胜。摸过牌且用了不超过3行动，主动结束可得1两。</li><li>盛典改变一种货物的买卖价；顺手牵羊给目标10秒用护身符防御。</li><li>黑市拍卖三件，一次只揭一件；轮到自己15秒内加1两或放弃。</li><li>许可证支付3两与1行动，永久扩容3格。退出中的拍卖义务结算后才清理。</li></ol><p>这里是资源与界面样板。详细边界以已确认设计书为准；完整规则引擎在后续阶段实现。</p>'));
+  listen($('hy-rules'), 'click', () => inspector('百鬼商会 · 当前规则', `<p>目标：游戏结束时拥有最多银两。以下是用户已补充的规则；行动上限范围标为本轮建议。房间设置及规则引擎尚未接入。</p><ol class="hy-rule-list">${REFERENCE_RULES.map(rule => `<li>${escape(rule)}</li>`).join('')}</ol><p>当前手牌、三件拍卖、护符防御和六人场景仍是旧朋友稿的界面检查材料，不表示已纳入新版规则。完整牌文、开局材料及多人结束顺序待补，旧稿120张不代表原版完整牌库。</p>`));
   listen($('hy-invite'), 'click', async () => {
     const invitation = new URL(window.location.href); invitation.search = '?scene=waiting';
     try { await window.navigator.clipboard.writeText(`仅本机可打开的百鬼商会样板：${invitation}`); feedback('已复制本机样板地址；这不是正式邀请。'); }
