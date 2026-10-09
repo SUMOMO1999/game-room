@@ -16,12 +16,21 @@
 </head>
 <body class="game-screen">
   <div class="shell">
-    <header class="site-header">
+    <header class="site-header room-header">
       <a class="brand" href="./" data-practice-exit aria-label="棋牌室首页">
         <span class="brand-mark" aria-hidden="true"><i>3</i><i>3</i></span>
         <span><strong>棋牌室</strong><small>GOOD COMPANY, GOOD GAMES.</small></span>
       </a>
-      <div class="header-actions"><nav class="practice-lessons" id="practice-lessons" data-settings-target="game-settings-practice" aria-label="拉密练习场景"><a id="lesson-basic" data-practice-mode href="./practice.html" aria-current="page" aria-label="基础练习">基础</a><a id="lesson-joker" data-practice-mode href="./practice.html?lesson=joker" aria-label="鬼牌重组练习">鬼牌</a></nav><button id="game-settings-toggle" class="quiet-button game-settings-toggle" type="button" data-room-settings data-settings-dialog="game-settings-dialog" data-settings-close="game-settings-close" aria-controls="game-settings-dialog" aria-haspopup="dialog" aria-expanded="false">设置</button><button id="sound-toggle" data-settings-target="game-settings-audio" class="sound-toggle" type="button" aria-pressed="false" aria-label="开启音效">音效关</button><button class="quiet-button" id="show-rules" data-settings-target="game-settings-help" data-settings-dismiss aria-label="玩法说明">规则</button><button id="restart" data-settings-target="game-settings-practice" data-settings-dismiss class="text-button">重新开始</button><a id="exit-practice" data-practice-exit class="practice-exit" href="./" aria-label="退出练习，返回大厅" title="退出练习，返回大厅"><span aria-hidden="true">×</span><span class="practice-exit-label">返回大厅</span></a></div>
+      <div class="header-actions room-toolbar">
+        <div class="room-toolbar-actions">
+          <nav class="practice-lessons" id="practice-lessons" data-settings-target="game-settings-practice" aria-label="拉密练习场景"><a id="lesson-basic" data-practice-mode href="./practice.html" aria-current="page" aria-label="基础练习">基础</a><a id="lesson-joker" data-practice-mode href="./practice.html?lesson=joker" aria-label="鬼牌重组练习">鬼牌</a></nav>
+          <button id="game-settings-toggle" class="quiet-button game-settings-toggle room-toolbar-action" type="button" data-room-settings data-settings-dialog="game-settings-dialog" data-settings-close="game-settings-close" aria-controls="game-settings-dialog" aria-haspopup="dialog" aria-expanded="false">设置</button>
+          <button id="sound-toggle" data-settings-target="game-settings-audio" class="sound-toggle" type="button" aria-pressed="false" aria-label="开启音效">音效关</button>
+          <button class="quiet-button" id="show-rules" data-settings-target="game-settings-help" data-settings-dismiss aria-label="玩法说明">规则</button>
+          <button id="restart" data-settings-target="game-settings-practice" data-settings-dismiss class="text-button">重新开始</button>
+          <a id="exit-practice" data-practice-exit class="practice-exit room-toolbar-action room-toolbar-exit" href="./" aria-label="退出练习，返回大厅" title="退出练习，返回大厅"><span aria-hidden="true">×</span><span class="practice-exit-label">返回大厅</span></a>
+        </div>
+      </div>
     </header>
 
     <main><p class="orientation-hint" role="note"><span aria-hidden="true">↻</span>把手机横过来，展开这一桌好牌。</p>

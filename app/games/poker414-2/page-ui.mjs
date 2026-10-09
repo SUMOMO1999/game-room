@@ -20,9 +20,9 @@ export function mountPoker414Page({ root, preview = false, practice = false, onA
   const document = root.ownerDocument, window = document.defaultView;
   document.body.classList.add('p414-body');
   root.innerHTML = `<div class="p414-shell">
-    <header class="p414-header" data-chat-notice-anchor>
+    <header class="p414-header room-header">
       <div class="p414-brand"><strong>414 <small>窜火箭</small></strong><span>${preview ? '操作小样 · 合成局面' : practice ? '单人练习 · 电脑对手' : '棋牌室'}</span></div>
-      <div class="p414-toolbar">${button('chat-toggle', '聊天 <span id="chat-unread" class="chat-unread" hidden></span>', 'class="chat-toggle" aria-controls="room-chat" aria-expanded="false" hidden')}${button('p414-settings', '设置')}${button('p414-exit', '×', `class="p414-close" aria-label="${practice ? '返回大厅' : '退出房间'}"`)}</div>
+      <div class="room-toolbar" data-chat-notice-anchor><div class="p414-toolbar room-toolbar-actions">${button('chat-toggle', '聊天 <span id="chat-unread" class="chat-unread" hidden></span>', 'class="chat-toggle room-toolbar-action" aria-controls="room-chat" aria-expanded="false" hidden')}${button('p414-settings', '设置', 'class="room-toolbar-action"')}${button('p414-exit', '×', `class="p414-close room-toolbar-action room-toolbar-exit" aria-label="${practice ? '返回大厅' : '退出房间'}"`)}</div></div>
     </header>
     <div class="p414-room-line"><span>${practice ? '本机练习' : '房间'} <b id="p414-code"></b></span>${button('p414-invite', '复制邀请', practice ? 'hidden' : '')}<span id="p414-observers"></span></div>
     <section id="p414-roster" class="p414-roster" aria-label="逆时针行动顺序"></section>

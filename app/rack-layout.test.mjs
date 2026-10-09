@@ -233,7 +233,7 @@ test('a fully overlapping dense free rack retains every ID and the magnifier sig
   for(const id of ids.slice(0,-1)){assert.equal(layout.positions[id].x,.5);assert.equal(layout.positions[id].y,.5);}
 });
 
-test('rotation scales the saved hand canvas and tiles uniformly, never manufacturing overlap between separately placed tiles',()=>{
+test('rotation preserves saved hand coordinates and overlap while returning to the original screen restores exact placement',()=>{
   const ids=Array.from({length:14},(_,i)=>`tile-${i}`);
   const horizontal=fitFreeRack(ids,{}, {width:760,height:105,tileWidth:36.4,tileHeight:51.8,preferredRows:1});
   const positions=placeRackTiles(horizontal,[ids[0]],{x:708,y:40},ids[0]);
@@ -242,14 +242,63 @@ test('rotation scales the saved hand canvas and tiles uniformly, never manufactu
     &&Math.min(a.y+a.height,b.y+b.height)>Math.max(a.y,b.y)+EPSILON;
   for(const [width,height]of [[374,187],[390,168],[1024,130],[760,105]]) {
     const changed=fitFreeRack(ids,positions,{width,height,basis:initial.basis,tileWidth:36.4,tileHeight:51.8});
+    assert.deepEqual(changed.positions,initial.positions);assert.deepEqual(changed.basis,initial.basis);
     for(let i=0;i<ids.length;i++)for(let j=i+1;j<ids.length;j++)
       assert.equal(overlaps(changed.rects[i],changed.rects[j]),overlaps(initial.rects[i],initial.rects[j]));
-    const factor=changed.tileWidth/initial.tileWidth;
-    for(let i=0;i<ids.length;i++) {
-      assert.ok(Math.abs(changed.rects[i].x-initial.rects[i].x*factor)<EPSILON);
-      assert.ok(Math.abs(changed.rects[i].y-initial.rects[i].y*factor)<EPSILON);
-      assert.ok(Math.abs(changed.rects[i].height-initial.rects[i].height*factor)<EPSILON);
+    if(width===760 && height===105)assert.deepEqual(changed.rects,initial.rects);
+  }
+});
+test('eight freely placed portrait tiles reflow as intact readable groups in a shallow landscape rack without saving the projection',()=>{
+  const ids=['A','B','C','D','E','F','G','H'],readingOrder=['D','B','A','C','H','G','E','F'];
+  const basis={width:350,height:300,tileWidth:36.4,tileHeight:51.8};
+  const points=Object.fromEntries(readingOrder.map((id,index)=>[id,{x:(70+index%4*40)/(350-36.4),
+    y:(index<4?50:220)/(300-51.8),z:index}]));
+  const options={width:760,height:70,basis,tileWidth:36.4,tileHeight:51.8,minReadableWidth:21,minReadableHeight:30};
+  const frozen=JSON.stringify({ids,points,basis}),layout=fitFreeRack(ids,points,options);
+  assert.equal(layout.adaptiveReflow,true);assert.equal(layout.readable,true);
+  assert.equal(layout.tileWidth,36.4);assert.equal(layout.tileHeight,51.8);
+  assert.deepEqual(layout.rects.map(rect=>rect.id),ids,'display projection must keep the caller ID mapping');
+  assert.deepEqual([...layout.rects].sort((a,b)=>a.x-b.x).map(rect=>rect.id),readingOrder);
+  assert.deepEqual(layout.positions,points);assert.deepEqual(layout.basis,basis);
+  assert.equal(JSON.stringify({ids,points,basis}),frozen);
+  for(const [left,right]of [['D','B'],['B','A'],['A','C'],['H','G'],['G','E'],['E','F']])
+    assert.ok(Math.abs(layout.rects.find(rect=>rect.id===right).x-layout.rects.find(rect=>rect.id===left).x-40)<EPSILON);
+  const restored=fitFreeRack(ids,layout.positions,{...options,width:350,height:300});
+  for(const rect of restored.rects) {
+    assert.ok(Math.abs(rect.x-points[rect.id].x*(350-36.4))<EPSILON);
+    assert.ok(Math.abs(rect.y-points[rect.id].y*(300-51.8))<EPSILON);
+  }
+  const editable=rebaseFreeRack(layout),dragged=placeRackTiles(editable,['B'],{x:650,y:12},'B');
+  const after=fitFreeRack(ids,dragged,{...options,basis:editable.basis});
+  for(const rect of after.rects) {
+    const expected=layout.rects.find(previous=>previous.id===rect.id);
+    assert.ok(Math.abs(rect.x-(rect.id==='B'?650:expected.x))<EPSILON);
+    assert.ok(Math.abs(rect.y-(rect.id==='B'?12:expected.y))<EPSILON);
+    assert.equal(rect.width,expected.width);assert.equal(rect.height,expected.height);
+  }
+});
+test('rotation discards only empty margins before changing manual group placement',()=>{
+  const ids=['A','B'],basis={width:350,height:300,tileWidth:36.4,tileHeight:51.8};
+  const points={A:{x:100/(350-36.4),y:220/(300-51.8),z:0},B:{x:145/(350-36.4),y:220/(300-51.8),z:1}};
+  const layout=fitFreeRack(ids,points,{width:760,height:70,basis,tileWidth:36.4,tileHeight:51.8});
+  assert.equal(layout.tileWidth,36.4);assert.equal(layout.adaptiveReflow,undefined);
+  assert.ok(Math.abs(layout.rects[1].x-layout.rects[0].x-45)<EPSILON);
+  assert.equal(layout.rects[0].y,layout.rects[1].y);assert.deepEqual(layout.positions,points);
+});
+test('dense rotated free hands stay inside the viewport without creating overlap and retain the inspect signal',()=>{
+  for(const count of [30,106,159]) {
+    const ids=Array.from({length:count},(_,index)=>`tile-${index}`);
+    const first=fitFreeRack(ids,{}, {width:350,height:300});
+    const layout=fitFreeRack(ids,first.positions,{width:760,height:55,basis:first.basis});
+    assert.deepEqual(layout.positions,first.positions);assert.equal(layout.rects.length,count);
+    for(const rect of layout.rects) {
+      assert.ok(rect.x>=-EPSILON && rect.y>=-EPSILON);
+      assert.ok(rect.x+rect.width<=760+EPSILON && rect.y+rect.height<=55+EPSILON);
+      for(const other of layout.rects.filter(other=>other.id!==rect.id))assert.ok(
+        rect.x+rect.width<=other.x+EPSILON || other.x+other.width<=rect.x+EPSILON
+        || rect.y+rect.height<=other.y+EPSILON || other.y+other.height<=rect.y+EPSILON);
     }
+    if(count>=106)assert.equal(layout.readable,false);
   }
 });
 test('a hand move can use the whole new viewport while rebasing leaves the other displayed tiles unmoved',()=>{
@@ -263,7 +312,7 @@ test('a hand move can use the whole new viewport while rebasing leaves the other
     assert.ok(Math.abs(current.x-old.x)<EPSILON);assert.ok(Math.abs(current.y-old.y)<EPSILON);
     assert.ok(Math.abs(current.width-old.width)<EPSILON);assert.ok(Math.abs(current.height-old.height)<EPSILON);
   }
-  assert.ok(next.rects.find(rect=>rect.id==='A').y>=150-EPSILON);
+  assert.ok(Math.abs(next.rects.find(rect=>rect.id==='A').y-Math.min(150,next.height-next.tileHeight))<EPSILON);
   for(const bad of [null,[],{width:760,height:105,tileWidth:Infinity,tileHeight:64},
     {width:10,height:10,tileWidth:44,tileHeight:64}])assert.equal(normalizeRackBasis(bad),null);
 });

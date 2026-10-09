@@ -287,7 +287,21 @@ test('portrait and landscape controls retain forty-four pixel entry points witho
   assert.match(css,/\.army-screen\.portrait-board \.army-board \{ aspect-ratio:5\/12; \}/);
   assert.match(css,/\.army-screen\.portrait-board \.army-cell \{ width:18\.6%; height:7\.65%; \}/);
   assert.match(css,/\.army-screen \.shell:not\(\.lobby-shell\) \.army-action-buttons button \{ min-width:44px; min-height:44px; \}/);
-  for(const selector of ['chat-toggle','game-settings-toggle','room-exit','exit-practice'])assert.ok(css.includes(selector));
+  const shared=await readFile(new URL('platform/control-geometry.css',import.meta.url),'utf8');
+  const toolbarRule=shared.match(/\.room-header \.room-toolbar-actions > \.room-toolbar-action\s*\{([^}]+)\}/)?.[1];
+  assert.ok(toolbarRule,'shared toolbar owns entry-point geometry');
+  assert.match(toolbarRule,/min-width:\s*44px/);
+  assert.match(toolbarRule,/min-height:\s*44px/);
+  assert.match(await readFile(new URL('app-shell.css',import.meta.url),'utf8'),/@import url\("\.\/platform\/control-geometry\.css"\)/);
+  for(const [page,ids] of [['army.html',['chat-toggle','game-settings-toggle','leave-room']],['army-practice.html',['game-settings-toggle','exit-practice']]]) {
+    const html=await readFile(new URL(page,import.meta.url),'utf8');
+    assert.match(html,/class="[^"]*\broom-header\b/);
+    assert.match(html,/class="[^"]*\broom-toolbar-actions\b/);
+    for(const id of ids) {
+      const entry=html.match(new RegExp(`<(?:button|a)\\b[^>]*\\bid="${id}"[^>]*>`))?.[0];
+      assert.match(entry||'',/class="[^"]*\broom-toolbar-action\b/,`${page}: ${id} uses shared geometry`);
+    }
+  }
   assert.equal(/orientation-hint[^}]*display:flex/.test(css),false);
   assert.equal(css.includes('(orientation:portrait)'),false,'the shared projection class also supports portrait tablets');
   const practice=await readFile(new URL('army-practice.html',import.meta.url),'utf8');
