@@ -1,0 +1,171 @@
+/* Only the Hyakki preview consumes this sheet. Shared controls retain their owners. */
+html:has(.hyakki-body), .hyakki-body { width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:none;background:var(--theme-base,#173a31);color:var(--theme-ink,#f7f4e8); }
+.hyakki-body { font:14px/1.45 system-ui,-apple-system,'PingFang SC',sans-serif;background-image:var(--theme-texture); }
+.hyakki-body * { box-sizing:border-box; }
+.hyakki-body [hidden] { display:none!important; }
+.hy-shell { position:fixed;top:var(--hy-top,0);left:0;width:100%;height:var(--hy-height,100dvh);padding:max(10px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));display:grid;grid-template-rows:48px minmax(0,1fr);gap:12px; }
+.hy-header { display:flex;align-items:center;gap:16px;min-width:0; }
+.hy-brand { display:flex;align-items:baseline;gap:12px;min-width:0; }
+.hy-brand strong { font-family:serif;font-size:25px;letter-spacing:.1em;white-space:nowrap; }
+.hy-brand > span { color:var(--theme-muted);font-size:12px; }
+.hyakki-body button:not(.hyakki-card):not(.theme-choice), .hyakki-body select, .hyakki-body input:not([type=range]) { font:inherit;color:var(--theme-ink);background-color:var(--theme-control);border:1px solid var(--theme-border);border-radius:10px;min-height:44px;line-height:1.3; }
+.hyakki-body button { cursor:pointer;touch-action:manipulation; }
+.hyakki-body button:disabled { cursor:default;opacity:.55; }
+.hyakki-body button:focus-visible { outline:3px solid var(--theme-accent);outline-offset:2px; }
+.hyakki-body button.hy-primary { background:var(--theme-accent);color:var(--theme-base);font-weight:700;border-color:transparent; }
+.hy-layout { min-height:0;display:grid;grid-template-columns:180px minmax(0,1fr);gap:16px; }
+.hy-sidebar { min-height:0;display:flex;flex-direction:column;gap:12px; }
+.hy-room-code { display:grid;grid-template-columns:1fr auto;align-items:center;gap:5px 8px;padding:0 4px; }
+.hy-room-code > span { color:var(--theme-muted);font-size:12px; }
+.hy-room-code > strong { letter-spacing:.12em; }
+.hy-room-code > button { grid-column:1/-1; }
+.hy-roster { display:flex;flex-direction:column;gap:8px;min-height:0; }
+.hyakki-body .hy-player { min-width:0;display:flex;align-items:center;gap:8px;text-align:left;min-height:58px;padding:8px;border-color:transparent;background:color-mix(in srgb,var(--theme-surface) 75%,transparent); }
+.hyakki-body .hy-player.is-current { border-color:var(--theme-accent);box-shadow:inset 3px 0 var(--theme-accent); }
+.hy-player-order { display:grid;place-items:center;flex:0 0 24px;width:24px;height:24px;border-radius:50%;border:1px solid var(--theme-border);font-size:12px; }
+.hy-player-copy { display:grid;min-width:0;gap:4px; }
+.hy-player-copy strong { white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px;font-weight:600; }
+.hy-player-copy small { color:var(--theme-muted);font-size:12px;white-space:nowrap; }
+.hy-observers { color:var(--theme-muted);font-size:11px;margin:auto 4px 0; }
+.hy-play-area { min-width:0;min-height:0;display:grid;grid-template-rows:minmax(0,1fr) 210px 48px 20px;gap:10px; }
+.hy-market-board { min-height:0;border:1px solid var(--theme-border);border-radius:20px;padding:18px 22px;display:grid;grid-template-rows:auto auto minmax(0,1fr);gap:20px;background:radial-gradient(ellipse at 50% 0,color-mix(in srgb,var(--theme-accent) 9%,transparent),transparent 70%),var(--theme-table); }
+.hy-stage { display:flex;justify-content:space-between;gap:14px;align-items:center;min-width:0; }
+.hy-stage > div:first-child { min-width:0; }
+.hy-eyebrow { display:block;font-size:11px;letter-spacing:.12em;color:var(--theme-muted);margin-bottom:4px; }
+.hy-stage h1 { font-size:22px;font-weight:600;line-height:1.3;margin:0; }
+.hy-clock { flex:none;display:grid;text-align:right; }
+.hy-clock > strong { font-variant-numeric:tabular-nums;font-size:23px;font-weight:600; }
+.hy-clock > small { font-size:11px;color:var(--theme-muted); }
+.hy-market { display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;width:min(100%,860px);margin:auto; }
+.hyakki-body .hy-good { min-width:0;display:grid;justify-items:center;grid-template-rows:56px auto auto;gap:4px;padding:10px 5px;background:color-mix(in srgb,var(--theme-surface) 82%,transparent);border-color:color-mix(in srgb,var(--theme-border) 70%,transparent); }
+.hy-good > :first-child { width:56px;height:56px; }
+.hy-good > span { white-space:nowrap;font-size:14px; }
+.hy-good > strong { font-size:20px;line-height:1.15; }
+.hy-good strong small { font-size:11px;font-weight:400;margin-left:3px; }
+.hy-scene-content { min-height:0;display:grid;align-items:center; }
+.hy-market-story { display:grid;justify-items:center;gap:10px;color:var(--theme-muted); }
+.hy-market-story > div { display:flex;align-items:center;gap:18px; }
+.hy-market-story p { max-width:29em;margin:0;font-size:15px;line-height:1.8; }
+.hy-night-seal { display:grid;place-items:center;flex:none;width:54px;height:54px;border-radius:15px;border:1px solid var(--theme-border);color:var(--theme-accent);font:30px/1 serif;transform:rotate(-5deg); }
+.hy-effect-tag { font-size:12px;padding:5px 10px;border-radius:7px;background:color-mix(in srgb,var(--theme-surface) 65%,transparent); }
+.hy-market-board.is-urgent { border:2px solid var(--theme-accent); }
+.hy-market-board.is-urgent .hy-stage h1 { color:var(--theme-accent); }
+.hy-hand-section { min-height:0;display:grid;grid-template-rows:44px 156px;gap:7px; }
+.hy-hand-heading,.hy-hand-heading > div,.hy-hand-tools { display:flex;align-items:center;gap:8px;min-width:0; }
+.hy-hand-heading { justify-content:space-between; }
+.hy-hand-heading strong { font-size:14px;white-space:nowrap; }
+.hy-hand-heading > div > span { color:var(--theme-muted);font-size:12px; }
+.hy-hand-tools { flex:none; }
+.hy-hand-tools select { width:105px;font-size:14px; }
+.hy-hand-tools button { width:44px;padding:0;font-size:24px!important; }
+.hy-hand-tools > span { width:36px;text-align:center;white-space:nowrap; }
+.hy-hand { min-width:0;min-height:0;display:flex;align-items:flex-start;gap:8px;--hyakki-card-width:112px;--hyakki-card-height:156px;padding-top:3px; }
+.hy-hand > [data-card-id] { flex:0 0 112px; }
+.hy-empty-hand { color:var(--theme-muted);padding:24px 0; }
+.hy-action-bar { display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0; }
+.hy-self-stats { display:flex;align-items:center;gap:12px;white-space:nowrap; }
+.hy-self-stats strong { color:var(--theme-accent);font-size:21px; }
+.hy-self-stats > span { color:var(--theme-muted);font-size:13px; }
+.hy-actions,.hy-dialog-actions { display:flex;gap:8px;align-items:center; }
+.hy-actions > button,.hy-dialog-actions > button { padding:8px 15px;white-space:nowrap; }
+.hy-passive-label { color:var(--theme-muted);font-size:13px; }
+.hy-feedback { min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0;color:var(--theme-muted);font-size:12px; }
+.hy-welcome { text-align:center;max-width:600px;margin:auto;display:grid;justify-items:center;gap:16px; }
+.hy-welcome h2,.hy-results h2 { font:28px/1.4 serif;margin:0; }
+.hy-welcome p { margin:0;max-width:28em; }
+.hy-welcome > strong { font-size:20px;letter-spacing:.08em; }
+.hy-welcome > small { color:var(--theme-muted); }
+.hy-results { width:min(100%,500px);margin:auto; }
+.hy-results > div { display:grid;gap:6px;margin:16px 0; }
+.hy-results > div p { margin:0;display:flex;justify-content:space-between;gap:20px;padding:6px 0;border-bottom:1px solid var(--theme-border); }
+.hy-results > div p > span { overflow:hidden;white-space:nowrap;text-overflow:ellipsis; }
+.hy-results strong { white-space:nowrap; }
+.hy-waiting .hy-play-area { grid-template-rows:minmax(0,1fr) 20px; }
+.hy-waiting .hy-market-board { grid-template-rows:auto minmax(0,1fr); }
+#hyakki-root[data-scene=spectator] .hy-play-area { grid-template-rows:minmax(0,1fr) 48px 20px; }
+.hy-dialog { width:min(650px,calc(100vw - 24px));max-height:calc(var(--hy-height,100dvh) - 24px);padding:18px;border:1px solid var(--theme-border);border-radius:18px;background:var(--theme-surface);color:var(--theme-ink);overflow:auto;overscroll-behavior:contain; }
+.hy-dialog::backdrop { background:#071715a6; }
+.hy-dialog .dialog-heading { display:flex;justify-content:space-between;align-items:center;gap:12px;position:sticky;top:-18px;padding:8px 0;z-index:3;background:var(--theme-surface); }
+.hy-dialog .dialog-heading h2 { margin:0;font-size:21px; }
+.hy-dialog p,.hy-dialog li { font-size:16px;line-height:1.65; }
+.hy-dialog .game-settings-body > section > select { width:100%;margin:8px 0; }
+.hy-dialog .hy-detail-note { color:var(--theme-muted);font-size:14px; }
+.hy-inventory { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0; }
+.hy-inventory > div { display:grid;justify-items:center;gap:5px; }
+.hy-inventory > div > :first-child { width:64px;height:64px; }
+.hy-good-detail { display:grid;justify-items:center;text-align:center; }
+.hy-good-detail > :first-child { width:130px;height:130px; }
+.hy-gallery { display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:14px 8px;--hyakki-card-width:112px;--hyakki-card-height:156px; }
+.hy-inspector:has(.hy-gallery) { width:min(1000px,calc(100vw - 24px)); }
+.hy-gallery > [data-card-id] { justify-self:center; }
+.hy-rule-list { padding-left:24px; }
+.hy-rule-list li { margin-bottom:12px; }
+.hy-urgent-dock { position:fixed;z-index:201;top:calc(var(--hy-top,0px) + 4px);left:8px;right:8px;min-height:58px;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 10px;background:var(--theme-surface);color:var(--theme-ink);border:2px solid var(--theme-accent);border-radius:12px;box-shadow:0 2px 16px #0004; }
+.hy-urgent-dock > div { display:flex;gap:8px; }
+.hy-urgent-dock button { padding:7px 12px; }
+.hy-urgent-chat .room-chat { top:calc(var(--chat-viewport-top,0px) + 72px)!important;height:calc(var(--chat-viewport-height,100dvh) - 80px)!important;max-height:calc(var(--chat-viewport-height,100dvh) - 80px)!important; }
+.hy-urgent-chat .chat-heading p,.hy-urgent-chat .chat-alerts-bar { display:none; }
+.hy-urgent-chat .chat-form textarea { min-height:44px;max-height:58px;height:44px; }
+.hy-rotation { position:fixed;inset:0;z-index:500;display:grid;align-content:center;justify-items:center;gap:22px;padding:max(28px,env(safe-area-inset-top)) 28px max(28px,env(safe-area-inset-bottom));background:var(--theme-base);color:var(--theme-ink);text-align:center; }
+.hy-rotation > svg { width:100px;height:100px;color:var(--theme-accent); }
+.hy-rotation h1 { font:28px/1.5 serif;margin:0; }
+.hy-rotation p { max-width:25em;margin:0;color:var(--theme-muted);font-size:16px;line-height:1.7; }
+.hy-rotation small { color:var(--theme-muted); }
+.hy-rotation button { padding:10px 22px; }
+@media (max-width:1050px) { .hy-layout { grid-template-columns:148px minmax(0,1fr);gap:12px; }.hy-market-board { padding:12px;gap:12px; }.hy-market { gap:6px; }.hy-good > span { font-size:14px; }.hy-good > :first-child { width:42px;height:42px; }.hyakki-body .hy-good { grid-template-rows:42px auto auto; }.hy-brand { gap:8px; }.hy-brand strong { font-size:22px; } }
+@media (max-height:600px) { .hy-shell { padding:6px max(10px,env(safe-area-inset-right)) 6px max(10px,env(safe-area-inset-left));grid-template-rows:44px minmax(0,1fr);gap:6px; }.hy-layout { grid-template-columns:140px minmax(0,1fr);gap:10px; }.hy-brand strong { font-size:21px; }.hy-brand > span { font-size:11px; }.hy-sidebar { gap:5px; }.hy-room-code { gap:3px; }.hy-room-code > button { display:none; }.hy-room-code > span { font-size:11px; }.hy-room-code > strong { font-size:13px; }.hy-roster { gap:4px; }.hyakki-body .hy-player { min-height:44px;padding:4px;gap:5px; }.hy-player-copy { gap:1px; }.hy-player-copy strong { font-size:12px; }.hy-player-copy small { font-size:11px; }.hy-player-order { width:20px;height:20px;flex-basis:20px;font-size:11px; }.hy-observers { font-size:10px;margin:0; }.hy-play-area { grid-template-rows:minmax(0,1fr) 163px 44px 16px;gap:5px; }.hy-market-board { padding:6px 8px;gap:5px;border-radius:12px;grid-template-rows:auto minmax(0,1fr); }.hy-stage h1 { font-size:16px; }.hy-eyebrow { display:none; }.hy-clock { display:flex;align-items:center;gap:7px; }.hy-clock > strong { font-size:16px; }.hy-clock > small { font-size:10px; }.hy-market { gap:5px; }.hyakki-body .hy-good { min-height:44px;height:44px;grid-template-columns:23px minmax(0,1fr);grid-template-rows:18px 18px;gap:0 3px;padding:3px; }.hy-good > :first-child { grid-row:1/3;width:23px;height:30px;align-self:center; }.hy-good > span { font-size:11px;white-space:nowrap; }.hy-good > strong { font-size:14px; }.hy-good strong small { font-size:10px; }.hy-scene-content { display:none; }.hy-hand-section { grid-template-rows:44px 112px;gap:5px; }.hy-hand-heading strong { font-size:13px; }.hy-hand-tools select { width:96px; }.hy-self-stats { gap:8px; }.hy-self-stats strong { font-size:17px; }.hy-self-stats > span { font-size:12px; }.hy-feedback { font-size:10px; }.hy-actions > button { padding-inline:10px; }.hy-waiting .hy-scene-content { display:grid; }.hy-waiting .hy-market-board { grid-template-rows:24px minmax(0,1fr); }.hy-welcome { gap:8px; }.hy-welcome h2 { font-size:22px; }.hy-welcome p { font-size:13px; }.hy-welcome > strong { font-size:16px; }.hy-welcome .hy-night-seal { display:none; }.hy-results h2 { font-size:20px; }.hy-results > div { grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 14px;margin:8px 0; }.hy-results > p { font-size:12px;margin:4px 0; }.hy-results > div p { font-size:12px;padding:3px 0; }.hy-results >button { padding-inline:14px; }.hy-waiting .hy-room-code > button { display:block; }.hy-waiting .hy-roster { display:none; } }
+@media (max-width:740px) and (max-height:600px) { .hy-layout { grid-template-columns:118px minmax(0,1fr);gap:7px; }.hy-brand { display:grid;gap:1px; }.hy-brand strong { font-size:18px; }.hy-brand > span { font-size:10px; }.hy-player-copy small { font-size:10px; }.hy-market-board { padding:5px; }.hy-clock > small { display:none; }.hyakki-body .hy-good { grid-template-columns:1fr;grid-template-rows:18px 16px;justify-items:center;padding:4px 0; }.hy-good > :first-child { display:none; }.hy-good > span { font-size:11px; }.hy-hand-heading > div:first-child { gap:4px; }.hy-hand-heading strong { font-size:12px; }.hy-hand-heading > div > span { font-size:11px; }.hy-hand-tools { gap:5px; }.hy-hand-tools select { width:85px;padding-left:8px;font-size:12px; }.hy-hand-tools > span { width:30px; }.hy-self-stats { gap:6px; }.hy-self-stats strong { font-size:16px; }.hy-self-stats > span { font-size:11px; }.hy-actions { gap:6px; }.hy-actions >button { padding-inline:8px;font-size:12px; } }
+/* Card reading dimensions are independent from 44px control targets. */
+.hy-portrait .hy-shell { visibility:hidden; }
+.hy-portrait .room-chat,.hy-portrait .room-chat-notice,.hy-portrait .hy-urgent-dock { visibility:hidden; }
+@media (max-height:600px) {
+  .hy-hand { --hyakki-card-width:104px;--hyakki-card-height:132px;gap:8px;padding-top:0; }
+  .hy-hand > [data-card-id] { flex-basis:104px; }
+  .hy-play-area { grid-template-rows:minmax(0,1fr) 181px 44px;gap:5px; }
+  .hy-hand-section { grid-template-rows:44px 132px;gap:5px; }
+  .hy-room-code { display:none; }
+  .hy-feedback { position:fixed;bottom:4px;left:10px;width:135px;max-height:28px;white-space:normal;font-size:9px;pointer-events:none; }
+  .hy-observers { margin:auto 0 24px; }
+  .hy-waiting .hy-room-code { display:grid; }
+  .hy-waiting .hy-roster { display:flex; }
+  .hy-waiting .hy-observers { display:none; }
+  .hy-waiting .hy-sidebar { overflow:auto; }
+  .hy-waiting .hy-play-area { grid-template-rows:minmax(0,1fr); }
+  #hyakki-root[data-scene=spectator] .hy-play-area { grid-template-rows:minmax(0,1fr) 44px; }
+}
+.hy-dialog-actions { flex-wrap:wrap;justify-content:center; }
+@media (max-height:600px) {
+  .hy-feedback { display:none; }
+  .hy-feedback.has-feedback { display:block;z-index:130;bottom:58px;left:auto;right:12px;width:min(390px,calc(100vw - 24px));max-height:none;padding:9px 12px;border:1px solid var(--theme-border);border-radius:10px;background:var(--theme-surface);color:var(--theme-ink);font-size:13px;white-space:normal;box-shadow:0 2px 12px var(--theme-shadow); }
+  .hy-observers { margin:0; }
+  .hy-waiting .hy-room-code { display:none; }
+  .hy-waiting .hy-sidebar { overflow:visible; }
+  .hy-waiting .hy-observers { display:block; }
+  .hy-welcome { gap:10px; }.hy-welcome .hy-dialog-actions { gap:6px; }.hy-welcome .hy-dialog-actions >button { padding-inline:9px; }
+}
+/* New game dialogs explicitly consume the shared theme tokens. */
+.hyakki-body .hy-dialog.game-settings-dialog[open] { background:var(--theme-surface);color:var(--theme-ink);border-color:var(--theme-border); }
+.hyakki-body .hy-dialog .dialog-heading h2 { color:var(--theme-ink); }
+@media (max-height:600px) { .hy-good > span { font-size:14px; }.hy-good strong small { display:none; } }
+.hy-modal-response { position:sticky;top:44px;z-index:4;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px;background:var(--theme-surface);color:var(--theme-ink);border:1px solid var(--theme-accent);border-radius:10px; }
+.hy-modal-response > strong { font-size:13px; }.hy-modal-response > div { display:flex;gap:6px; }.hy-modal-response button { padding:7px 10px; }
+.hy-keyboard.hy-urgent-chat .hy-urgent-dock { min-height:52px;padding:2px 6px; }
+.hy-keyboard.hy-urgent-chat .room-chat { top:calc(var(--chat-viewport-top,0px) + 60px)!important;height:calc(var(--chat-viewport-height,100dvh) - 64px)!important;max-height:calc(var(--chat-viewport-height,100dvh) - 64px)!important; }
+/* A bidder sees the actual current lot before deciding. Future lots stay hidden. */
+.hy-market.is-auction { grid-template-columns:minmax(0,1fr) 56px;align-items:center;width:min(100%,860px); }
+.hyakki-body .hy-public-lot { display:flex;align-items:center;gap:22px;min-width:0;padding:14px;text-align:left;background:var(--theme-surface); }
+.hy-public-lot-face { flex:none; }
+.hy-public-lot-copy { display:grid;gap:15px;min-width:0; }
+.hy-public-lot-copy > strong { font-size:18px; }
+.hy-public-lot-copy > strong small { margin-left:10px;font-size:12px;font-weight:400;color:var(--theme-muted); }
+.hy-public-lot-data { display:grid;gap:10px;font-size:16px; }
+.hy-public-lot-data b { color:var(--theme-accent); }
+@media (max-height:600px) {
+  .hy-market.is-auction { grid-template-columns:minmax(0,1fr) 44px;width:100%;gap:5px; }
+  .hyakki-body .hy-public-lot { height:44px;min-height:44px;padding:3px 8px; }
+  .hy-public-lot-face { display:none; }.hy-public-lot-copy { width:100%;gap:1px; }
+  .hy-public-lot-copy > strong { font-size:13px;line-height:16px; }.hy-public-lot-copy > strong small { font-size:11px; }
+  .hy-public-lot-data { display:flex;justify-content:space-between;gap:8px;font-size:14px;line-height:18px;white-space:nowrap; }
+  #hy-view-market { height:44px;padding:3px;font-size:13px; }
+}
+@media (max-height:600px) { .hy-market-board:has(.hy-market.is-auction) { padding-block:2px;gap:3px; } }
