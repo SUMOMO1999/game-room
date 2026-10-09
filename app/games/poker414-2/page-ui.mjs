@@ -13,16 +13,18 @@ const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': 
 const button = (id, text, extra = '') => `<button type="button" id="${id}" ${extra}>${text}</button>`;
 
 /** UI receives only a role projection. It neither deals cards nor grants actions. */
-export function mountPoker414Page({ root, preview = false, onAction = () => {}, onLeave = () => {}, onRefresh = () => {}, onRetry = () => {}, onRecover = () => {}, onScene = () => {}, scenes = [] } = {}) {
+export function mountPoker414Page({ root, preview = false, practice = false, onAction = () => {}, onLeave = () => {}, onRefresh = () => {}, onRetry = () => {}, onRecover = () => {}, onScene = () => {}, scenes = [] } = {}) {
   if (!root) throw new TypeError('缺少414页面容器。');
+  if (preview && practice) throw new TypeError('练习与操作小样不能混用。');
+  const local = preview || practice;
   const document = root.ownerDocument, window = document.defaultView;
   document.body.classList.add('p414-body');
   root.innerHTML = `<div class="p414-shell">
     <header class="p414-header" data-chat-notice-anchor>
-      <div class="p414-brand"><strong>414 <small>窜火箭</small></strong><span>${preview ? '操作小样 · 合成局面' : '棋牌室'}</span></div>
-      <div class="p414-toolbar">${button('chat-toggle', '聊天 <span id="chat-unread" class="chat-unread" hidden></span>', 'class="chat-toggle" aria-controls="room-chat" aria-expanded="false" hidden')}${button('p414-settings', '设置')}${button('p414-exit', '×', 'class="p414-close" aria-label="退出房间"')}</div>
+      <div class="p414-brand"><strong>414 <small>窜火箭</small></strong><span>${preview ? '操作小样 · 合成局面' : practice ? '单人练习 · 电脑对手' : '棋牌室'}</span></div>
+      <div class="p414-toolbar">${button('chat-toggle', '聊天 <span id="chat-unread" class="chat-unread" hidden></span>', 'class="chat-toggle" aria-controls="room-chat" aria-expanded="false" hidden')}${button('p414-settings', '设置')}${button('p414-exit', '×', `class="p414-close" aria-label="${practice ? '返回大厅' : '退出房间'}"`)}</div>
     </header>
-    <div class="p414-room-line"><span>房间 <b id="p414-code"></b></span>${button('p414-invite', '复制邀请')}<span id="p414-observers"></span></div>
+    <div class="p414-room-line"><span>${practice ? '本机练习' : '房间'} <b id="p414-code"></b></span>${button('p414-invite', '复制邀请', practice ? 'hidden' : '')}<span id="p414-observers"></span></div>
     <section id="p414-roster" class="p414-roster" aria-label="逆时针行动顺序"></section>
     <main class="p414-table">
       <div class="p414-table-heading"><strong id="p414-turn"></strong>${button('p414-inspect', '看公牌')}</div>
@@ -37,11 +39,12 @@ export function mountPoker414Page({ root, preview = false, onAction = () => {}, 
   </div>
   <dialog id="p414-options-dialog" class="p414-dialog"><div class="dialog-heading"><h2>设置</h2>${button('p414-settings-close', '×', 'class="close-button" aria-label="关闭设置"')}</div><div class="game-settings-body">
     <section><h3>声音与玩法</h3><div id="p414-settings-tools" class="game-settings-controls">${button('sound-toggle', '点按启声')}${button('p414-rules', '玩法说明')}</div><div class="sound-settings"><label for="sound-volume">音效音量</label><input id="sound-volume" type="range" min="0" max="100" step="5" value="45"><select id="sound-preview-kind" aria-label="试听种类"><option value="select">选牌</option><option value="placement">出牌</option><option value="card-hook">勾牌</option><option value="card-fork">叉牌</option><option value="card-bomb">炸弹</option><option value="card-rocket">火箭</option><option value="card-pass">不出</option><option value="turn">轮到你</option><option value="chat">聊天</option><option value="win">获胜</option><option value="loss">结束</option></select>${button('sound-preview', '试听')}<span id="sound-preview-status" role="status"></span></div></section>
-    <section><h3>房间安排</h3><div class="game-settings-controls">${button('p414-members', '成员与积分')}${button('p414-copy-settings', '复制邀请')}${button('p414-exit-settings', '退出房间')}${preview ? '' : `${button('p414-logout', '退出棋牌登录')}${button('p414-agora', '返回 Agora')}`}</div><div id="p414-host-tools" hidden><label for="p414-host-choice">将房主交给</label><select id="p414-host-choice"></select>${button('p414-transfer', '转交房主')}</div>${button('p414-take-host', '接任房主', 'hidden')}<p id="chat-legacy-note" hidden></p></section>
+    <section><h3>${practice ? '练习安排' : '房间安排'}</h3><div class="game-settings-controls">${button('p414-members', practice ? '练习成员' : '成员与积分')}${button('p414-copy-settings', '复制邀请', practice ? 'hidden' : '')}${button('p414-exit-settings', practice ? '返回大厅' : '退出房间')}${local ? '' : `${button('p414-logout', '退出棋牌登录')}${button('p414-agora', '返回 Agora')}`}</div><div id="p414-host-tools" hidden><label for="p414-host-choice">将房主交给</label><select id="p414-host-choice"></select>${button('p414-transfer', '转交房主')}</div>${button('p414-take-host', '接任房主', 'hidden')}<p id="chat-legacy-note" hidden></p></section>
+    ${practice ? `<section><h3>本机练习</h3><p id="p414-practice-save">进度只保存在这个浏览器，不计正式积分。</p><label for="p414-practice-count">下一局总人数（含你）</label><select id="p414-practice-count">${[3,4,5,6,7,8].map(n => `<option value="${n}">${n}人 · ${n - 1}位电脑</option>`).join('')}</select>${button('p414-practice-restart', '重新开始')}${button('p414-practice-reload', '读取已保存进度', 'hidden')}</section>` : ''}
     ${preview ? `<section><h3>本机小样</h3><p>合成牌局，用于布局与操作检查；没有真实输赢或积分。</p><label for="p414-scene">切换局面</label><select id="p414-scene">${scenes.map(([id, label]) => `<option value="${escape(id)}">${escape(label)}</option>`).join('')}</select>${button('p414-friend-message', '模拟朋友发言')}${button('p414-art-gallery', '检查全部牌面')}</section>` : ''}
   </div></dialog>
-  <dialog id="p414-rules-dialog" class="p414-dialog"><div class="dialog-heading"><h2>414 · 两副牌</h2>${button('p414-rules-close', '×', 'class="close-button" aria-label="关闭玩法说明"')}</div><ol class="p414-rule-list"><li>3～8人，两副完整扑克牌共108张。第一张发出的红桃3决定先手，逆时针出牌，先出完全部手牌获胜。</li><li>普通回合不限时。点数从小到大为3、4…K、A、2、小王、大王。可出单牌、对子、3～12张顺子、3～12连对；顺子和连对不含2或王，不回绕，跟牌须同型同张数且更大。领出不能不出；其余人全部不出后，最后出牌者重新领出。</li><li>3～8张同点数普通牌组成炸弹，先比张数，再比点数。一小王加一大王是王炸，高于所有普通炸弹；同王对子仅按对子比较，三王／四王不能一起出。</li><li>别人刚出普通单牌，叉加两张；别人刚出对子，勾加一张。之后勾、叉交替，合成最多八张。每次机会5秒，牌组拥有者不能接自己。点勾／叉自动交牌，无需预选；别人刚出普通炸弹或王不能接。单牌链1→3→4→6→7，对牌链2→3→5→6→8，必须交替且不能超8张。</li><li>火箭：纯红桃 ＞ 其他同花色 ＞ 杂色。非红桃的同花色火箭彼此等大。44A火箭高于王炸，4AA不是火箭。只有未出完手牌的纯红桃火箭立即再次领出。任何合法出牌或勾叉清空手牌都立即获胜，不能再被压制。</li><li>结算：负者余牌先提出互不重叠的44A，每组扣10分；一小一大王每组扣5分；剩余每张扣1分，赢家得到所有扣分。火箭花色不影响罚分。同一4A4累计永久保存。</li><li>开局后主动离开，向其他参赛者每人赔5分；连续失联120秒，本局零分取消。观众可看所有已发手牌，不能出牌。</li></ol>${preview ? '<p>这是操作小样的简要说明，完整规则与规则引擎另行验收。</p>' : ''}</dialog>
-  <dialog id="p414-leave-dialog" class="p414-dialog"><div class="dialog-heading"><h2>退出房间？</h2>${button('p414-leave-close', '×', 'class="close-button" aria-label="关闭退出确认"')}</div><p id="p414-leave-description"></p><p id="p414-leave-error" role="alert" hidden></p><div class="p414-dialog-actions">${button('p414-stay', '继续留在这里')}${button('p414-leave-confirm', '确认退出', 'class="p414-primary"')}</div></dialog>
+  <dialog id="p414-rules-dialog" class="p414-dialog"><div class="dialog-heading"><h2>414 · 两副牌</h2>${button('p414-rules-close', '×', 'class="close-button" aria-label="关闭玩法说明"')}</div><ol class="p414-rule-list"><li>3～8人，两副完整扑克牌共108张。第一张发出的红桃3决定先手，逆时针出牌，先出完全部手牌获胜。</li><li>普通回合不限时。点数从小到大为3、4…K、A、2、小王、大王。可出单牌、对子、3～12张顺子、3～12连对；顺子和连对不含2或王，不回绕，跟牌须同型同张数且更大。领出不能不出；其余人全部不出后，最后出牌者重新领出。</li><li>3～8张同点数普通牌组成炸弹，先比张数，再比点数。一小王加一大王是王炸，高于所有普通炸弹；同王对子仅按对子比较，三王／四王不能一起出。</li><li>别人刚出普通单牌，叉加两张；别人刚出对子，勾加一张。之后勾、叉交替，合成最多八张。每次机会5秒，牌组拥有者不能接自己。点勾／叉自动交牌，无需预选；别人刚出普通炸弹或王不能接。单牌链1→3→4→6→7，对牌链2→3→5→6→8，必须交替且不能超8张。</li><li>火箭：纯红桃 ＞ 其他同花色 ＞ 杂色。非红桃的同花色火箭彼此等大。44A火箭高于王炸，4AA不是火箭。只有未出完手牌的纯红桃火箭立即再次领出。任何合法出牌或勾叉清空手牌都立即获胜，不能再被压制。</li><li>${practice ? '练习只显示本局分，不写入账号累计。正式房间的' : ''}结算：负者余牌先提出互不重叠的44A，每组扣10分；一小一大王每组扣5分；剩余每张扣1分，赢家得到所有扣分。火箭花色不影响罚分。${practice ? '正式房间的同一4A4累计永久保存。' : '同一4A4累计永久保存。'}</li><li>${practice ? '练习返回大厅保留本机进度，重新开始才清掉这局；打开设置、看牌或切到后台会暂停。电脑只使用自己的手牌和公牌，不读取你的手牌。' : '开局后主动离开，向其他参赛者每人赔5分；连续失联120秒，本局零分取消。观众可看所有已发手牌，不能出牌。'}</li></ol>${preview ? '<p>这是操作小样的简要说明，完整规则与规则引擎另行验收。</p>' : ''}</dialog>
+  <dialog id="p414-leave-dialog" class="p414-dialog"><div class="dialog-heading"><h2>${practice ? '返回大厅？' : '退出房间？'}</h2>${button('p414-leave-close', '×', 'class="close-button" aria-label="关闭退出确认"')}</div><p id="p414-leave-description"></p><p id="p414-leave-error" role="alert" hidden></p><div class="p414-dialog-actions">${button('p414-stay', '继续留在这里')}${button('p414-leave-confirm', '确认退出', 'class="p414-primary"')}</div></dialog>
   <dialog id="p414-inspector-dialog" class="p414-dialog p414-inspector"><div class="dialog-heading"><h2 id="p414-inspector-title">看清公牌</h2>${button('p414-inspector-close', '×', 'class="close-button" aria-label="关闭看牌"')}</div><div id="p414-inspector-content"></div></dialog>
   ${roomChatMarkup()}`;
 
@@ -51,11 +54,11 @@ export function mountPoker414Page({ root, preview = false, onAction = () => {}, 
   let serverTime = null, receivedAt = 0, assistedKey = null, handSignature = null, savedSelection = null, concealMessage = '';
   const selectionScope = value => value && JSON.stringify([value.roomId, value.matchId, value.selfId, value.selfRole]);
   const monotonicNow = () => window.performance?.now() ?? Date.now();
-  const now = () => serverTime === null ? Date.now() : serverTime + Math.max(0, monotonicNow() - receivedAt);
+  const now = () => serverTime === null ? Date.now() : practice && view?.clockPaused ? serverTime : serverTime + Math.max(0, monotonicNow() - receivedAt);
   function listen(node, type, handler, options) { node.addEventListener(type, handler, options); disposers.push(() => node.removeEventListener(type, handler, options)); }
   const audioControls = mountRoomAudioControls({ audio, document });
   const settings = mountRoomSettings({ document, buttonId: 'p414-settings', dialogId: 'p414-options-dialog', closeButtonId: 'p414-settings-close',
-    dismissIds: ['p414-rules', 'p414-members', 'p414-exit-settings', ...(!preview ? ['p414-logout', 'p414-agora'] : [])] });
+    dismissIds: ['p414-rules', 'p414-members', 'p414-exit-settings', ...(!local ? ['p414-logout', 'p414-agora'] : [])] });
   const dialogs = ['rules', 'leave', 'inspector'];
   function openDialog(name) {
     for (const dialog of document.querySelectorAll('dialog[open]')) dialog.close();
@@ -154,19 +157,19 @@ export function mountPoker414Page({ root, preview = false, onAction = () => {}, 
     actionState();
     if (response && !remaining && expiryReported !== response.id) {
       expiryReported = response.id;
-      if (!preview && interactive()) invoke(onRefresh, { reason: 'response-expired' });
+      if (!local && interactive()) invoke(onRefresh, { reason: 'response-expired' });
     }
   }
   function fillInspector(kind) {
     if (!view || concealed) return;
-    $('p414-inspector-title').textContent = kind === 'members' ? '成员与积分' : view.selfRole === 'spectator' ? '全知观战 · 已发手牌与公牌' : '看清公牌';
+    $('p414-inspector-title').textContent = kind === 'members' ? (practice ? '练习成员' : '成员与积分') : view.selfRole === 'spectator' ? '全知观战 · 已发手牌与公牌' : '看清公牌';
     const content = $('p414-inspector-content');
     if (kind === 'art') {
       $('p414-inspector-title').textContent = '原创牌面与特殊标记';
       content.innerHTML = `<p>54种牌面，各有两个独立实体。以下只展示图形，不包含任何真实手牌。</p><div class="p414-art-badges">${renderCardBack()}${[1,2,3].map(level => renderPatternBadge({kind:'rocket',level})).join('')}${[3,4,5,6,7,8].map(count => renderPatternBadge({kind:'bomb',count})).join('')}</div><div class="p414-inspector-cards">${makeDeck().filter(card => card.copyId === 0).map(card => renderCard(card,{interactive:false})).join('')}</div>`;
     } else if (kind === 'members') {
       const orderedPlayers = view.actionOrder.map(id => view.players.find(player => player.id === id)).filter(Boolean);
-      content.innerHTML = `<p>${preview ? '小样不查询真实积分。' : '累计积分来自最近一次已确认查询，游戏进行中不会预扣分。'}</p><p>${Number.isFinite(view.scoresReadAt) ? `读取于 ${escape(new Date(view.scoresReadAt).toLocaleTimeString())}` : '尚未确认读取时间'} ${preview ? '' : button('p414-score-refresh', '刷新积分')}</p><div class="p414-member-list">${orderedPlayers.map((player, index) => `<div><strong>${index + 1} · ${escape(player.name)}${player.id === view.selfId ? ' · 我' : ''}</strong><span>${player.count}张 · 累计 ${Number.isSafeInteger(player.total) ? player.total : '待确认'}</span></div>`).join('')}</div><p>${view.spectators.length}位观众${view.spectators.length ? ' · ' + view.spectators.map(player => escape(player.name)).join('、') : ''}</p>`;
+      content.innerHTML = `<p>${practice ? '电脑只看自己的手牌与公牌；练习不计正式积分。' : preview ? '小样不查询真实积分。' : '累计积分来自最近一次已确认查询，游戏进行中不会预扣分。'}</p><p>${local ? '' : Number.isFinite(view.scoresReadAt) ? `读取于 ${escape(new Date(view.scoresReadAt).toLocaleTimeString())}` : '尚未确认读取时间'} ${local ? '' : button('p414-score-refresh', '刷新积分')}</p><div class="p414-member-list">${orderedPlayers.map((player, index) => `<div><strong>${index + 1} · ${escape(player.name)}${player.id === view.selfId ? ' · 我' : ''}</strong><span>${player.count}张${practice ? '' : ` · 累计 ${Number.isSafeInteger(player.total) ? player.total : '待确认'}`}</span></div>`).join('')}</div><p>${view.spectators.length}位观众${view.spectators.length ? ' · ' + view.spectators.map(player => escape(player.name)).join('、') : ''}</p>`;
     } else {
       const groups = view.selfRole === 'spectator' ? [...view.players.map(player => ({ label: `${player.name} · ${player.count}张`, cards: player.hand })), ...view.publicGroups] : view.publicGroups;
       content.innerHTML = groups.length ? groups.map(group => `<section><h3>${escape(group.label)}</h3><div class="p414-inspector-cards">${group.cards.map(card => renderCard(card, { interactive: false })).join('')}</div></section>`).join('') : '<p>还没有出牌。</p>';
@@ -175,7 +178,7 @@ export function mountPoker414Page({ root, preview = false, onAction = () => {}, 
   function inspector(kind) {
     if (!view || concealed) return;
     inspectorKind = kind; fillInspector(kind); openDialog('inspector');
-    if (kind === 'members' && !preview) invoke(onRefresh, { reason: 'scores' });
+    if (kind === 'members' && !local) invoke(onRefresh, { reason: 'scores' });
   }
   function applyView(next) {
     if (destroyed) return;
@@ -201,7 +204,7 @@ export function mountPoker414Page({ root, preview = false, onAction = () => {}, 
     shell.classList.toggle('has-small-hand', view.selfRole === 'player' && view.hand.length > 0 && view.hand.length <= 6);
     shell.classList.toggle('has-public', view.publicGroups.length > 0);
     $('p414-code').textContent = view.roomCode;
-    $('p414-observers').textContent = `${view.players.length}人 · ${view.spectators.length}观战`;
+    $('p414-observers').textContent = practice ? `${view.players.length - 1}位电脑 · 不计正式积分` : `${view.players.length}人 · ${view.spectators.length}观战`;
     const turn = view.players.find(player => player.id === view.turnPlayerId);
     $('p414-turn').textContent = view.phase === 'waiting' ? '等待大家准备' : view.phase === 'dealing' ? '正在发牌…' : view.phase === 'playing' ? view.selfRole === 'spectator' ? `观战 · ${turn?.name || '伙伴'}出牌` : view.turnPlayerId === view.selfId ? '轮到你出牌' : `${turn?.name || '伙伴'}出牌中` : '本局已结束';
     $('p414-turn').title = $('p414-turn').textContent;
@@ -231,7 +234,7 @@ export function mountPoker414Page({ root, preview = false, onAction = () => {}, 
       const results = view.resultRows ?? view.result ?? [], winner = results.find(result => result.delta > 0);
       $('p414-result-title').textContent = view.resultTitle ?? `${view.players.find(player => player.id === winner?.playerId)?.name || '伙伴'}先出完了！`;
       $('p414-result-note').textContent = preview ? '合成结算示例 · 未写入真实积分' : view.resultNote || '正在核对已保存积分。';
-      $('p414-result-scores').innerHTML = results.map(result => `<div><span>${escape(result.name ?? view.players.find(player => player.id === result.playerId)?.name ?? '已离席伙伴')}</span><strong>${result.delta > 0 ? '+' : ''}${result.delta}</strong><small>${Number.isSafeInteger(result.balanceAfter) ? `结算时累计 ${result.balanceAfter}` : '累计待确认'}</small></div>`).join('');
+      $('p414-result-scores').innerHTML = results.map(result => `<div><span>${escape(result.name ?? view.players.find(player => player.id === result.playerId)?.name ?? '已离席伙伴')}</span><strong>${result.delta > 0 ? '+' : ''}${result.delta}</strong><small>${practice ? '练习本局分' : Number.isSafeInteger(result.balanceAfter) ? `结算时累计 ${result.balanceAfter}` : '累计待确认'}</small></div>`).join('');
     } else if (view.phase === 'cancelled') {
       $('p414-result-title').textContent = '这一局已取消'; $('p414-result-note').textContent = view.cancellationNote || '本局不计分。重新准备后可以再开。'; $('p414-result-scores').replaceChildren();
     }
@@ -275,7 +278,7 @@ export function mountPoker414Page({ root, preview = false, onAction = () => {}, 
     exitDestination = destination; $('p414-leave-error').hidden = true; openDialog('leave');
   }
   for (const id of ['p414-exit', 'p414-exit-settings']) listen($(id), 'click', () => confirmLeave('lobby'));
-  if (!preview) { listen($('p414-logout'), 'click', () => confirmLeave('logout')); listen($('p414-agora'), 'click', () => confirmLeave('agora')); }
+  if (!local) { listen($('p414-logout'), 'click', () => confirmLeave('logout')); listen($('p414-agora'), 'click', () => confirmLeave('agora')); }
   listen($('p414-stay'), 'click', () => $('p414-leave-dialog').close());
   function leaveFailure(message) {
     if (destroyed) return;
@@ -318,7 +321,10 @@ export function mountPoker414Page({ root, preview = false, onAction = () => {}, 
     connectionState(); if (message) feedback(message);
   }
   const clockTimer = window.setInterval(updateCountdown, 100);
-  return { applyView, feedback, audio, settings, selected: () => [...selected], confirmLeave, conceal, leaveFailure,
+  return { applyView, feedback, audio, settings, selectCards(ids) {
+      if (!interactive() || !view) return;
+      selected = new Set(ids.filter(id => view.hand.some(card => card.id === id))); actionState();
+    }, selected: () => [...selected], confirmLeave, conceal, leaveFailure,
     setConnection(state) { if (!destroyed) { connection = state; connectionState(); } },
     setPending(value) { if (!destroyed) { pending = Boolean(value); connectionState(); } },
     destroy() {

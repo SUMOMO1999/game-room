@@ -190,3 +190,91 @@ test('414 false leave keeps the controller failure detail while restoring the co
   assert.equal(f.node('p414-leave-confirm').textContent, '确认退出');
   assert.equal(f.node('p414-leave-dialog').open, true);
 });
+
+test('414 practice members and expired response never request account scores or room refresh', async t => {
+  const f = await mount(t, { practice: true }), view = normalized('response');
+  view.serverTime = view.response.deadlineAt;
+  f.ui.applyView(view);
+  for (const tick of f.timers) tick();
+  f.node('p414-members').click();
+  assert.deepEqual(f.refreshes, []);
+  assert.deepEqual(f.actions, []);
+  assert.match(f.node('p414-inspector-content').textContent, /练习不计正式积分/);
+  assert.doesNotMatch(f.node('p414-inspector-content').textContent, /累计|待确认|刷新积分/);
+  assert.equal(f.node('p414-score-refresh'), undefined);
+  assert.equal(f.node('p414-invite').hidden, true);
+  assert.equal(f.node('p414-copy-settings').hidden, true);
+  assert.equal(f.node('p414-logout'), undefined);
+  assert.equal(f.node('p414-agora'), undefined);
+});
+
+test('414 practice hint selection highlights only owned cards and submits only after explicit play', async t => {
+  const f = await mount(t, { practice: true }), view = normalized();
+  view.hand = [card(5), card(5, 'hearts'), card(10)];
+  f.ui.applyView(view);
+  const pair = view.hand.slice(0, 2).map(card => card.id);
+  f.ui.selectCards([...pair, pair[0], card(17, 'joker').id]);
+  assert.deepEqual([...f.ui.selected()], pair);
+  assert.deepEqual(f.actions, [], 'a hint must never automatically play the cards');
+  for (const node of f.node('p414-hand').querySelectorAll('[data-card-id]')) {
+    assert.equal(node.classList.contains('is-selected'), pair.includes(node.dataset.cardId));
+    assert.equal(node.getAttribute('aria-pressed'), String(pair.includes(node.dataset.cardId)));
+  }
+  assert.equal(f.node('p414-play').disabled, false);
+  f.node('p414-play').click();
+  assert.deepEqual(f.actions, [['play', { cardIds: pair }]]);
+  f.ui.applyView({ ...view, canAct: false, clockPaused: true });
+  f.ui.selectCards([card(10).id]);
+  f.node('p414-play').click();
+  assert.deepEqual([...f.ui.selected()], pair, 'a paused page must not replace selections or send moves');
+  assert.equal(f.actions.length, 1);
+});
+
+test('414 practice freezes the visible response clock while paused and resumes from the same logical time', async t => {
+  const f = await mount(t, { practice: true });
+  let wall = 1000;
+  f.window.performance.now = () => wall;
+  const view = normalized('response'); view.serverTime = 1000;
+  view.response = { ...view.response, deadlineAt: 6000 };
+  f.ui.applyView({ ...view, canAct: false, clockPaused: true });
+  const paused = f.node('p414-window').textContent;
+  assert.match(paused, /5\.0秒/);
+  wall += 60000;
+  for (const tick of f.timers) tick();
+  assert.equal(f.node('p414-window').textContent, paused, 'background/settings pause cannot consume the five-second chance');
+  f.ui.applyView({ ...view, canAct: true, clockPaused: false });
+  wall += 1000;
+  for (const tick of f.timers) tick();
+  assert.match(f.node('p414-window').textContent, /4\.0秒/);
+  wall += 5000;
+  for (const tick of f.timers) tick();
+  assert.match(f.node('p414-window').textContent, /响应结束/);
+  assert.deepEqual(f.refreshes, []);
+  f.ui.destroy();
+  assert.equal(f.timers.size, 0);
+});
+
+test('414 practice result and return controls describe local progress without account settlement or departure penalties', async t => {
+  const f = await mount(t, { practice: true }), view = normalized('finished');
+  view.resultNote = '本局练习分，不计入账号积分或正式战绩。';
+  view.leaveDescription = '返回大厅会保留本机练习进度；下次从414练习继续。不扣正式积分。';
+  view.canRematch = true;
+  f.ui.applyView(view);
+  assert.equal(f.node('p414-result').hidden, false);
+  assert.match(f.node('p414-result-note').textContent, /不计入账号积分或正式战绩/);
+  assert.match(f.node('p414-result-scores').textContent, /练习本局分/);
+  assert.doesNotMatch(f.node('p414-result-scores').textContent, /累计|待确认/);
+  assert.equal(f.node('p414-exit').getAttribute('aria-label'), '返回大厅');
+  f.node('p414-rematch').click();
+  assert.deepEqual(f.actions, [['rematch', {}]]);
+  f.node('p414-exit-settings').click();
+  assert.equal(f.node('p414-leave-dialog').open, true);
+  assert.match(f.node('p414-leave-dialog').querySelector('h2').textContent, /返回大厅/);
+  assert.match(f.node('p414-leave-description').textContent, /保留本机练习进度/);
+  assert.doesNotMatch(f.node('p414-leave-description').textContent, /你扣|其他参赛者|赔/);
+  f.node('p414-leave-confirm').click(); await Promise.resolve();
+  assert.deepEqual(f.exits, [{ destination: 'lobby' }]);
+  assert.equal(f.node('p414-leave-dialog').open, false);
+  assert.deepEqual(f.actions, [['rematch', {}]], 'leaving practice must not send a room departure action');
+  assert.deepEqual(f.refreshes, []);
+});

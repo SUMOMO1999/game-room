@@ -219,3 +219,21 @@ html:has(.p414-body) { background:var(--theme-base,#173a31); }
 .p414-hand-heading>strong { flex-shrink:0; }
 .p414-result h1 { max-width:100%; overflow-wrap:anywhere; text-align:center; }
 @media (max-width:520px) { .p414-recovery { align-items:stretch; flex-direction:column; } .p414-recovery>div { justify-content:flex-end; } }
+
+/* The same table, with local-only controls and no empty room/invite area. */
+.p414-practice .p414-roster { grid-template-columns:repeat(var(--p414-practice-players,3),minmax(0,1fr)); }
+.p414-practice .p414-room-line { min-height:20px; }
+.p414-practice #p414-practice-hint { flex-shrink:0; min-width:44px; }
+@media (orientation:landscape) and (max-height:540px) {
+  .p414-practice #p414-practice-hint { right:calc(max(12px,env(safe-area-inset-right)) + 125px); }
+}
+@media (orientation:landscape) and (max-height:540px) and (max-width:700px) {
+  .p414-practice .p414-shell:not(.has-small-hand) .p414-hand-section { grid-column:1 / -1; width:100%; }
+  .p414-practice .p414-roster { grid-row:2 / 4; }
+  .p414-practice .p414-table { gap:0; }
+  .p414-practice .p414-table-heading { min-height:20px; }
+  .p414-practice .p414-playing { gap:0; }
+}
+@media (max-width:600px) and (orientation:portrait) {
+  .p414-practice .p414-roster { grid-template-columns:repeat(3,minmax(0,1fr)); }
+}

@@ -23,7 +23,9 @@ test('本机小样仅监听IPv4 loopback，首页明确合成，白名单阻止�
     assert.equal(style.status, 200);
     assert.match(style.headers.get('content-type'), /text\/css/);
     assert.equal(style.headers.get('cache-control'), 'no-store');
-    for (const path of ['/server/config.mjs', '/games/poker414-2/rules.mjs', '/ops/harness.json', '/rooms.mjs', '/.env']) {
+    assert.equal((await fetch(`${origin}/games/poker414-2/rules.mjs`)).status, 200);
+    for (const path of ['/server/config.mjs', '/server/games/poker414-2/adapter.mjs',
+      '/games/poker414-2/rules.test.mjs', '/ops/harness.json', '/rooms.mjs', '/.env']) {
       assert.equal((await fetch(`${origin}${path}`)).status, 404, path);
     }
     const wrongHostStatus = await new Promise((accept, reject) => {
