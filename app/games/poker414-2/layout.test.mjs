@@ -176,3 +176,19 @@ test('an impossible height budget cannot silently shrink interactive targets bel
   // a fit by shrinking the individual hit targets is not an acceptable fallback.
   assert.equal(handLayout(280, 0, { maxHeight: 0 }).height, 0);
 });
+
+test('overlapped hands keep every index clickable and every last card inside the row', () => {
+  for (const width of [44, 280, 362, 505, 643, 744, 1180]) {
+    for (const count of [0, 1, 2, 14, 36]) {
+      for (const short of [false, true]) {
+        const layout = handLayout(width, count, { short, overlap: true, maxHeight: short ? 148 : 336 });
+        assert.ok((layout.columns - 1) * layout.step + layout.cardWidth <= width);
+        assert.ok(layout.step >= 44 && layout.cardHeight >= 44);
+        assert.ok(layout.cardWidth >= layout.step);
+        assert.ok(layout.rows * layout.columns >= count);
+        assert.ok(layout.gap >= 7, 'selected cards must not cover the preceding row');
+      }
+    }
+  }
+  assert.throws(() => handLayout(362, 36, { overlap: 'yes' }), RangeError);
+});
