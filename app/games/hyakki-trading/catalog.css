@@ -65,7 +65,7 @@ footer { font-size: 13px; color: var(--theme-muted); padding-block: 24px; }
 .catalog-zone { font-weight: 700; font-size: 14px; margin-top: 0; }
 .catalog-pending { font-size: 13px; border-top: 1px solid var(--theme-border); padding-top: 10px; }
 .catalog-zones { margin: 32px 0; }
-.catalog-zones > div { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.catalog-zones > div { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; }
 .catalog-zones article { border-left: 3px solid var(--theme-accent); padding-left: 12px; }
 .catalog-zones p { font-size: 14px; color: var(--theme-muted); }
 .catalog-draft { border-top: 1px solid var(--theme-border); padding-top: 20px; }

@@ -23,7 +23,11 @@ export function mountHyakkiPreviewPage({ root, scenes, onScene, onAction, onLeav
     </div></div></header>
     <div class="hy-layout"><aside class="hy-sidebar"><div class="hy-room-code"><span id="hy-room-label">示例房号</span><strong id="hy-code">120006</strong>${button('hy-invite', '复制邀请')}</div><div id="hy-roster" class="hy-roster" aria-label="固定行动顺序"></div><p id="hy-observers" class="hy-observers">8位示范观众</p></aside>
     <main class="hy-play-area"><section class="hy-market-board" aria-labelledby="hy-stage-title"><div class="hy-stage"><div><span class="hy-eyebrow" id="hy-stage-kind">夜市营业中</span><h1 id="hy-stage-title">轮到你经营</h1></div><div class="hy-clock"><strong id="hy-clock">02:06</strong><small id="hy-clock-note">回合余时示例</small></div></div>
-      <div id="hy-market" class="hy-market" aria-label="公共市场库存"></div><div id="hy-scene-content" class="hy-scene-content"></div>
+      <div id="hy-shared-table" class="hy-shared-table">
+        <aside id="hy-piles" class="hy-piles" aria-label="公共牌区示意"><div class="hy-pile hy-pile--discard"><span>弃牌区</span><small>正面朝上</small></div><div class="hy-pile hy-pile--draw"><span>抽牌堆</span><small>统一牌背</small></div></aside>
+        <div class="hy-table-centre"><section id="hy-shared-track" class="hy-shared-track" aria-labelledby="hy-track-title"><header><h2 id="hy-track-title">共享行动条</h2><span id="hy-track-status">公用标记 · 位置示意</span></header><div class="hy-track-rail" role="img" aria-label="共享行动条与公用标记的布局示意，格数与位置待规则确认"><span class="hy-track-marker" aria-hidden="true"></span><span class="hy-track-direction" aria-hidden="true">→</span></div><p>抽看一张牌 → 公用标记前进 → 留牌或弃牌</p></section><div id="hy-current-effect" class="hy-current-effect" hidden></div><div id="hy-scene-content" class="hy-scene-content"></div></div>
+        <aside id="hy-public-stall" class="hy-public-stall"><button type="button" id="hy-view-market" class="hy-stall-summary" aria-label="公共货摊，查看货物库存与银两说明"><strong>公共货摊</strong><span id="hy-market" class="hy-market"></span><small>银两区 · 供给待核</small></button></aside>
+      </div>
     </section>
     <div id="hy-lower-deck" class="hy-lower-deck"><section id="hy-hand-section" class="hy-hand-section" aria-label="我的手牌" data-chat-dismiss-notices><div class="hy-hand-heading"><div><strong id="hy-hand-label">我的手牌</strong><span id="hy-hand-count"></span></div><div class="hy-hand-tools"><label class="visually-hidden" for="hy-hand-filter">手牌类型</label><select id="hy-hand-filter"><option value="all">全部</option><option value="goods">货物牌</option><option value="permit">摊位许可</option><option value="action">行动牌</option></select>${button('hy-hand-prev', '‹', 'aria-label="上一页手牌"')}<span id="hy-hand-page"></span>${button('hy-hand-next', '›', 'aria-label="下一页手牌"')}</div></div><div id="hy-hand" class="hy-hand"></div></section>
     <section id="hy-personal-area" class="hy-personal-area" aria-label="我的摊位与道具"><div class="hy-stall-heading"><strong>我的摊位</strong><span id="hy-stall-space"></span></div><div id="hy-stall-goods" class="hy-stall-goods" aria-label="我的实际货物库存"></div><div class="hy-equipment-heading"><strong>道具区</strong><span>先放置，再使用</span></div><div id="hy-equipment" class="hy-equipment"></div></section></div>
@@ -76,25 +80,27 @@ export function mountHyakkiPreviewPage({ root, scenes, onScene, onAction, onLeav
       'pending-leave': ['退出申请已记录', '这场三件拍卖结算后离席；已确认的报价仍要兑现。'], spectator: ['观战 · 灯笼铺老板经营', '只看公开市场、银两与摊位，不能查看其他人的手牌。'], paused: ['本局已暂停', '当前阶段和余时冻结；房主恢复后继续。'], offline: ['连接中断 · 保留当前画面', '恢复时先核对原操作。不会假称成功或重复扣款。'], result: ['百鬼收市 · 本局结束', '示范伙伴达到60两。以下仅为合成结算。'],
     };
     const [title, note] = texts[view.scene];
-    $('hy-stage-title').textContent = `${view.phase === 'playing' && view.scene !== 'bidder' ? '公共市场 · ' : ''}${title}`;
+    $('hy-stage-title').textContent = title;
     $('hy-stage-kind').textContent = isUrgent(view) ? '需要你的回应' : view.scene === 'spectator' ? '公开视角' : '百鬼夜市 · 页面样板';
     $('hy-clock').textContent = isUrgent(view) ? `${view.countdown}秒` : view.phase !== 'playing' ? '—' : '02:06';
     $('hy-clock-note').textContent = isUrgent(view) ? '主动回合冻结02:06' : '定格时钟示例';
-    $('hy-market-board')?.classList.toggle('is-urgent', isUrgent(view));
-    $('hy-market').hidden = view.phase !== 'playing';
-    $('hy-market').classList.toggle('is-auction', view.scene === 'bidder');
+    const playing = view.phase === 'playing';
+    $('hy-track-status').textContent = isUrgent(view) ? `${view.scene === 'defense' ? '等待防御' : '轮到你报价'} · ${view.countdown}秒` : view.scene === 'paused' ? '本局暂停 · 位置示意' : view.scene === 'offline' ? '连接中断 · 保留画面' : '公用标记 · 位置示意';
+    root.classList.toggle('hy-playing', playing);
+    $('hy-piles').hidden = !playing;
+    $('hy-public-stall').hidden = !playing;
+    $('hy-shared-track').hidden = !playing;
+    $('hy-market').innerHTML = view.market.map(good => `<span class="hy-good">${renderGoodsIcon(good.id)}<span>${good.name}</span><strong>${good.count}<small>件</small></strong></span>`).join('');
+    $('hy-current-effect').hidden = view.scene !== 'bidder';
+    $('hy-current-effect').replaceChildren();
     if (view.scene === 'bidder') {
       const lot = view.currentCard;
-      $('hy-market').setAttribute('aria-label', '当前公开拍品');
-      $('hy-market').innerHTML = `<button type="button" id="hy-current-lot" class="hy-public-lot" aria-label="查看当前拍品：${escape(describeGoods(lot.goods))}，基础买${lot.buyPrice}两、卖${lot.sellPrice}两"><span class="hy-public-lot-face">${renderCard(lot, { interactive: false })}</span><span class="hy-public-lot-copy"><strong>第2件 · 货物凭据 <small>点开详情</small></strong><span class="hy-public-lot-data"><span>${escape(describeGoods(lot.goods))}</span><span>基础买 <b>${lot.buyPrice}</b> · 卖 <b>${lot.sellPrice}</b> 两</span></span></span></button>${button('hy-view-market', '库存', 'aria-label="查看全部公共市场库存"')}`;
-    } else {
-      $('hy-market').setAttribute('aria-label', '公共市场库存');
-      $('hy-market').innerHTML = view.market.map(good => `<button type="button" class="hy-good" data-good-id="${good.id}" aria-label="${good.name}，库存${good.count}件，查看详情">${renderGoodsIcon(good.id)}<span>${good.name}</span><strong>${good.count}<small>件</small></strong></button>`).join('');
+      $('hy-current-effect').innerHTML = `<button type="button" id="hy-current-lot" class="hy-public-lot" aria-label="查看当前拍品：${escape(describeGoods(lot.goods))}，基础买${lot.buyPrice}两、卖${lot.sellPrice}两"><span class="hy-public-lot-face">${renderCard(lot, { interactive: false })}</span><span class="hy-public-lot-copy"><strong>第2件 · 货物凭据 <small>点开详情</small></strong><span class="hy-public-lot-data"><span>${escape(describeGoods(lot.goods))}</span><span>基础买 <b>${lot.buyPrice}</b> · 卖 <b>${lot.sellPrice}</b> 两</span></span></span></button>`;
     }
     const content = $('hy-scene-content');
     if (view.phase === 'waiting') content.innerHTML = `<div class="hy-welcome"><span class="hy-night-seal" aria-hidden="true">商</span><h2>今晚，一起做生意。</h2><p>${note}</p><strong>示例房号 ${view.roomCode}</strong><div class="hy-dialog-actions">${view.selfRole === 'player' ? button('hy-ready', view.players[0].ready ? '取消准备' : '准备好了', 'class="hy-primary"') : '<strong>你正在观战</strong>'}${button('hy-start', '开始样板', `${view.selfRole === 'player' && view.players.every(player => player.ready) ? '' : 'disabled'}`)}${button('hy-watch', view.selfRole === 'player' ? '改为观战' : '加入对局')}${button('hy-waiting-invite', '复制邀请')}</div><small>全部合成数据 · 不会创建真实对局</small></div>`;
     else if (view.phase === 'result') content.innerHTML = `<div class="hy-results"><h2>这一夜，满载而归。</h2><p>${note}</p><div>${view.players.map((player, index) => `<p><span>${index + 1}. ${escape(player.name)}</span><strong>${index === 0 ? 64 : player.money}两</strong></p>`).join('')}</div>${button('hy-rematch', '回准备室', 'class="hy-primary"')}</div>`;
-    else content.innerHTML = `<div class="hy-market-story"><div><span class="hy-night-seal" aria-hidden="true">${isUrgent(view) ? view.scene === 'defense' ? '守' : '拍' : '市'}</span><p>${note}</p></div>${isUrgent(view) ? `<span class="hy-effect-tag">${view.scene === 'defense' ? '顺手牵羊 → 你的黄瓜×1' : '当前拍品：货物凭据 · 下个报价4两'}</span>` : '<span class="hy-effect-tag">公共市场 · 每种货物共20件</span>'}</div>`;
+    else content.innerHTML = `<div class="hy-market-story"><div><span class="hy-night-seal" aria-hidden="true">${isUrgent(view) ? view.scene === 'defense' ? '守' : '拍' : '行'}</span><p>${note}</p></div>${isUrgent(view) ? `<span class="hy-effect-tag">${view.scene === 'defense' ? '顺手牵羊 → 你的黄瓜×1' : '当前拍品：货物凭据 · 下个报价4两'}</span>` : ''}</div>`;
     content.title = note;
   }
   function actionMarkup() {
@@ -127,7 +133,7 @@ export function mountHyakkiPreviewPage({ root, scenes, onScene, onAction, onLeav
     const self = view.selfRole === 'player' ? view.players.find(player => player.id === view.selfId) : null;
     $('hy-money').textContent = self ? `${self.money}两` : '公开观战';
     $('hy-capacity').textContent = self ? `${self.goods.reduce((sum, good) => sum + good.count, 0)}/${self.capacity}格` : '无个人摊位';
-    $('hy-ap').textContent = view.selfRole === 'spectator' ? '只读' : `${view.actionPoints}行动`;
+    $('hy-ap').textContent = view.selfRole === 'spectator' ? '只读' : `旧稿${view.actionPoints}行动`;
     $('hy-actions').innerHTML = actionMarkup();
     for (const dock of root.querySelectorAll('[data-modal-response]')) { dock.hidden = !isUrgent(view); dock.innerHTML = isUrgent(view) ? `<strong>${view.scene === 'defense' ? '你的防御' : '轮到你报价'} · ${view.countdown}秒</strong><div>${actionMarkup()}</div>` : ''; }
     renderRoster(); renderStage(); renderHand(); renderPersonalArea(self); resize(); syncUrgentChat();
@@ -194,7 +200,7 @@ export function mountHyakkiPreviewPage({ root, scenes, onScene, onAction, onLeav
     else if (node.id === 'hy-current-lot') {
       inspector('当前拍品 · 第2件', `${renderCardDetails(view.currentCard)}<p class="hy-detail-note">这是正在拍卖的公开牌，不是你的手牌。可在上方回应条加价或放弃；未轮到的拍品不会揭示。</p>`);
     } else if (node.id === 'hy-view-market') {
-      inspector('公共市场库存', `<div class="hy-inventory">${view.market.map(good => `<div>${renderGoodsIcon(good.id)}<span>${good.name}</span><strong>${good.count}件</strong></div>`).join('')}</div><p>这里只展示六种货物的公开库存。</p>`);
+      inspector('公共市场库存', `<div class="hy-inventory">${view.market.map(good => `<div>${renderGoodsIcon(good.id)}<span>${good.name}</span><strong>${good.count}件</strong></div>`).join('')}</div><p>这里展示六种货物的公开库存。参考图右侧还有银两区，其供给数量与朋友稿无限银行尚未统一，暂不模拟余额。</p>`);
     }
   });
   listen($('hy-scene'), 'change', event => { settings.close(); onScene(event.target.value); });
@@ -208,7 +214,7 @@ export function mountHyakkiPreviewPage({ root, scenes, onScene, onAction, onLeav
   listen($('hy-rotation-exit'), 'click', () => onLeave());
   listen($('hy-peer-message'), 'click', () => onPeerMessage());
   listen($('hy-gallery'), 'click', () => { window.location.href = gamePath('/hyakki-catalog.html'); });
-  listen($('hy-rules'), 'click', () => inspector('百鬼商会 · 朋友稿实验规则', '<p>当前120张是朋友稿实验基线，尚非商业原版完整卡表。淘宝截图显示货物、摊位许可、人物、道具四个大类；人物与各道具的完整定义仍待核对。道具先放入道具区再按每回合条件使用，具体效果、费用与次数未补齐前不执行。下列旧规则仅用于现阶段朋友稿样板。</p><ol class="hy-rule-list"><li>2～6人。每人20两、4张牌、6格摊位。市场六种货物各20件。</li><li>每回合5行动，通常先花1行动摸牌。用货物凭据买入或卖出完整货物组，凭据随后弃置。</li><li>先完成一次动作并达到60两获胜。摸过牌且用了不超过3行动，主动结束可得1两。</li><li>盛典改变一种货物的买卖价；顺手牵羊给目标10秒用护身符防御。</li><li>黑市拍卖三件，一次只揭一件；轮到自己15秒内加1两或放弃。</li><li>许可证支付3两与1行动，永久扩容3格。退出中的拍卖义务结算后才清理。</li></ol><p>这里是资源与界面样板。详细边界以已确认设计书为准；完整规则引擎在后续阶段实现。</p>'));
+  listen($('hy-rules'), 'click', () => inspector('百鬼商会 · 朋友稿实验规则', '<p>当前120张是朋友稿实验基线，尚非商业原版完整卡表。淘宝截图显示货物、摊位许可、人物、道具四个大类；人物与各道具的完整定义仍待核对。道具先放入道具区再按每回合条件使用，具体效果、费用与次数未补齐前不执行。桌面中央是共享行动条，货摊在旁边；抽看牌后公用标记前进，再留牌或弃牌。行动条格数与回合推进仍待完整规则，本页不把旧稿个人行动力冒充共享进度。下列旧规则仅用于现阶段朋友稿样板。</p><ol class="hy-rule-list"><li>2～6人。每人20两、4张牌、6格摊位。市场六种货物各20件。</li><li>每回合5行动，通常先花1行动摸牌。用货物凭据买入或卖出完整货物组，凭据随后弃置。</li><li>先完成一次动作并达到60两获胜。摸过牌且用了不超过3行动，主动结束可得1两。</li><li>盛典改变一种货物的买卖价；顺手牵羊给目标10秒用护身符防御。</li><li>黑市拍卖三件，一次只揭一件；轮到自己15秒内加1两或放弃。</li><li>许可证支付3两与1行动，永久扩容3格。退出中的拍卖义务结算后才清理。</li></ol><p>这里是资源与界面样板。详细边界以已确认设计书为准；完整规则引擎在后续阶段实现。</p>'));
   listen($('hy-invite'), 'click', async () => {
     const invitation = new URL(window.location.href); invitation.search = '?scene=waiting';
     try { await window.navigator.clipboard.writeText(`仅本机可打开的百鬼商会样板：${invitation}`); feedback('已复制本机样板地址；这不是正式邀请。'); }
