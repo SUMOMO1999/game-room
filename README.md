@@ -18,6 +18,7 @@
 - [414两副牌设计](docs/design/games/poker414-2.md)与[技术实施计划](docs/plans/poker414-2-v1.md)：3～8人朋友房间、勾叉、观战、永久娱乐积分及独立电脑练习已上线。实际完成项与真实账号／手机待验范围在计划中维护。[一副牌设计](docs/design/games/poker414-1.md)继续保留，尚未实现。
 - [分类模板入口](docs/design/game-design-template.md)：朋友写玩法和例子，维护者补技术设计。
 - [固定牌类模板](docs/design/templates/fixed-deck-game.md)：414、扑克、麻将、拉密，重点是牌组与规则。
+- [百鬼商会 V0.1提案](docs/proposals/hyakki-trading/README.md)：参考《幽街商人》的朋友版经营桌游，已整理规则、卡牌资源及待确认问题；尚未实现。
 - [桌游类模板](docs/design/templates/tabletop-game.md)与[逐卡定义](docs/design/templates/card-definition.md)：不同角色、牌或地块各有行为；飞行棋可用轻版。
 - [Step 0 资源阶段](docs/design/resource-stage.md)：先做代表性资源和操作小样，完整接入前补齐本轮内容与资源。
 - [技术计划模板](docs/plans/game-implementation-plan-template.md)：维护者根据实际代码写清模块、接口、并发、存储、资源、共通接入、验收和回退，再开始实现；朋友只需参与玩法设计。
