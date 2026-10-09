@@ -27,9 +27,9 @@ const privatePaths = ['server/games/rummikub/adapter.mjs', 'server/games/army-fl
   'games/rummikub/test-support/secret.mjs', 'games/rummikub/fixtures/secret.mjs',
   'infra/game-room-identity-batch.conf'];
 // Public 414 presentation can read saved rooms while new creation stays gated.
-// The authoritative engine, adapters and local-only fixture previews stay private.
+// The pure 414 engine is also used by practice; adapters and fixture previews stay private.
 const private414Paths = ['poker414-preview.html', 'server/games/poker414-2/adapter.mjs',
-  ...['rules.mjs','rules.test.mjs','preview.mjs','test-support/preview-fixtures.mjs'].map(file => `games/poker414-2/${file}`)];
+  ...['rules.test.mjs','practice-bot.test.mjs','preview.mjs','test-support/preview-fixtures.mjs'].map(file => `games/poker414-2/${file}`)];
 function metadataOnly(value) {
   if (value === null || ['string', 'number', 'boolean'].includes(typeof value)) return true;
   if (Array.isArray(value)) return value.every(metadataOnly);
@@ -70,7 +70,8 @@ test('all declared public paths exist; old aliases and canonical modules are pub
   for (const path of assets) assert.equal(statSync(join(projectRoot, 'app', path)).isFile(), true, path);
   for (const game of gamePresentations()) for (const path of [game.page, game.practicePage, ...game.assets].filter(Boolean)) assert.ok(assets.includes(path), path);
   for (const path of ['rules.mjs', 'games/rummikub/rules.mjs', 'table-layout.mjs', 'games/rummikub/table-layout.mjs',
-    'army-board.mjs', 'games/army-flip/board.mjs', 'army-presentation.mjs', 'games/army-flip/presentation.mjs']) assert.ok(assets.includes(path), path);
+    'army-board.mjs', 'games/army-flip/board.mjs', 'army-presentation.mjs', 'games/army-flip/presentation.mjs',
+    'games/poker414-2/rules.mjs']) assert.ok(assets.includes(path), path);
   for (const path of private414Paths) {
     assert.equal(assets.includes(path), false, path);
     assert.throws(() => publicAssetPaths([{assets:[path]}],[]), TypeError, path);
@@ -143,7 +144,7 @@ for (const mode of ['legacy', 'unified']) test(`${mode} HTTP serves canonical an
 
 test('414 routes and history metadata exist while creation requires an explicit server capability', () => {
   assert.equal(roomHref('123456','poker414-2'),'./poker414.html?code=123456');
-  assert.equal(gamePresentation('poker414-2').practicePage,null);
+  assert.equal(gamePresentation('poker414-2').practicePage,'poker414-practice.html');
   assert.match(gamePresentation('poker414-2').createHint,/不限时/);
   for(const value of [undefined,false,'true',1]) assert.equal(creatableGamePresentations({drawingEnabled:true,poker414Enabled:value}).some(game=>game.gameType==='poker414-2'),false);
   assert.equal(creatableGamePresentations({drawingEnabled:true,poker414Enabled:true}).length,5);

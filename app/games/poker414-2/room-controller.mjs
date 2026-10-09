@@ -1,6 +1,5 @@
 import { createRoomSession, createRoomExit } from '../../platform/room-session.mjs';
-import { toPoker414View } from './presentation.mjs';
-import { classifyPattern } from './patterns.mjs';
+import { toPoker414View, poker414Cues } from './presentation.mjs';
 
 const business = new Set(['play', 'pass', 'hook', 'fork']);
 const common = new Set(['ready', 'start', 'rematch', 'set-role', 'transferHost']);
@@ -58,17 +57,7 @@ export function createPoker414RoomController({ roomCode, document, window, ui, c
       if (previous.phase === 'waiting' && next.game?.stage === 'dealing') ui.audio.play('start');
       return;
     }
-    const before = previous.game, game = next.game;
-    if (!before || !game || game.eventSeq <= before.eventSeq) return;
-    const move = game.moves?.at(-1);
-    if (move && !before.moves?.some(item => item.eventId === move.eventId)) {
-      const kind = classifyPattern(move.cardIds)?.kind;
-      ui.audio.play(move.type === 'hook' ? 'card-hook' : move.type === 'fork' ? 'card-fork'
-        : kind === 'rocket' ? 'card-rocket' : kind?.includes('bomb') ? 'card-bomb' : 'placement');
-    } else if (game.notices?.at(-1)?.type === 'pass') ui.audio.play('card-pass');
-    if (!before.result && game.result) ui.audio.play(game.result.reason === 'emptied-hand'
-      ? game.result.winnerId === next.selfId ? 'win' : next.selfRole === 'player' ? 'loss' : 'draw-result' : 'draw-result');
-    else if (game.turnPlayerId === next.selfId && (before.turnPlayerId !== game.turnPlayerId || before.stage !== game.stage)) ui.audio.play('turn');
+    for (const cue of poker414Cues(previous.game, next.game, next.selfId, next.selfRole)) ui.audio.play(cue);
   }
   function boot(verifiedState) {
     return session.bootstrap(() => clearPrivate({}, { preserveDraft: true }), async task => {

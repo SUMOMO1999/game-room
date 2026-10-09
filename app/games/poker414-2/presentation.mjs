@@ -111,3 +111,19 @@ export function poker414Selection(view, selectedIds = [], { now = Date.now(), in
     canPlay: enabled && ownTurn && legal, canPass: enabled && ownTurn && !!view.target,
     canHook: canRespond && response.action === 'hook', canFork: canRespond && response.action === 'fork', hint };
 }
+
+/** Shared committed-action cues for real rooms and local practice. Baseline or
+ * unchanged projections stay silent; callers suppress audio while hidden. */
+export function poker414Cues(before, game, selfId, role = 'player') {
+  if (!before || !game || before.matchId !== game.matchId || game.eventSeq <= before.eventSeq) return [];
+  const cues = [], move = game.moves?.at(-1);
+  if (move && !before.moves?.some(item => item.eventId === move.eventId)) {
+    const kind = classifyPattern(move.cardIds)?.kind;
+    cues.push(move.type === 'hook' ? 'card-hook' : move.type === 'fork' ? 'card-fork'
+      : kind === 'rocket' ? 'card-rocket' : kind?.includes('bomb') ? 'card-bomb' : 'placement');
+  } else if (game.notices?.at(-1)?.type === 'pass') cues.push('card-pass');
+  if (!before.result && game.result) cues.push(game.result.reason === 'emptied-hand'
+    ? game.result.winnerId === selfId ? 'win' : role === 'player' ? 'loss' : 'draw-result' : 'draw-result');
+  else if (game.turnPlayerId === selfId && (before.turnPlayerId !== game.turnPlayerId || before.stage !== game.stage)) cues.push('turn');
+  return cues;
+}

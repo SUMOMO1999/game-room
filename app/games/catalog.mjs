@@ -42,9 +42,10 @@ const entries = [
       'games/draw-and-guess/request-intent.mjs'] },
   { gameType: 'poker414-2', name: '414 · 两副牌', page: 'poker414.html', minPlayers: 3, maxPlayers: 8,
     createHint: '普通出牌不限时 · 勾叉机会 5 秒', availabilityFlag: 'poker414Enabled',
-    practicePage: null, scoreKind: 'score',
+    practicePage: 'poker414-practice.html', scoreKind: 'score',
     timeout: { action: '阶段自动继续', hint: '发牌及勾叉机会按阶段倒计时，普通出牌不限时' },
-    assets: ['poker414.html', 'games/poker414-2/art.mjs', 'games/poker414-2/cards.mjs', 'games/poker414-2/patterns.mjs',
+    assets: ['poker414.html', 'poker414-practice.html', 'games/poker414-2/practice-page.mjs',
+      'games/poker414-2/practice-engine.mjs', 'games/poker414-2/practice-bot.mjs', 'games/poker414-2/rules.mjs', 'games/poker414-2/art.mjs', 'games/poker414-2/cards.mjs', 'games/poker414-2/patterns.mjs',
       'games/poker414-2/presentation.mjs', 'games/poker414-2/page-ui.mjs', 'games/poker414-2/layout.mjs',
       'games/poker414-2/styles.css', 'games/poker414-2/game-page.mjs', 'games/poker414-2/room-controller.mjs'] },
 ];
