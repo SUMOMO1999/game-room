@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {mkdir, writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {DIGITAL_SCENES} from '../app/games/hyakki-trading/test-support/digital-preview-fixtures.mjs';
+import {DIGITAL_SCENES,digitalFixture} from '../app/games/hyakki-trading/test-support/digital-preview-fixtures.mjs';
+import {getCard} from '../app/games/hyakki-trading/content/definitions.mjs';
 const origin=process.env.HYAKKI_PREVIEW_ORIGIN||'http://127.0.0.1:4385';
 assert.match(origin,/^http:\/\/127\.0\.0\.1:\d+$/u);
 if(!process.env.PLAYWRIGHT_MODULE) throw new Error('Set PLAYWRIGHT_MODULE to the existing Playwright index.mjs.');
@@ -21,17 +22,26 @@ async function shot(name){await images();await page.screenshot({path:resolve(out
 async function geometry(){
  const data=await page.evaluate(()=>{
   const rect=e=>{const r=e.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom};};
-  const boxes=Object.fromEntries(['.yg-header','.yg-table','.yg-lower','#yg-feedback'].map(s=>[s,rect(document.querySelector(s))]));
+  const visible=e=>!!e&&e.getClientRects().length>0&&getComputedStyle(e).visibility!=='hidden';
+  const boxes=Object.fromEntries(['.yg-header','.yg-table','.yg-lower','#yg-feedback'].filter(s=>visible(document.querySelector(s))).map(s=>[s,rect(document.querySelector(s))]));
+  const zones=Object.fromEntries(['#yg-public-stock','#yg-personal','#yg-tool-zone'].filter(s=>visible(document.querySelector(s))).map(s=>[s,rect(document.querySelector(s))]));
   const controls=['#chat-toggle','#yg-settings','#yg-exit'].map(s=>{const e=document.querySelector(s),r=rect(e),c=getComputedStyle(e);return{selector:s,...r,radius:c.borderRadius,align:c.alignItems,justify:c.justifyContent};});
-  const cards=[...document.querySelectorAll('#yg-hand .yousei-card, #yg-hand .yg-hand-summary')].filter(e=>e.getClientRects().length).map(rect);
-  return{boxes,controls,cards,width:innerWidth,height:innerHeight,scrollWidth:document.documentElement.scrollWidth,scrollHeight:document.documentElement.scrollHeight,scene:document.querySelector('#hyakki-digital-root').dataset.scene};
+  const handElement=document.querySelector('#yg-hand');
+  const hand=handElement.getClientRects().length?{...rect(handElement),scrollWidth:handElement.scrollWidth,clientWidth:handElement.clientWidth,overflowX:getComputedStyle(handElement).overflowX}:null;
+  const cards=[...document.querySelectorAll('#yg-hand .yousei-card')].filter(e=>e.getClientRects().length).map(e=>({...rect(e),id:e.dataset.cardId,clientWidth:e.clientWidth,scrollWidth:e.scrollWidth,clientHeight:e.clientHeight,scrollHeight:e.scrollHeight,imageCount:e.querySelectorAll('img').length,decoded:[...e.querySelectorAll('img')].every(i=>i.complete&&i.naturalWidth>0&&i.getBoundingClientRect().width>0&&i.getBoundingClientRect().height>0)}));
+  return{boxes,zones,publicGoodIcons:document.querySelectorAll('#yg-public-stock .yousei-good-icon').length,toolsInLower:!!document.querySelector('#yg-tool-zone')?.closest('.yg-lower'),controls,cards,hand,summaryCount:document.querySelectorAll('#yg-hand .yg-hand-summary').length,width:innerWidth,height:innerHeight,scrollWidth:document.documentElement.scrollWidth,scrollHeight:document.documentElement.scrollHeight,scene:document.querySelector('#hyakki-digital-root').dataset.scene};
  });
  assert(data.scrollWidth<=data.width+1,'page overflows horizontally');
  for(const[s,r]of Object.entries(data.boxes)) assert(r.x>=-1&&r.y>=-1&&r.right<=data.width+1&&r.bottom<=data.height+1,`${s} outside viewport: ${JSON.stringify(r)}`);
  const b=data.boxes;assert(b['.yg-header'].bottom<=b['.yg-table'].y+1,'header/table overlap');assert(b['.yg-table'].bottom<=b['.yg-lower'].y+1,'table/personal overlap');
+ assert.equal(data.publicGoodIcons,6,'public stock must show all six goods icons');
+ if(data.zones['#yg-personal'])assert(data.zones['#yg-personal'].y>=data.zones['#yg-public-stock'].bottom-1,'personal goods overlap public stock');
+ if(data.zones['#yg-tool-zone'])assert(data.toolsInLower,'equipped tools are not in the bottom zone');
  for(const c of data.controls){assert(c.width>=43.9&&c.height>=43.9,`small tool ${c.selector}`);assert(parseFloat(c.radius)>=8,`square tool ${c.selector}`);}
  for(let i=1;i<data.controls.length;i++){const gap=data.controls[i].x-data.controls[i-1].right;assert(gap>=5.9&&gap<=10.1,`tool gap ${gap}`);}
- for(const r of data.cards){assert(r.width>=79.9&&r.height>=111.9,'unreadable card');assert(r.right<=data.width+1,'hand card overflow');}
+ assert.equal(data.summaryCount,0,'hand replaced illustrated cards with text summaries');
+ if(data.hand){assert(['auto','scroll'].includes(data.hand.overflowX),'hand has no independent horizontal scroll');assert(data.hand.x>=-1&&data.hand.right<=data.width+1,'hand viewport overflows page');}
+ for(const r of data.cards){assert(r.width>=89.9&&r.height>=144.9,`unreadable card ${r.id}: ${r.width}×${r.height}`);assert(r.imageCount>0&&r.decoded,`missing hand artwork ${r.id}`);assert(r.scrollWidth<=r.clientWidth+1&&r.scrollHeight<=r.clientHeight+1,`card face content overflows ${r.id}`);assert(r.y>=data.hand.y-1&&r.bottom<=data.hand.bottom+1,`hand image clipped vertically ${r.id}`);}
  measurements.push(data);return data;
 }
 try{
@@ -83,9 +93,27 @@ try{
    }
    await page.locator('#yg-decision-close').click();}
  });
- await check('dense pagination and installed tool state',async()=>{
-  await ready('dense');const first=await page.locator('#yg-hand .yg-hand-card').first().getAttribute('data-entity-id');await page.locator('#yg-hand-next').click();assert.notEqual(await page.locator('#yg-hand .yg-hand-card').first().getAttribute('data-entity-id'),first);await geometry();
-  await ready('tools');assert(await page.locator('#yg-tools .is-tapped').count()>0);await page.locator('#yg-tools .is-tapped').first().click();assert.match(await page.locator('#yg-inspector-body').innerText(),/横置/);await shot('tools-detail');
+ await check('dense image hand stays mounted, scrolls independently and retains installed tool state',async()=>{
+  await page.setViewportSize({width:844,height:390});
+  await ready('dense');
+  const expected=digitalFixture('dense').hand;
+  assert.deepEqual(await page.locator('#yg-hand .yg-hand-card').evaluateAll(es=>es.map(e=>e.dataset.entityId)),expected.map(card=>card.id),'not all hand cards mounted');
+  assert.equal(await page.locator('#yg-hand-prev,#yg-hand-next,#yg-hand-page,#yg-hand .yg-hand-summary').count(),0,'obsolete pagination or text hand remains');
+  const before=await geometry();assert(before.hand.scrollWidth>before.hand.clientWidth,'dense hand does not create its own scroll range');
+  await page.locator('#yg-hand').evaluate(e=>{e.scrollLeft=e.scrollWidth;});
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  const reached=await page.locator('#yg-hand').evaluate(e=>{const hand=e.getBoundingClientRect(),last=e.lastElementChild.getBoundingClientRect();return{scrollLeft:e.scrollLeft,right:last.right,handRight:hand.right,top:last.top,handTop:hand.top};});
+  assert(reached.scrollLeft>0&&reached.right<=reached.handRight+1,'last hand card cannot be reached by scrolling');
+  assert.deepEqual(await page.locator('#yg-hand .yg-hand-card').evaluateAll(es=>es.map(e=>e.dataset.entityId)),expected.map(card=>card.id),'scrolling replaces the hand with another page');
+  await page.locator('#yg-hand .yousei-card').last().click();assert(await page.locator('#yg-inspector').isVisible());assert.equal(await page.locator('#yg-inspector-body .yousei-card').getAttribute('data-card-id'),expected.at(-1).definitionId);await page.locator('#yg-inspector-close').click();
+  await shot('dense-hand-scrolled');
+  assert.equal(await page.locator('#yg-hand-filter').isVisible(),false,'hand classification should live in settings');
+  await page.locator('#yg-settings').click();await page.selectOption('#yg-hand-filter','goods');await page.locator('#yg-options-close').click();await images();
+  assert.deepEqual(await page.locator('#yg-hand .yg-hand-card').evaluateAll(es=>es.map(e=>e.dataset.entityId)),expected.filter(card=>getCard(card.definitionId).category==='goods').map(card=>card.id),'settings filter loses or invents hand cards');
+  assert.equal(await page.locator('#yg-hand').evaluate(e=>e.scrollLeft),0,'new filter should start at the first matching card');
+  await ready('tools');assert.equal(await page.locator('#yg-tools [data-tool-id]').count(),3);assert(await page.locator('#yg-tools .is-tapped').count()>0);await geometry();
+  for(const tool of await page.locator('#yg-tools [data-tool-id]').all()){assert(await tool.isVisible());assert.equal(await tool.locator('img').count(),1);await tool.click();assert(await page.locator('#yg-inspector').isVisible());assert.match(await page.locator('#yg-inspector-body').innerText(),/道具/);await page.locator('#yg-inspector-close').click();}
+  await page.locator('#yg-tools .is-tapped').first().click();assert.match(await page.locator('#yg-inspector-body').innerText(),/横置/);await shot('tools-detail');
  });
  await check('six themes real controls and text colors',async()=>{
   await ready('active');await page.setViewportSize({width:844,height:390});

@@ -1,3 +1,4 @@
+import { DEFAULT_GOODS_PER_TYPE, MIN_GOODS_PER_TYPE, MAX_GOODS_PER_TYPE } from './model.mjs';
 import { CARDS, CATEGORIES, GOODS, getCard, getCategory } from './content/definitions.mjs';
 import { mountArtFallback } from './content/manifest.mjs';
 import { renderCard, renderCardDetails, renderCardBack, renderGoodsIcon } from './digital-card-ui.mjs';
@@ -28,7 +29,7 @@ export function mountDigitalCatalog(root) {
   const dialogId = `yousei-catalog-detail-${++nextDialogId}`;
   root.classList.add('yousei-catalog');
   root.innerHTML = `<header class="yousei-catalog__heading"><div><p class="yousei-catalog__eyebrow">幽街商人 · 数字版</p><h1>全卡图鉴</h1><p>51种牌面 · 110张牌 · 五类生意</p></div><a class="yousei-catalog__link" href="${gamePath('/hyakki-preview.html?enter=1')}">进入页面样板 →</a></header>
-    <section class="yousei-catalog__intro"><div><h2>认清手里的每一张牌</h2><p>按牌名、编号、货物或效果查找，点牌查看完整用法。货物牌整组买卖；人物用后弃置；道具先安装，再按时机激活。</p><p class="yousei-catalog__note">当前为本地内容与页面样板；完整对局和独立练习尚未开放。牌面使用自制美术和归纳说明。</p></div><div class="yousei-catalog__stock" aria-label="数字版初始公共库存">${GOODS.map(good => `<span>${renderGoodsIcon(good.id)}<strong>${good.name}</strong><span>×${good.initialStock}</span></span>`).join('')}<small>数字版：每种6件，共36件</small></div></section>
+    <section class="yousei-catalog__intro"><div><h2>认清手里的每一张牌</h2><p>按牌名、编号、货物或效果查找，点牌查看完整用法。货物牌整组买卖；人物用后弃置；道具先安装，再按时机激活。</p><p class="yousei-catalog__note">牌面使用自制美术和归纳说明。实际库存按每局开局设置，旧局保留原数量。</p></div><div class="yousei-catalog__stock" aria-label="数字版初始公共库存">${GOODS.map(good => `<span>${renderGoodsIcon(good.id)}<strong>${good.name}</strong><span>×${DEFAULT_GOODS_PER_TYPE}</span></span>`).join('')}<small>新局默认各${DEFAULT_GOODS_PER_TYPE}件 · 可设${MIN_GOODS_PER_TYPE}～${MAX_GOODS_PER_TYPE}件</small></div></section>
     <nav class="yousei-catalog__filters" aria-label="图鉴筛选"><label>搜索牌面<input type="search" data-catalog-search placeholder="牌名、编号、货物或效果" maxlength="120" autocomplete="off"></label><label>牌类<select data-catalog-category><option value="all">全部 · 51种／110张</option>${CATEGORIES.map(category => { const cards = CARDS.filter(card => card.category === category.id); return `<option value="${category.id}">${category.name} · ${cards.length}种／${cards.reduce((sum, card) => sum + card.copies, 0)}张</option>`; }).join('')}</select></label><label>桌布主题<select data-catalog-theme>${GAME_THEMES.map(item => `<option value="${item.id}">${item.name}</option>`).join('')}</select></label><button type="button" data-catalog-missing aria-pressed="false">检查缺图阅读</button></nav>
     <div class="yousei-catalog__result"><strong data-catalog-count role="status" aria-live="polite"></strong><button type="button" data-catalog-reset>重置筛选</button></div>
     <section class="yousei-catalog__cards" data-catalog-cards aria-label="全部卡牌"></section>

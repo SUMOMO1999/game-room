@@ -29,16 +29,17 @@ export function renderCard(card, { selected = false, disabled = false, interacti
   const category = getCategory(face.category);
   const goods = face.category === 'goods';
   const watched = face.category === 'monitored_character';
-  const label = [face.name, category.name, face.summary, face.costText, tapped ? '已横置' : '', selected ? '已选中' : '', disabled ? '当前不可使用，可查看说明' : ''].filter(Boolean).join('，');
+  const goodsLabel = goods ? Object.entries(face.goods).map(([id,count]) => `${getGood(id).name}×${count}`).join('，') : '';
+  const label = [face.name, category.name, goodsLabel, face.summary, face.costText, tapped ? '已横置' : '', selected ? '已选中' : '', disabled ? '当前不可使用，可查看说明' : ''].filter(Boolean).join('，');
   const tag = interactive ? 'button' : 'span';
   const semantics = interactive ? `type="button" aria-pressed="${selected}"` : 'role="img"';
   const body = goods
-    ? `<span class="yousei-card__goods${Object.keys(face.goods).length === 6 ? ' yousei-card__goods--six' : ''}">${Object.entries(face.goods).map(([id, count]) => `<span class="yousei-card__good">${renderGoodsIcon(id)}<span>${escape(getGood(id).name)}</span><b>×${count}</b></span>`).join('')}</span>`
+    ? `<span class="yousei-card__goods yousei-card__goods--${Object.keys(face.goods).length}">${Object.entries(face.goods).map(([id, count]) => `<span class="yousei-card__good" aria-label="${escape(getGood(id).name)}×${count}" title="${escape(getGood(id).name)}×${count}">${renderGoodsIcon(id)}<b>×${count}</b></span>`).join('')}</span>`
     : picture(face.artId, face.name, 'yousei-card__portrait');
-  const faceCost = face.category === 'tool' ? '装1步 · 用1步' : face.id === 'yousei.m08' ? '1步 · 费用另付' : face.category === 'stall_permit' ? '1步 · 首6后3两' : face.costText;
+  const faceCost = face.category === 'tool' ? '装1步 · 用1步' : face.category === 'stall_permit' ? '1步 · 扩摊3格' : ['ordinary_character','monitored_character'].includes(face.category) ? ['C04','C07'].includes(face.sourceCode) ? '回应 · 0步' : '行动 · 1步' : face.costText;
   const footer = goods
     ? `<span class="yousei-card__prices"><span>买<b>${face.buySilver}</b></span><span>卖<b>${face.sellSilver}</b></span></span>`
-    : `<span class="yousei-card__effect">${escape(face.compactText)}</span><span class="yousei-card__cost">${escape(faceCost)}</span>`;
+    : `<span class="yousei-card__cost">${escape(faceCost)}</span>`;
   const state = [selected ? '已选中' : '', tapped ? '已横置' : '', disabled ? '暂不可用' : ''].filter(Boolean).join(' · ');
   // Face IDs identify public definitions. Never serialize a private entity ID, owner, or deck order.
   return `<${tag} ${semantics} class="yousei-card${selected ? ' is-selected' : ''}${disabled ? ' is-unavailable' : ''}${tapped ? ' is-tapped' : ''}" data-card-id="${escape(face.id)}" data-card-category="${face.category}" data-art-version="${ART_VERSION}" aria-label="${escape(label)}"><span class="yousei-card__heading"><span class="yousei-card__category">${watched ? '◉ ' : ''}${escape(category.name)}</span><span class="yousei-card__code">${face.sourceCode}</span></span><span class="yousei-card__name">${goods ? '货物交易' : escape(face.name)}</span>${body}${footer}${state ? `<span class="yousei-card__state" aria-hidden="true">${escape(state)}</span>` : ''}</${tag}>`;

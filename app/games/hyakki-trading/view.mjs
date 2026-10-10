@@ -2,6 +2,7 @@
 import { gameProblem, cardDefinition, validCopy } from './validation.mjs';
 import { hyakkiGameClock } from './lifecycle.mjs';
 import { currentDecision } from './decision.mjs';
+import { goodsPerTypeOf } from './model.mjs';
 const clone = value => structuredClone(value);
 const publicCard = (state, copyId, zone, index) => ({ ref: `${zone}:${state.revision}:${index}`, definitionId: cardDefinition(copyId).id });
 const privateCard = copyId => ({ cardId: copyId, definitionId: cardDefinition(copyId).id });
@@ -92,7 +93,7 @@ function project(state, viewerId) {
   return { version: state.version, gameType: state.gameType, ruleVersion: state.ruleVersion, contentVersion: state.contentVersion,
     matchId: state.matchId, revision: state.revision, status: state.status, result: clone(state.result),
     firstPlayerId: state.firstPlayerId, turnPlayerId: state.turnPlayerId, turnId: state.turnId, turnNumber: state.turnNumber,
-    round: state.round, stage: state.stage, actionLimit: state.actionLimit, actionsUsed: state.actionsUsed,
+    round: state.round, stage: state.stage, actionLimit: state.actionLimit, goodsPerType: goodsPerTypeOf(state), actionsUsed: state.actionsUsed,
     remainingActions: state.actionLimit - state.actionsUsed, drawStarted: state.drawStarted, bookLayers: state.bookLayers,
     closing: clone(state.closing), deckCount: state.deck.length,
     discard: state.discard.map((card, index) => publicCard(state, card, 'discard', index)), bankGoods: clone(state.bankGoods),

@@ -3,6 +3,7 @@
 import { createGame, applyGameAction, applyTimeout, gameProblem, currentDecision } from './rules.mjs';
 import { privateView } from './view.mjs';
 import { chooseHyakkiPracticeAction } from './practice-bot.mjs';
+import { DEFAULT_ACTION_LIMIT, DEFAULT_GOODS_PER_TYPE, validActionLimit, validGoodsPerType } from './model.mjs';
 
 export const PRACTICE_SELF = '00000000000000000000000000000001';
 export const PRACTICE_BOT = '00000000000000000000000000000002';
@@ -46,13 +47,13 @@ function randomStream(seed) {
     return state % limit;
   } };
 }
-function fresh({ actionLimit, seed, requestId }) {
-  if (!Number.isInteger(actionLimit) || actionLimit < 1 || actionLimit > 10) throw failure('PRACTICE_OPTIONS_INVALID', '每回合行动数需要在1至10之间。');
+function fresh({ actionLimit, goodsPerType, seed, requestId }) {
+  if (!validActionLimit(actionLimit) || !validGoodsPerType(goodsPerType)) throw failure('PRACTICE_OPTIONS_INVALID', '每回合行动数需要在1至10之间，每类货物需要在4至20之间。');
   const matchId = requestId(); if (!validId(matchId)) throw failure('PRACTICE_ID_INVALID', '练习编号无效。');
   const initial = seed ?? (globalThis.crypto.getRandomValues(new Uint32Array(1))[0] || 1);
   if (!validSeed(initial)) throw failure('PRACTICE_RANDOM_INVALID', '练习随机种子无效。');
   const random = randomStream(initial), firstPlayerId = random.randomInt(2) ? PRACTICE_BOT : PRACTICE_SELF;
-  const game = createGame([PRACTICE_SELF, PRACTICE_BOT], { matchId, now: 0, actionLimit, firstPlayerId, randomInt: random.randomInt });
+  const game = createGame([PRACTICE_SELF, PRACTICE_BOT], { matchId, now: 0, actionLimit, goodsPerType, firstPlayerId, randomInt: random.randomInt });
   return { version: 1, kind: 'hyakki-local-practice', matchId, logicalNow: 0, rngState: random.state, game };
 }
 const successful = result => {
@@ -76,7 +77,7 @@ function validFields(type, fields) {
 /** Per-operation Web Locks plus a saved-text comparison prevent two pages from
  * overwriting one another. Without locks, practice remains explicitly unsaved. */
 export async function createHyakkiPracticeSession({ storage, key = PRACTICE_STORAGE_KEY, withLock, seed,
-  actionLimit = 5, requestId = () => globalThis.crypto.randomUUID().replaceAll('-', ''),
+  actionLimit = DEFAULT_ACTION_LIMIT, goodsPerType = DEFAULT_GOODS_PER_TYPE, requestId = () => globalThis.crypto.randomUUID().replaceAll('-', ''),
   now = () => globalThis.performance?.now() ?? Date.now(), canRun = () => true,
   onChange = () => {}, setTimer = setTimeout, clearTimer = clearTimeout, botDelayMs = 700 } = {}) {
   if (typeof key !== 'string' || !key || key.length > 256 || !Number.isSafeInteger(botDelayMs) || botDelayMs < 1 || botDelayMs > 60000
@@ -196,7 +197,7 @@ export async function createHyakkiPracticeSession({ storage, key = PRACTICE_STOR
     if (raw !== null) {
       saved = decodeHyakkiPractice(raw);
       if (!saved) { requiresRestart = true; storageNote = '练习存档损坏或版本不受支持，原存档未改变。请重新开始练习。'; }
-    } else write(fresh({ actionLimit, seed, requestId }));
+    } else write(fresh({ actionLimit, goodsPerType, seed, requestId }));
     logicalNow = saved?.logicalNow ?? 0; planComputer();
   });
   async function action(type, fields = {}) {
@@ -216,10 +217,14 @@ export async function createHyakkiPracticeSession({ storage, key = PRACTICE_STOR
       return snapshot();
     });
   }
-  async function restart({ actionLimit: limit = 5 } = {}) {
+  async function restart(options = {}) {
+    if (!plain(options) || Object.keys(options).some(key => !['actionLimit', 'goodsPerType'].includes(key))) {
+      throw failure('PRACTICE_OPTIONS_INVALID', '本机练习配置无效。');
+    }
+    const { actionLimit: limit = DEFAULT_ACTION_LIMIT, goodsPerType: stock = DEFAULT_GOODS_PER_TYPE } = options;
     return operation(() => {
       verifyUnchanged(); if (conflict) throw failure('PRACTICE_CONFLICT', storageNote);
-      const candidate = fresh({ actionLimit: limit, seed, requestId }); write(candidate);
+      const candidate = fresh({ actionLimit: limit, goodsPerType: stock, seed, requestId }); write(candidate);
       logicalNow = 0; requiresRestart = false; epoch++; anchor = now(); planComputer();
       storageNote = storageAvailable ? saveNote : '本局仍可练习，但无法保存进度。'; return snapshot();
     });

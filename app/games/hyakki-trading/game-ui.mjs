@@ -115,7 +115,9 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
   }
   function render(){
     const game=room.game,self=room.players.find(player=>player.id===room.selfId),isPlayer=room.selfRole==='player',host=room.hostId===room.selfId;
-    $('yg-room-code').textContent=practice?'本机练习 · 电脑只看自己的手牌':`房间 ${room.roomCode} · ${room.spectators?.length??0}位观众`;
+    $('yg-room-code').textContent=practice?'本机练习 · 电脑只看自己的手牌':room.phase==='waiting'
+      ? `房间 ${room.roomCode} · 每回合${room.hyakkiConfig.actionLimit}步 · 每类${room.hyakkiConfig.goodsPerType??6}件`
+      : `房间 ${room.roomCode} · ${room.spectators?.length??0}位观众`;
     $('yg-title').textContent=room.phase==='waiting'?'两个人坐好，就开张。':room.phase==='paused'?'夜市暂停 · 当前步骤保留':room.phase==='aborted'?'本局已取消':room.phase==='finished'?`${game?.result.winnerIds.map(name).join('、')??'赢家'}获胜`:
       game?.pending?`${mine()?'轮到你决定':name(game.pending.actorId)+'正在选择'}`:game?.turnPlayerId===room.selfId?'轮到你经营':name(game?.turnPlayerId)+'正在经营';
     root.querySelector('.yg-track').hidden=['waiting','finished','aborted'].includes(room.phase);
@@ -128,7 +130,7 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
       else {if(isPlayer)controls+=button('ready',self.ready?'取消准备':'准备好了',{ready:!self.ready},!available());
         if(host)controls+=button('start','开始游戏',{},!available()||room.players.length!==2||!room.players.every(player=>player.ready));
         controls+=button('set-role',isPlayer?'改为观战':'加入对局',{role:isPlayer?'spectator':'player'},!available()||(isPlayer?host:room.players.length>=2))+button('invite','复制邀请');
-        if(host)controls+=`<label class="hy-config">每回合行动<select id="hy-action-limit" ${available()?'':'disabled'}>${Array.from({length:10},(_,i)=>`<option value="${i+1}" ${room.hyakkiConfig.actionLimit===i+1?'selected':''}>${i+1}步</option>`).join('')}</select></label>`;
+        if(host)controls+=`<label class="hy-config">每回合行动<select id="hy-action-limit" ${available()?'':'disabled'}>${Array.from({length:10},(_,i)=>`<option value="${i+1}" ${room.hyakkiConfig.actionLimit===i+1?'selected':''}>${i+1}步</option>`).join('')}</select></label><label class="hy-config">每类公共货物<select id="hy-goods-limit" ${available()?'':'disabled'}>${Array.from({length:17},(_,i)=>`<option value="${i+4}" ${(room.hyakkiConfig.goodsPerType??6)===i+4?'selected':''}>${i+4}件</option>`).join('')}</select></label>`;
       }
     }else if(['finished','aborted'].includes(room.phase)){
       note=game?.result?.aborted?'没有赢家，本局财富不计入账号。':`最终银两：${game?.players.map(player=>`${name(player.id)} ${player.silver}两`).join(' · ')}。本局财富不计入账号。`;
@@ -185,7 +187,7 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
   async function invite(){if(!room||practice)return;const url=new URL(window.location.href);url.pathname=url.pathname.replace(/[^/]*$/u,'');url.search='?room='+room.roomCode;url.hash='';try{await window.navigator.clipboard.writeText(url.href);feedback('邀请已复制。');}catch{inspect('房间邀请',`<p>房间 ${esc(room.roomCode)}</p><input value="${esc(url.href)}" readonly aria-label="房间邀请链接">`);}}
   function leaveDialog(next='lobby'){destination=next;closeDialogs();$('yg-leave').querySelector('.dialog-heading h2').textContent=practice?'返回大厅？':room?.selfRole==='player'&&['playing','paused'].includes(room.phase)?'认输并离开？':'退出房间？';
     $('hy-leave-note').textContent=practice?'保留本机练习进度，下次继续。':room?.selfRole==='player'&&['playing','paused'].includes(room.phase)?'这会结束本局，由对方获胜。只想暂时离开请用“返回大厅，保留席位”。':'退出后释放自己的席位或观战位置。';$('yg-leave').showModal();}
-  function openPracticeRestart(){inspect('开始新的练习',`<p>重新开始会覆盖这台设备当前的练习；正式房间不受影响。</p><label>每回合行动<select id="hy-practice-limit">${Array.from({length:10},(_,i)=>`<option value="${i+1}" ${i===4?'selected':''}>${i+1}步</option>`).join('')}</select></label><div class="yg-dialog-actions">${button('practice-confirm','开始新练习')}</div>`);}
+  function openPracticeRestart(){inspect('开始新的练习',`<p>重新开始会覆盖这台设备当前的练习；正式房间不受影响。</p><label>每回合行动<select id="hy-practice-limit">${Array.from({length:10},(_,i)=>`<option value="${i+1}" ${i===4?'selected':''}>${i+1}步</option>`).join('')}</select></label><label>每类公共货物<select id="hy-practice-goods">${Array.from({length:17},(_,i)=>`<option value="${i+4}" ${i===4?'selected':''}>${i+4}件</option>`).join('')}</select></label><div class="yg-dialog-actions">${button('practice-confirm','开始新练习')}</div>`);}
   // Keep the common audio/theme/dialog owners. Remove only preview-specific menus.
   root.querySelector('.yg-brand span').textContent=practice?'本机练习 · 电脑对手':'棋牌室 · 双人夜市';
   root.querySelector('#yg-options .game-settings-body section:first-child').hidden=true;
@@ -209,7 +211,7 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
     if(type==='practice-restart')return openPracticeRestart();
     if(type==='practice-confirm'||type==='practice-reload'||type==='practice-hint'){
       const callback=type==='practice-confirm'?practiceActions.onRestart:type==='practice-reload'?practiceActions.onReload:practiceActions.onHint;
-      const stamp=generation;Promise.resolve().then(()=>callback?.(type==='practice-confirm'?{actionLimit:Number($('hy-practice-limit').value)}:undefined)).then(()=>{if(stamp===generation&&!destroyed&&type!=='practice-hint')closeDialogs();}).catch(error=>{if(stamp===generation&&!destroyed)feedback(error.message);});return;
+      const stamp=generation;Promise.resolve().then(()=>callback?.(type==='practice-confirm'?{actionLimit:Number($('hy-practice-limit').value),goodsPerType:Number($('hy-practice-goods').value)}:undefined)).then(()=>{if(stamp===generation&&!destroyed&&type!=='practice-hint')closeDialogs();}).catch(error=>{if(stamp===generation&&!destroyed)feedback(error.message);});return;
     }
     if(type==='members'){return inspect('成员与公开商铺',`<div class="hy-member-list">${(room?.game?.players??room?.players??[]).map(player=>`<article><h3>${esc(name(player.id))}${player.id===room.hostId?' · 房主':''}</h3><p>${player.silver??20}两 · 手牌${player.handCount??0}张</p>${player.goods?`<p>${GOODS.map(good=>`${good.name} ${player.goods[good.id]}`).join(' · ')}</p>`:''}${player.tools?cardList(player.tools):''}</article>`).join('')}</div><p>观众：${esc(room?.spectators?.map(player=>player.name).join('、')||'暂无')}</p>`);}
     if(type==='host')return inspect('房主管理',room.hostId===room.selfId?`<label>将房主交给<select id="hy-host-target">${room.players.filter(player=>player.id!==room.selfId).map(player=>`<option value="${esc(player.id)}">${esc(player.name)}</option>`).join('')}</select></label>${button('host-transfer','确认转交')}`:button('transferHost','接任房主',{playerId:room.selfId}));
@@ -237,7 +239,7 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
   });
   const removeSubmit=listen('submit',event=>{if(!['hy-choice-form','hy-bid-form'].includes(event.target.id))return;event.preventDefault();event.stopImmediatePropagation();if(!mine()||!available())return;try{if(event.target.id==='hy-choice-form'){choiceDraft=readChoice();dispatch('choose-effect',{selection:buildChoiceSelection(room.game.pending,choiceDraft)});}else{const amount=Number(event.target.elements.amount.value),bid=room.game.pending.decision.options.find(option=>option.type==='bid');if(!Number.isSafeInteger(amount)||!bid||amount<bid.minimum||amount>bid.maximum)throw new RangeError('请输入报价范围内的整数。');choiceDraft={amount};dispatch('bid',{amount});}}catch(error){feedback(error.message);}});
   const removeInput=listen('input',event=>{if(event.target.closest('#hy-choice-form'))choiceDraft=readChoice();if(event.target.closest('#hy-bid-form'))choiceDraft={amount:Number(event.target.value)};});
-  const removeChange=listen('change',event=>{if(event.target.id==='hy-action-limit')dispatch('configure',{hyakkiConfig:{actionLimit:Number(event.target.value)}});});
+  const removeChange=listen('change',event=>{if(['hy-action-limit','hy-goods-limit'].includes(event.target.id))dispatch('configure',{hyakkiConfig:{actionLimit:Number($('hy-action-limit').value),goodsPerType:Number($('hy-goods-limit').value)}});});
   const clock=window.setInterval(updateClock,500);
   return {applyView,conceal,feedback,leaveFailure,audio:base.audio,settings:base.settings,openPracticeRestart,
     configurePractice(callbacks){practiceActions={...callbacks};},destroy(){if(destroyed)return;destroyed=true;generation++;room=null;detail=null;choiceDraft=null;history=null;removeClick();removeSubmit();removeInput();removeChange();window.clearInterval(clock);base.destroy();}};

@@ -13,8 +13,13 @@ import { readSettings } from '../server/config.mjs';
 import { createRuntime } from '../server/runtime.mjs';
 import { backupStore, verifyBackup, restoreStore } from '../server/backup.mjs';
 
-function registry(open) {
-  return createGameRegistry([...defaultGameRegistry.knownTypes().filter(type => type !== 'hyakki-trading').map(type => defaultGameRegistry.gameAdapter(type)), createHyakkiAdapter()],
+function registry(open, legacy = false) {
+  const actual = createHyakkiAdapter();
+  // Historical writer fixture emits exactly schema12's missing-field shape.
+  // It still reaches pending states through real rules and durable commits.
+  const adapter = legacy ? { ...actual, roomDefaults: () => ({ turnClock: null, hyakkiConfig: { actionLimit: 5 } }),
+    snapshotSchema: () => 12, createGame(players, options) { const game = actual.createGame(players, options); delete game.goodsPerType; return game; } } : actual;
+  return createGameRegistry([...defaultGameRegistry.knownTypes().filter(type => type !== 'hyakki-trading').map(type => defaultGameRegistry.gameAdapter(type)), adapter],
     { creationTypes: [...defaultGameRegistry.creationTypes(), ...(open ? ['hyakki-trading'] : [])] });
 }
 // The fixture selects an explicit shuffle through the same bounded random seam;
@@ -34,13 +39,14 @@ const scenarios = [
   ['C02', 'C02'], ['C10', 'C10'], ['peek', 'C01'], ['counter', 'M02'], ['public-draft', 'M02'],
   ['auction-bid', 'C12'], ['tool-private-pool', 'T04'], ['tool-payment', 'T08'],
   ['manual-auction', 'C12'], ['absence-peek', 'C01'], ['final-round', 'T08'],
+  ['legacy-six', 'C02'], ['configured-four', 'C02', 4], ['configured-twenty', 'C10', 20],
 ];
-for (const [scenario, code] of scenarios) test(`real SQLite ${scenario} restores in a new process with receipts and event material intact`, async t => {
+for (const [scenario, code, goodsPerType] of scenarios) test(`real SQLite ${scenario} restores in a new process with receipts and event material intact`, async t => {
   const directory = mkdtempSync(join(tmpdir(), 'hyakki-real-recovery-')), sourcePath = join(directory, 'source.sqlite');
   let at = 10000;
   const key = randomBytes(32), now = () => at, users = ['1'.repeat(64), '2'.repeat(64)];
   const storage = new EncryptedStore(new SQLiteAdapter(sourcePath, { now }), key, now);
-  const gameRegistry = registry(true), runtime = createRuntime(readSettings({ GAME_ROOM_AUTH_MODE: 'mock' }), {
+  const gameRegistry = registry(true, scenario === 'legacy-six'), runtime = createRuntime(readSettings({ GAME_ROOM_AUTH_MODE: 'mock' }), {
     storage, sessions: {}, now, gameRegistry, chatOptions: { pollIntervalMs: 0 },
     roomOptions: { pollIntervalMs: 0, serverRandomInt: shuffleFor(code), transitionPreparers: createHyakkiTransitionPreparers(storage, { now }) },
   });
@@ -58,6 +64,7 @@ for (const [scenario, code] of scenarios) test(`real SQLite ${scenario} restores
     lastActor = user; lastResult = await runtime.rooms.action(host.roomCode, user, lastAction);
     assert.equal(lastResult.error, undefined); return lastResult;
   }
+  if (goodsPerType !== undefined) await action(users[0], 'configure', { hyakkiConfig: { actionLimit: 7, goodsPerType } });
   for (const user of users) await action(user, 'ready', { ready: true });
   await action(users[0], 'start'); at += 500;
   const view = await runtime.rooms.getView(host.roomCode, users[0]);
@@ -92,6 +99,9 @@ for (const [scenario, code] of scenarios) test(`real SQLite ${scenario} restores
   if (scenario === 'manual-auction') for (const user of users) await action(user, 'pause');
   if (scenario === 'absence-peek') { await streams.pop()(); await runtime.rooms.sweep(); }
   const snapshot = (await storage.read('rooms', host.view.roomId)).value.snapshot;
+  assert.equal(snapshot.schemaVersion, scenario === 'legacy-six' ? 12 : 13);
+  assert.equal(snapshot.game.goodsPerType, scenario === 'legacy-six' ? undefined : goodsPerType ?? 8);
+  assert.equal(snapshot.hyakkiConfig.goodsPerType, snapshot.game.goodsPerType);
   if (!['peek', 'absence-peek', 'final-round'].includes(scenario)) assert.equal(snapshot.game.pending.code, code);
   if (code === 'C10') assert.equal(snapshot.game.players[0].silver, 18);
   if (code === 'C02') assert.equal(snapshot.game.pending.poolCards.length, 6);
@@ -131,7 +141,10 @@ for (const [scenario, code] of scenarios) test(`real SQLite ${scenario} restores
       const view = await runtime.rooms.getView(before.code, fixture.users[0]), after = (await storage.read('rooms', before.roomId)).value.snapshot;
       assert.equal(runtime.poker414Enabled, true); assert.equal(runtime.gameRegistry.creationTypes().includes('hyakki-trading'), false);
       assert.equal(gameProblem(after.game), null); assert.deepEqual(after.matchParticipants, before.matchParticipants); assert.equal(after.matchId, before.matchId);
-      for (const field of ['pending', 'players', 'deck', 'discard', 'bankGoods', 'actionLimit', 'actionsUsed', 'closing', 'bookLayers',
+      assert.equal(after.schemaVersion, 13); assert.deepEqual(after.hyakkiConfig, before.hyakkiConfig);
+      assert.equal(view.game.goodsPerType, before.game.goodsPerType ?? 6);
+      assert.equal(Object.hasOwn(after.game, 'goodsPerType'), Object.hasOwn(before.game, 'goodsPerType'));
+      for (const field of ['pending', 'players', 'deck', 'discard', 'bankGoods', 'goodsPerType', 'actionLimit', 'actionsUsed', 'closing', 'bookLayers',
         'availableStalls', 'purchasedStalls', 'turnId', 'turnNumber', 'firstPlayerId']) assert.deepEqual(after.game[field], before.game[field], field);
       assert.deepEqual(after.players.map(player => player.requests), before.players.map(player => player.requests));
       for (const kind of ['active', 'decision']) {

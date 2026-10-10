@@ -39,14 +39,14 @@ test('registry retains independently enumerable known games when creation is dis
   assert.throws(() => createGameRegistry([], { creationTypes: ['unknown'] }), /未知游戏/);
 });
 
-test('schema12 reserves the hyakki envelope and requires roles, turn clock and stable authority binding', () => {
+for (const schemaVersion of [12, 13]) test(`schema${schemaVersion} reserves the hyakki envelope and requires roles, turn clock and stable authority binding`, () => {
   const adapter = { gameType: 'hyakki-trading', snapshotProblem: () => false };
-  const snapshot = { schemaVersion: 12, gameType: 'hyakki-trading', roomId: id(1), code: '234567', spectators: [], turnClock: null, game: null };
+  const snapshot = { schemaVersion, gameType: 'hyakki-trading', roomId: id(1), code: '234567', spectators: [], turnClock: null, game: null };
   assert.equal(snapshotHasRoles(snapshot), true);
   assert.equal(snapshotGameType(snapshot), 'hyakki-trading');
   assert.equal(snapshotFormatProblem(snapshot, adapter), false);
   assert.equal(snapshotAuthorityBindingProblem(snapshot, { roomId: id(1), code: '234567' }), false);
-  for (const version of [1, 8, 9, 10, 11, 13]) assert.equal(snapshotFormatProblem({ ...snapshot, schemaVersion: version }, adapter), true);
+  for (const version of [1, 8, 9, 10, 11, 14]) assert.equal(snapshotFormatProblem({ ...snapshot, schemaVersion: version }, adapter), true);
   for (const type of defaultGameRegistry.knownTypes().filter(type => type !== 'hyakki-trading')) {
     assert.equal(snapshotFormatProblem({ ...snapshot, gameType: type }, adapter), true);
     assert.equal(snapshotFormatProblem(snapshot, defaultGameRegistry.gameAdapter(type)), true);

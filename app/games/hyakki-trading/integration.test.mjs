@@ -7,7 +7,7 @@ import { GOODS } from './content/definitions.mjs';
 
 const ids = ['a'.repeat(32), 'b'.repeat(32)], ctx = { now: 1000, randomInt: bound => bound - 1 };
 function fixture() {
-  const state = createGame(ids, { ...ctx, matchId: 'd'.repeat(32), actionLimit: 10, firstPlayerId: ids[0] });
+  const state = createGame(ids, { ...ctx, matchId: 'd'.repeat(32), actionLimit: 10, goodsPerType: 6, firstPlayerId: ids[0] });
   state.deck.push(...state.players.flatMap(owner => owner.hand)); state.deck.sort();
   state.players.forEach(owner => { owner.hand = []; }); state.stage = 'use'; state.drawStarted = true;
   const f = { state, owner: state.players[0], peer: state.players[1] };

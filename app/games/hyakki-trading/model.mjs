@@ -1,6 +1,15 @@
 /** Game-specific material operations. Call only on a candidate clone. */
 import { createDeck, getCard, GOODS } from './content/definitions.mjs';
 const copies = new Map(createDeck().map(card => [card.id, card.definitionId]));
+export const DEFAULT_ACTION_LIMIT = 5;
+export const DEFAULT_GOODS_PER_TYPE = 8;
+export const LEGACY_GOODS_PER_TYPE = 6;
+export const MIN_GOODS_PER_TYPE = 4;
+export const MAX_GOODS_PER_TYPE = 20;
+export const validActionLimit = value => Number.isSafeInteger(value) && value >= 1 && value <= 10;
+export const validGoodsPerType = value => Number.isSafeInteger(value) && value >= MIN_GOODS_PER_TYPE && value <= MAX_GOODS_PER_TYPE;
+// Absence identifies an old frozen configuration, never a request to refill it.
+export const goodsPerTypeOf = value => Object.hasOwn(value, 'goodsPerType') ? value.goodsPerType : LEGACY_GOODS_PER_TYPE;
 export class RuleError extends Error {
   constructor(message, code = 'ILLEGAL_ACTION') { super(message); this.name = 'RuleError'; this.code = code; }
 }
@@ -13,7 +22,7 @@ export const goodsCount = vector => Object.values(vector).reduce((sum, count) =>
 export const goodsEntries = vector => GOODS.map(good => [good.id, vector[good.id]]).filter(([, count]) => count > 0);
 export function validGoods(vector) {
   return vector && typeof vector === 'object' && !Array.isArray(vector) && Object.keys(vector).length === GOODS.length
-    && GOODS.every(good => Number.isSafeInteger(vector[good.id]) && vector[good.id] >= 0 && vector[good.id] <= 6);
+    && GOODS.every(good => Number.isSafeInteger(vector[good.id]) && vector[good.id] >= 0 && vector[good.id] <= MAX_GOODS_PER_TYPE);
 }
 export function player(state, id) {
   const value = state.players.find(entry => entry.id === id);
@@ -25,7 +34,7 @@ export function addSilver(owner, delta) {
   owner.silver += delta;
 }
 export function moveGoods(from, to, vector) {
-  requireRule(validGoods(vector) && GOODS.every(good => from[good.id] >= vector[good.id] && to[good.id] + vector[good.id] <= 6), '货物不足或数量无效。');
+  requireRule(validGoods(vector) && GOODS.every(good => from[good.id] >= vector[good.id] && to[good.id] + vector[good.id] <= MAX_GOODS_PER_TYPE), '货物不足或数量无效。');
   for (const good of GOODS) { from[good.id] -= vector[good.id]; to[good.id] += vector[good.id]; }
 }
 export function removeCard(array, id) {

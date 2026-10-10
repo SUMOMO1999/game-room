@@ -18,12 +18,6 @@ const isOwnDecision = view => view?.selfRole === 'player' && view.decision?.acto
 const canOperate = view => view?.phase === 'playing' && view.selfRole === 'player'
   && view.currentPlayerId === view.selfId && !view.decision;
 
-// Fit actual card boxes into the content width, excluding the hand's padding.
-// Keeping this calculation outside the DOM makes fractional-width boundaries testable.
-export function handPageSize({ width, cardWidth, gap = 0, padding = 0 }) {
-  return Math.max(1, Math.floor((Math.max(0, width - padding) + gap) / (cardWidth + gap)));
-}
-
 /** A read-only ruler: its number of intervals follows the room's action limit. */
 export function renderActionTrack(used, limit) {
   if (!Number.isInteger(limit) || limit < 1 || limit > 10 || !Number.isInteger(used) || used < 0 || used > limit) {
@@ -34,14 +28,6 @@ export function renderActionTrack(used, limit) {
     <span class="yg-action-line"></span><span class="yg-action-fill"></span>
     ${Array.from({ length: limit + 1 }, (_, index) => `<span class="yg-action-tick${index <= used ? ' is-used' : ''}" style="--yg-tick-position:${index / limit * 100}%"><i></i><small>${index}</small></span>`).join('')}
     <span class="yg-action-cursor"><i></i><b>${used}</b></span></div>`;
-}
-
-export function renderHandSummary(card, selected = false) {
-  const face = definition(card), category = CATEGORIES.find(item => item.id === face.category).name;
-  const recipe = face.category === 'goods' ? Object.keys(face.goods).length === 6 ? '六类货物各1件'
-    : Object.entries(face.goods).map(([id, count]) => `${goodName(id)}×${count}`).join('＋') : face.compactText;
-  return `<button type="button" class="yg-hand-summary${selected ? ' is-selected' : ''}" data-card-id="${face.id}" aria-pressed="${selected}" aria-label="${escape(face.name)}，${escape(face.summary)}，查看完整牌文">
-    <small>${escape(category)}</small><strong>${escape(face.category === 'goods' ? recipe : face.name)}</strong><span>${escape(face.category === 'goods' ? `买${face.buySilver} · 卖${face.sellSilver}两` : face.costText)}</span><em>摘要 · 点开详情</em></button>`;
 }
 
 export function renderDecisionCandidates(decision, selected = []) {
@@ -64,7 +50,7 @@ export function renderPersonalSlots(player) {
 }
 
 const RULES = [
-  '双人。每人20两、5张手牌、5个普通格＋1个收费临时格。六类货物各6件，共36件；这属于数字版设定。',
+  '双人。每人20两、5张手牌、5个普通格＋1个收费临时格。六类货物默认各8件，开局前可设各4～20件；旧局保留原数量。',
   '每回合默认5行动，开局前可设1～10。取牌与用牌共用额度：看一张即用1行动，弃掉才可继续，留下立刻进入用牌。',
   '按货物牌的固定配方整组买入或卖出，使用后弃牌；临时格从空变为占用时另付2两。',
   '许可购买一块3格扩摊板。全局第一次6两，此后3两，公共区总共5块。',
@@ -91,20 +77,21 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
       <main class="yg-centre"><div class="yg-stage"><div><h1 id="yg-title">轮到你经营</h1><span id="yg-room-code">示例房号610036</span></div><div class="yg-time"><strong id="yg-clock">24:12</strong><small id="yg-clock-label">定格时钟示例</small></div></div>
         <div id="yg-track" class="yg-track" aria-label="共享行动条"><span id="yg-track-label"></span><div id="yg-track-steps" role="meter" aria-labelledby="yg-track-label" aria-valuemin="0"></div></div><div id="yg-readiness" class="yg-readiness" hidden></div>
         <div id="yg-scene-content" class="yg-scene-content"></div>
+        <div id="yg-peer" class="yg-peer"></div>
       </main>
-      <aside class="yg-public"><div class="yg-public-heading"><strong>公共货摊</strong><span>开局各6件</span></div><button type="button" id="yg-market" class="yg-market" aria-label="查看六类公共货物和库存详情"></button><div id="yg-peer" class="yg-peer"></div></aside>
+      <aside class="yg-storage"><section id="yg-public-stock" class="yg-public"><div class="yg-public-heading"><strong>公共货摊</strong><span id="yg-stock-limit"></span></div><button type="button" id="yg-market" class="yg-market" aria-label="查看六类公共货物和库存详情"></button></section>
+        <section id="yg-personal" class="yg-personal" aria-label="我的货物"><button type="button" id="yg-shop-detail"><span class="yg-personal-heading"><strong>我的货物</strong><span id="yg-silver"></span></span><span id="yg-stock-slots" class="yg-stock-slots"></span><span class="yg-shop-note" id="yg-shop-note"></span></button>${button('yg-expand', '扩摊', 'aria-label="查看扩摊费用"')}</section>
+      </aside>
     </section>
-    <div class="yg-lower" data-chat-dismiss-notices><section id="yg-personal" class="yg-personal" aria-label="我的商铺与道具"><div class="yg-personal-heading"><button type="button" id="yg-shop-detail"><strong>我的商铺</strong><span id="yg-silver"></span></button>${button('yg-expand', '扩摊', 'aria-label="查看扩摊费用"')}</div>
-      <div id="yg-stock-slots" class="yg-stock-slots"></div><div class="yg-shop-note"><span id="yg-shop-note"></span></div><div id="yg-tools" class="yg-tools" aria-label="我的已安装道具"></div></section>
-      <section id="yg-hand-section" class="yg-hand-section" aria-label="我的手牌"><div class="yg-hand-heading"><strong id="yg-hand-title">我的手牌</strong><div class="yg-hand-controls"><select id="yg-hand-filter" aria-label="手牌分类"><option value="all">全部</option>${CATEGORIES.map(category => `<option value="${category.id}">${escape(category.name)}</option>`).join('')}</select>
-        ${button('yg-hand-prev', '‹', 'aria-label="上一页手牌"')}<span id="yg-hand-page"></span>${button('yg-hand-next', '›', 'aria-label="下一页手牌"')}</div></div><div id="yg-hand" class="yg-hand"></div></section>
+    <div class="yg-lower" data-chat-dismiss-notices><section id="yg-tool-zone" class="yg-tool-zone" aria-label="已装备道具"><div class="yg-tool-heading"><strong>已装备</strong><span id="yg-tool-count"></span></div><div id="yg-tools" class="yg-tools"></div></section>
+      <section id="yg-hand-section" class="yg-hand-section" aria-label="我的手牌"><div class="yg-hand-heading"><strong id="yg-hand-title">我的手牌</strong><span class="yg-hand-guide">横滑看牌 · 点开使用</span></div><div id="yg-hand" class="yg-hand" tabindex="0" aria-label="全部手牌，左右滑动或方向键浏览"></div></section>
       <section id="yg-observer-note" class="yg-observer-note" hidden><h2>观战只看公开信息</h2><p>这里不会显示任何人的手牌、私看候选或未公开的牌序。</p></section>
     </div><p id="yg-feedback" class="yg-feedback" role="status" aria-live="polite">合成局面只用于检查页面和选择流程；主题、音量偏好沿用本机设置。</p>
     <section id="yg-rotation" class="yg-rotation" hidden><div aria-hidden="true" class="yg-rotate-icon">↻</div><h2>横过来，展开整张夜市。</h2><p>聊天、设置和退出仍在上方。横竖切换保留当前选择与聊天草稿。</p><div id="yg-portrait-decision"></div><small>本地合成样板 · 不保存牌局</small></section>
     </div>
     <dialog id="yg-options" class="yg-dialog"><div class="dialog-heading"><h2>设置</h2>${button('yg-options-close', '×', 'class="close-button" aria-label="关闭设置"')}</div><div class="game-settings-body">
       <section><h3>页面检查</h3><p>房号、双方、库存及聊天都是当前标签页内的合成示例。这里没有创建正式牌局，也不是完整练习。</p><label for="yg-scene">检查局面</label><select id="yg-scene">${scenes.map(([id, label]) => `<option value="${id}">${escape(label)}</option>`).join('')}</select><div class="game-settings-controls">${button('yg-peer-message', '模拟伙伴发言')}${button('yg-catalog', '查看51种卡牌')}</div></section>
-      <section><h3>声音与玩法</h3><div class="game-settings-controls">${button('sound-toggle', '点按启声')}${button('yg-rules', '玩法说明')}</div><div class="sound-settings"><label for="sound-volume">音效音量</label><input id="sound-volume" type="range" min="0" max="100" step="5" value="45"><select id="sound-preview-kind" aria-label="试听声音"><option value="select">选牌</option><option value="draw">看牌</option><option value="placement">公共出牌</option><option value="turn">轮到自己／回应</option><option value="chat">伙伴发言</option><option value="win">收市结束</option></select>${button('sound-preview', '试听')}<span id="sound-preview-status" role="status"></span></div></section>
+      <section><h3>手牌分类</h3><select id="yg-hand-filter" aria-label="手牌分类"><option value="all">全部</option>${CATEGORIES.map(category => `<option value="${category.id}">${escape(category.name)}</option>`).join('')}</select></section><section><h3>声音与玩法</h3><div class="game-settings-controls">${button('sound-toggle', '点按启声')}${button('yg-rules', '玩法说明')}</div><div class="sound-settings"><label for="sound-volume">音效音量</label><input id="sound-volume" type="range" min="0" max="100" step="5" value="45"><select id="sound-preview-kind" aria-label="试听声音"><option value="select">选牌</option><option value="draw">看牌</option><option value="placement">公共出牌</option><option value="turn">轮到自己／回应</option><option value="chat">伙伴发言</option><option value="win">收市结束</option></select>${button('sound-preview', '试听')}<span id="sound-preview-status" role="status"></span></div></section>
       <section><h3>样板出口</h3><div class="game-settings-controls">${button('yg-copy-invite', '复制样板邀请')}${button('yg-settings-exit', '退出本地样板')}</div><p id="chat-legacy-note" hidden></p></section></div></dialog>
     <dialog id="yg-decision" class="yg-dialog yg-decision-dialog" aria-labelledby="yg-decision-title"><div class="dialog-heading"><h2 id="yg-decision-title"></h2>${button('yg-decision-close', '×', 'class="close-button" aria-label="收起待决选择，保留当前步骤"')}</div><div id="yg-decision-body"></div></dialog>
     <dialog id="yg-inspector" class="yg-dialog" aria-labelledby="yg-inspector-title"><div class="dialog-heading"><h2 id="yg-inspector-title">卡牌详情</h2>${button('yg-inspector-close', '×', 'class="close-button" aria-label="关闭详情"')}</div><div id="yg-inspector-body"></div></dialog>
@@ -112,9 +99,9 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
     ${roomChatMarkup()}
     <div id="yg-chat-decision" class="yg-chat-decision" hidden><strong id="yg-chat-decision-label"></strong>${button('yg-chat-decision-open', '查看当前选择')}</div>`;
   const $ = id => document.getElementById(id), removers = [];
-  let view = null, page = 0, pageSize = 4, selectedHand = null, selectedChoices = [], destroyed = false;
+  let view = null, selectedHand = null, selectedChoices = [], destroyed = false;
   let returnToDecision = false, pendingDraft = null, appliedScope = null, appliedDecisionId = null, bidDraft = null, feedbackTimer;
-  let compactHand = false;
+  let renderedHand = null;
   const audio = createGameAudio({ document, window });
   const audioControls = mountRoomAudioControls({ audio, document });
   const unmountArt = mountArtFallback(root);
@@ -148,11 +135,11 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
   const filteredHand = () => (view?.selfRole === 'player' ? view.hand : []).filter(card =>
     $('yg-hand-filter').value === 'all' || definition(card).category === $('yg-hand-filter').value);
   function renderHand() {
-    const cards = filteredHand(), pages = Math.max(1, Math.ceil(cards.length / pageSize)); page = Math.min(page, pages - 1);
+    const cards = filteredHand(), hand = $('yg-hand'), scroll = hand.scrollLeft;
     $('yg-hand-title').textContent = `我的手牌 ${view?.hand.length ?? 0}`;
-    $('yg-hand-page').textContent = `${page + 1}/${pages}`; $('yg-hand-prev').disabled = page === 0; $('yg-hand-next').disabled = page === pages - 1;
-    $('yg-hand').innerHTML = cards.length ? cards.slice(page * pageSize, (page + 1) * pageSize).map(card =>
-      `<div class="yg-hand-card" data-entity-id="${card.id}">${compactHand ? renderHandSummary(card, card.id === selectedHand) : renderCard(card, { interactive: true, selected: card.id === selectedHand })}</div>`).join('') : '<p class="yg-empty">这个分类没有手牌。</p>';
+    const markup = cards.length ? cards.map(card => `<div class="yg-hand-card" data-entity-id="${escape(card.id)}">${renderCard(card, { interactive: true, selected: card.id === selectedHand })}</div>`).join('') : '<p class="yg-empty">这个分类没有手牌。</p>';
+    // Presence/clock updates must not interrupt a swipe or discard keyboard focus.
+    if (renderedHand !== markup) { hand.innerHTML = markup; renderedHand = markup; hand.scrollLeft = scroll; }
   }
   function actions() {
     if (view.phase === 'waiting') return (view.selfRole === 'player' ? action('ready', view.players[0].ready ? '取消准备' : '准备好了', 'class="yg-primary"') : '<strong>你正在观战</strong>')
@@ -189,22 +176,24 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
     else if (view.phase === 'finished') note = `${view.resultReason} 伙伴64两；本局财富不累计到账号。`;
     else if (view.scene === 'paused') note = '双方已同意暂停，原选择和余时保留。7天截止不因自然离线而改成30分钟。';
     else if (view.scene === 'suspended') note = '意外断线保席30分钟；两人都离线不会自动交易或攒钱。恢复后继续原步骤。';
-    else if (view.scene === 'dense') note = '110张手牌分页阅读，不把牌缩成小点；分类与横竖切换不改牌序。';
+    else if (view.scene === 'dense') note = '手牌连续横滑浏览；分类与横竖切换不改牌序。';
     else if (view.scene === 'full') note = '五个普通格已满，临时格占用且已付2两；腾空不退款，再占用才收费。';
     else if (view.selfRole === 'spectator') note = '双方私牌、私看候选和未来牌序都不显示。';
     $('yg-scene-content').innerHTML = `<p class="yg-scene-note">${escape(note)}</p><div class="yg-table-actions">${actions()}${view.phase === 'waiting' ? button('yg-waiting-invite', '复制样板邀请') : ''}</div>`;
     $('yg-deck-count').textContent = `${view.deckCount}张`; $('yg-discard-count').textContent = `${view.discardCount}张`;
     $('yg-discard-pile').disabled = !view.discard;
     $('yg-market').innerHTML = view.market.map(good => `<span class="yg-market-good" aria-label="公共${escape(good.name)}${good.count}件">${renderGoodsIcon(good.id)}<span>${escape(good.name)}</span><strong>${good.count}</strong></span>`).join('');
+    $('yg-stock-limit').textContent = `每类${view.goodsPerType ?? 6}件`;
     const peer = view.players.find(entry => entry.id !== view.selfId) ?? view.players[1];
     $('yg-peer').innerHTML = `<button type="button" data-player="${peer.id}"><strong>${escape(peer.name)}</strong><span>${peer.silver}两 · 手牌${peer.handCount}张 · 库存${totalGoods(peer)}件</span></button>`;
     const self = view.selfRole === 'player' ? view.players.find(entry => entry.id === view.selfId) : null;
-    $('yg-personal').hidden = !self; $('yg-hand-section').hidden = !self; $('yg-observer-note').hidden = !!self;
+    $('yg-personal').hidden = !self; $('yg-hand-section').hidden = !self; $('yg-tool-zone').hidden = !self; $('yg-observer-note').hidden = !!self;
     if (self) {
       $('yg-silver').textContent = `${self.silver}两`;
-      $('yg-stock-slots').innerHTML = renderPersonalSlots(self);
-      $('yg-shop-note').textContent = `${totalGoods(self)}/${self.ordinaryCapacity}+1格 · 临时${view.temporaryPaid ? '已付2两' : '首次占用付2两'}`;
-      $('yg-tools').innerHTML = self.tools.map(tool => `<button type="button" data-tool-id="${tool.id}" class="${tool.tapped ? 'is-tapped' : ''}"><strong>${escape(definition(tool).name)}</strong><span>${tool.tapped ? '横置 · 已用' : '竖直 · 可用'}</span></button>`).join('');
+      $('yg-stock-slots').innerHTML = GOODS.map(good => `<span class="yg-owned-good" aria-label="我的${escape(good.name)}${self.goods.find(item => item.id === good.id)?.count ?? 0}件" title="${escape(good.name)}">${renderGoodsIcon(good.id)}<b>×${self.goods.find(item => item.id === good.id)?.count ?? 0}</b></span>`).join('');
+      $('yg-shop-note').textContent = `${totalGoods(self)}/${self.ordinaryCapacity}普通格＋1临时格 · ${view.temporaryPaid ? '临时已付2两' : '临时占用付2两'}`;
+      $('yg-tool-count').textContent = `${self.tools.length}/3`;
+      $('yg-tools').innerHTML = self.tools.length ? self.tools.map(tool => `<button type="button" data-tool-id="${escape(tool.id)}" class="yg-equipped${tool.tapped ? ' is-tapped' : ''}" aria-label="${escape(definition(tool).name)}，${tool.tapped ? '已用，本回合不可再发动' : '可用'}">${renderCard(tool, { interactive: false })}<span class="yg-equipped-state">${tool.tapped ? '已用' : '可用'}</span></button>`).join('') : '<span class="yg-tool-empty">道具放在这里<br>先安装，再使用</span>';
     } else { $('yg-stock-slots').replaceChildren(); $('yg-tools').replaceChildren(); }
     renderHand();
     $('yg-portrait-decision').innerHTML = isOwnDecision(view) ? `<strong>${escape(view.decision.title)} · ${view.decision.clock}</strong>${button('yg-portrait-decision-open', '查看并处理当前选择', 'class="yg-primary"')}` : '';
@@ -259,17 +248,6 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
     root.classList.toggle('yg-portrait', portrait); $('yg-rotation').hidden = !portrait;
     root.querySelector('.yg-table').inert = portrait; root.querySelector('.yg-lower').inert = portrait;
     document.body.classList.toggle('yg-keyboard', frame.height < window.innerHeight - 80);
-    if (view && !portrait) {
-      const width = $('yg-hand').clientWidth, css = window.getComputedStyle($('yg-hand'));
-      const cardWidth = parseFloat(css.getPropertyValue('--hyakki-card-width')) || 132;
-      const cardHeight = parseFloat(css.getPropertyValue('--hyakki-card-height')) || 192;
-      const gap = parseFloat(css.columnGap) || 8;
-      const padding = (parseFloat(css.paddingLeft) || 0) + (parseFloat(css.paddingRight) || 0);
-      const size = handPageSize({ width, cardWidth, gap, padding }), compact = cardWidth < 132 || cardHeight < 192;
-      if (size !== pageSize || compact !== compactHand) {
-        const first = page * pageSize; pageSize = size; page = Math.floor(first / size); compactHand = compact; renderHand();
-      }
-    }
     if (frame.resetScroll && (window.scrollX || window.scrollY)) window.scrollTo(0, 0);
   }
   function applyView(next) {
@@ -278,7 +256,7 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
     const scopeChanged = appliedScope !== scope;
     const decisionChanged = appliedDecisionId !== next.decision?.id;
     if (!externalDecisions && view !== next) closeDialogs();
-    if (scopeChanged) { page = 0; selectedHand = null; $('yg-hand-filter').value = 'all'; }
+    if (scopeChanged) { selectedHand = null; $('yg-hand-filter').value = 'all'; $('yg-hand').scrollLeft = 0; }
     if (scopeChanged || decisionChanged) { clearPrivatePanels(); selectedChoices = []; bidDraft = null; }
     view = next; appliedScope = scope; appliedDecisionId = view.decision?.id;
     root.dataset.scene = view.scene; root.dataset.role = view.selfRole;
@@ -321,7 +299,7 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
       const player = view.players.find(entry => entry.id === (node.dataset.player ?? view.selfId));
       if (player) inspect(`${player.name} · 公开商铺`, `<p>${player.silver}两 · 普通容量${player.ordinaryCapacity}格＋1临时格 · 手牌${player.handCount}张</p><div class="yg-detail-goods">${player.goods.map(good => `<div>${renderGoodsIcon(good.id)}<strong>${escape(goodName(good.id))}</strong><span>${good.count}件</span></div>`).join('')}</div><h3>已装道具</h3><div class="yg-candidates">${player.tools.map(tool => `<article>${renderCard(tool, { tapped: tool.tapped, interactive: false })}<p>${tool.tapped ? '横置 · 已用' : '竖直 · 可用'}</p></article>`).join('')}</div><p>其他人的手牌和私看候选不在这里显示。</p>`); return;
     }
-    if (node.id === 'yg-market') { inspect('公共货摊 · 六类库存', `<div class="yg-detail-goods">${view.market.map(good => `<div>${renderGoodsIcon(good.id)}<strong>${good.name}</strong><span>${good.count}件</span></div>`).join('')}</div><p>数字版开局每类6件。当前示例库存已扣除双方商铺里的货物。购买时必须满足完整配方，不能缺货先扣款。</p>`); return; }
+    if (node.id === 'yg-market') { inspect('公共货摊 · 六类库存', `<div class="yg-detail-goods">${view.market.map(good => `<div>${renderGoodsIcon(good.id)}<strong>${good.name}</strong><span>${good.count}件</span></div>`).join('')}</div><p>本局开局每类${view.goodsPerType ?? 6}件；当前库存已扣除双方货物。购买时必须满足完整配方，不能缺货先扣款。</p>`); return; }
     if (['yg-decision-open', 'yg-portrait-decision-open', 'yg-chat-decision-open'].includes(node.id)) { openDecision(); return; }
     if (node.id === 'yg-decision-close') { $('yg-decision').close(); feedback('当前步骤与已选候选保留；没有取消、退款或重新抽取。'); return; }
     if (node.id === 'yg-inspector-close' || node.id === 'yg-cancel-draft') { closeInspector(); return; }
@@ -338,9 +316,7 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
     if (node.id === 'yg-catalog') inspect('51种卡牌 · 新版完整卡目', `<p>公开定义可查。点击牌文详情，人物、监视人物与道具按类型区别。</p><div class="yg-catalog">${CARDS.map(card => `<article>${renderCard(card, { interactive: false })}<button type="button" data-detail-id="${card.id}">查看${escape(card.name)}</button></article>`).join('')}</div>`);
   });
   listen($('yg-scene'), 'change', event => { settings.close(); onScene?.(event.target.value); });
-  listen($('yg-hand-filter'), 'change', () => { page = 0; renderHand(); });
-  listen($('yg-hand-prev'), 'click', () => { page = Math.max(0, page - 1); renderHand(); });
-  listen($('yg-hand-next'), 'click', () => { page += 1; renderHand(); });
+  listen($('yg-hand-filter'), 'change', () => { $('yg-hand').scrollLeft = 0; renderHand(); });
   listen($('yg-inspector'), 'cancel', event => { event.preventDefault(); closeInspector(); });
   listen($('yg-decision'), 'cancel', event => { event.preventDefault(); $('yg-decision').close(); });
   listen($('yg-decision'), 'input', event => {

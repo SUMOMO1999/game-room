@@ -5,6 +5,8 @@ import { privateView, spectatorView } from '../../../app/games/hyakki-trading/vi
 import { gameProblem, plainObject, exactFields, integer, seatId, validCopy } from '../../../app/games/hyakki-trading/validation.mjs';
 import { DIGITAL_RULE_VERSION } from '../../../app/games/hyakki-trading/content/definitions.mjs';
 import { currentDecision } from '../../../app/games/hyakki-trading/decision.mjs';
+import { DEFAULT_ACTION_LIMIT, DEFAULT_GOODS_PER_TYPE, goodsPerTypeOf,
+  validActionLimit, validGoodsPerType } from '../../../app/games/hyakki-trading/model.mjs';
 import { transitionHyakkiLifecycle, hyakkiCommonActionProblem, changeHyakkiPause,
   hyakkiGameClock, hyakkiRetentionDeadline } from '../../../app/games/hyakki-trading/lifecycle.mjs';
 import { problem } from '../adapter-contract.mjs';
@@ -18,6 +20,8 @@ const actionExtras = Object.freeze({ peek: [], 'keep-peek': [], 'discard-peek': 
   'install-tool': ['cardId', 'replaceCardId'], 'activate-tool': ['cardId', 'params'], respond: ['cardId'],
   'decline-response': [], 'choose-effect': ['selection'], bid: ['amount'], 'pass-bid': [] });
 const token = value => typeof value === 'string' && value.length > 0 && value.length <= 180 && !/\p{Cc}/u.test(value);
+const validConfiguration = value => (exactFields(value, ['actionLimit']) || exactFields(value, ['actionLimit', 'goodsPerType']))
+  && validActionLimit(value.actionLimit) && validGoodsPerType(goodsPerTypeOf(value));
 const reference = value => validCopy(value) || typeof value === 'string' && /^(?:tool-[01]|discard|pool|source):\d+:\d+$/u.test(value);
 const jsonInput = (value, depth = 0) => depth < 7 && (value === null || typeof value === 'boolean' || integer(value)
   || typeof value === 'string' && value.length <= 180 || Array.isArray(value) && value.length <= 110 && value.every(item => jsonInput(item, depth + 1))
@@ -68,11 +72,12 @@ function lifecycle(game, context) {
   return issue ? { ok: false, error: issue, code: 'INVALID_GAME_STATE' } : change;
 }
 function roomStateProblem(room, hasRoles) {
-  if (!hasRoles || room.gameType !== gameType || !exactFields(room.hyakkiConfig, ['actionLimit']) || !integer(room.hyakkiConfig.actionLimit, 1, 10)) return '幽街房间设置无效。';
+  if (!hasRoles || room.gameType !== gameType || !validConfiguration(room.hyakkiConfig)) return '幽街房间设置无效。';
   if (!room.game) return room.phase !== 'waiting' || room.turnClock !== null ? '等待房间状态无效。' : null;
   const issue = gameProblem(room.game); if (issue) return issue;
   const game = room.game, ids = game.players.map(player => player.id);
   if (game.matchId !== room.matchId || room.matchStartedAt !== game.lifecycle.startedAt || game.actionLimit !== room.hyakkiConfig.actionLimit
+      || goodsPerTypeOf(game) !== goodsPerTypeOf(room.hyakkiConfig)
       || !Array.isArray(room.matchParticipants) || room.matchParticipants.length !== 2
       || new Set(room.matchParticipants.map(entry => entry.userKey)).size !== 2
       || room.matchParticipants.some(entry => !exactFields(entry, ['playerId', 'name', 'userKey']) || !ids.includes(entry.playerId)
@@ -100,7 +105,7 @@ export function createHyakkiAdapter({ maxSnapshotBytes = 256 * 1024 } = {}) {
     gameOptions(room, options) {
       const source = options.serverRandomInt ?? randomInt, first = source(2);
       if (!integer(first, 0, 1)) throw new TypeError('服务端随机结果无效。');
-      return { matchId: options.matchId, actionLimit: room.hyakkiConfig.actionLimit, firstPlayerId: room.players[first].id,
+      return { matchId: options.matchId, actionLimit: room.hyakkiConfig.actionLimit, goodsPerType: goodsPerTypeOf(room.hyakkiConfig), firstPlayerId: room.players[first].id,
         now: options.now, presence: options.presence, randomInt: source };
     },
     applyGameAction(game, actorId, action, context) {
@@ -109,12 +114,16 @@ export function createHyakkiAdapter({ maxSnapshotBytes = 256 * 1024 } = {}) {
       catch (error) { if (error.name === 'RuleError') return { ok: false, error: error.message, code: error.code }; throw error; }
     },
     privateView, spectatorView, stateProblem: gameProblem, gameEndedAt: game => game.result.settledAt,
-    roomDefaults: () => ({ turnClock: null, hyakkiConfig: { actionLimit: 5 } }),
+    roomDefaults: () => ({ turnClock: null, hyakkiConfig: { actionLimit: DEFAULT_ACTION_LIMIT, goodsPerType: DEFAULT_GOODS_PER_TYPE } }),
     playersChanged(room) { if (room.phase === 'waiting') for (const player of room.players) player.ready = false; },
     configurationSupportProblem: () => null,
-    configure(_room, action) { return exactFields(action.hyakkiConfig, ['actionLimit']) && integer(action.hyakkiConfig.actionLimit, 1, 10)
-      ? { updates: { hyakkiConfig: clone(action.hyakkiConfig) } } : { problem: problem(400, 'INVALID_CONFIG', '每回合行动上限须为1～10步。') }; },
-    roomView: room => ({ hyakkiConfig: clone(room.hyakkiConfig), exitPolicy: 'resign' }),
+    configure(room, action) {
+      if (!validConfiguration(action.hyakkiConfig)) return { problem: problem(400, 'INVALID_CONFIG', '每回合行动上限须为1～10步，每类货物须为4～20件。') };
+      const config = action.hyakkiConfig;
+      return { updates: { hyakkiConfig: { actionLimit: config.actionLimit,
+        goodsPerType: Object.hasOwn(config, 'goodsPerType') ? config.goodsPerType : goodsPerTypeOf(room.hyakkiConfig) } } };
+    },
+    roomView: room => ({ hyakkiConfig: { ...clone(room.hyakkiConfig), goodsPerType: goodsPerTypeOf(room.hyakkiConfig) }, exitPolicy: 'resign' }),
     playerSummary: (view, playerId) => ({ handCount: view?.players.find(player => player.id === playerId)?.handCount ?? 0 }),
     playerResult(result, playerId) { return { outcome: result?.aborted ? 'unscored'
       : result?.winnerIds?.includes(playerId) ? 'win' : result ? 'loss' : 'unscored', remainingPoints: null,
@@ -131,8 +140,9 @@ export function createHyakkiAdapter({ maxSnapshotBytes = 256 * 1024 } = {}) {
       }
       return false;
     },
-    snapshotSchema: () => 12,
-    snapshotProblem: data => data?.schemaVersion !== 12 || data.gameType !== gameType || !Object.hasOwn(data, 'turnClock')
+    snapshotSchema: () => 13,
+    snapshotProblem: data => ![12, 13].includes(data?.schemaVersion) || data.gameType !== gameType || !Object.hasOwn(data, 'turnClock')
+      || data.schemaVersion === 12 && (Object.hasOwn(data.hyakkiConfig ?? {}, 'goodsPerType') || Object.hasOwn(data.game ?? {}, 'goodsPerType'))
       || Buffer.byteLength(JSON.stringify(data), 'utf8') > maxSnapshotBytes,
     roomStateProblem, gameStatusForRoomPhase: phase => ['finished', 'aborted'].includes(phase) ? phase : 'playing',
     turnTimeoutMs: () => 0, gameClock: hyakkiGameClock, roomRetentionDeadline: hyakkiRetentionDeadline,

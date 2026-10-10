@@ -61,13 +61,14 @@ function conserved(game) {
   assert.deepEqual([...game.deck, ...game.discard, ...game.players.flatMap(owner => [...owner.hand, ...owner.tools.map(tool => tool.cardId)]),
     ...(game.pending?.sourceCards ?? []), ...(game.pending?.poolCards ?? [])].sort(), createDeck().map(card => card.id).sort());
   for (const good of GOODS) assert.equal(game.bankGoods[good.id] + game.players.reduce((sum, owner) => sum + owner.goods[good.id], 0)
-    + (game.pending?.goods[good.id] ?? 0), 6);
+    + (game.pending?.goods[good.id] ?? 0), game.goodsPerType ?? 6);
   assert.equal(game.availableStalls + game.players.reduce((sum, owner) => sum + owner.stallCount, 0), 5);
 }
 
 test('new practice is paused, contains real materials and exposes exactly the human hand', async () => {
   const env = environment(), session = await createHyakkiPracticeSession(env);
   const view = session.snapshot(), saved = savedAt(env);
+  assert.equal(view.game.actionLimit, 5); assert.equal(view.game.goodsPerType, 8);
   conserved(saved.game); assert.equal(saved.game.deck.length, 100); assert.equal(view.active, false); assert.equal(view.game.clock.paused, true);
   assert.equal(view.players.length, 2); assert.equal(view.selfId, PRACTICE_SELF);
   assert.equal(view.game.players.filter(owner => owner.hand).length, 1);
@@ -75,6 +76,30 @@ test('new practice is paused, contains real materials and exposes exactly the hu
   assert.equal(env.timers.size, 0); assert.deepEqual([...env.values.keys()], [PRACTICE_STORAGE_KEY]);
   for (const actionLimit of [1, 5, 10]) { await session.restart({ actionLimit }); assert.equal(savedAt(env).game.actionLimit, actionLimit); }
   await rejects(session.restart({ actionLimit: 0 }), 'PRACTICE_OPTIONS_INVALID'); await session.destroy();
+});
+
+test('legacy six-goods practice restores untouched, while only explicit restart takes new configured stock', async () => {
+  const env = environment(), game = createGame(ids, { ...ctx, matchId: 'd'.repeat(32), actionLimit: 7, goodsPerType: 6 });
+  delete game.goodsPerType;
+  const pending = applyGameAction(game, PRACTICE_SELF, { type: 'peek', matchId: game.matchId, turnId: game.turnId }, ctx);
+  assert.equal(pending.ok, true, pending.error);
+  const original = encodeHyakkiPractice(savedGame(pending.state)); env.values.set(PRACTICE_STORAGE_KEY, original);
+  const session = await createHyakkiPracticeSession({ ...env, actionLimit: 1, goodsPerType: 20 });
+  assert.equal(session.snapshot().game.actionLimit, 7); assert.equal(session.snapshot().game.goodsPerType, 6);
+  assert.equal(env.values.get(PRACTICE_STORAGE_KEY), original); assert.deepEqual(savedAt(env).game.pending, pending.state.pending);
+  await session.action('keep-peek'); assert.equal(Object.hasOwn(savedAt(env).game, 'goodsPerType'), false); conserved(savedAt(env).game);
+  for (const goodsPerType of [4, 8, 20]) {
+    await session.restart({ actionLimit: 3, goodsPerType });
+    const before = env.values.get(PRACTICE_STORAGE_KEY);
+    assert.equal(savedAt(env).game.goodsPerType, goodsPerType); assert.equal(savedAt(env).game.actionLimit, 3); conserved(savedAt(env).game);
+    await session.reload(); assert.equal(env.values.get(PRACTICE_STORAGE_KEY), before);
+  }
+  const before = env.values.get(PRACTICE_STORAGE_KEY);
+  for (const options of [{ goodsPerType: 3 }, { goodsPerType: 21 }, { goodsPerType: '8' }, { goodsPerType: null }, { unexpected: 8 }]) {
+    await rejects(session.restart(options), 'PRACTICE_OPTIONS_INVALID'); assert.equal(env.values.get(PRACTICE_STORAGE_KEY), before);
+  }
+  await session.restart(); assert.equal(session.snapshot().game.goodsPerType, 8); assert.equal(session.snapshot().game.actionLimit, 5);
+  await session.destroy();
 });
 
 test('paused decision dialog accepts an explicit human action and never wakes the computer', async () => {
