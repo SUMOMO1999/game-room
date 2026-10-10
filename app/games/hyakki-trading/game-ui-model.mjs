@@ -7,6 +7,15 @@ const fail = message => { throw new RangeError(message); };
 const quantity = value => Number.isSafeInteger(value) && value >= 0;
 export const goodsTotal = goods => ids.reduce((n, id) => n + (goods?.[id] ?? 0), 0);
 export const cardKey = card => card.cardId ?? card.ref ?? card.id;
+const targetedCharacters = new Set(['C01','C08','M01','M02','M03','M04','M05','M06','M07','M08']);
+export const requiresOpponent = (face, type) => type === 'play-character' && targetedCharacters.has(face.sourceCode)
+  || type === 'activate-tool' && ['T02','T04'].includes(face.sourceCode);
+export function opponentForDraft(game, selfId, targetId) {
+  const others = game.players.filter(player => player.id !== selfId);
+  const selected = others.length === 1 ? others[0] : others.find(player => player.id === targetId);
+  if (!selected) return fail('请明确选择一名对手，再确认使用。');
+  return selected;
+}
 
 /** A price/availability hint from public stock and the viewer's own shop. Server still settles. */
 export function tradeAvailability(game, selfId, card) {
@@ -76,14 +85,51 @@ export function knownCards(game) {
     ...(game?.pending?.sourceCards ?? []), ...(game?.pending?.pool ?? []), ...(game?.pending?.privatePool ?? []), ...(game?.pending?.choice?.candidateCards ?? [])];
   return new Map(all.map(card => [cardKey(card), card]));
 }
+/** One representative confirmed material move; private identities stay in this viewer's projection. */
+export function materialTransition(before, after, selfId, input) {
+  const auctionWon=before?.pending?.auction&&after?.lastPublicEvents?.some(event=>event.type==='auction-settled'&&event.targetSeatId===selfId);
+  if(!before?.pending||before.pending.actorId!==selfId&&!auctionWon||!after)return null;
+  const oldSelf=before.players.find(player=>player.id===selfId),self=after.players.find(player=>player.id===selfId);
+  if(!oldSelf||!self)return null;
+  let selection;
+  try{selection=buildChoiceSelection(before.pending,input??defaultChoiceInput(before.pending));}catch{selection={};}
+  const selected=[selection.cardId,selection.payment?.cardId,...(selection.cardIds??[])].filter(Boolean),cards=knownCards(before);
+  const oldOwned=new Set([...oldSelf.hand,...oldSelf.tools].map(cardKey));
+  const addedHand=self.hand.filter(card=>!oldOwned.has(cardKey(card))),addedTool=self.tools.filter(card=>!oldOwned.has(cardKey(card)));
+  if(before.pending.response){
+    const played=after.lastPublicEvents?.find(event=>event.type==='response-played'&&event.actorSeatId===selfId);
+    const response=played&&oldSelf.hand.find(card=>card.definitionId===played.cardId&&!self.hand.some(next=>cardKey(next)===cardKey(card)));
+    if(response&&after.discard?.at(-1)?.definitionId===response.definitionId)return {card:{fromId:cardKey(response),zone:'discard'}};
+    if(addedHand.length){const source=before.pending.sourceCards?.find(card=>card.definitionId===addedHand[0].definitionId);if(source)return {card:{fromId:cardKey(source),toId:cardKey(addedHand[0]),zone:'hand'}};}
+    return null;
+  }
+  if(auctionWon&&addedHand.length){const pool=before.pending.pool?.find(card=>card.definitionId===addedHand[0].definitionId);if(pool)return {card:{fromId:cardKey(pool),toId:cardKey(addedHand[0]),zone:'hand'}};}
+  for(const id of selected){
+    const card=cards.get(id);if(!card)continue;
+    const hand=addedHand.find(next=>next.definitionId===card.definitionId),tool=addedTool.find(next=>next.definitionId===card.definitionId);
+    if(hand||tool)return {card:{fromId:id,toId:cardKey(hand??tool),zone:hand?'hand':'tool'}};
+    if(oldOwned.has(id)&&![...self.hand,...self.tools].some(next=>cardKey(next)===id)&&after.discard?.at(-1)?.definitionId===card.definitionId)return {card:{fromId:id,zone:'discard'}};
+  }
+  for(const good of GOODS){
+    const delta=self.goods[good.id]-oldSelf.goods[good.id];
+    if(delta){
+      const peer=before.pending.choice?.kind==='tool-exchange'?after.players.find(player=>player.id!==selfId&&player.goods[good.id]>(before.players.find(previous=>previous.id===player.id)?.goods[good.id]??0)):null;
+      return {goods:{id:good.id,delta,...(peer&&delta<0?{toPeerId:peer.id}:{})}};
+    }
+  }
+  if(addedHand.length)return {card:{zone:'hand',toId:cardKey(addedHand[0]),fromDeck:true}};
+  return null;
+}
 export function actionDraft(game, selfId, card, type, input = {}) {
   if (!game || game.status !== 'playing' || game.turnPlayerId !== selfId || game.pending || game.clock?.paused) return fail('现在不是你的可操作阶段。');
-  const self = game.players.find(player => player.id === selfId), peer = game.players.find(player => player.id !== selfId);
+  const self = game.players.find(player => player.id === selfId);
   const key = cardKey(card), face = getCard(card.definitionId);
+  const peer = requiresOpponent(face,type) ? opponentForDraft(game,selfId,input.targetId) : null;
+  const params = peer && game.version>=2 ? { targetId:peer.id } : {};
   if (type === 'activate-tool') {
     if (!self.tools.some(tool => cardKey(tool) === key && !tool.exhausted)) return fail('该道具目前不可使用。');
     if (face.sourceCode === 'T07' ? game.stage !== 'draw' || game.drawStarted : game.stage !== 'use') return fail('不在这张道具的使用时机。');
-    return { cardId: key, params: {} };
+    return { cardId: key, params };
   }
   if (game.stage !== 'use' || !self.hand.some(item => cardKey(item) === key)) return fail('请先进入用牌阶段，并使用自己的手牌。');
   if (['buy', 'sell'].includes(type) && face.category === 'goods') return { cardId: key };
@@ -98,13 +144,13 @@ export function actionDraft(game, selfId, card, type, input = {}) {
   if (type === 'play-character' && ['ordinary_character', 'monitored_character'].includes(face.category) && !['C04','C07'].includes(face.sourceCode)) {
     if (face.sourceCode === 'M01') {
       if (!ids.includes(input.goodsId) || !peer.goods[input.goodsId]) return fail('请选择对手现有的一件货物。');
-      return { cardId: key, params: { goodsId: input.goodsId } };
+      return { cardId: key, params: { ...params, goodsId: input.goodsId } };
     }
     if (face.sourceCode === 'M08') {
       if (!peer.tools.some(tool => cardKey(tool) === input.toolCardId)) return fail('请选择对手的道具。');
-      return { cardId: key, params: { toolCardId: input.toolCardId } };
+      return { cardId: key, params: { ...params, toolCardId: input.toolCardId } };
     }
-    return { cardId: key, params: {} };
+    return { cardId: key, params };
   }
   return fail('当前牌不能执行该操作。');
 }
@@ -115,7 +161,7 @@ export function tableProjection(room) {
     goods: GOODS.map(good => ({id: good.id, count: player.goods?.[good.id] ?? 0})), tools: (player.tools ?? []).map(tool => ({...tool,id:cardKey(tool),tapped:tool.exhausted})) }));
   while (players.length < 2) players.push({ id: 'empty-seat', name: '等待伙伴', ready: false, silver: 0, handCount: 0, ordinaryCapacity: 5, goods: GOODS.map(good => ({id:good.id,count:0})),tools:[] });
   return {roomId:room.roomId ?? room.code,matchId:game?.matchId ?? room.matchId,selfId:room.selfId,selfRole:room.selfRole,roomCode:room.roomCode ?? room.code,
-    scene: 'active',phase:room.phase,players,currentPlayerId:game?.turnPlayerId ?? room.selfId,decision:null,bookLayers:game?.bookLayers??0,closing:game?.closing??null,
+    scene: 'active',phase:room.phase,players,currentPlayerId:game?.turnPlayerId ?? room.selfId,decision:null,decisionActorId:game?.pending?.actorId??null,bookLayers:game?.bookLayers??0,closing:game?.closing??null,
     hand:(self?.hand??[]).map(card=>({...card,id:cardKey(card)})),actionLimit:game?.actionLimit??room.hyakkiConfig?.actionLimit??5,actionsUsed:game?.actionsUsed??0,goodsPerType:game?.goodsPerType??room.hyakkiConfig?.goodsPerType??6,
     clock:'--:--',deckCount:game?.deckCount??0,discardCount:game?.discard?.length??0,discard:game?.discard?.at(-1)?{...game.discard.at(-1),id:cardKey(game.discard.at(-1))}:null,
     market:GOODS.map(good=>({...good,count:game?.bankGoods?.[good.id]??room.hyakkiConfig?.goodsPerType??6})),spectatorCount:room.spectators?.length??0,

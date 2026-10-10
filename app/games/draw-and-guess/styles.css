@@ -53,4 +53,45 @@ body.drawing-body{margin:0;padding:0;background:var(--theme-base,#173d31);color:
 .drawing-keyboard-open .drawing-players,.drawing-keyboard-open .drawing-feedback,.drawing-keyboard-open .drawing-footer{display:none}.drawing-keyboard-open .drawing-page{grid-template-rows:44px 22px minmax(0,1fr)}
 .drawing-keyboard-open .drawing-sidebar{max-height:none}.drawing-keyboard-open .drawing-guess-form{padding:7px}.drawing-keyboard-open .drawing-canvas-panel{padding:4px}
 .drawing-dialog-body label.drawing-check{display:flex;align-items:center;gap:8px}.drawing-check input{width:22px;min-height:22px;height:22px;padding:0;flex:none}
-@media (prefers-reduced-motion:no-preference){.drawing-player.current{transition:background-color .2s,border-color .2s}}
+/* Strokes and undo stay one tap away. The anchored palette never changes the
+   paper geometry. The canvas dismisses it before accepting the next mark. */
+.drawing-tools{position:relative;overflow:visible;z-index:3}
+.drawing-sidebar{overflow:visible}
+.drawing-main{grid-template-columns:minmax(0,1fr) clamp(200px,18vw,270px)}
+.drawing-tool-heading{align-items:stretch}
+.drawing-tool-heading>button{min-width:0;padding:7px 5px;font-size:12px;flex:1}
+.drawing-tool-heading #drawing-tools-toggle{flex:1.4}
+.drawing-tool-heading button[aria-pressed=true]{background:var(--theme-accent,#ead39a);color:var(--theme-base,#173d31);font-weight:750;box-shadow:inset 0 -3px 0 #0002}
+.drawing-page #drawing-tool-panel{position:absolute;inset:auto 0 auto 0;top:calc(100% + 6px);padding:10px;border:1px solid var(--theme-muted,#c8d7c0);border-radius:12px;background:var(--theme-surface,#315b49);box-shadow:0 8px 22px #071e2540;grid-template-columns:minmax(0,1fr);z-index:5}
+#drawing-tool-panel .drawing-palette{grid-column:auto;grid-row:auto}
+.drawing-score-gain{color:var(--theme-accent,#ead39a);font-weight:800;font-size:13px;white-space:nowrap;flex:none}
+.drawing-player strong{flex:1}
+.drawing-page #drawing-reveal{border-color:var(--theme-accent,#ead39a);background:color-mix(in srgb,var(--theme-surface,#315b49) 86%,var(--theme-accent,#ead39a))}
+#drawing-answer{font-size:clamp(22px,3vw,32px);color:var(--theme-accent,#ead39a);line-height:1.2}
+.drawing-candidate{border-color:var(--theme-accent,#ead39a)!important;box-shadow:inset 0 -2px 0 #0002;text-wrap:balance}
+@media (prefers-reduced-motion:no-preference){
+  .drawing-page button{transition:background-color 100ms,box-shadow 100ms,transform 100ms}
+  .drawing-tool-heading button[data-tool]{transition:box-shadow 100ms,transform 100ms}
+  .drawing-page button:active:not(:disabled){transform:translateY(1px);box-shadow:inset 0 2px 4px #0002}
+  .drawing-player.current{transition:background-color .2s,border-color .2s}
+}
+@media (orientation:portrait){
+  .drawing-main{grid-template-columns:minmax(0,1fr)}
+  .drawing-tools{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:6px;padding:7px}
+  #drawing-acquire{grid-column:1/-1}
+  .drawing-tool-heading{justify-content:stretch}
+  .drawing-tool-heading>button{flex:1;min-width:44px}
+  .drawing-page #drawing-tool-panel{top:auto;bottom:calc(100% + 7px);left:0;right:0;grid-template-columns:minmax(0,1fr)}
+  #drawing-tool-panel .drawing-palette{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px}
+  #drawing-tool-panel .drawing-color-chip{min-height:44px;min-width:0;padding:4px}
+  .drawing-tool-row{display:flex}
+}
+@media (orientation:landscape) and (max-height:500px){
+  .drawing-main{grid-template-columns:minmax(0,1fr) clamp(190px,24vw,240px)}
+  .drawing-paint-controls{display:flex!important}
+  .drawing-page #drawing-tool-panel{padding:7px}
+  #drawing-tool-panel .drawing-palette{display:none}
+}
+@media (orientation:portrait) and (max-width:500px){
+  #drawing-tool-panel .drawing-palette{grid-template-columns:repeat(4,minmax(0,1fr))}
+}

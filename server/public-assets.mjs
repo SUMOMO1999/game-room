@@ -6,7 +6,7 @@ const platformAssets = Object.freeze(['index.html', 'lobby.mjs', 'lobby-model.mj
   'favicon.svg', 'app-shell.mjs', 'app-shell.css', 'practice-entry.css', 'manifest.webmanifest',
   'sw.js', 'offline.html', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',
   'games/catalog.mjs', 'games/types.mjs', 'platform/room-presentation.mjs', 'platform/room-clock.mjs',
-  'platform/room-session.mjs', 'platform/room-audio-controls.mjs', 'platform/room-viewport.mjs',
+  'platform/room-session.mjs', 'platform/room-audio-controls.mjs', 'platform/room-viewport.mjs', 'platform/object-motion.mjs',
   'platform/room-action-intent.mjs', 'platform/room-settings.mjs', 'platform/room-settings.css', 'platform/control-geometry.css', 'platform/game-theme.mjs', 'platform/game-theme.css', 'platform/practice-navigation.mjs']);
 
 // This remains an explicit allow-list, not a recursive publication of app/.

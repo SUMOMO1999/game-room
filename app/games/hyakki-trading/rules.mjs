@@ -1,9 +1,9 @@
 /** Authoritative pure rules. One accepted command creates one validated revision. */
-import { createDeck, GOODS, CONTENT_VERSION, DIGITAL_RULE_VERSION } from './content/definitions.mjs';
+import { createDeck, GOODS, CONTENT_VERSION, DIGITAL_RULE_VERSION, MULTIPLAYER_RULE_VERSION, RULE_VERSIONS } from './content/definitions.mjs';
 import { RuleError, requireRule, definition, player, opponent, emptyGoods, goodsCount, goodsEntries, addSilver,
   moveGoods, removeCard, discardCards, drawCards, availableCards, shuffled, canReceive, ordinaryCapacity,
   refreshTemporary, createPending, completePending, resolveReceipt, resolveActionReferences, emit,
-  DEFAULT_ACTION_LIMIT, DEFAULT_GOODS_PER_TYPE, validActionLimit, validGoodsPerType } from './model.mjs';
+  DEFAULT_ACTION_LIMIT, DEFAULT_GOODS_PER_TYPE, validActionLimit, validGoodsPerType, isMultiplayer, beginMerchantResponse, closeWinnerId } from './model.mjs';
 import { characterProblem, startCharacter, continueCharacter, chooseCharacter } from './effects.mjs';
 import { toolProblem, startTool, continueTool, chooseTool } from './tools.mjs';
 import { bid, passBid, continueAuction } from './auction.mjs';
@@ -19,13 +19,14 @@ function check(state) { const issue = gameProblem(state); requireRule(!issue, is
 const runningClock = state => state.timing.decision ?? state.timing.active;
 
 export function createGame(playerIds, { matchId, now, randomInt, actionLimit = DEFAULT_ACTION_LIMIT,
-  goodsPerType = DEFAULT_GOODS_PER_TYPE, firstPlayerId = playerIds?.[0], presence } = {}) {
-  requireRule(Array.isArray(playerIds) && playerIds.length === 2 && new Set(playerIds).size === 2
-    && playerIds.includes(firstPlayerId), '幽街商人需要两位不同的参赛者。');
+  goodsPerType = DEFAULT_GOODS_PER_TYPE, firstPlayerId = playerIds?.[0], presence, ruleVersion = MULTIPLAYER_RULE_VERSION } = {}) {
+  requireRule(RULE_VERSIONS.includes(ruleVersion) && Array.isArray(playerIds) && playerIds.length >= 2 && playerIds.length <= 6
+    && (ruleVersion !== DIGITAL_RULE_VERSION || playerIds.length === 2) && new Set(playerIds).size === playerIds.length
+    && playerIds.includes(firstPlayerId), '幽街商人需要2～6位不同的参赛者，旧版只支持两人。');
   requireRule(stamp(now) && Number.isSafeInteger(now + TURN_MS) && validActionLimit(actionLimit) && validGoodsPerType(goodsPerType), '开局参数无效。');
   const deck = shuffled(createDeck().map(card => card.id), randomInt);
   const players = playerIds.map(id => ({ id, hand: deck.splice(0, 5), tools: [], goods: emptyGoods(), silver: 20, stallCount: 0, temporaryOccupied: false }));
-  const state = { version: 1, gameType: 'hyakki-trading', ruleVersion: DIGITAL_RULE_VERSION, contentVersion: CONTENT_VERSION, matchId,
+  const state = { version: ruleVersion === DIGITAL_RULE_VERSION ? 1 : 2, gameType: 'hyakki-trading', ruleVersion, contentVersion: CONTENT_VERSION, matchId,
     players, deck, discard: [], bankGoods: Object.fromEntries(GOODS.map(good => [good.id, goodsPerType])), goodsPerType,
     availableStalls: 5, purchasedStalls: 0, status: 'playing', result: null,
     firstPlayerId, turnPlayerId: firstPlayerId, turnIndex: playerIds.indexOf(firstPlayerId), turnNumber: 1, turnId: 'turn-1', round: 1,
@@ -53,9 +54,7 @@ function continuePending(state, ctx) {
 }
 
 function finishGame(state, lastPlayerId, now) {
-  const maximum = Math.max(...state.players.map(owner => owner.silver));
-  const leaders = state.players.filter(owner => owner.silver === maximum);
-  const winnerId = leaders.length === 2 ? lastPlayerId : leaders[0].id;
+  const winnerId = closeWinnerId(state);
   state.status = 'finished';
   state.result = { reason: 'normal-close', winnerIds: [winnerId], aborted: false, settledAt: now,
     wealth: state.players.map(owner => ({ playerId: owner.id, silver: owner.silver })) };
@@ -70,12 +69,13 @@ function endTurn(state, now, { voluntary = false } = {}) {
   if (voluntary && state.actionLimit - state.actionsUsed >= 2) addSilver(owner, 1);
   owner.tools.forEach(tool => { tool.exhausted = false; }); state.bookLayers = 0;
   emit(state, { type: 'turn-ended', actorSeatId: owner.id });
-  if (state.closing?.finalPlayerId === owner.id || owner.silver >= 60 && owner.id !== state.firstPlayerId) {
+  const finalPlayerId = state.players[(state.players.findIndex(value => value.id === state.firstPlayerId) + state.players.length - 1) % state.players.length].id;
+  if (state.closing?.finalPlayerId === owner.id || owner.silver >= 60 && owner.id === finalPlayerId) {
     finishGame(state, owner.id, now); return;
   }
-  if (owner.silver >= 60) state.closing = { triggerPlayerId: owner.id, finalPlayerId: opponent(state, owner.id).id };
-  state.turnIndex = 1 - state.turnIndex; state.turnPlayerId = state.players[state.turnIndex].id;
-  state.turnNumber++; state.turnId = `turn-${state.turnNumber}`; state.round = Math.ceil(state.turnNumber / 2);
+  if (owner.silver >= 60 && !state.closing) state.closing = { triggerPlayerId: owner.id, finalPlayerId };
+  state.turnIndex = (state.turnIndex + 1) % state.players.length; state.turnPlayerId = state.players[state.turnIndex].id;
+  state.turnNumber++; state.turnId = `turn-${state.turnNumber}`; state.round = Math.ceil(state.turnNumber / state.players.length);
   state.stage = 'draw'; state.actionsUsed = 0; state.drawStarted = false;
   state.timing = { active: { id: state.turnId, actorId: state.turnPlayerId, remainingMs: TURN_MS, deadlineAt: now + TURN_MS }, decision: null };
 }
@@ -87,7 +87,8 @@ function synchronizeClock(state, now) {
     const result = closeHyakkiDecision(state, now); requireRule(result.ok, result.error); state.timing = result.state.timing;
   }
   if (decision && decision.actorId !== state.turnPlayerId && !state.timing.decision) {
-    const result = openHyakkiDecision(state, { id: decision.id, actorId: decision.actorId, label: '等待对方选择', now });
+    const result = openHyakkiDecision(state, { id: decision.id, actorId: decision.actorId, label: '等待伙伴选择', now,
+      ...(state.pending?.response?.remainingMs !== undefined ? { remainingMs: state.pending.response.remainingMs } : {}) });
     requireRule(result.ok, result.error); state.timing = result.state.timing;
   }
 }
@@ -134,11 +135,11 @@ function trade(state, actorId, cardId, buying) {
   const fee = buying && goodsCount(owner.goods) + goodsCount(vector) > ordinaryCapacity(owner) && !owner.temporaryOccupied ? 2 : 0;
   moveGoods(buying ? state.bankGoods : owner.goods, buying ? owner.goods : state.bankGoods, vector);
   addSilver(owner, buying ? -silver - fee : silver); refreshTemporary(owner);
-  state.pending.stage = 'merchant'; state.pending.response = { kind: 'merchant', actorId: opponent(state, actorId).id, tradeCardId: cardId };
+  state.pending.stage = 'merchant'; beginMerchantResponse(state, cardId);
   emit(state, { type: buying ? 'trade-bought' : 'trade-sold', actorSeatId: actorId, cardId: card.id,
     goods: goodsEntries(vector).map(([id, count]) => ({ id, count })), silver });
 }
-function response(state, actorId, cardId) {
+function response(state, actorId, cardId, now) {
   const pending = state.pending, window = pending?.response;
   requireRule(window && window.actorId === actorId, '当前没有你的回应窗口。');
   if (cardId !== undefined) {
@@ -150,7 +151,17 @@ function response(state, actorId, cardId) {
       pending.response = null; completePending(state); discardCards(state, [cardId]); return;
     }
     removeCard(pending.sourceCards, window.tradeCardId); player(state, actorId).hand.push(window.tradeCardId); discardCards(state, [cardId]);
-  } else emit(state, { type: 'response-declined', actorSeatId: actorId });
+  } else {
+    emit(state, { type: 'response-declined', actorSeatId: actorId });
+    if (window.kind === 'merchant' && isMultiplayer(state)) {
+      const clock = state.timing.decision;
+      const remainingMs = Math.max(0, Math.min(window.remainingMs, clock?.deadlineAt === null ? clock.remainingMs : (clock?.deadlineAt ?? now) - now));
+      window.remainingIds.shift();
+      if (remainingMs > 0 && window.remainingIds.length) {
+        window.actorId = window.remainingIds[0]; window.remainingMs = remainingMs; return;
+      }
+    }
+  }
   pending.response = null;
 }
 function chooseEffect(state, actorId, selection, ctx) {
@@ -164,8 +175,8 @@ function chooseEffect(state, actorId, selection, ctx) {
 
 function dispatch(state, actorId, action, ctx) {
   if (state.pending) {
-    if (action.type === 'respond') response(state, actorId, action.cardId);
-    else if (action.type === 'decline-response') response(state, actorId);
+    if (action.type === 'respond') response(state, actorId, action.cardId, ctx.now);
+    else if (action.type === 'decline-response') response(state, actorId, undefined, ctx.now);
     else if (action.type === 'choose-effect') chooseEffect(state, actorId, action.selection, ctx);
     else if (action.type === 'bid') bid(state, actorId, action.amount, ctx);
     else if (action.type === 'pass-bid') passBid(state, actorId, ctx);
@@ -249,7 +260,7 @@ export function applyGameAction(game, actorId, action, ctx = {}) {
 function defaultPending(state, ctx) {
   const decision = currentDecision(state);
   requireRule(decision, '超时步骤没有默认选择。', 'INVALID_GAME_STATE');
-  if (state.pending.response) response(state, decision.actorId);
+  if (state.pending.response) response(state, decision.actorId, undefined, ctx.now);
   else if (state.pending.kind === 'auction' && state.pending.stage === 'bidding') passBid(state, decision.actorId, ctx);
   else if (state.pending.kind === 'peek') dispatch(state, decision.actorId, { type: 'keep-peek' }, ctx);
   else chooseEffect(state, decision.actorId, structuredClone(state.pending.choice.defaultSelection), ctx);

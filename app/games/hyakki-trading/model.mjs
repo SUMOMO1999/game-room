@@ -1,5 +1,5 @@
 /** Game-specific material operations. Call only on a candidate clone. */
-import { createDeck, getCard, GOODS } from './content/definitions.mjs';
+import { createDeck, getCard, GOODS, MULTIPLAYER_RULE_VERSION } from './content/definitions.mjs';
 const copies = new Map(createDeck().map(card => [card.id, card.definitionId]));
 export const DEFAULT_ACTION_LIMIT = 5;
 export const DEFAULT_GOODS_PER_TYPE = 8;
@@ -28,7 +28,32 @@ export function player(state, id) {
   const value = state.players.find(entry => entry.id === id);
   requireRule(value, '你不是本局参赛者。', 'SEAT_REQUIRED'); return value;
 }
-export function opponent(state, id) { player(state, id); return state.players.find(entry => entry.id !== id); }
+export const isMultiplayer = state => state.ruleVersion === MULTIPLAYER_RULE_VERSION;
+export function opponent(state, id, targetId = state.pending?.data?.targetId) {
+  player(state, id);
+  if (state.players.length === 2 && targetId === undefined) targetId = state.players.find(entry => entry.id !== id).id;
+  requireRule(targetId !== id && state.players.some(entry => entry.id === targetId), '请选择一位其他参赛者。', 'TARGET_REQUIRED');
+  return player(state, targetId);
+}
+export const pairIds = (state, id) => [id, opponent(state, id).id];
+/** Stable clockwise order, independent of page focus, online transport and names. */
+export function clockwiseIds(state, id) {
+  const index = state.players.findIndex(entry => entry.id === id);
+  requireRule(index >= 0, '轮序席位不存在。');
+  return Array.from({ length: state.players.length - 1 }, (_, offset) => state.players[(index + offset + 1) % state.players.length].id);
+}
+export function beginMerchantResponse(state, tradeCardId) {
+  const pending = state.pending, remainingIds = clockwiseIds(state, pending.ownerId);
+  pending.response = { kind: 'merchant', actorId: remainingIds[0], tradeCardId,
+    ...(isMultiplayer(state) ? { remainingIds, remainingMs: 60_000 } : {}) };
+}
+export function closeWinnerId(state) {
+  const first = state.players.findIndex(owner => owner.id === state.firstPlayerId);
+  const maximum = Math.max(...state.players.map(owner => owner.silver));
+  // Break ties only among the wealth leaders, in this round's frozen order.
+  return Array.from({ length: state.players.length }, (_, offset) => state.players[(first + offset) % state.players.length])
+    .filter(owner => owner.silver === maximum).at(-1).id;
+}
 export function addSilver(owner, delta) {
   requireRule(Number.isSafeInteger(delta) && Number.isSafeInteger(owner.silver + delta) && owner.silver + delta >= 0, '银两不足或超出可保存范围。');
   owner.silver += delta;
@@ -145,10 +170,10 @@ export function resolveReceipt(state, keep) {
 
 /** Public references expire with the state revision and never address a hidden zone. */
 export function resolvePublicCardRef(state, ref) {
-  const match = /^(tool-[01]|discard|pool|source):(\d+):(\d+)$/u.exec(ref ?? '');
+  const match = /^(tool-[0-5]|discard|pool|source):(\d+):(\d+)$/u.exec(ref ?? '');
   requireRule(match && Number(match[2]) === state.revision, '公开目标已改变。', 'STALE_REFERENCE');
   const index = Number(match[3]);
-  const zone = match[1].startsWith('tool-') ? state.players[Number(match[1].at(-1))].tools.map(tool => tool.cardId)
+  const zone = match[1].startsWith('tool-') ? state.players[Number(match[1].at(-1))]?.tools.map(tool => tool.cardId)
     : match[1] === 'discard' ? state.discard : match[1] === 'source' ? state.pending?.sourceCards
       : state.pending && (state.pending.kind === 'auction' || ['M02', 'M06', 'T01'].includes(state.pending.code)) ? state.pending.poolCards : null;
   requireRule(Array.isArray(zone) && Number.isSafeInteger(index) && index < zone.length, '公开目标不存在。', 'STALE_REFERENCE');
@@ -159,7 +184,7 @@ export function resolvePublicCardRef(state, ref) {
 export function resolveActionReferences(state, action) {
   function resolve(value, depth = 0) {
     requireRule(depth <= 8, '选择结构过深。');
-    if (typeof value === 'string' && /^(?:tool-[01]|discard|pool|source):/u.test(value)) return resolvePublicCardRef(state, value);
+    if (typeof value === 'string' && /^(?:tool-[0-5]|discard|pool|source):/u.test(value)) return resolvePublicCardRef(state, value);
     if (Array.isArray(value)) return value.map(item => resolve(item, depth + 1));
     if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, resolve(item, depth + 1)]));
     return value;

@@ -1,5 +1,5 @@
 /** Ordinary practice decisions use only the deciding seat's private projection. */
-import { GOODS, getCard } from './content/definitions.mjs';
+import { GOODS, getCard, DIGITAL_RULE_VERSION, MULTIPLAYER_RULE_VERSION } from './content/definitions.mjs';
 
 const count = vector => Object.values(vector).reduce((sum, value) => sum + value, 0);
 const covers = (stock, recipe) => Object.entries(recipe).every(([id, amount]) => stock[id] >= amount);
@@ -11,7 +11,8 @@ const canAdd = (owner, amount, cost = 0) => {
 function legalView(view, playerId, now, allowPaused) {
   return view?.gameType === 'hyakki-trading' && view.viewerId === playerId && view.status === 'playing'
     && !Object.hasOwn(view, 'deck') && !Object.hasOwn(view, 'lifecycle') && !view.pending?.data
-    && Array.isArray(view.players) && view.players.length === 2
+    && Array.isArray(view.players) && view.players.length >= 2 && view.players.length <= 6
+    && (view.ruleVersion === MULTIPLAYER_RULE_VERSION || view.ruleVersion === DIGITAL_RULE_VERSION && view.players.length === 2)
     && view.players.every(owner => owner.id === playerId ? Array.isArray(owner.hand) && owner.hand.every(card => typeof card?.cardId === 'string'
       && typeof card.definitionId === 'string') : !Object.hasOwn(owner, 'hand'))
     && !view.holds?.manual && !view.holds?.absence && !view.holds?.capacity
@@ -31,11 +32,11 @@ function faceValue(definition) {
   return ['C01', 'C05', 'C08', 'C13', 'M01', 'M04'].includes(definition.sourceCode) ? 28 : 18;
 }
 function ordinaryActions(view) {
-  const owner = view.players.find(item => item.id === view.viewerId), peer = view.players.find(item => item.id !== view.viewerId);
+  const owner = view.players.find(item => item.id === view.viewerId), peers = view.players.filter(item => item.id !== view.viewerId);
+  const targetParams = (peer, extra = {}) => ({ ...(view.ruleVersion === MULTIPLAYER_RULE_VERSION ? { targetId: peer.id } : {}), ...extra });
   const available = view.deckCount + view.discard.length, ownGoods = count(owner.goods), bankGoods = count(view.bankGoods);
   const cards = owner.hand.map(card => ({ ...card, face: getCard(card.definitionId) })), actions = [];
   if (view.remainingActions <= 0) return [{ type: 'end-turn' }];
-  const canTribute = peer.silver >= 2 && Number.isSafeInteger(owner.silver + 2);
   for (const card of cards) {
     const face = card.face, cardId = card.cardId;
     if (face.category === 'goods') {
@@ -50,33 +51,41 @@ function ordinaryActions(view) {
     } else {
       let allowed = false;
       switch (face.sourceCode) {
-        case 'C01': allowed = available > 0 || bankGoods > 0; break;
         case 'C02': allowed = available > 0; break;
         case 'C03': allowed = true; break;
         case 'C05': allowed = ownGoods >= 3 && cards.some(other => other.face.category === 'goods'
           && count(other.face.goods) === 3 && Number.isSafeInteger(owner.silver + other.face.sellSilver + view.bookLayers * 2)); break;
         case 'C06': allowed = GOODS.some(from => owner.goods[from.id] > 0 && GOODS.some(to => to.id !== from.id
           && view.bankGoods[to.id] >= owner.goods[from.id])); break;
-        case 'C08': allowed = owner.hand.length - 1 < 5 && available > 0 || peer.handCount > 3; break;
         case 'C09': allowed = bankGoods >= 2 && view.players.some(item => item.silver >= 1); break;
         case 'C10': allowed = owner.silver >= 2 && GOODS.some(good => view.bankGoods[good.id] >= 2); break;
         case 'C11': allowed = view.discard.some(item => getCard(item.definitionId).category === 'tool'); break;
         case 'C12': allowed = available >= 3 && view.players.some(item => item.silver >= 1); break;
         case 'C13': allowed = ownGoods >= 1 && Number.isSafeInteger(owner.silver + 2); break;
-        case 'M01':
-          for (const good of GOODS) if (peer.goods[good.id] > 0) actions.push({ type: 'play-character', cardId, params: { goodsId: good.id } });
-          break;
-        case 'M02': allowed = owner.hand.length - 1 + peer.handCount > 0; break;
-        case 'M03': allowed = owner.tools.length > 1 || peer.tools.length > 1; break;
-        case 'M04': allowed = canTribute || available > 0; break;
-        case 'M05': allowed = ownGoods + count(peer.goods) > 0; break;
-        case 'M06': allowed = owner.tools.length + peer.tools.length > 0; break;
-        case 'M07': allowed = peer.handCount > 0; break;
-        case 'M08':
-          for (const tool of peer.tools) actions.push({ type: 'play-character', cardId, params: { toolCardId: tool.ref } });
-          break;
       }
       if (allowed) actions.push({ type: 'play-character', cardId, params: {} });
+      for (const peer of peers) {
+        let targeted = false;
+        switch (face.sourceCode) {
+          case 'C01': targeted = available > 0 || bankGoods > 0; break;
+          case 'C08': targeted = owner.hand.length - 1 < 5 && available > 0 || peer.handCount > 3; break;
+          case 'M01':
+            for (const good of GOODS) if (peer.goods[good.id] > 0) actions.push({ type: 'play-character', cardId,
+              params: targetParams(peer, { goodsId: good.id }) });
+            break;
+          case 'M02': targeted = owner.hand.length - 1 + peer.handCount > 0; break;
+          case 'M03': targeted = owner.tools.length > 1 || peer.tools.length > 1; break;
+          case 'M04': targeted = peer.silver >= 2 && Number.isSafeInteger(owner.silver + 2) || available > 0; break;
+          case 'M05': targeted = ownGoods + count(peer.goods) > 0; break;
+          case 'M06': targeted = owner.tools.length + peer.tools.length > 0; break;
+          case 'M07': targeted = peer.handCount > 0; break;
+          case 'M08':
+            for (const tool of peer.tools) actions.push({ type: 'play-character', cardId,
+              params: targetParams(peer, { toolCardId: tool.ref }) });
+            break;
+        }
+        if (targeted) actions.push({ type: 'play-character', cardId, params: targetParams(peer) });
+      }
     }
   }
   for (const tool of owner.tools) {
@@ -85,9 +94,7 @@ function ordinaryActions(view) {
     let allowed = false;
     switch (code) {
       case 'T01': allowed = available > 0 && (owner.silver >= 1 || owner.hand.length > 0); break;
-      case 'T02': allowed = ownGoods > 0 && count(peer.goods) > 0; break;
       case 'T03': allowed = owner.hand.length > 0; break;
-      case 'T04': allowed = available >= 2; break;
       case 'T05': allowed = available > 0 && owner.silver >= 1; break;
       case 'T06': allowed = ownGoods > 0 && available > 0; break;
       case 'T08': allowed = Number.isSafeInteger(owner.silver + 2); break;
@@ -95,6 +102,8 @@ function ordinaryActions(view) {
       case 'T10': allowed = bankGoods > 0 && canAdd(owner, 1); break;
     }
     if (allowed) actions.push({ type: 'activate-tool', cardId: tool.cardId, params: {} });
+    for (const peer of peers) if (code === 'T02' && ownGoods > 0 && count(peer.goods) > 0 || code === 'T04' && available >= 2)
+      actions.push({ type: 'activate-tool', cardId: tool.cardId, params: targetParams(peer) });
   }
   actions.push({ type: 'end-turn' }); return actions;
 }
@@ -146,7 +155,8 @@ function choosePending(view, actions) {
   return actions[0];
 }
 function ordinaryScore(view, action) {
-  const owner = view.players.find(item => item.id === view.viewerId), peer = view.players.find(item => item.id !== view.viewerId);
+  const owner = view.players.find(item => item.id === view.viewerId), peer = view.players.find(item => item.id === action.params?.targetId)
+    ?? view.players.find(item => item.id !== view.viewerId);
   const card = [...owner.hand, ...owner.tools].find(item => item.cardId === action.cardId), face = card && getCard(card.definitionId);
   if (action.type === 'end-turn') return owner.silver >= 60 ? 1000 : view.remainingActions >= 2
     && jitter(`${view.matchId}:${view.turnId}`) % 24 === 0 ? 95 : 0;

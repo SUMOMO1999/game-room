@@ -2,6 +2,7 @@ import { renderCard, renderCardBack, renderPatternBadge } from './art.mjs';
 import { makeDeck } from './cards.mjs';
 import { handLayout, publicLayout } from './layout.mjs';
 import { poker414Selection } from './presentation.mjs';
+import { createPoker414Motion, poker414MotionPlan } from './motion-ui.mjs';
 import { createGameAudio } from '../../game-audio.mjs';
 import { mountRoomAudioControls } from '../../platform/room-audio-controls.mjs';
 import { mountRoomSettings } from '../../platform/room-settings.mjs';
@@ -28,7 +29,7 @@ export function mountPoker414Page({ root, preview = false, practice = false, onA
     <div class="p414-room-line"><span>${practice ? '本机练习' : '房间'} <b id="p414-code"></b></span>${button('p414-invite', '复制邀请', practice ? 'hidden' : '')}<span id="p414-observers"></span></div>
     <section id="p414-roster" class="p414-roster" aria-label="逆时针行动顺序"></section>
     <main class="p414-table">
-      <div class="p414-table-heading"><strong id="p414-turn"></strong>${button('p414-inspect', '看公牌')}</div>
+      <div class="p414-table-heading"><strong id="p414-turn"></strong><span id="p414-effect" class="p414-effect" role="status" aria-live="polite"></span><span id="p414-deck" class="p414-deck" aria-label="发牌牌堆" hidden>${renderCardBack()}</span>${button('p414-inspect', '看公牌')}</div>
       <div id="p414-waiting" class="p414-waiting" hidden><p class="p414-eyebrow">EVERYONE AT THE TABLE</p><h1>坐好了，就开始。</h1><p id="p414-ready-description"></p><div class="p414-waiting-actions">${button('p414-ready', '准备好了', 'class="p414-primary"')}${button('p414-start', '开始游戏', 'class="p414-primary"')}${button('p414-role', '改为观战')}</div><p id="p414-start-reason"></p><p id="p414-cancellation" hidden></p><p>两副牌 · 3～8人 · 先出完获胜</p></div>
       <div id="p414-playing" class="p414-playing"><div id="p414-public" class="p414-public" aria-label="全部已出公牌"></div><div class="p414-target"><div><strong id="p414-target-label"></strong><span id="p414-window" role="timer"></span></div><div id="p414-target-cards" aria-label="当前要压的牌"></div></div></div>
       <div id="p414-result" class="p414-result" hidden><h1 id="p414-result-title"></h1><p id="p414-result-note"></p><div id="p414-result-scores"></div>${button('p414-rematch', '再来一局', 'class="p414-primary"')}</div>
@@ -39,7 +40,7 @@ export function mountPoker414Page({ root, preview = false, practice = false, onA
     <footer id="p414-feedback" class="p414-feedback" role="status" aria-live="polite"></footer>
   </div>
   <dialog id="p414-options-dialog" class="p414-dialog"><div class="dialog-heading"><h2>设置</h2>${button('p414-settings-close', '×', 'class="close-button" aria-label="关闭设置"')}</div><div class="game-settings-body">
-    <section><h3>声音与玩法</h3><div id="p414-settings-tools" class="game-settings-controls">${button('sound-toggle', '点按启声')}${button('p414-rules', '玩法说明')}</div><div class="sound-settings"><label for="sound-volume">音效音量</label><input id="sound-volume" type="range" min="0" max="100" step="5" value="45"><select id="sound-preview-kind" aria-label="试听种类"><option value="select">选牌</option><option value="placement">出牌</option><option value="card-hook">勾牌</option><option value="card-fork">叉牌</option><option value="card-bomb">炸弹</option><option value="card-rocket">火箭</option><option value="card-pass">不出</option><option value="turn">轮到你</option><option value="chat">聊天</option><option value="win">获胜</option><option value="loss">结束</option></select>${button('sound-preview', '试听')}<span id="sound-preview-status" role="status"></span></div></section>
+    <section><h3>声音与玩法</h3><div id="p414-settings-tools" class="game-settings-controls">${button('sound-toggle', '点按启声')}${button('p414-rules', '玩法说明')}</div><label class="p414-sort-control" for="p414-sort">手牌阅读顺序 <select id="p414-sort"><option value="rank">按点数</option><option value="suit">按花色</option></select></label><p>只调整本机显示，保留已选牌。</p><div class="sound-settings"><label for="sound-volume">音效音量</label><input id="sound-volume" type="range" min="0" max="100" step="5" value="45"><select id="sound-preview-kind" aria-label="试听种类"><option value="select">选牌</option><option value="placement">出牌</option><option value="card-hook">勾牌</option><option value="card-fork">叉牌</option><option value="card-bomb">炸弹</option><option value="card-rocket">火箭</option><option value="card-pass">不出</option><option value="turn">轮到你</option><option value="chat">聊天</option><option value="win">获胜</option><option value="loss">结束</option></select>${button('sound-preview', '试听')}<span id="sound-preview-status" role="status"></span></div></section>
     <section><h3>${practice ? '练习安排' : '房间安排'}</h3><div class="game-settings-controls">${button('p414-members', practice ? '练习成员' : '成员与积分')}${button('p414-copy-settings', '复制邀请', practice ? 'hidden' : '')}${button('p414-exit-settings', practice ? '返回大厅' : '退出房间')}${local ? '' : `${button('p414-logout', '退出棋牌登录')}${button('p414-agora', '返回 Agora')}`}</div><div id="p414-host-tools" hidden><label for="p414-host-choice">将房主交给</label><select id="p414-host-choice"></select>${button('p414-transfer', '转交房主')}</div>${button('p414-take-host', '接任房主', 'hidden')}<p id="chat-legacy-note" hidden></p></section>
     ${practice ? `<section><h3>本机练习</h3><p id="p414-practice-save">进度只保存在这个浏览器，不计正式积分。</p><label for="p414-practice-count">下一局总人数（含你）</label><select id="p414-practice-count">${[3,4,5,6,7,8].map(n => `<option value="${n}">${n}人 · ${n - 1}位电脑</option>`).join('')}</select>${button('p414-practice-restart', '重新开始')}${button('p414-practice-reload', '读取已保存进度', 'hidden')}</section>` : ''}
     ${preview ? `<section><h3>本机小样</h3><p>合成牌局，用于布局与操作检查；没有真实输赢或积分。</p><label for="p414-scene">切换局面</label><select id="p414-scene">${scenes.map(([id, label]) => `<option value="${escape(id)}">${escape(label)}</option>`).join('')}</select>${button('p414-friend-message', '模拟朋友发言')}${button('p414-art-gallery', '检查全部牌面')}</section>` : ''}
@@ -56,6 +57,8 @@ export function mountPoker414Page({ root, preview = false, practice = false, onA
   let view = null, selected = new Set(), destroyed = false, expiryReported = null, inspectorKind = null, generation = 0;
   let connection = 'online', pending = false, concealed = false, leaveWorking = false, exitDestination = 'lobby';
   let serverTime = null, receivedAt = 0, assistedKey = null, handSignature = null, savedSelection = null, concealMessage = '';
+  let handSort = 'rank';
+  const objectMotion = createPoker414Motion({ root, document, window });
   const selectionScope = value => value && JSON.stringify([value.roomId, value.matchId, value.selfId, value.selfRole]);
   const monotonicNow = () => window.performance?.now() ?? Date.now();
   const now = () => serverTime === null ? Date.now() : practice && view?.clockPaused ? serverTime : serverTime + Math.max(0, monotonicNow() - receivedAt);
@@ -103,7 +106,8 @@ export function mountPoker414Page({ root, preview = false, practice = false, onA
     }
     const publicNode = $('p414-public');
     if (view && publicNode.clientWidth) {
-      const geometry = publicLayout(publicNode.clientWidth, publicNode.clientHeight, view.publicGroups.map(group => group.cards), { compact: frame.height < 540 && frame.width > frame.height });
+      const visibleGroups=view.phase==='finished'?view.publicGroups.slice(-1):view.publicGroups;
+      const geometry = publicLayout(publicNode.clientWidth, publicNode.clientHeight, visibleGroups.map(group => group.cards), { compact: frame.height < 540 && frame.width > frame.height });
       publicNode.style.setProperty('--public-card-w', `${geometry.cardWidth}px`);
       publicNode.style.setProperty('--public-card-h', `${geometry.cardHeight}px`);
       publicNode.style.setProperty('--public-gap', `${geometry.gap}px`);
@@ -135,11 +139,11 @@ export function mountPoker414Page({ root, preview = false, practice = false, onA
     const hand = $('p414-hand');
     if (!view || concealed) { hand.replaceChildren(); handSignature = null; return; }
     const disabled = !interactive() || view.phase !== 'playing';
-    const signature = JSON.stringify([view.selfRole, view.hand.map(card => card.id), disabled]);
+    const signature = JSON.stringify([view.selfRole, view.hand.map(card => card.id), disabled, handSort]);
     if (signature !== handSignature) {
       handSignature = signature;
       hand.innerHTML = view.selfRole === 'spectator' ? button('p414-all-hands', '查看所有人的手牌')
-        : view.hand.map(card => renderCard(card, { selected: selected.has(card.id), disabled })).join('');
+        : [...view.hand].sort((a,b)=>handSort==='suit'?a.suit.localeCompare(b.suit)||a.rank-b.rank||a.copyId-b.copyId:a.rank-b.rank||a.suit.localeCompare(b.suit)||a.copyId-b.copyId).map(card => renderCard(card, { selected: selected.has(card.id), disabled })).join('');
     }
     // Selecting a card and duplicate room snapshots must not discard keyboard
     // focus or replace the card under an in-flight pointer gesture.
@@ -147,6 +151,7 @@ export function mountPoker414Page({ root, preview = false, practice = false, onA
       card.classList.toggle('is-selected', selected.has(card.dataset.cardId));
       card.setAttribute('aria-pressed', String(selected.has(card.dataset.cardId)));
     }
+    objectMotion.sync();
   }
   function connectionState() {
     const unknown = Boolean(pending), healthy = connection === 'online' && !concealed;
@@ -194,6 +199,9 @@ export function mountPoker414Page({ root, preview = false, practice = false, onA
   function applyView(next) {
     if (destroyed) return;
     const reset = !view || view.roomId !== next.roomId || view.matchId !== next.matchId || view.selfId !== next.selfId || view.selfRole !== next.selfRole;
+    if(view && next.eventSeq!==view.eventSeq && !poker414MotionPlan(view,next))objectMotion.cancel();
+    const plan = poker414MotionPlan(view, next), prepared = objectMotion.capture(plan, view);
+    if(reset || next.connection!=='online' || next.clockPaused || !['dealing','playing','finished'].includes(next.phase))objectMotion.cancel();
     if (reset) generation += 1;
     const previousConcealMessage = concealMessage;
     view = next; concealed = false; concealMessage = '';
@@ -222,10 +230,12 @@ export function mountPoker414Page({ root, preview = false, practice = false, onA
     root.classList.toggle('is-your-turn', view.phase === 'playing' && view.selfRole === 'player' && view.turnPlayerId === view.selfId);
     $('p414-roster').innerHTML = view.actionOrder.map((id, index) => {
       const player = view.players.find(candidate => candidate.id === id);
-      return `<div class="p414-seat${id === view.turnPlayerId && view.phase === 'playing' ? ' is-current' : ''}${id === view.selfId ? ' is-self' : ''}"><span class="p414-seat-order">${index + 1}</span><div><strong title="${escape(player.name)}">${escape(player.name)}${id === view.selfId ? ' · 我' : ''}</strong><small>${view.phase === 'waiting' ? player.ready ? '已准备' : '未准备' : `${player.count}张`}${id === view.turnPlayerId && view.phase === 'playing' ? ' · 出牌' : id === view.firstPlayerId ? ' · 先手' : ''}${player.connected === false ? ' · 离线' : ''}</small></div></div>`;
+      return `<div data-player-id="${escape(id)}" class="p414-seat${id === view.turnPlayerId && view.phase === 'playing' ? ' is-current' : ''}${id === view.selfId ? ' is-self' : ''}"><span class="p414-seat-order">${index + 1}</span><div><strong title="${escape(player.name)}">${escape(player.name)}${id === view.selfId ? ' · 我' : ''}</strong><small>${view.phase === 'waiting' ? player.ready ? '已准备' : '未准备' : `${player.count}张`}${id === view.turnPlayerId && view.phase === 'playing' ? ' · 出牌' : id === view.firstPlayerId ? ' · 先手' : ''}${player.connected === false ? ' · 离线' : ''}</small></div></div>`;
     }).join('');
     $('p414-waiting').hidden = view.phase !== 'waiting';
-    $('p414-playing').hidden = !['playing', 'dealing'].includes(view.phase);
+    $('p414-playing').hidden = !['playing', 'dealing', 'finished'].includes(view.phase);
+    $('p414-deck').hidden = view.phase !== 'dealing';
+    $('p414-deck').setAttribute('aria-label', `发牌牌堆 · ${view.undealtCards}张待发`);
     $('p414-result').hidden = !['finished', 'aborted', 'cancelled'].includes(view.phase);
     $('p414-actions').hidden = !['playing', 'dealing'].includes(view.phase) || view.selfRole === 'spectator';
     $('p414-hand-section').hidden = !['playing', 'dealing'].includes(view.phase);
@@ -236,7 +246,8 @@ export function mountPoker414Page({ root, preview = false, practice = false, onA
     $('p414-ready-description').textContent = `${view.players.length}/8人入座，${view.spectators.length}位观众。全部准备后由房主开始。`;
     $('p414-start-reason').textContent = view.players.length < 3 ? '至少需要3位玩家。' : !view.players.every(player => player.ready) ? '等所有玩家准备好，再开始。' : '大家都准备好了，由房主开始。';
     $('p414-cancellation').textContent = view.cancellationNote || ''; $('p414-cancellation').hidden = !view.cancellationNote;
-    $('p414-public').innerHTML = view.publicGroups.length ? view.publicGroups.map(group => `<div class="p414-public-group" style="width:calc(${group.cards.length} * (var(--public-card-w,24px) + 1px) - 1px)"><small title="${escape(group.label)}">${escape(group.label)}</small><div>${group.cards.map(card => renderCard(card, { interactive: false, compact: true })).join('')}</div></div>`).join('') : '<div class="p414-empty" aria-hidden="true"><b>4 · A · 4</b></div>';
+    const displayedPublic=view.phase==='finished'?view.publicGroups.slice(-1):view.publicGroups;
+    $('p414-public').innerHTML = displayedPublic.length ? displayedPublic.map(group => `<div class="p414-public-group" style="width:calc(${group.cards.length} * (var(--public-card-w,24px) + 1px) - 1px)"><small title="${escape(group.label)}">${escape(group.label)}</small><div>${group.cards.map(card => renderCard(card, { interactive: false, compact: true })).join('')}</div></div>`).join('') : '<div class="p414-empty" aria-hidden="true"><b>4 · A · 4</b></div>';
     $('p414-target-label').textContent = view.target ? `当前目标 · ${view.target.label}` : view.phase === 'dealing' ? '牌局正在发牌，发完后由先手领出' : '新一轮 · 自由领出';
     $('p414-target-cards').innerHTML = view.target?.cards.map(card => renderCard(card, { interactive: false })).join('') || '';
     $('p414-hand-label').textContent = view.selfRole === 'spectator' ? '全知观战 · 可看所有已发手牌' : `我的手牌 · ${view.hand.length}`;
@@ -262,14 +273,17 @@ export function mountPoker414Page({ root, preview = false, practice = false, onA
     if (preview) $('p414-scene').value = view.scene;
     if (inspectorKind && $('p414-inspector-dialog').open) fillInspector(inspectorKind);
     connectionState(); updateCountdown(); resize();
+    objectMotion.sync(); objectMotion.play(prepared);
     if (!$('p414-feedback').textContent) feedback(preview ? '本机操作小样 · 合成数据，不计真实积分' : '已同步');
   }
   function clearSelection() { selected.clear(); audio.play('select'); actionState(); }
   listen($('p414-hand-overlap'), 'change', event => {
+    objectMotion.cancel();
     overlapHand = event.target.checked;
     try { window.localStorage?.setItem(HAND_OVERLAP_KEY, String(overlapHand)); } catch { /* A visual preference must not block card selection. */ }
     resize();
   });
+  listen($('p414-sort'), 'change', event => { objectMotion.cancel(); handSort=event.target.value==='suit'?'suit':'rank'; handSignature=null; renderHand(); resize(); });
   listen($('p414-hand'), 'click', event => {
     if (event.target.closest('#p414-all-hands')) { inspector('cards'); return; }
     const target = event.target.closest('[data-card-id]');
@@ -322,6 +336,7 @@ export function mountPoker414Page({ root, preview = false, practice = false, onA
   if (preview) listen($('p414-scene'), 'change', event => { settings.close(); onScene(event.target.value); });
   function conceal(options = {}) {
     if (destroyed) return;
+    objectMotion.cancel();
     const { message = '', loginHref = null, reauthHref = null, preserveSelection = false } = typeof options === 'string' ? { message: options } : options;
     generation += 1; leaveWorking = false; $('p414-leave-confirm').disabled = false; $('p414-leave-confirm').textContent = '确认退出';
     savedSelection = preserveSelection && view ? { scope: selectionScope(view), ids: [...selected] } : preserveSelection ? savedSelection : null;
@@ -342,11 +357,11 @@ export function mountPoker414Page({ root, preview = false, practice = false, onA
       if (!interactive() || !view) return;
       selected = new Set(ids.filter(id => view.hand.some(card => card.id === id))); actionState();
     }, selected: () => [...selected], confirmLeave, conceal, leaveFailure,
-    setConnection(state) { if (!destroyed) { connection = state; connectionState(); } },
+    setConnection(state) { if (!destroyed) { connection = state; if(state!=='online')objectMotion.cancel(); connectionState(); } },
     setPending(value) { if (!destroyed) { pending = Boolean(value); connectionState(); } },
     destroy() {
       if (destroyed) return;
-      conceal(); destroyed = true; window.clearInterval(clockTimer); observer.disconnect(); viewport.destroy(); settings.destroy(); audioControls.destroy(); audio.close(); disposers.forEach(dispose => dispose());
+      conceal(); destroyed = true; objectMotion.destroy(); window.clearInterval(clockTimer); observer.disconnect(); viewport.destroy(); settings.destroy(); audioControls.destroy(); audio.close(); disposers.forEach(dispose => dispose());
     },
   };
 }

@@ -1,4 +1,4 @@
-import { requireRule, player, opponent, goodsCount, goodsEntries, moveGoods, ordinaryCapacity,
+import { requireRule, player, clockwiseIds, goodsCount, goodsEntries, moveGoods, ordinaryCapacity,
   addSilver, discardCards, receiveGoods, completePending, emit, definition } from './model.mjs';
 
 export const AUCTION_PENDING_CONTRACT = Object.freeze({
@@ -8,6 +8,13 @@ export const AUCTION_PENDING_CONTRACT = Object.freeze({
   choiceKind: 'retain-goods', publicPool: true,
 });
 const publicGoods = goods => goodsEntries(goods).map(([id, count]) => ({ id, count }));
+
+function advanceBidder(state, actorId, ctx) {
+  const { pending, auction } = current(state);
+  const nextId = clockwiseIds(state, actorId).find(id => id !== auction.highestBidderId && !auction.passedIds.includes(id));
+  if (nextId) { auction.currentBidderId = nextId; return; }
+  pending.stage = 'settling'; continueAuction(state, ctx);
+}
 
 function current(state) {
   const pending = state.pending;
@@ -41,18 +48,14 @@ export function bid(state, actorId, amount, ctx) {
     && amount <= bidder.silver && (auction.kind !== 'goods' || canBidForGoods(bidder, amount)), '报价须加至少1两，并有可完成的支付与保留方案。');
   auction.highestBid = amount; auction.highestBidderId = actorId;
   emit(state, { type: 'bid-raised', actorSeatId: actorId, silver: amount });
-  const nextId = opponent(state, actorId).id;
-  if (auction.passedIds.includes(nextId)) { pending.stage = 'settling'; continueAuction(state, ctx); }
-  else auction.currentBidderId = nextId;
+  advanceBidder(state, actorId, ctx);
 }
 
 export function passBid(state, actorId, ctx) {
   const { pending, auction } = current(state);
   requireRule(pending.stage === 'bidding' && auction.currentBidderId === actorId && !auction.passedIds.includes(actorId), '当前不由你放弃叫价。');
   auction.passedIds.push(actorId); emit(state, { type: 'bid-passed', actorSeatId: actorId });
-  if (auction.highestBidderId || auction.passedIds.length === state.players.length) {
-    pending.stage = 'settling'; continueAuction(state, ctx);
-  } else auction.currentBidderId = opponent(state, actorId).id;
+  advanceBidder(state, actorId, ctx);
 }
 
 export function continueAuction(state, ctx) {

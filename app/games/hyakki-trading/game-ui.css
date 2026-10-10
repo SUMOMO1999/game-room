@@ -73,7 +73,7 @@
 .hy-real .hy-card-reader .yousei-card-details { margin:0; }
 .hy-real .hy-card-reader .yousei-card-details__face { --hyakki-card-width:140px;--hyakki-card-height:210px; }
 .hy-real .hy-card-reader .yousei-card-details li { font-size:16px;line-height:1.6; }
-.hy-real .hy-card-play { display:flex;align-items:center;gap:20px;width:100%;max-width:620px;min-width:0;text-align:left;padding:14px 18px;border-radius:16px;background:color-mix(in srgb,var(--theme-surface) 26%,var(--theme-table)); }
+.hy-real .hy-card-play { display:flex;align-items:center;gap:20px;width:100%;max-width:620px;min-width:0;text-align:left;padding:14px 0;background:transparent; }
 .hy-real .hy-inline-card { flex:0 0 126px; }
 .hy-real .hy-inline-card .hy-compact-goods:has(>span:only-child) { grid-template-columns:minmax(0,1fr); }
 .hy-real .hy-inline-card .hy-compact-goods:has(>span:only-child) .yousei-good-icon { width:52px;height:52px; }
@@ -126,9 +126,40 @@
 .hy-real #hy-decision-sources button { font-size:14px;padding:5px 9px; }
 .hy-real #yg-decision[data-kind=auction],.hy-real #yg-decision[data-kind=response] { width:min(600px,calc(100vw - 48px)); }
 .hy-real #yg-decision[data-kind=peek] { width:min(440px,calc(100vw - 48px)); }
-.hy-real #yg-decision[data-kind=choice] { width:min(860px,calc(100vw - 48px)); }
+.hy-real #yg-decision[data-kind=choice] { width:min(700px,calc(100vw - 48px)); }
+.hy-real #yg-decision:has(.hy-choice-cards[style*="--hy-card-count:6"]) { width:min(860px,calc(100vw - 48px)); }
+.hy-real .hy-choice-cards:has(.hy-choice-text) { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.hy-real #yg-decision .hy-choice-text { grid-column:auto; }
+.hy-real .hy-decision-source { display:flex;align-items:center;gap:14px;margin-bottom:12px; }
+.hy-real .hy-decision-source>.hy-compact-face { width:92px;flex:0 0 92px; }
+.hy-real .hy-decision-source .hy-compact-art { height:74px; }
+.hy-real .hy-decision-source .hy-compact-face>strong { font-size:14px; }
+.hy-real .hy-decision-source>div { min-width:0; }
+.hy-real .hy-decision-context .hy-step-reason { font-weight:700; }
+.hy-real .hy-decision-context small,.hy-real .hy-decision-reminder small { display:block;color:var(--theme-muted);font-size:12px;line-height:1.5; }
+.hy-real .hy-decision-context .hy-step-cost { font-variant-numeric:tabular-nums; }
+.hy-real .hy-decision-reminder { margin-bottom:8px; }
+.hy-real .hy-decision-reminder>strong { font-size:14px; }
+.hy-real .hy-response-cards { display:flex;justify-content:center;gap:10px; }
+.hy-real .hy-response-cards article { width:100px; }
+.hy-real .hy-target-field { flex-basis:100%; }
+.hy-real .hy-target-field select { min-width:0;max-width:100%; }
+.hy-real .hy-target-summary { margin:4px 0;font-size:12px;line-height:1.45; }
+.hy-real .hy-target-form { display:grid;gap:10px; }
+.hy-real .hy-target-form label { display:flex;align-items:center;gap:8px; }
+.hy-real .hy-target-form select { flex:1;min-width:0; }
+.hy-real .hy-target-public { padding:8px 10px;background:var(--theme-table);border-radius:10px; }
+.hy-real #yg-inspector:has(.hy-target-form) { width:min(620px,calc(100vw - 48px)); }
 @media (max-height:600px) and (orientation:landscape) {
  .hy-real #yg-decision .hy-dialog-content { padding:0; }
+ .hy-real #yg-decision[data-step="0"] { width:min(600px,calc(100vw - 48px)); }
+ .hy-real .hy-decision-source { gap:10px;margin-bottom:6px; }
+ .hy-real .hy-decision-source>.hy-compact-face { width:72px;flex-basis:72px; }
+ .hy-real .hy-decision-source .hy-compact-art { height:48px; }
+ .hy-real .hy-decision-context p,.hy-real .hy-decision-reminder p { font-size:13px;line-height:1.4;margin:3px 0 6px; }
+ .hy-real .hy-decision-reminder small { font-size:11px; }
+ .hy-real .hy-target-summary { display:none; }
+ .hy-real .hy-choice-text { min-height:44px;padding:5px 8px; }
 }
 
 @media (max-height:600px) and (orientation:landscape) {
@@ -158,3 +189,141 @@
 @media (min-width:1101px) and (min-height:601px) and (max-height:800px) and (orientation:landscape) {
   .hy-real .hy-card-play { padding:12px 14px; }
 }
+
+/* A card remains a tabletop object through reading, choice and confirmed movement. */
+.hy-real .hy-table-work { display:grid;grid-template-columns:148px minmax(0,1fr);align-items:center;gap:22px;width:min(100%,720px);min-width:0; }
+.hy-real .hy-work-face { --hyakki-card-width:148px;--hyakki-card-height:216px;min-width:0; }
+.hy-real .hy-work-face .yousei-card { box-shadow:0 8px 16px #0003; }
+.hy-real .hy-work-face .yousei-card__effect { display:none; }
+.hy-real .hy-work-copy { min-width:0; }
+.hy-real .hy-work-heading { display:grid;gap:3px;margin-bottom:10px; }
+.hy-real .hy-work-heading>strong { font:700 23px/1.25 ui-serif,"Songti SC",serif; }
+.hy-real .hy-work-heading>small { color:var(--theme-muted);font-size:12px; }
+.hy-real .hy-work-copy>p { margin:7px 0;line-height:1.45; }
+.hy-real .hy-work-effect { font-size:16px; }
+.hy-real .hy-work-outcome,.hy-real .hy-work-cost { font-size:13px; }
+.hy-real .hy-work-cost { color:var(--theme-muted); }
+.hy-real .hy-work-actions { display:flex;flex-wrap:wrap;gap:8px;margin-top:12px; }
+.hy-real .hy-benefit-objects { display:flex;gap:10px;margin:10px 0; }
+.hy-real .hy-benefit-objects>button { display:grid;justify-items:center;gap:6px;flex:1;padding:8px 10px; }
+.hy-real .hy-benefit-deck { position:relative;display:block;width:56px;height:50px; }
+.hy-real .hy-benefit-deck .yousei-card { position:absolute;--hyakki-card-width:30px;--hyakki-card-height:44px;min-width:0;min-height:0; }
+.hy-real .hy-benefit-deck .yousei-card:nth-child(2) { transform:translate(18px,4px) rotate(8deg); }
+.hy-real .hy-benefit-deck .yousei-card__back-label { display:none; }
+.hy-real .hy-benefit-stock { display:flex;align-items:center;height:50px; }
+.hy-real .hy-benefit-goods { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:8px 0; }
+#hyakki-digital-root.hy-real .hy-benefit-goods>button { display:flex;align-items:center;gap:6px;min-width:0;min-height:50px;padding:5px 7px;text-align:left; }
+.hy-real .hy-benefit-goods>button>span:last-child { display:grid;gap:2px;min-width:0; }
+.hy-real .hy-benefit-goods small { font-size:11px;white-space:nowrap; }
+#hyakki-digital-root.hy-real .hy-benefit-goods [aria-pressed=true],#hyakki-digital-root.hy-real .hy-benefit-objects [aria-pressed=true] { border-color:var(--theme-accent);background:color-mix(in srgb,var(--theme-accent) 18%,var(--theme-table));box-shadow:inset 0 0 0 1px var(--theme-accent); }
+.hy-real .hy-work-preview { display:flex;align-items:center;flex-wrap:wrap;gap:5px;color:var(--theme-accent); }
+.hy-real .hy-work-preview>span { font-size:11px;color:var(--theme-muted); }
+.hy-real .hy-work-preview .yousei-good-icon { width:24px;height:24px;flex:none; }
+.hy-real .hy-rechoose { display:none; }
+#hyakki-digital-root.hy-real .hy-market-choice .yg-market-good.is-legal { outline:1px solid color-mix(in srgb,var(--theme-accent) 45%,transparent);cursor:pointer; }
+#hyakki-digital-root.hy-real .hy-market-choice .yg-market-good[aria-pressed=true] { outline:2px solid var(--theme-accent);background:color-mix(in srgb,var(--theme-accent) 20%,var(--theme-table)); }
+#hyakki-digital-root.hy-real .hy-market-choice .yg-market-good:active { transform:translateY(2px); }
+.hy-real .hy-inline-card .yousei-card { --hyakki-card-width:126px;--hyakki-card-height:182px; }
+.hy-real .hy-inline-card .yousei-card__effect { display:none; }
+.hy-real #yg-hand .yg-hand-card.is-selected .yousei-card { transform:translateY(-3px); }
+.hy-real .hy-table-work button:active,.hy-real .yg-pile:active { transform:translateY(2px); }
+.hy-table-motion { position:fixed;z-index:160;pointer-events:none;perspective:800px;filter:drop-shadow(0 8px 12px #0004); }
+.hy-table-motion>.yousei-card { width:100%!important;height:100%!important;min-width:0!important;min-height:0!important; }
+.hy-table-motion .yousei-card__state { display:none; }
+.hy-real.hy-pending-inline .yg-stage,.hy-real.hy-pending-inline .yg-track { display:none; }
+.hy-real .hy-task-materials { min-width:0;min-height:0;display:grid;grid-template-rows:auto minmax(0,1fr);gap:7px; }
+.hy-real .hy-task-materials .yg-hand-heading small { color:var(--theme-muted);font-size:11px; }
+.hy-real .yg-lower.hy-has-materials { grid-template-columns:150px minmax(0,1fr) minmax(0,.7fr); }
+.hy-real .hy-task-material-cards { display:flex;align-items:stretch;gap:8px;min-width:0;min-height:0;overflow:auto;overscroll-behavior-x:contain;padding:4px 3px;scrollbar-width:thin; }
+#hyakki-digital-root.hy-real .hy-material-card { flex:0 0 108px;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;padding:0;border:0;background:transparent;--hyakki-card-width:108px;--hyakki-card-height:158px; }
+.hy-real .hy-material-caption { font-size:11px; }
+.hy-real .hy-material-card.is-selected .yousei-card { outline:3px solid var(--theme-accent);outline-offset:-3px;transform:translateY(-3px); }
+#hyakki-digital-root.hy-real .hy-material-good { flex:0 0 86px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-width:0;padding:8px;border:1px solid var(--theme-border);background:transparent; }
+.hy-real .hy-material-good .yousei-good-icon { width:42px;height:42px; }.hy-real .hy-material-good small { font-size:11px; }
+.hy-real .hy-material-quantity { display:grid;justify-items:center;align-content:center;gap:4px;flex:0 0 132px;min-width:0;padding:6px;border:1px solid var(--theme-border);border-radius:12px; }
+.hy-real .hy-material-quantity>.yousei-good-icon { width:40px;height:40px; }.hy-real .hy-material-quantity>small { font-size:11px; }
+.hy-real .hy-material-quantity>div { display:flex;align-items:center;gap:5px; }.hy-real .hy-material-quantity b { min-width:18px;text-align:center;font-size:19px; }
+#hyakki-digital-root.hy-real .hy-material-quantity button { width:44px;min-width:44px;padding:3px;font-size:21px; }
+.hy-real .hy-material-group { display:flex;align-items:center;gap:5px;flex:none; }.hy-real .hy-material-group>strong { writing-mode:vertical-rl;font-size:12px; }
+.hy-real .hy-material-arrow { align-self:center;white-space:nowrap;color:var(--theme-accent);font-size:15px; }
+#hyakki-digital-root.hy-real .hy-material-exchange { display:flex;align-items:center;gap:5px;min-width:180px;min-height:70px;padding:8px;background:transparent; }
+#hyakki-digital-root.hy-real .hy-material-branch { display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-width:120px;padding:10px;background:transparent; }
+.hy-real .hy-material-branch .yousei-card { --hyakki-card-width:40px;--hyakki-card-height:58px;min-height:0; }.hy-real .hy-material-branch .yousei-card__back-label { display:none; }
+.hy-real .hy-material-coin { display:grid;place-items:center;width:44px;height:44px;border:2px solid var(--theme-accent);border-radius:50%;font:700 22px ui-serif; }
+.hy-real .hy-material-good.is-selected,.hy-real .hy-material-exchange.is-selected,.hy-real .hy-material-branch.is-selected,.hy-real .hy-material-quantity.is-selected { outline:2px solid var(--theme-accent);outline-offset:-2px;background:color-mix(in srgb,var(--theme-accent) 12%,var(--theme-table)); }
+.hy-real #yg-hand .is-task-material .yousei-card,.hy-real #yg-tools .is-task-material { border-color:var(--theme-accent); }
+.hy-real #yg-tools .is-selected { outline:3px solid var(--theme-accent);outline-offset:-3px; }
+.hy-real .hy-native-bid { display:flex;align-items:center;gap:7px;flex-wrap:wrap; }.hy-real .hy-native-bid>strong { font-size:23px; }.hy-real .hy-native-bid>small { font-size:12px; }.hy-real .hy-native-bid button { width:44px;font-size:20px;padding:3px; }
+@media (max-height:600px) and (orientation:landscape) {
+ .hy-real.hy-pending-inline .yg-peer.is-multiplayer .yg-seat-strip { grid-column:2; }
+ .hy-real.hy-pending-inline .yg-table:has(.yg-peer.is-multiplayer) .yg-centre { grid-row:1/3; }
+ .hy-real.hy-pending-inline .yg-stage,.hy-real.hy-pending-inline .yg-track { display:none; }
+ .hy-real.hy-pending-inline #yg-scene-content { justify-content:center;overflow:visible;padding:0; }
+ .hy-real .hy-table-work { grid-template-columns:76px minmax(0,1fr);gap:10px;height:auto;min-height:112px;align-items:stretch; }
+ .hy-real .hy-work-face { --hyakki-card-width:76px;min-height:0;height:100%; }
+ .hy-real .hy-work-face .yousei-card { width:76px;height:100%;min-height:0;min-width:0;padding:4px;gap:2px; }
+ .hy-real .hy-work-face .yousei-card__heading { display:none; }
+ .hy-real .hy-work-face .yousei-card__name { font-size:12px;line-height:14px; }
+ .hy-real .hy-work-face .yousei-card__portrait { min-height:24px; }
+ .hy-real .hy-work-face .yousei-card__cost { font-size:10px;line-height:12px;padding-top:2px; }
+ .hy-real .hy-work-face .yousei-card__goods--1 { --yousei-good-size:40px; }.hy-real .hy-work-face .yousei-card__goods--2 { --yousei-good-size:26px; }.hy-real .hy-work-face .yousei-card__goods--6 { --yousei-good-size:17px;gap:1px; }
+ .hy-real .hy-work-face .yousei-card__good b { font-size:12px;line-height:13px; }
+ .hy-real .hy-work-face .yousei-card__prices { font-size:10px; }.hy-real .hy-work-face .yousei-card__prices b { font-size:13px; }
+ .hy-real .hy-work-copy { display:flex;flex-direction:column;justify-content:center;min-height:0; }
+ .hy-real .hy-work-heading { display:flex;align-items:baseline;gap:5px;flex-wrap:wrap;margin:0 0 2px; }
+ .hy-real .hy-work-heading>strong { font-size:14px;line-height:17px; }
+ .hy-real .hy-work-heading>small { font-size:10px;line-height:12px; }
+ .hy-real .hy-table-peek .hy-work-heading>small,.hy-real .hy-table-peek .hy-work-outcome { display:none; }
+ .hy-real .hy-table-work[data-step-kind=benefit-branch].has-draft .hy-benefit-objects,.hy-real .hy-table-work[data-step-kind=benefit-branch].has-draft .hy-work-effect { display:none; }
+ .hy-real .hy-rechoose { display:block; }
+ .hy-real .hy-work-copy>p { margin:2px 0;font-size:12px;line-height:15px; }
+ .hy-real .hy-work-actions { gap:4px;margin-top:4px; }
+ #hyakki-digital-root.hy-real .hy-work-actions button { min-height:44px;min-width:0;flex:1;padding:5px 6px;font-size:12px;line-height:16px; }
+ .hy-real .hy-benefit-objects { margin:3px 0;gap:4px; }
+ #hyakki-digital-root.hy-real .hy-benefit-objects>button { display:flex;align-items:center;gap:4px;padding:4px;min-width:0;min-height:44px;font-size:11px; }
+ .hy-real .hy-benefit-deck,.hy-real .hy-benefit-stock { flex:none;width:30px;height:32px; }.hy-real .hy-benefit-stock .yousei-good-icon { width:16px;height:16px;margin-left:-7px; }
+ .hy-real .hy-benefit-deck .yousei-card { --hyakki-card-width:20px;--hyakki-card-height:29px; }.hy-real .hy-benefit-deck .yousei-card:nth-child(2) { transform:translate(8px,2px) rotate(8deg); }
+ .hy-real .hy-benefit-goods { margin:3px 0;gap:3px; }
+ #hyakki-digital-root.hy-real .hy-benefit-goods>button { min-height:44px;padding:3px;gap:3px;font-size:11px; }
+ .hy-real .hy-benefit-goods .yousei-good-icon { width:22px;height:22px; }.hy-real .hy-benefit-goods small { font-size:9px; }
+ .hy-real.hy-card-selected .hy-card-play { grid-template-columns:76px minmax(0,1fr);grid-template-areas:"face heading" "face summary" "face conditions" "face actions";gap:3px 8px;padding:0;background:transparent; }
+ .hy-real.hy-card-selected .hy-inline-card { display:block;grid-area:face;align-self:stretch; }
+ .hy-real.hy-card-selected .hy-inline-card .yousei-card { width:76px;height:100%;min-height:0;min-width:0;padding:4px;gap:2px; }
+ .hy-real.hy-card-selected .hy-inline-card .yousei-card__heading { display:none; }
+ .hy-real.hy-card-selected .hy-inline-card .yousei-card__portrait { min-height:24px; }
+ .hy-real.hy-card-selected .hy-inline-card .yousei-card__name { font-size:11px;line-height:13px; }
+ .hy-real.hy-card-selected .hy-inline-card .yousei-card__goods--6 { --yousei-good-size:16px;gap:0; }
+ .hy-real.hy-card-selected .hy-inline-card .yousei-card__cost { font-size:10px;line-height:12px; }
+ .hy-real.hy-card-selected .hy-inline-card .yousei-card__prices { font-size:10px; }.hy-real.hy-card-selected .hy-inline-card .yousei-card__prices b { font-size:12px; }
+ .hy-real .yg-pile { position:relative; }
+ .hy-real .yg-piles .yg-pile-art { position:absolute;display:block;left:3px;top:3px;width:26px;height:38px;--hyakki-card-width:26px;--hyakki-card-height:38px; }
+ .hy-real .yg-pile-art .yousei-card { min-width:0;min-height:0;padding:1px;gap:0; }
+ .hy-real .yg-pile-art .yousei-card>:not(.yousei-art):not(.yousei-card__goods) { display:none; }
+ .hy-real .yg-pile-art .yousei-card__goods { --yousei-good-size:8px;gap:0; }.hy-real .yg-pile-art .yousei-card__good b { display:none; }
+ .hy-real .yg-piles .yg-pile>span:last-child { position:relative;margin-left:15px;padding:2px;background:color-mix(in srgb,var(--theme-surface) 82%,transparent);border-radius:4px;font-size:10px; }
+ .hy-real #yg-hand .yousei-card__effect { font-size:10px;line-height:12px; }
+ .hy-real #yg-hand .yousei-card__portrait { min-height:18px; }
+ .hy-real .yg-lower.hy-has-materials { grid-template-columns:100px minmax(0,1fr) minmax(0,.65fr);gap:7px; }
+ .hy-real .hy-task-materials { gap:2px; }.hy-real .hy-task-materials .yg-hand-heading { min-height:18px;gap:3px; }.hy-real .hy-task-materials .yg-hand-heading>strong { font-size:11px; }.hy-real .hy-task-materials .yg-hand-heading>small { display:none; }
+ .hy-real .hy-task-material-cards { gap:4px;padding:3px 2px; }
+ #hyakki-digital-root.hy-real .hy-material-card { flex-basis:76px;--hyakki-card-width:76px;--hyakki-card-height:108px; }
+ .hy-real .hy-material-card .yousei-card { padding:4px;gap:2px;min-width:0; }.hy-real .hy-material-card .yousei-card__heading { display:none; }.hy-real .hy-material-card .yousei-card__name { font-size:11px;line-height:13px; }.hy-real .hy-material-card .yousei-card__portrait { min-height:18px; }.hy-real .hy-material-card .yousei-card__effect { font-size:10px;line-height:12px; }.hy-real .hy-material-card .yousei-card__cost { font-size:10px;line-height:12px; }.hy-real .hy-material-card .yousei-card__goods--6 { --yousei-good-size:15px;gap:1px; }.hy-real .hy-material-card .yousei-card__goods--1 { --yousei-good-size:38px; }.hy-real .hy-material-card .yousei-card__goods--2 { --yousei-good-size:26px; }.hy-real .hy-material-card .yousei-card__good b { font-size:11px;line-height:13px; }.hy-real .hy-material-card .yousei-card__prices { font-size:10px; }.hy-real .hy-material-card .yousei-card__prices b { font-size:12px; }
+ .hy-real .hy-material-quantity { flex-basis:126px;gap:1px;padding:3px; }.hy-real .hy-material-quantity>.yousei-good-icon { width:22px;height:22px; }.hy-real .hy-material-quantity>strong { font-size:11px;line-height:13px; }.hy-real .hy-material-quantity>small { font-size:10px;line-height:12px; }
+ #hyakki-digital-root.hy-real .hy-material-good { flex-basis:68px;padding:4px;gap:2px;font-size:11px; }.hy-real .hy-material-good .yousei-good-icon { width:30px;height:30px; }
+ #hyakki-digital-root.hy-real .hy-material-branch { min-width:96px;padding:5px;font-size:12px; }.hy-real .hy-material-branch .yousei-card { --hyakki-card-width:30px;--hyakki-card-height:43px; }
+ .hy-real .hy-native-work .hy-work-heading { margin-bottom:2px; }.hy-real .hy-native-work .hy-work-heading>small { font-size:10px;line-height:12px; }.hy-real .hy-native-work .hy-work-outcome { font-size:11px;line-height:14px; }
+ .hy-real .hy-native-work[data-native-step="2"] .hy-work-heading>small { display:none; }
+}
+
+.hy-real .hy-material-player { display:flex;flex-direction:column;justify-content:center;align-items:center;min-width:120px;min-height:70px;background:transparent; }
+.hy-real .hy-material-player.is-selected { outline:2px solid var(--theme-accent);outline-offset:-2px; }
+.hy-real .hy-native-bid label { display:flex;align-items:center;gap:4px; }
+#hyakki-digital-root.hy-real .hy-native-bid input { width:64px;min-height:44px;padding:6px;border:1px solid var(--theme-accent);border-radius:8px;background:var(--theme-surface);color:var(--theme-ink);font:700 20px ui-serif;text-align:center; }
+
+#hyakki-digital-root.hy-real .hy-source-reader { display:block;width:100%;height:100%;min-height:0;min-width:0;padding:0;border:0;border-radius:10px;background:transparent;color:inherit;text-align:inherit; }
+.hy-real .hy-source-reader:focus-visible { outline:2px solid var(--theme-accent);outline-offset:3px; }
+.hy-real .hy-source-reader:active .yousei-card { transform:scale(.98); }
+.hy-real.hy-card-selected .yg-stage { opacity:.55; }
+
+.hy-real .hy-task-clock { font-size:12px;white-space:nowrap;color:var(--theme-muted);font-variant-numeric:tabular-nums; }
+@media (max-height:600px) and (orientation:landscape) { .hy-real .hy-task-clock { font-size:11px; } }

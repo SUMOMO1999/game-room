@@ -14,6 +14,7 @@ import * as gameRouting from './game-routing.mjs';
 import * as gameCatalog from './games/catalog.mjs';
 import * as rummiFeedback from './rummikub-feedback.mjs';
 import * as rummiAssist from './rummikub-assist.mjs';
+import * as rummiMotion from './games/rummikub/motion-ui.mjs';
 import * as rackLayout from './rack-layout.mjs';
 import * as tableLayout from './table-layout.mjs';
 import * as viewport from './game-viewport.mjs';
@@ -81,6 +82,7 @@ function dom(html) {
     }
   }
   document=new EventTarget();document.hidden=false;document.documentElement=new Node('html');parse(html,document.documentElement);
+  document.head=document.documentElement.querySelector('head');
   document.body=document.documentElement.querySelector('body');document.getElementById=id=>nodes.get(id)??null;
   document.createElement=tag=>new Node(tag);document.querySelector=selector=>document.documentElement.querySelector(selector);
   document.querySelectorAll=selector=>document.documentElement.querySelectorAll(selector);
@@ -124,12 +126,14 @@ async function fixture(t,{page='room',query='',state=AUTH,history,firstRoom=null
     if(url==='/auth/logout')return json({ok:true});
     throw new Error(`Unexpected synthetic request: ${url}`);
   };
-  Object.assign(window,{innerWidth:844,innerHeight:390,visualViewport:null,setInterval:()=>0,clearInterval(){}});
+  Object.assign(window,{innerWidth:844,innerHeight:390,visualViewport:null,setInterval:()=>0,clearInterval(){},
+    requestAnimationFrame:()=>0,cancelAnimationFrame(){},performance});
   const context=vm.createContext({document,window,location,navigator:{},sessionStorage,localStorage,fetch,URL,URLSearchParams,Response,ReadableStream,TextDecoder,
     AbortController,DOMException,Event,EventTarget,structuredClone,performance,crypto,innerWidth:844,innerHeight:390,
     setTimeout:timers.setTimeout,clearTimeout:timers.clearTimeout,queueMicrotask,requestAnimationFrame:()=>0,cancelAnimationFrame(){},
     getComputedStyle:()=>({paddingLeft:'8',paddingRight:'8',paddingTop:'8',paddingBottom:'8'}),
-    ...roomClock,...roomSession,...roomAudioControls,...roomViewport,...rules,...presentation,...lobbyModel,...gameRouting,...gameCatalog,...rummiFeedback,...rummiAssist,...rackLayout,...tableLayout,...viewport,createGameAudio});
+    ...roomClock,...roomSession,...roomAudioControls,...roomViewport,...rules,...presentation,...lobbyModel,...gameRouting,...gameCatalog,...rummiFeedback,...rummiAssist,...rummiMotion,...rackLayout,...tableLayout,...viewport,createGameAudio});
+  context.mountRummikubMotion=()=>rummiMotion.mountRummikubMotion({root:document.body,document,window});
   const account=await moduleIn(context,'account-client.mjs');Object.assign(context,account);
   context.watchAccountLifecycle=(options)=>{const watcher=account.watchAccountLifecycle(options);watchers.push(watcher);return watcher;};
   Object.assign(context,await moduleIn(context,'room-client.mjs'));

@@ -164,3 +164,13 @@ body.army-screen { --army-viewport-height:100dvh; --army-viewport-width:100vw; c
 .army-screen.portrait-board .army-action-buttons { margin-left:auto; }
 .army-screen.portrait-board .army-piece { width:96%; height:88%; font-size:clamp(10px,calc(var(--army-unit,50px)*.35),24px); letter-spacing:0; }
 .army-screen.portrait-board .army-piece small { display:none; }
+
+/* The authoritative piece remains in its cell. A finite visual copy supplies
+   the flip/contact; this local result never changes hit areas or board size. */
+.army-cell.selected .army-piece { transform:translateY(-2px); }
+.army-action-effect { position:absolute; z-index:9; left:50%; top:-3px; transform:translate(-50%,-100%); pointer-events:none; white-space:nowrap; border:1px solid #ffe3a1; border-radius:5px; padding:3px 5px; background:#173c31; color:#fff1c9; font:700 clamp(9px,calc(var(--army-unit,50px)*.15),13px)/1.2 system-ui; box-shadow:0 2px 8px #10291e55; }
+@media (prefers-reduced-motion:no-preference) {
+  .army-cell .army-piece { transition:transform 110ms ease,box-shadow 110ms ease; }
+  .army-action-effect { animation:army-local-result 800ms ease-out both; }
+}
+@keyframes army-local-result { 0% { opacity:0; transform:translate(-50%,-70%); } 18%,72% { opacity:1; transform:translate(-50%,-100%); } 100% { opacity:0; transform:translate(-50%,-115%); } }

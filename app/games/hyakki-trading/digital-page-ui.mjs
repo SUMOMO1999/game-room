@@ -86,13 +86,13 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
       </div></div></header>
     <section class="yg-table" aria-label="公共桌面" data-chat-dismiss-notices>
       <aside class="yg-piles" aria-label="抽牌与弃牌"><button type="button" id="yg-draw-pile" class="yg-pile"><span class="yg-pile-art">${renderCardBack()}</span><span>抽牌堆 <b id="yg-deck-count"></b></span></button>
-        <button type="button" id="yg-discard-pile" class="yg-pile"><span class="yg-discard-mark" aria-hidden="true">弃</span><span>弃牌区 <b id="yg-discard-count"></b></span></button></aside>
+        <button type="button" id="yg-discard-pile" class="yg-pile"><span id="yg-discard-art" class="yg-pile-art"><span class="yg-discard-mark" aria-hidden="true">弃</span></span><span>弃牌区 <b id="yg-discard-count"></b></span></button></aside>
       <main class="yg-centre"><div class="yg-stage"><div><h1 id="yg-title">轮到你经营</h1><span id="yg-room-code">示例房号610036</span></div><div class="yg-time"><strong id="yg-clock">24:12</strong><small id="yg-clock-label">定格时钟示例</small></div></div>
         <div id="yg-track" class="yg-track" aria-label="共享行动条"><span id="yg-track-label"></span><div id="yg-track-steps" role="meter" aria-labelledby="yg-track-label" aria-valuemin="0"></div></div><div id="yg-readiness" class="yg-readiness" hidden></div>
         <div id="yg-scene-content" class="yg-scene-content"></div>
       </main>
       <aside id="yg-peer" class="yg-peer" aria-label="其他玩家的公开商铺"></aside>
-      <aside class="yg-storage"><section id="yg-public-stock" class="yg-public"><div class="yg-public-heading"><strong>公共货摊</strong><span id="yg-stock-limit"></span></div><button type="button" id="yg-market" class="yg-market" aria-label="查看六类公共货物和库存详情"></button></section>
+      <aside class="yg-storage"><section id="yg-public-stock" class="yg-public"><div class="yg-public-heading"><strong>公共货摊</strong><span id="yg-stock-limit"></span></div><div id="yg-market" class="yg-market" aria-label="六类公共货物和库存"></div></section>
         <section id="yg-personal" class="yg-personal" aria-label="我的货物"><button type="button" id="yg-shop-detail"><span class="yg-personal-heading"><strong>我的货物</strong><span id="yg-silver"></span></span><span id="yg-stock-slots" class="yg-stock-slots"></span><span class="yg-shop-note" id="yg-shop-note"></span></button>${button('yg-expand', '扩摊', 'aria-label="查看扩摊费用"')}</section>
       </aside>
     </section>
@@ -198,10 +198,12 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
     else if (view.scene === 'dense') note = '手牌连续横滑浏览；分类与横竖切换不改牌序。';
     else if (view.scene === 'full') note = '五个普通格已满，临时格占用且已付2两；腾空不退款，再占用才收费。';
     else if (view.selfRole === 'spectator') note = '双方私牌、私看候选和未来牌序都不显示。';
-    $('yg-scene-content').innerHTML = `<p class="yg-scene-note">${escape(note)}</p><div class="yg-table-actions">${actions()}${view.phase === 'waiting' ? button('yg-waiting-invite', '复制样板邀请') : ''}</div>`;
+    // The real controller owns this task area, including any active native input.
+    if (!externalDecisions) $('yg-scene-content').innerHTML = `<p class="yg-scene-note">${escape(note)}</p><div class="yg-table-actions">${actions()}${view.phase === 'waiting' ? button('yg-waiting-invite', '复制样板邀请') : ''}</div>`;
     $('yg-deck-count').textContent = `${view.deckCount}张`; $('yg-discard-count').textContent = `${view.discardCount}张`;
     $('yg-discard-pile').disabled = !view.discard;
-    $('yg-market').innerHTML = view.market.map(good => `<span class="yg-market-good" aria-label="公共${escape(good.name)}${good.count}件">${renderGoodsIcon(good.id)}<span>${escape(good.name)}</span><strong>${good.count}</strong></span>`).join('');
+    $('yg-discard-art').innerHTML=view.discard?renderCard(view.discard,{interactive:false}):'<span class="yg-discard-mark" aria-hidden="true">弃</span>';
+    $('yg-market').innerHTML = view.market.map(good => `<button type="button" class="yg-market-good" data-market-good="${escape(good.id)}" aria-label="公共${escape(good.name)}${good.count}件">${renderGoodsIcon(good.id)}<span>${escape(good.name)}</span><strong>${good.count}</strong></button>`).join('');
     $('yg-stock-limit').textContent = `每类${view.goodsPerType ?? 6}件`;
     const publicPlayers = view.selfRole === 'player' ? view.players.filter(entry => entry.id !== view.selfId) : view.players;
     const seatScroll = $('yg-peer').querySelector('.yg-seat-strip')?.scrollLeft ?? 0;
@@ -216,7 +218,7 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
       if (!publicPlayers.some(entry => entry.id === focusedPublicPlayer)) {
         focusedPublicPlayer = publicPlayers.find(entry => entry.id === view.currentPlayerId)?.id ?? publicPlayers[0]?.id;
       }
-      $('yg-peer').innerHTML = `<nav class="yg-seat-strip" aria-label="公开席位，点选查看商铺">${publicPlayers.map(entry => `<button type="button" class="yg-seat${entry.id === view.currentPlayerId ? ' is-current' : ''}" data-focus-player="${escape(entry.id)}" title="${escape(entry.name)}" aria-label="第${entry.seatOrder ?? view.players.indexOf(entry) + 1}席，${escape(entry.name)}，${entry.silver}两，手牌${entry.handCount}张${entry.id === view.currentPlayerId ? '，正在经营' : ''}" aria-pressed="${entry.id === focusedPublicPlayer}"><span class="yg-seat-name"><small>${entry.seatOrder ?? view.players.indexOf(entry) + 1}</small><strong>${escape(entry.name)}</strong></span><span class="yg-seat-status"><b>${entry.silver}两</b><span>手牌${entry.handCount}张</span></span></button>`).join('')}</nav><div class="yg-peer-detail">${publicPlayers.filter(entry => entry.id === focusedPublicPlayer).map(panel).join('')}</div>`;
+      $('yg-peer').innerHTML = `<nav class="yg-seat-strip" aria-label="公开席位，点选查看商铺">${publicPlayers.map(entry => `<button type="button" class="yg-seat${entry.id === view.currentPlayerId ? ' is-current' : ''}${entry.id===view.decisionActorId?' is-deciding':''}" data-focus-player="${escape(entry.id)}" title="${escape(entry.name)}" aria-label="第${entry.seatOrder ?? view.players.indexOf(entry) + 1}席，${escape(entry.name)}，${entry.silver}两，手牌${entry.handCount}张${entry.id === view.currentPlayerId ? '，正在经营' : ''}${entry.id===view.decisionActorId?'，正在回应或选择':''}" aria-pressed="${entry.id === focusedPublicPlayer}"><span class="yg-seat-name"><small>${entry.seatOrder ?? view.players.indexOf(entry) + 1}</small><strong>${escape(entry.name)}</strong>${entry.id===view.decisionActorId?'<em>待决</em>':''}</span><span class="yg-seat-status"><b>${entry.silver}两</b><span>手牌${entry.handCount}张</span></span></button>`).join('')}</nav><div class="yg-peer-detail">${publicPlayers.filter(entry => entry.id === focusedPublicPlayer).map(panel).join('')}</div>`;
       $('yg-peer').querySelector('.yg-seat-strip').scrollLeft = seatScroll;
     } else $('yg-peer').innerHTML = publicPlayers.map(panel).join('');
     const self = view.selfRole === 'player' ? view.players.find(entry => entry.id === view.selfId) : null;
@@ -342,7 +344,7 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
       const player = view.players.find(entry => entry.id === (node.dataset.player ?? view.selfId));
       if (player) inspect(`${player.name} · 公开商铺`, `<p>${player.silver}两 · 普通容量${player.ordinaryCapacity}格＋1临时格 · 手牌${player.handCount}张</p><div class="yg-detail-goods">${player.goods.map(good => `<div>${renderGoodsIcon(good.id)}<strong>${escape(goodName(good.id))}</strong><span>${good.count}件</span></div>`).join('')}</div><h3>已装道具</h3><div class="yg-candidates">${player.tools.map(tool => `<article>${renderCard(tool, { tapped: tool.tapped, interactive: false })}<p>${tool.tapped ? '横置 · 已用' : '竖直 · 可用'}</p></article>`).join('')}</div><p>其他人的手牌和私看候选不在这里显示。</p>`); return;
     }
-    if (node.id === 'yg-market') { inspect('公共货摊 · 六类库存', `<div class="yg-detail-goods">${view.market.map(good => `<div>${renderGoodsIcon(good.id)}<strong>${good.name}</strong><span>${good.count}件</span></div>`).join('')}</div><p>本局开局每类${view.goodsPerType ?? 6}件；当前库存已扣除双方货物。购买时必须满足完整配方，不能缺货先扣款。</p>`); return; }
+    if (node.dataset.marketGood) { inspect('公共货摊 · 六类库存', `<div class="yg-detail-goods">${view.market.map(good => `<div>${renderGoodsIcon(good.id)}<strong>${good.name}</strong><span>${good.count}件</span></div>`).join('')}</div><p>本局开局每类${view.goodsPerType ?? 6}件；当前库存已扣除双方货物。购买时必须满足完整配方，不能缺货先扣款。</p>`); return; }
     if (['yg-decision-open', 'yg-portrait-decision-open', 'yg-chat-decision-open'].includes(node.id)) { openDecision(); return; }
     if (node.id === 'yg-decision-close') { $('yg-decision').close(); feedback('当前步骤与已选候选保留；没有取消、退款或重新抽取。'); return; }
     if (node.id === 'yg-inspector-close' || node.id === 'yg-cancel-draft') { closeInspector(); return; }
@@ -369,7 +371,11 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
   const observer = new window.ResizeObserver(resize); observer.observe($('yg-hand'));
   const chatObserver = new window.MutationObserver(syncChatDecision); chatObserver.observe($('room-chat'), { attributes: true, attributeFilter: ['hidden'] });
   $('chat-title').textContent = '样板双成员聊天'; root.querySelector('.chat-heading p').textContent = '仅当前标签页内 · 未连接真实伙伴 · 退出即清空';
-  return { applyView, openDecision, audio, feedback, settings, destroy() {
+  return { applyView, openDecision, audio, feedback, settings,
+    focusPublicPlayer(id) {
+      if (!view?.players.some(player=>player.id===id&&(view.selfRole!=='player'||id!==view.selfId))) return false;
+      focusedPublicPlayer=id;renderTable();return true;
+    }, destroy() {
     if (destroyed) return; destroyed = true; clearPrivatePanels(); removers.forEach(remove => remove());
     viewport.destroy(); observer.disconnect(); chatObserver.disconnect(); settings.destroy(); audioControls.destroy(); void audio.close();
     unmountArt(); window.clearTimeout(feedbackTimer); document.body.classList.remove('yg-keyboard', 'yg-has-chat-decision');

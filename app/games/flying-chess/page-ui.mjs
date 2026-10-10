@@ -1,6 +1,7 @@
 import { boardSvg, dieSvg } from './art.mjs';
 import { SIDES } from './board.mjs';
 import { flyingModel, flyingTransition, flyingRulePages } from './presentation.mjs';
+import { createFlyingMotion, flyingMotionPlan } from './motion-ui.mjs';
 import { createGameAudio } from '../../game-audio.mjs';
 import { mountRoomAudioControls } from '../../platform/room-audio-controls.mjs';
 import { mountRoomSettings } from '../../platform/room-settings.mjs';
@@ -43,6 +44,7 @@ export function mountFlyingPage({ mode = 'room', session = null, lessonOptions =
   const unmountPracticeExit = practice ? mountPracticeExit({ document, location }) : () => {};
   let view = null, selectedId = null, choiceKey = null, busy = false, leaving = false, sequence = 0;
   let connection = practice ? 'online' : 'offline', notice = '', destroyed = false, previous = null;
+  const flight = createFlyingMotion({ root, document, window, onSettled: () => render() });
   // A throw is decoration of an already committed roll, never a source of dice
   // values or a reason to block selecting a plane. POST/SSE use the same fence.
   let diceAnimation = null;
@@ -97,7 +99,7 @@ export function mountFlyingPage({ mode = 'room', session = null, lessonOptions =
     $('flying-confirm').hidden=view?.phase!=='playing'||game?.stage!=='await-move';$('flying-confirm').disabled=!info.canConfirm;
     $('flying-cancel').hidden=view?.phase!=='playing'||game?.stage!=='await-move';$('flying-cancel').disabled=!selectedId || busy;
     $('flying-resume').hidden=view?.phase!=='paused';$('flying-resume').disabled=busy||pending()||!active()||view?.selfRole==='spectator';
-    const svg=boardSvg({planes:game?.planes || [],selectedId:info.selectedId,legalIds:info.canChoose?game?.legalPlaneIds || []:[],route:info.route,lastMoveId:game?.lastAction?.route?.planeId,observer:view?.selfRole==='spectator',paused:view?.phase==='paused'});
+    const svg=boardSvg({planes:(game?.planes || []).filter(plane=>!flight.hiddenIds().has(plane.id)),selectedId:info.selectedId,legalIds:info.canChoose?game?.legalPlaneIds || []:[],route:info.route,lastMoveId:game?.lastAction?.route?.planeId,observer:view?.selfRole==='spectator',paused:view?.phase==='paused'});
     $('flying-board').innerHTML=svg;
     if($('flying-board-dialog').open)renderZoom(svg);
     $('flying-plane-grid').replaceChildren(...(info.planesToChoose || []).map(plane=>{
@@ -143,22 +145,26 @@ export function mountFlyingPage({ mode = 'room', session = null, lessonOptions =
     $('flying-practice-reload').hidden=!view?.practiceConflict;
     if(view?.requiresRestart){$('flying-gate-text').textContent='练习存档无法读取。请在选项中重新开始，原记录不会被猜修复。';$('flying-recover').hidden=true;}
   }
-  function choose(id){if(!model().canChoose || !view.game.legalPlaneIds.includes(id))return;selectedId=id;choiceKey=key(view);notice='';audio.play('select',{gesture:true});render();}
+  function choose(id){if(!model().canChoose || !view.game.legalPlaneIds.includes(id))return;flight.cancel({notify:false});selectedId=id;choiceKey=key(view);notice='';audio.play('select',{gesture:true});render();}
   function renderZoom(svg){$('flying-zoom-board').innerHTML=svg;$('flying-zoom-board').style.width=`${Math.max(240,$('flying-zoom-frame').clientWidth)*Number($('flying-zoom').value)/100}px`;$('flying-board-detail').textContent=notice || model().route?.description || model().feedback || '';}
-  async function run(operation){if(busy||destroyed)return false;const current=sequence;busy=true;notice='';render();try{await operation();return true;}catch(error){if(current===sequence){notice=gameErrorMessage(error);if($('flying-restart-dialog').open)$('flying-restart-status').textContent=notice;audio.play('invalid',{gesture:true});}return false;}finally{if(current===sequence){busy=false;render();}}}
+  async function run(operation){if(busy||destroyed)return false;flight.cancel({notify:false});const current=sequence;busy=true;notice='';render();try{await operation();return true;}catch(error){if(current===sequence){notice=gameErrorMessage(error);if($('flying-restart-dialog').open)$('flying-restart-status').textContent=notice;audio.play('invalid',{gesture:true});}return false;}finally{if(current===sequence){busy=false;render();}}}
   const action=(type,fields={})=>run(()=>practice?session.action(type,fields):onAction(type,fields));
   function applyView(next,{baseline=false}={}){
     if(destroyed)return;
     if(choiceKey!==key(next)||next?.phase!=='playing'||!next?.game?.legalPlaneIds?.includes(selectedId)){selectedId=null;choiceKey=null;}
     const quiet=baseline||document.hidden, effects=flyingTransition(previous,next,{baseline:quiet}), phaseCue=audio.phaseCue(previous,next,{baseline:quiet});
+    const movePlan=active()?flyingMotionPlan(previous,next,{baseline:quiet}):null;
+    if(movePlan)flight.prepare(movePlan);
+    else if(quiet||previous?.matchId!==next?.matchId||previous?.selfRole!==next?.selfRole||previous?.selfId!==next?.selfId&&!practice||next?.phase==='paused'||next?.phase==='aborted'||previous?.game?.revision!==next?.game?.revision)flight.cancel({notify:false});
     if(quiet || previous?.matchId!==next?.matchId || next?.phase!=='playing')stopDiceAnimation();
     previous=next;view=next;notice='';clock.receive(next);render();
+    if(movePlan)void flight.play();
     if(effects.cues?.includes('roll'))animateCommittedDie();
     for(const cue of effects.cues||[])audio.play(cue,{gesture:busy});
     if(phaseCue)audio.play(phaseCue,{gesture:busy});
   }
   function conceal({message='正在核验账号并恢复原席位…',loginHref=null,reauthHref=null,preserveSelection=false}={}){
-    stopDiceAnimation();
+    stopDiceAnimation();flight.cancel({notify:false});
     ++sequence;busy=false;view=null;previous=null;clock.reset();if(!preserveSelection){selectedId=null;choiceKey=null;}notice='';
     for(const dialog of root.querySelectorAll('dialog[open]'))dialog.close();render();$('flying-gate-text').textContent=message;
     $('flying-login').hidden=!loginHref;$('flying-login').href=loginHref||'#';$('flying-reauth').hidden=!reauthHref;$('flying-reauth').href=reauthHref||'#';$('flying-recover').hidden=!!loginHref;
@@ -194,7 +200,7 @@ export function mountFlyingPage({ mode = 'room', session = null, lessonOptions =
   const viewport=mountGameViewport({window,document,recoveryDelays:[0,100,300],sync(){const editing=['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName);const frame=gameViewport({width:window.innerWidth,height:window.innerHeight,visual:window.visualViewport,editing});document.body.style.setProperty('--flying-height',`${frame.height}px`);document.body.style.setProperty('--flying-width',`${frame.width}px`);if(frame.resetScroll)window.scrollTo(0,0);}});
   const unsubscribe=practice?session.subscribe(next=>applyView(next,{baseline:!view})):null;
   render();import('../../app-shell.mjs').catch(()=>{});
-  return {audio,applyView,view:()=>view,setConnection(value){connection=value;if(value!=='online')stopDiceAnimation();render();},conceal,
+  return {audio,applyView,view:()=>view,setConnection(value){connection=value;if(value!=='online'){stopDiceAnimation();flight.cancel({notify:false});}render();},conceal,
     setMessage(message){notice=message;render();},leaveFailure(message){$('flying-leave-status').textContent=message;},
-    destroy(){destroyed=true;++sequence;stopDiceAnimation();unmountPracticeExit();document.removeEventListener('visibilitychange',stopHiddenDice);window.removeEventListener('pagehide',stopDiceAnimation);reducedMotion?.removeEventListener?.('change',stopDiceAnimation);unsubscribe?.();session?.destroy();clock.destroy();settings.destroy();audioControls.destroy();viewport.destroy();audio.close?.();}};
+    destroy(){destroyed=true;++sequence;stopDiceAnimation();flight.destroy();unmountPracticeExit();document.removeEventListener('visibilitychange',stopHiddenDice);window.removeEventListener('pagehide',stopDiceAnimation);reducedMotion?.removeEventListener?.('change',stopDiceAnimation);unsubscribe?.();session?.destroy();clock.destroy();settings.destroy();audioControls.destroy();viewport.destroy();audio.close?.();}};
 }

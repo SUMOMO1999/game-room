@@ -7,6 +7,7 @@ import { createFlyingChessAdapter } from '../server/games/flying-chess/adapter.m
 import * as art from './games/flying-chess/art.mjs';
 import { SIDES } from './games/flying-chess/board.mjs';
 import * as presentation from './games/flying-chess/presentation.mjs';
+import { flyingMotionPlan } from './games/flying-chess/motion-ui.mjs';
 import * as roomPresentation from './platform/room-presentation.mjs';
 import { mountRoomSettings } from './platform/room-settings.mjs';
 import { roomChatMarkup } from './room-chat.mjs';
@@ -101,7 +102,10 @@ async function page(t, options = {}, browser = {}) {
   const audio = { play: (kind, flags) => { cues.push({ kind, flags }); },
     phaseCue: createGameAudio({ storage: null, AudioContext: null, document: null, window: null }).phaseCue, close() {} };
   const navigation = { href: 'http://127.0.0.1/flying.html?code=123456', replaced: [], replace(value) { this.replaced.push(value); } };
-  const context = vm.createContext({ ...art, SIDES, ...presentation, ...roomPresentation, gameViewport,
+  // This fixture has no SVG screen geometry. Keep the real transition planner;
+  // object movement and cancellation are covered by motion-ui and Chrome tests.
+  const createFlyingMotion = () => ({ prepare() {}, play() {}, hiddenIds: () => new Set(), cancel() {}, destroy() {} });
+  const context = vm.createContext({ ...art, SIDES, ...presentation, ...roomPresentation, gameViewport, flyingMotionPlan, createFlyingMotion,
     document: dom.document, window, location: navigation,
     navigator: {}, console, Event, Number, Object, Promise,
     mountRoomSettings, roomChatMarkup, replacePracticeWithLobby, mountPracticeExit, createGameAudio: () => audio, mountRoomAudioControls: () => ({ destroy() {} }),

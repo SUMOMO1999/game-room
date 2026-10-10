@@ -1,3 +1,5 @@
+import { mountRummikubMotion, placementCue } from './games/rummikub/motion-ui.mjs';
+import { mountArmyMotion } from './games/army-flip/motion-ui.mjs';
 import * as roomClock from './platform/room-clock.mjs';
 import * as roomSession from './platform/room-session.mjs';
 import * as roomAudioControls from './platform/room-audio-controls.mjs';
@@ -166,6 +168,10 @@ async function fixture(t,{page='room',query='',state=AUTH,history,initialView,in
     paginateInspector:presentation.inspectorPages,
     createPracticeSession:options=>armyPractice.createPracticeSession({...options,setTimer:timers.setTimeout,clearTimer:timers.clearTimeout,withLock:callback=>Promise.resolve().then(callback),randomInt:max=>max-1}),
     createGameAudio(options) {const audio=createGameAudio({...options,storage:localStorage,document,window,AudioContext:audioContext,setTimeout:timers.setTimeout,clearTimeout:timers.clearTimeout});return {...audio,play(kind,fields){audioCalls.push(kind);return audio.play(kind,fields);}};}});
+  Object.assign(window,{requestAnimationFrame:context.requestAnimationFrame,cancelAnimationFrame:context.cancelAnimationFrame || (()=>{}),setTimeout:timers.setTimeout,clearTimeout:timers.clearTimeout,performance,getComputedStyle:context.getComputedStyle});
+  context.mountArmyMotion=()=>mountArmyMotion({root:document.body,document,window});
+  document.head=document.documentElement.querySelector('head');
+  context.mountRummikubMotion=()=>mountRummikubMotion({root:document.body,document,window});context.placementCue=placementCue;
   const account=await moduleIn(context,'account-client.mjs');Object.assign(context,account);
   context.watchAccountLifecycle=(options)=>{const watcher=account.watchAccountLifecycle(options);watchers.push(watcher);return watcher;};
   Object.assign(context,await moduleIn(context,'room-client.mjs'));
@@ -470,6 +476,7 @@ test('actual sort buttons place complete disjoint own-hand melds first, and manu
 test('real duplicate-six drop splits 45678 into 456 and 678, is undoable, and does not save to server before confirmation',async t=>{
   const f=await fixture(t,{initialView:tableView({board:[['red-4-a','red-5-a','red-6-a','red-7-a','red-8-a']],rack:['red-6-b','black-13-a']})});
   f.pageAPI.move('red-6-b','0','red-7-a');
+  assert.deepEqual(f.audioCalls,['split'],'automatic split has exactly one main cue');
   const draft=plain(f.pageAPI.draft());assert.deepEqual(draft.board.map(group=>group.map(tile=>tile.value)),[[4,5,6],[6,7,8]]);
   const ids=draft.board.flat().map(tile=>tile.id);assert.equal(new Set(ids).size,6);
   assert.equal(f.get('commit').disabled,false);assert.match(f.get('toast').textContent,/自动拆成 2 组合法组合/);
@@ -1234,7 +1241,7 @@ test('actual split and merge controls choose distinct sounds, undo and restore w
   const board=[['red-1-a','red-2-a','red-3-a','red-4-a','red-5-a','red-6-a']],f=await fixture(t,{initialView:tableView({board})});
   f.get('undo').dispatchEvent(new Event('click'));assert.deepEqual(f.audioCalls,[]);
   clickTarget(f,f.document.querySelector('[data-split="0"]'));clickTarget(f,f.document.querySelector('[data-cut="3"]'));assert.equal(cueCount(f,'split'),1);
-  assert.equal(f.pageAPI.draft().board.length,2);f.pageAPI.move(['red-1-a','red-2-a','red-3-a'],'1','red-4-a');assert.equal(cueCount(f,'merge'),1);assert.equal(f.pageAPI.draft().board.length,1);
+  assert.equal(f.pageAPI.draft().board.length,2);f.pageAPI.move(['red-1-a','red-2-a','red-3-a'],'1','red-4-a');assert.equal(cueCount(f,'merge'),1);assert.equal(cueCount(f,'placement'),0,'merge emits its primary cue without a second placement');assert.equal(f.pageAPI.draft().board.length,1);
   f.get('undo').dispatchEvent(new Event('click'));assert.equal(cueCount(f,'undo'),1);assert.equal(f.pageAPI.draft().board.length,2);
   f.get('restore').dispatchEvent(new Event('click'));assert.equal(cueCount(f,'restore'),1);assert.deepEqual(plain(f.pageAPI.draft().board),board.map(tiles));
   const locked=await fixture(t,{initialView:{...tableView({board}),game:{...tableView({board}).game,opened:false}}});

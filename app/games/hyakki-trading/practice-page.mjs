@@ -57,7 +57,9 @@ function applySnapshot(next) {
   const room = { gameType: 'hyakki-trading', roomId: 'hyakki-local-practice', roomCode: '',
     matchId: next.matchId, revision: game?.revision ?? 0, selfId: PRACTICE_SELF, selfRole: 'player', hostId: PRACTICE_SELF,
     phase: game ? ['finished', 'aborted'].includes(game.status) ? game.status : 'playing' : 'waiting',
-    players, matchPlayers: players, spectators: [], game, hyakkiConfig: { actionLimit: game?.actionLimit ?? 5 },
+    players, matchPlayers: players, spectators: [], game,
+    hyakkiConfig: { actionLimit: game?.actionLimit ?? 5, goodsPerType: game?.goodsPerType ?? 6 },
+    exitPolicy: players.length > 2 ? 'cancel' : 'resign',
     turnClock: game?.clock ? { ...game.clock, version: 4, matchId: next.matchId } : null, serverTime: next.logicalNow };
   ui.applyView(room, { connection: 'online', pending: false,
     canAct: !!game && !next.conflict && !next.requiresRestart, practiceSnapshot: next });

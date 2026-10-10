@@ -6,6 +6,7 @@ import * as art from './games/poker414-2/art.mjs';
 import { makeDeck, getCard } from './games/poker414-2/cards.mjs';
 import { handLayout, publicLayout } from './games/poker414-2/layout.mjs';
 import { poker414Selection } from './games/poker414-2/presentation.mjs';
+import { poker414MotionPlan } from './games/poker414-2/motion-ui.mjs';
 import { classifyPattern } from './games/poker414-2/patterns.mjs';
 import { fixture } from './games/poker414-2/test-support/preview-fixtures.mjs';
 import { roomChatMarkup } from './room-chat.mjs';
@@ -87,7 +88,10 @@ async function mount(t, options = {}) {
     localStorage: options.storage,
     ResizeObserver: class { observe() {} disconnect() {} }, setInterval(fn) { timers.add(fn); return fn; }, clearInterval(fn) { timers.delete(fn); } };
   dom.document.defaultView = window;
-  const context = vm.createContext({ ...art, makeDeck, handLayout, publicLayout, poker414Selection, roomChatMarkup, URL,
+  // Minimal DOM doubles cannot measure or animate card objects. The real
+  // transition planner still runs; motion-ui and Chrome tests cover movement.
+  const createPoker414Motion = () => ({ capture() { return null; }, play() {}, sync() {}, cancel() {}, destroy() {} });
+  const context = vm.createContext({ ...art, makeDeck, handLayout, publicLayout, poker414Selection, roomChatMarkup, URL, poker414MotionPlan, createPoker414Motion,
     createGameAudio: () => ({ play() {}, close() {} }), mountRoomAudioControls: () => ({ destroy() {} }),
     mountRoomSettings: () => ({ close() {}, destroy() {} }), mountGameViewport: () => ({ destroy() {} }),
     gameViewport: options.viewport || (input => ({ ...input, top: 0, resetScroll: false })) });

@@ -56,7 +56,8 @@ test('trade hints match real discounted settlement, temporary fee, and atomic in
 });
 test('character target draft preserves opponent public tool ref instead of a hidden copy ID',()=>{
  let state=fresh();const actor=hand(state,'m08'),tool=hand(state,'t05');state.players[0].hand=state.players[0].hand.filter(id=>id!==tool);state.players[1].tools.push({cardId:tool,exhausted:false});state=act(act(state,'peek'),'keep-peek');const game=privateView(state,ids[0]);const ref=game.players[1].tools[0].ref;
- assert.deepEqual(actionDraft(game,ids[0],game.players[0].hand.find(c=>c.cardId===actor),'play-character',{toolCardId:ref}),{cardId:actor,params:{toolCardId:ref}});
+ assert.deepEqual(actionDraft(game,ids[0],game.players[0].hand.find(c=>c.cardId===actor),'play-character',{toolCardId:ref}),{cardId:actor,params:{...(game.version>=2?{targetId:ids[1]}:{}),toolCardId:ref}});
+ assert.deepEqual(actionDraft({...game,version:1},ids[0],game.players[0].hand.find(c=>c.cardId===actor),'play-character',{toolCardId:ref}),{cardId:actor,params:{toolCardId:ref}},'restored v1 keeps its original implicit opponent contract');
  assert.throws(()=>actionDraft(game,ids[0],game.players[0].hand.find(c=>c.cardId===actor),'play-character',{toolCardId:tool}),RangeError);
 });
 test('real oracle private choice renders each candidate as a selectable complete card',()=>{
@@ -70,7 +71,7 @@ test('both seats and observer retain public stock, tool state and turn badges wi
  const state=fresh(),tool=hand(state,'t05');state.players[0].hand=state.players[0].hand.filter(id=>id!==tool);
  state.players[1].tools.push({cardId:tool,exhausted:true});
  state.players[1].goods.firearms=6;state.bankGoods.firearms-=6;state.players[1].temporaryOccupied=true;
- state.actionsUsed=2;state.bookLayers=2;state.closing={triggerPlayerId:ids[1],finalPlayerId:ids[0]};
+ state.actionsUsed=2;state.bookLayers=2;state.closing={triggerPlayerId:state.firstPlayerId,finalPlayerId:ids.find(id=>id!==state.firstPlayerId)};
  for(const viewer of [...ids,null]){
   const game=viewer?privateView(state,viewer):spectatorView(state);
   const table=tableProjection({selfId:viewer??'observer',selfRole:viewer?'player':'spectator',players:ids.map((id,i)=>({id,name:`成员${i}`})),game});

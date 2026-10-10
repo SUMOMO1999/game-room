@@ -9,7 +9,7 @@ import { publicAssetPaths } from '../server/public-assets.mjs';
 const assetBase = new URL('../app/assets/hyakki/v1/', import.meta.url);
 const manifest = JSON.parse(await readFile(new URL('manifest.json', assetBase), 'utf8'));
 
-test('百鬼十二项主体齐备且与版本清单逐文件匹配，正式目录未开放', async () => {
+test('百鬼旧实验十二项资源与清单匹配，旧实验资源未进入正式白名单', async () => {
   assert.equal(manifest.entries.length, 12);
   assert.equal(new Set(manifest.entries.map(entry => entry.id)).size, 12);
   let total = 0;
@@ -21,7 +21,9 @@ test('百鬼十二项主体齐备且与版本清单逐文件匹配，正式目�
     total += bytes.length;
   }
   assert.equal(total, manifest.totalBytes);
-  assert.equal(publicAssetPaths().some(path => path.includes('hyakki')), false);
+  const published = new Set(publicAssetPaths());
+  for (const entry of manifest.entries) assert.equal(published.has(`assets/hyakki/v1/${entry.file}`), false, entry.file);
+  assert.equal(published.has('hyakki-preview.html'), false);
 });
 
 test('本机双入口供给完整资源，拒绝写入、错误Host与非白名单私有文件', async () => {
