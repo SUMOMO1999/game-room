@@ -7,6 +7,25 @@ const fail = message => { throw new RangeError(message); };
 const quantity = value => Number.isSafeInteger(value) && value >= 0;
 export const goodsTotal = goods => ids.reduce((n, id) => n + (goods?.[id] ?? 0), 0);
 export const cardKey = card => card.cardId ?? card.ref ?? card.id;
+
+/** A price/availability hint from public stock and the viewer's own shop. Server still settles. */
+export function tradeAvailability(game, selfId, card) {
+  const face = getCard(card.definitionId), self = game.players.find(player => player.id === selfId);
+  if (face.category !== 'goods' || !self) return null;
+  const count = goodsTotal(face.goods), nextCount = goodsTotal(self.goods) + count;
+  const temporaryFee = nextCount > self.ordinaryCapacity && !self.temporaryOccupied ? 2 : 0;
+  const buyPrice = Math.max(0, face.buySilver - 2 * game.bookLayers), sellPrice = face.sellSilver + 2 * game.bookLayers;
+  const conditions = {
+    publicStock: ids.every(id => (game.bankGoods[id] ?? 0) >= (face.goods[id] ?? 0)),
+    space: nextCount <= self.ordinaryCapacity + 1,
+    silver: self.silver >= buyPrice + temporaryFee,
+    ownStock: ids.every(id => (self.goods[id] ?? 0) >= (face.goods[id] ?? 0)),
+    action: game.remainingActions > 0,
+  };
+  return { ...conditions, buyPrice, sellPrice, temporaryFee, buyTotal: buyPrice + temporaryFee,
+    canBuy: conditions.publicStock && conditions.space && conditions.silver && conditions.action,
+    canSell: conditions.ownStock && conditions.action };
+}
 export function choiceModel(pending) {
   const choice = pending?.choice;
   if (!choice?.options) return null;

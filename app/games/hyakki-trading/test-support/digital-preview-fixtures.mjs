@@ -10,6 +10,8 @@ export const DIGITAL_SCENES = Object.freeze([
   ['hand-draft', '县丞：公开手牌重分'], ['goods-draft', '船老大：货物重分'],
   ['tools-draft', '光棍：道具重分'], ['tools', '同名道具与横置'], ['full', '满摊与临时位'],
   ['paused', '共同暂停'], ['suspended', '意外掉线挂起'], ['result', '正常收市结果'], ['dense', '110张密集手牌'],
+  ['layout-sparse', '布局：两人少牌'], ['layout-dense', '布局：两人多牌'],
+  ['layout-six', '布局：六人公开商铺（未实现多人）'],
 ].map(entry => Object.freeze(entry)));
 
 const entity = (suffix, copy = 1, extra = {}) => ({ id: `yousei.${suffix}#${String(copy).padStart(2, '0')}`, definitionId: `yousei.${suffix}`, ...extra });
@@ -17,6 +19,51 @@ const goods = (...counts) => GOODS.map((good, index) => ({ id: good.id, count: c
 const ownId = 'digital-sample-p1', peerId = 'digital-sample-p2';
 const cardCandidates = (...suffixes) => suffixes.map((suffix, index) => ({ id: `choice-${index}`, card: entity(suffix), kind: 'card' }));
 const goodCandidates = (...indices) => indices.map((index, order) => ({ id: `choice-${order}`, goodId: GOODS[index].id, count: 1, kind: 'good' }));
+
+/** Public composition fixtures only. Peer hand identities never enter this data. */
+function layoutFixture(scene) {
+  const six = scene === 'layout-six', dense = scene === 'layout-dense';
+  const shops = six ? [
+    { name: '我 · 青石小铺', silver: 32, stock: [1, 1, 1, 1, 1, 0], tools: [entity('t05'), entity('t04', 1, { tapped: true }), entity('t02')] },
+    { name: '灯笼铺老板', silver: 24, stock: [0, 1, 0, 1, 0, 1], tools: [], handCount: 5 },
+    { name: '山间行商', silver: 58, stock: [1, 0, 1, 0, 2, 0], tools: [entity('t01')], handCount: 11 },
+    { name: '夜雨古玩铺', silver: 0, stock: [0, 0, 0, 1, 0, 2], tools: [entity('t07'), entity('t08', 1, { tapped: true })], handCount: 9 },
+    { name: '枫桥客栈与异兽杂货铺', silver: 46, stock: [1, 1, 1, 0, 0, 0], tools: [entity('t03'), entity('t06'), entity('t09', 1, { tapped: true })], handCount: 4 },
+    { name: '盐铁商人', silver: 12, stock: [1, 0, 0, 1, 0, 1], tools: [entity('t05', 2, { tapped: true }), entity('t10')], handCount: 7 },
+  ] : [
+    { name: '我 · 青石小铺', silver: dense ? 47 : 20, stock: dense ? [2, 1, 1, 1, 1, 0] : [1, 0, 0, 0, 0, 0],
+      tools: dense ? [entity('t05'), entity('t04', 1, { tapped: true }), entity('t02')] : [] },
+    { name: dense ? '灯笼铺老板 · 满装备' : '灯笼铺老板', silver: dense ? 52 : 24,
+      stock: dense ? [1, 1, 0, 0, 1, 1] : [0, 0, 1, 0, 0, 0],
+      tools: dense ? [entity('t01'), entity('t07', 1, { tapped: true }), entity('t10')] : [entity('t01')], handCount: dense ? 16 : 3 },
+  ];
+  const discard = entity('c10'), occupied = new Set([discard.id, ...shops.flatMap(shop => shop.tools.map(card => card.id))]);
+  const available = createDeck().filter(card => !occupied.has(card.id));
+  const buckets = ['goods', 'ordinary_character', 'tool', 'monitored_character', 'stall_permit']
+    .map(category => available.filter(card => getCard(card.definitionId).category === category));
+  const hand = [], handCount = six ? 20 : dense ? 36 : 4;
+  while (hand.length < handCount) {
+    for (const bucket of buckets) {
+      if (hand.length === handCount) break;
+      if (bucket.length) hand.push({ ...bucket.shift() });
+    }
+  }
+  const players = shops.map((shop, index) => ({ id: `digital-sample-p${index + 1}`, name: shop.name,
+    seatOrder: index + 1, silver: shop.silver, goods: goods(...shop.stock), tools: shop.tools,
+    handCount: index === 0 ? hand.length : shop.handCount, ready: true,
+    ordinaryCapacity: dense && index === 0 ? 5 : index === 4 ? 8 : 5, expansions: index === 4 ? 1 : 0 }));
+  return { synthetic: true, saved: false, layoutOnly: true,
+    layoutLabel: six ? '六人布局演示 · 尚非多人游戏' : `两人布局演示 · ${dense ? '密集手牌与满装备' : '稀疏手牌与空装备'}`,
+    ruleVersion: DIGITAL_RULE_VERSION, scene, roomId: 'hyakki-layout-sample', roomCode: '610036', matchId: `hyakki-${scene}`,
+    selfId: ownId, selfRole: 'player', phase: 'playing', currentPlayerId: six ? players[2].id : ownId,
+    spectatorCount: 2, players, hand,
+    market: GOODS.map((good, index) => ({ ...good, count: 8 - shops.reduce((sum, shop) => sum + shop.stock[index], 0) })),
+    goodsPerType: 8, expansionStock: six ? 4 : 5, expansionPrice: 3,
+    actionLimit: 5, actionsUsed: six ? 3 : dense ? 4 : 1,
+    deckCount: 110 - players.reduce((sum, player) => sum + player.handCount + player.tools.length, 0) - 1,
+    discardCount: 1, discard, decision: null, clock: '24:12', temporaryPaid: dense,
+  };
+}
 
 function decision(scene) {
   const base = { id: `sample-decision-${scene}`, actorId: ownId, committed: true, clock: '24:12',
@@ -63,6 +110,7 @@ function decision(scene) {
 
 export function digitalFixture(requestedScene = 'active') {
   const scene = DIGITAL_SCENES.some(([id]) => id === requestedScene) ? requestedScene : 'active';
+  if (scene.startsWith('layout-')) return layoutFixture(scene);
   const selfGoods = scene === 'full' ? goods(1, 1, 1, 1, 1, 1) : goods(2, 1, 0, 0, 1, 0);
   const peerGoods = goods(0, 0, 1, 1, 0, 0);
   const hand = scene === 'dense' ? createDeck().map(card => ({ ...card }))

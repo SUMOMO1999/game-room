@@ -3,9 +3,9 @@ import { mountDigitalPage } from './digital-page-ui.mjs';
 import { renderCardDetails, renderGoodsIcon } from './digital-card-ui.mjs';
 import { dialogPage, renderDialogPager, renderCompactCard, renderCompactCards, renderDialogBody } from './game-dialog-ui.mjs';
 import { GOODS, getCard } from './content/definitions.mjs';
-import { choiceModel, buildChoiceSelection, defaultChoiceInput, knownCards, actionDraft, cardKey, goodsTotal, tableProjection } from './game-ui-model.mjs';
+import { choiceModel, buildChoiceSelection, defaultChoiceInput, knownCards, actionDraft, cardKey, goodsTotal, tableProjection, tradeAvailability } from './game-ui-model.mjs';
 const esc = value => String(value ?? '').replace(/[&<>"']/gu, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[char]);
-const button = (action, label, fields = {}, disabled = false) => `<button type="button" data-hy-action="${action}" data-hy-fields="${esc(JSON.stringify(fields))}" ${disabled ? 'disabled' : ''}>${esc(label)}</button>`;
+const button = (action, label, fields = {}, disabled = false, className = '') => `<button type="button" data-hy-action="${action}" data-hy-fields="${esc(JSON.stringify(fields))}" ${className ? `class="${className}"` : ''} ${disabled ? 'disabled' : ''}>${esc(label)}</button>`;
 const goodName = id => GOODS.find(good => good.id === id)?.name ?? '货物';
 const titleByKind = {'retain-goods':'选择要留下的货物','take-card':'卦师 · 留下一张','tool-two-cards':'两仪灯 · 自留一张，另一张给对方','discard-hand':'弃牌至剩三张','tool-discard-draw':'弃一或两张，再抽同样张数','auction-goods':'挑选两件完整拍品','sell-goods':'挑选三件出售货物','sell-stock':'选择出售的库存','draft-card':'县丞 · 公开手牌重分','draft-good':'都尉 · 货物重分','draft-tool':'太守 · 道具重分','keep-tool':'夜行 · 只留一件道具','borrow-tool':'术士 · 是否借用该道具','benefit-branch':'员外 · 选择自己的收益','benefit-good':'选择收益货物','trade-card':'买办 · 选择三件货物牌','hand-branch':'讼师 · 选择效果','tribute-branch':'河伯 · 付钱或让对方抽牌','tool-search-payment':'貔貅袋 · 支付取牌费用','tool-exchange':'回天符 · 双方各换一件','tool-payment-good':'无二盏 · 选择货物与支付牌'};
 const branchLabel = (kind, branch) => kind === 'tribute-branch' ? branch === 'pay' ? '付给对方2两' : '让对方抽2张'
@@ -79,12 +79,18 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
   function leaveFailure(message){leaveWorking=false;$('yg-leave-confirm').disabled=false;feedback(message);$('hy-leave-note').textContent=message;}
   function selectedCardContent(card,tool=false){
     const face=getCard(card.definitionId),self=room.game?.players.find(player=>player.id===room.selfId),peer=room.game?.players.find(player=>player.id!==room.selfId);
-    let operations='';
+    let operations='',conditions='',summary=face.sourceCode==='M08'?'拆掉对方1件道具，可借用其效果；借用费用另付。':face.summary;
     if(active()&&(tool||self?.hand?.some(item=>cardKey(item)===cardKey(card)))){
       if(tool){if(face.sourceCode==='T07'&&firstPeekRequired()&&room.game.remainingActions<2)operations='<p>须保留1行动摸第一张牌，本回合不能先用此道具。</p>';else if(!card.exhausted&&(face.sourceCode==='T07'?room.game.stage==='draw'&&!room.game.drawStarted:room.game.stage==='use'))operations=button('confirm-card','使用道具 · 1行动',{type:'activate-tool'});else operations='<p>已横置或不在使用时机。</p>';}
       else if(['C04','C07'].includes(face.sourceCode))operations='<p>只可在对应的回应窗口使用。</p>';
       else if(room.game.stage==='draw')operations=firstPeekRequired()?'<p>每回合先摸第一张，留下或弃掉都花1行动。</p>'+button('peek','先摸一张 · 1行动'):button('begin-play','进入用牌',{cardId:cardKey(card)});
-      else if(face.category==='goods')operations=button('confirm-card',`整组买入 · ${Math.max(0,face.buySilver-2*room.game.bookLayers)}两`,{type:'buy'})+button('confirm-card',`整组出售 · ${face.sellSilver+2*room.game.bookLayers}两`,{type:'sell'});
+      else if(face.category==='goods'){
+        const trade=tradeAvailability(room.game,room.selfId,card);
+        const condition=(label,met)=>`<span class="hy-condition${met?' is-met':' is-unmet'}">${label}${met?'✓':'不足'}</span>`;
+        conditions=`<div class="hy-trade-conditions" aria-label="整组交易条件"><span>买：${condition('公库',trade.publicStock)}${condition('货位',trade.space)}${condition('银两',trade.silver)}</span><span>卖：${condition('库存',trade.ownStock)}</span></div>`;
+        summary=`余${room.game.remainingActions}步 · 交易1步${trade.temporaryFee?` · 买入含临时格${trade.temporaryFee}两`:''}${!trade.action?' · 行动已用完':''}`;
+        operations=button('confirm-card',`买入 · ${trade.buyTotal}两`,{type:'buy'},!trade.canBuy,'hy-primary-action')+button('confirm-card',`出售 · ${trade.sellPrice}两`,{type:'sell'},!trade.canSell,'hy-primary-action');
+      }
       else if(face.category==='stall_permit')operations=button('confirm-card',`扩摊3格 · ${room.game.purchasedStalls?3:6}两`,{type:'buy-stall'});
       else if(face.category==='tool')operations=(self.tools.length===3?`<label>道具区已满，弃掉一张已装道具<select id="hy-replace">${self.tools.map(tool=>`<option value="${esc(cardKey(tool))}">${esc(getCard(tool.definitionId).name)}${tool.exhausted?' · 已横置':''}</option>`).join('')}</select></label>`:'')+button('confirm-card','安装道具 · 1行动',{type:'install-tool'});
       else {
@@ -94,7 +100,8 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
         operations+=button('confirm-card','使用人物 · 1行动',{type:'play-character'},targetMissing);
       }
     }
-    return `<section class="hy-card-play" aria-label="选中的牌与操作"><div class="hy-inline-card">${renderCompactCard(card,{readButton:false,inline:true})}</div><div class="hy-inline-copy"><p>${esc(face.summary)}</p><small>${esc(face.costText)}</small><div class="hy-inline-actions">${operations}</div><div class="hy-inline-secondary"><button type="button" data-hy-detail="${esc(cardKey(card))}">完整牌文</button>${button('cancel-card','取消选中')}</div></div></section>`;
+    const selectedObject=face.category==='goods'?Object.entries(face.goods).map(([id,count])=>`${goodName(id)}×${count}`).join('／'):face.name;
+    return `<section class="hy-card-play" aria-label="选中的牌与操作"><div class="hy-inline-card">${renderCompactCard(card,{readButton:false,inline:true})}</div><div class="hy-inline-copy"><div class="hy-decision-heading"><strong>${esc(selectedObject)}</strong><div class="hy-inline-secondary"><button type="button" data-hy-detail="${esc(cardKey(card))}" aria-label="阅读${esc(face.name)}完整牌文">牌文</button>${button('cancel-card','取消')}</div></div><p class="hy-decision-summary">${esc(summary)}</p>${conditions}<div class="hy-inline-actions">${operations}</div></div></section>`;
   }
   function selectHandCard(card,tool=false){
     if(!card||!room?.game)return;const self=room.game.players.find(player=>player.id===room.selfId);
@@ -197,7 +204,6 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
     const inlineFields=detail?[...root.querySelectorAll('.hy-card-play select')].map(node=>({id:node.id,value:node.value,focused:document.activeElement===node})):[];
     base.applyView(tableProjection(next));render();handDrag.sync();
     for(const field of inlineFields){const node=$(field.id);if(node&&[...node.options].some(option=>option.value===field.value)){node.value=field.value;if(field.focused)node.focus({preventScroll:true});}}
-    root.querySelectorAll('[data-hy-action="confirm-card"]').forEach(node=>{node.disabled=!active();});
     const newOwnedDecision=!!newDecision&&newDecision!==presentedDecisionId&&mine();decisionId=newDecision;
     if(newOwnedDecision&&available()&&room.phase==='playing')decision();
     // Existing choice DOM stays alive on presence/clock updates, retaining focus and text input.

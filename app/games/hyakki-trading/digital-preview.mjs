@@ -4,7 +4,7 @@ import { mountRoomChat, chatTextProblem } from '../../room-chat.mjs';
 
 /** Changes fixture scenes only; no game engine, network client or save API. */
 export function nextPreviewScene(view, type, fields = {}) {
-  if (view?.synthetic !== true) return null;
+  if (view?.synthetic !== true || view.layoutOnly === true) return null;
   if (type === 'ready' || type === 'role') return view.phase === 'waiting' ? view.scene : null;
   if (type === 'start') return view.phase === 'waiting' && view.selfRole === 'player'
     && view.players.every(player => player.ready) ? 'active' : null;
@@ -76,6 +76,7 @@ export function mountDigitalPreview({ root, window = root?.ownerDocument.default
     ui.feedback('已切换合成局面；没有创建、结算或保存正式牌局。');
   }
   function act(type, fields) {
+    if (view.layoutOnly) { ui.feedback('这是只读布局演示；可查看公开商铺和牌文，不会执行交易或推进回合。'); return; }
     const scene = nextPreviewScene(view, type, fields);
     if (!scene) { ui.feedback('这个示例操作已不适用；当前步骤未被改变。'); return; }
     if (type === 'ready') { if (view.selfRole !== 'player') return; view.players[0].ready = !view.players[0].ready; ui.applyView(view); return; }
