@@ -11,6 +11,7 @@ import { roomChatMarkup } from '../../room-chat.mjs';
 
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 const button = (id, text, extra = '') => `<button type="button" id="${id}" ${extra}>${text}</button>`;
+const HAND_OVERLAP_KEY = 'game-room:poker414:hand-overlap:v1';
 
 /** UI receives only a role projection. It neither deals cards nor grants actions. */
 export function mountPoker414Page({ root, preview = false, practice = false, onAction = () => {}, onLeave = () => {}, onRefresh = () => {}, onRetry = () => {}, onRecover = () => {}, onScene = () => {}, scenes = [] } = {}) {
@@ -33,7 +34,7 @@ export function mountPoker414Page({ root, preview = false, practice = false, onA
       <div id="p414-result" class="p414-result" hidden><h1 id="p414-result-title"></h1><p id="p414-result-note"></p><div id="p414-result-scores"></div>${button('p414-rematch', '再来一局', 'class="p414-primary"')}</div>
     </main>
     <section id="p414-actions" class="p414-actions" aria-label="出牌操作" data-chat-dismiss-notices>${button('p414-hook', '勾 ＋1', 'class="p414-response"')}${button('p414-fork', '叉 ＋2', 'class="p414-response"')}${button('p414-play', '出牌', 'class="p414-primary"')}${button('p414-pass', '不出')}</section>
-    <section id="p414-hand-section" class="p414-hand-section" data-chat-dismiss-notices><div class="p414-hand-heading"><strong id="p414-hand-label">我的手牌</strong><span id="p414-selection">点选上提，再点取消</span>${button('p414-clear', '取消选择')}</div><div id="p414-hand" class="p414-hand" aria-label="我的手牌"></div></section>
+    <section id="p414-hand-section" class="p414-hand-section" data-chat-dismiss-notices><div class="p414-hand-heading"><strong id="p414-hand-label">我的手牌</strong><span id="p414-selection">点选上提，再点取消</span><label id="p414-overlap-control" class="p414-overlap-control"><input id="p414-hand-overlap" type="checkbox" aria-controls="p414-hand">牌叠加显示</label>${button('p414-clear', '取消选择')}</div><div id="p414-hand" class="p414-hand" aria-label="我的手牌"></div></section>
     <section id="p414-recovery" class="p414-recovery" role="status" hidden><p id="p414-connection-note"></p><div>${button('p414-recover', '恢复连接')}${button('p414-retry', '核对原操作')}<a id="p414-login" hidden>重新登录</a><a id="p414-reauth" hidden>重新验证账号</a></div></section>
     <footer id="p414-feedback" class="p414-feedback" role="status" aria-live="polite"></footer>
   </div>
@@ -49,6 +50,9 @@ export function mountPoker414Page({ root, preview = false, practice = false, onA
   ${roomChatMarkup()}`;
 
   const $ = id => document.getElementById(id), disposers = [], audio = createGameAudio();
+  let overlapHand = false;
+  try { overlapHand = window.localStorage?.getItem(HAND_OVERLAP_KEY) === 'true'; } catch { /* Storage may be unavailable; the switch still works for this visit. */ }
+  $('p414-hand-overlap').checked = overlapHand;
   let view = null, selected = new Set(), destroyed = false, expiryReported = null, inspectorKind = null, generation = 0;
   let connection = 'online', pending = false, concealed = false, leaveWorking = false, exitDestination = 'lobby';
   let serverTime = null, receivedAt = 0, assistedKey = null, handSignature = null, savedSelection = null, concealMessage = '';
@@ -78,17 +82,24 @@ export function mountPoker414Page({ root, preview = false, practice = false, onA
   function request(type, fields = {}) { if (interactive()) invoke(onAction, type, fields); }
   function resize() {
     if (destroyed) return;
-    const frame = gameViewport({ width: window.innerWidth, height: window.innerHeight, visual: window.visualViewport, editing: !!document.activeElement?.matches('input,textarea') });
+    const editing = !!document.activeElement?.matches('input,textarea')
+      && !document.activeElement.matches('input[type="checkbox"],input[type="radio"],input[type="range"]');
+    const frame = gameViewport({ width: window.innerWidth, height: window.innerHeight, visual: window.visualViewport, editing });
     document.documentElement.style.setProperty('--p414-height', `${frame.height}px`);
     document.documentElement.style.setProperty('--p414-top', `${frame.top}px`);
     if (frame.resetScroll && (window.scrollX || window.scrollY)) window.scrollTo(0, 0);
     const width = $('p414-hand').clientWidth;
     if (view && width >= 44) {
-      const geometry = handLayout(width, view.selfRole === 'spectator' ? 0 : view.hand.length, { short: frame.height < 500, maxHeight: frame.height < 500 ? frame.height * .38 : frame.height * .40 });
+      const overlap = overlapHand && view.selfRole === 'player';
+      const geometry = handLayout(width, view.selfRole === 'spectator' ? 0 : view.hand.length, { short: frame.height < 500, maxHeight: frame.height < 500 ? frame.height * .38 : frame.height * .40, overlap });
       const hand = $('p414-hand');
+      hand.classList.toggle('is-overlapped', overlap);
       hand.style.setProperty('--hand-columns', geometry.columns);
       hand.style.setProperty('--hand-card-w', `${geometry.cardWidth}px`);
       hand.style.setProperty('--hand-card-h', `${geometry.cardHeight}px`);
+      hand.style.setProperty('--hand-step', `${geometry.step ?? geometry.cardWidth}px`);
+      hand.style.setProperty('--hand-row-gap', `${geometry.gap}px`);
+      hand.style.setProperty('--hand-tracks', `${geometry.columns > 1 ? `repeat(${geometry.columns - 1}, ${geometry.step ?? geometry.cardWidth}px) ` : ''}${geometry.cardWidth}px`);
     }
     const publicNode = $('p414-public');
     if (view && publicNode.clientWidth) {
@@ -230,6 +241,7 @@ export function mountPoker414Page({ root, preview = false, practice = false, onA
     $('p414-target-cards').innerHTML = view.target?.cards.map(card => renderCard(card, { interactive: false })).join('') || '';
     $('p414-hand-label').textContent = view.selfRole === 'spectator' ? '全知观战 · 可看所有已发手牌' : `我的手牌 · ${view.hand.length}`;
     $('p414-selection').hidden = view.selfRole === 'spectator'; $('p414-clear').hidden = view.selfRole === 'spectator';
+    $('p414-overlap-control').hidden = view.selfRole === 'spectator';
     if (['finished', 'aborted'].includes(view.phase)) {
       const results = view.resultRows ?? view.result ?? [], winner = results.find(result => result.delta > 0);
       $('p414-result-title').textContent = view.resultTitle ?? `${view.players.find(player => player.id === winner?.playerId)?.name || '伙伴'}先出完了！`;
@@ -253,6 +265,11 @@ export function mountPoker414Page({ root, preview = false, practice = false, onA
     if (!$('p414-feedback').textContent) feedback(preview ? '本机操作小样 · 合成数据，不计真实积分' : '已同步');
   }
   function clearSelection() { selected.clear(); audio.play('select'); actionState(); }
+  listen($('p414-hand-overlap'), 'change', event => {
+    overlapHand = event.target.checked;
+    try { window.localStorage?.setItem(HAND_OVERLAP_KEY, String(overlapHand)); } catch { /* A visual preference must not block card selection. */ }
+    resize();
+  });
   listen($('p414-hand'), 'click', event => {
     if (event.target.closest('#p414-all-hands')) { inspector('cards'); return; }
     const target = event.target.closest('[data-card-id]');

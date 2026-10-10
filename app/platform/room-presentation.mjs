@@ -1,7 +1,10 @@
 // Shared room presentation; no game engine or private state is imported.
 import { gamePresentation } from '../games/catalog.mjs';
 
-export function roomExitExplanation(phase) {
+export function roomExitExplanation(phase, policy) {
+  if (['playing', 'paused'].includes(phase) && policy === 'resign') {
+    return '退出视为认输，对手获胜。你的席位会释放，本局银两不会记入永久积分。';
+  }
   return ['playing', 'paused'].includes(phase)
     ? '退出会中止这一局，所有人都不计输赢。你的席位会释放，其他朋友可以重新开局。'
     : '退出后会释放你的席位。棋牌账号继续登录，其他朋友留在房间。';
@@ -47,6 +50,18 @@ export function orderedRoomPlayers(view) {
 export function turnClockDisplay(view, elapsedMs = 0) {
   const clock = view?.turnClock;
   if (!clock || !['playing', 'paused'].includes(view.phase) || !Number.isFinite(view.serverTime)) return { visible: false, expired: false };
+  if (clock.version === 4) {
+    const paused = view.phase === 'paused' || clock.paused === true;
+    if (!['turn', 'decision'].includes(clock.kind) || typeof clock.label !== 'string' || !clock.label || clock.label.length > 40
+        || !Number.isSafeInteger(clock.remainingMs) || clock.remainingMs < 0
+        || (paused ? clock.deadlineAt !== null : !Number.isSafeInteger(clock.deadlineAt))) return { visible: false, expired: false };
+    const remainingMs = paused ? clock.remainingMs : Math.max(0, clock.deadlineAt - view.serverTime - Math.max(0, Number.isFinite(elapsedMs) ? elapsedMs : 0));
+    const seconds = Math.ceil(remainingMs / 1000), expired = !paused && remainingMs === 0;
+    const time = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+    return { visible: true, expired, paused, remainingMs, time,
+      action: paused ? `${clock.label}已暂停` : expired ? `${clock.label}待确认` : clock.label,
+      label: `${clock.label}${paused ? '已暂停，剩余' : '剩余'} ${time}。` };
+  }
   const paused = view.phase === 'paused';
   const remainingMs = paused ? clock.remainingMs : Math.max(0, clock.deadlineAt - view.serverTime - Math.max(0, elapsedMs));
   const expired = !paused && remainingMs <= 0, seconds = Math.ceil(remainingMs / 1000);

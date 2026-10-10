@@ -9,6 +9,7 @@ import { poker414Selection } from './games/poker414-2/presentation.mjs';
 import { classifyPattern } from './games/poker414-2/patterns.mjs';
 import { fixture } from './games/poker414-2/test-support/preview-fixtures.mjs';
 import { roomChatMarkup } from './room-chat.mjs';
+import { gameViewport } from './game-viewport.mjs';
 
 // Executes the real UI state/lifecycle code with minimal DOM doubles. Browser
 // geometry, native dialogs, audio activation and hitboxes are verified separately.
@@ -83,12 +84,13 @@ async function mount(t, options = {}) {
   const dom = fakeDom(), timers = new Set(), actions = [], exits = [], refreshes = [], recovery = [], retries = [];
   const window = { innerWidth: 844, innerHeight: 390, performance: { now: () => 1000 },
     location: { href: 'http://127.0.0.1/poker414-2.html?code=414000' }, navigator: { clipboard: { writeText: async () => {} } },
+    localStorage: options.storage,
     ResizeObserver: class { observe() {} disconnect() {} }, setInterval(fn) { timers.add(fn); return fn; }, clearInterval(fn) { timers.delete(fn); } };
   dom.document.defaultView = window;
   const context = vm.createContext({ ...art, makeDeck, handLayout, publicLayout, poker414Selection, roomChatMarkup, URL,
     createGameAudio: () => ({ play() {}, close() {} }), mountRoomAudioControls: () => ({ destroy() {} }),
     mountRoomSettings: () => ({ close() {}, destroy() {} }), mountGameViewport: () => ({ destroy() {} }),
-    gameViewport: input => ({ ...input, top: 0, resetScroll: false }) });
+    gameViewport: options.viewport || (input => ({ ...input, top: 0, resetScroll: false })) });
   const source = (await readFile(new URL('./games/poker414-2/page-ui.mjs', import.meta.url), 'utf8')).replace(/^import[\s\S]*?;\s*/gm, '').replace(/^export /gm, '');
   const ui = vm.runInContext(`(()=>{${source}\nreturn mountPoker414Page;})()`, context)({ root: dom.root,
     onAction: (type, fields) => actions.push([type, structuredClone(fields)]), onLeave: destination => { exits.push(structuredClone(destination)); return options.leaveResult ?? true; },
@@ -102,6 +104,54 @@ async function mount(t, options = {}) {
 }
 const card = (rank, suit = 'spades') => getCard(`p414-2-${suit}-${rank}-0`);
 const normalized = (scene = 'opening') => ({ ...fixture(scene), canAct: true, connection: 'online', pending: false });
+
+test('414 hand overlap is a device preference shared by room and practice, without changing a selection or sending an action', async t => {
+  const values = new Map(), storage = { getItem: key => values.get(key), setItem: (key, value) => values.set(key, value) };
+  const f = await mount(t, { storage }), view = normalized();
+  f.ui.applyView(view); f.cardClick(view.hand[0].id); f.cardClick(view.hand[1].id);
+  const selection = [...f.ui.selected()], cardNode = f.node('p414-hand').children[0];
+  assert.equal(f.node('p414-hand-overlap').checked, false);
+  f.node('p414-hand-overlap').checked = true;
+  f.node('p414-hand-overlap').dispatchEvent(new Event('change'));
+  assert.equal(f.node('p414-hand').classList.contains('is-overlapped'), true);
+  assert.equal(f.node('p414-hand').children[0], cardNode);
+  f.ui.applyView(view);
+  assert.deepEqual([...f.ui.selected()], selection);
+  assert.deepEqual(f.actions, []);
+  const practice = await mount(t, { storage, practice: true }); practice.ui.applyView(view);
+  assert.equal(practice.node('p414-hand-overlap').checked, true);
+  assert.equal(practice.node('p414-hand').classList.contains('is-overlapped'), true);
+  practice.node('p414-hand-overlap').checked = false;
+  practice.node('p414-hand-overlap').dispatchEvent(new Event('change'));
+  assert.equal(practice.node('p414-hand').classList.contains('is-overlapped'), false);
+  f.ui.applyView(normalized('spectator'));
+  assert.equal(f.node('p414-overlap-control').hidden, true);
+  assert.equal(f.node('p414-hand').classList.contains('is-overlapped'), false);
+});
+
+test('414 blocked preference storage does not prevent toggling or selecting cards', async t => {
+  const storage = { getItem() { throw new Error('blocked'); }, setItem() { throw new Error('blocked'); } };
+  const f = await mount(t, { storage }), view = normalized(); f.ui.applyView(view);
+  f.node('p414-hand-overlap').checked = true;
+  assert.doesNotThrow(() => f.node('p414-hand-overlap').dispatchEvent(new Event('change')));
+  f.cardClick(view.hand[0].id);
+  assert.deepEqual([...f.ui.selected()], [view.hand[0].id]);
+  assert.equal(f.node('p414-hand').classList.contains('is-overlapped'), true);
+});
+
+test('414 checkbox focus does not preserve a stale keyboard offset after rotation', async t => {
+  let frame;
+  const f = await mount(t, { viewport: input => { frame = gameViewport(input); return frame; } });
+  f.window.visualViewport = { width: 844, height: 390, scale: 1, offsetTop: 72 };
+  f.document.activeElement = { matches: selector => selector === 'input,textarea' || selector.includes('checkbox') };
+  f.ui.applyView(normalized());
+  assert.equal(frame.top, 0);
+  assert.equal(frame.resetScroll, true);
+  f.document.activeElement = { matches: selector => selector === 'input,textarea' };
+  f.ui.applyView(normalized());
+  assert.equal(frame.top, 72, 'real text entry must still follow the keyboard viewport');
+  assert.equal(frame.resetScroll, false);
+});
 
 test('414 waiting and role controls send exact common action payloads, and pending disables them', async t => {
   const f = await mount(t), view = normalized('waiting'); view.hostId = view.players[1].id;

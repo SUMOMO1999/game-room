@@ -1,7 +1,16 @@
 /** Geometry only: every selectable card keeps a non-overlapping 44px target. */
-export function handLayout(width, count, { short = false, maxHeight = Infinity } = {}) {
-  if (!Number.isFinite(width) || width < 44 || !Number.isInteger(count) || count < 0 || count > 108 || typeof short !== 'boolean' || !(maxHeight === Infinity || Number.isFinite(maxHeight) && maxHeight >= 0)) {
+export function handLayout(width, count, { short = false, maxHeight = Infinity, overlap = false } = {}) {
+  if (!Number.isFinite(width) || width < 44 || !Number.isInteger(count) || count < 0 || count > 108 || typeof short !== 'boolean' || typeof overlap !== 'boolean' || !(maxHeight === Infinity || Number.isFinite(maxHeight) && maxHeight >= 0)) {
     throw new RangeError('手牌布局需要有效宽度和牌数。');
+  }
+  if (overlap) {
+    // Only the artwork overlaps. Every exposed strip remains 44px wide;
+    // the last card in each row is fully visible rather than clipped.
+    const cardWidth = Math.min(width, short ? 68 : 80), step = 44, gap = 7;
+    const columns = Math.min(Math.max(1, count), Math.floor((width - cardWidth) / step) + 1);
+    const rows = Math.ceil(count / columns);
+    const cardHeight = Math.max(44, Math.min(short ? 66 : 100, Math.floor((maxHeight - Math.max(0, rows - 1) * gap) / Math.max(1, rows))));
+    return { columns, rows, cardWidth, cardHeight, step, gap, height: rows ? rows * cardHeight + (rows - 1) * gap : 0 };
   }
   const gap = 2, maxColumns = Math.max(1, Math.floor((width + gap) / (44 + gap)));
   const columns = Math.min(Math.max(1, count), maxColumns, short ? 24 : 18);

@@ -1,7 +1,7 @@
 // Historical room envelope only. Game state and configuration belong to adapters.
 // Keep schema 1..8 readable; 9 is flying-chess, 10 draw-and-guess, and 11
-// poker414-2. Existing games retain their historical per-feature write versions.
-export const snapshotHasRoles = data => [4, 5, 6, 7, 8, 9, 10, 11].includes(data?.schemaVersion);
+// poker414-2, 12 hyakki-trading. Existing games retain their historical write versions.
+export const snapshotHasRoles = data => [4, 5, 6, 7, 8, 9, 10, 11, 12].includes(data?.schemaVersion);
 export function snapshotGameType(data) {
   if (snapshotHasRoles(data)) return data.gameType;
   return data.schemaVersion === 3 ? 'army-flip' : 'rummikub';
@@ -11,11 +11,11 @@ export function snapshotGameType(data) {
 // the stable saved room ID rather than a legacy synthesized one.
 export function snapshotAuthorityBindingProblem(data, { roomId, code }) {
   return data.code !== code || data.roomId !== undefined && data.roomId !== roomId
-    || [10, 11].includes(data.schemaVersion) && data.roomId !== roomId;
+    || [10, 11, 12].includes(data.schemaVersion) && data.roomId !== roomId;
 }
 export function snapshotFormatProblem(data, adapter) {
   const hasRoles = snapshotHasRoles(data);
-  return ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].includes(data?.schemaVersion)
+  return ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].includes(data?.schemaVersion)
     // These historical envelope guards preceded game dispatch. Keep their
     // ordering even for a corrupt snapshot carrying another game's type so
     // the existing INVALID_SNAPSHOT response stays identical.
@@ -28,9 +28,11 @@ export function snapshotFormatProblem(data, adapter) {
     || data.schemaVersion !== 10 && data.gameType === 'draw-and-guess'
     || data.schemaVersion === 11 && (data.gameType !== 'poker414-2' || adapter.gameType !== 'poker414-2')
     || data.schemaVersion !== 11 && data.gameType === 'poker414-2'
+    || data.schemaVersion === 12 && (data.gameType !== 'hyakki-trading' || adapter.gameType !== 'hyakki-trading')
+    || data.schemaVersion !== 12 && data.gameType === 'hyakki-trading'
     || adapter.snapshotProblem(data)
-    || ![7, 8, 9, 10, 11].includes(data.schemaVersion) && Object.hasOwn(data, 'turnClock')
-    || [7, 9, 10, 11].includes(data.schemaVersion) && !Object.hasOwn(data, 'turnClock')
+    || ![7, 8, 9, 10, 11, 12].includes(data.schemaVersion) && Object.hasOwn(data, 'turnClock')
+    || [7, 9, 10, 11, 12].includes(data.schemaVersion) && !Object.hasOwn(data, 'turnClock')
     || (hasRoles ? data.gameType !== adapter.gameType || !Array.isArray(data.spectators)
       : data.schemaVersion === 3 ? data.gameType !== adapter.gameType : data.gameType !== undefined && data.gameType !== adapter.gameType)
     || !hasRoles && data.spectators !== undefined;

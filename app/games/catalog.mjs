@@ -48,6 +48,20 @@ const entries = [
       'games/poker414-2/practice-engine.mjs', 'games/poker414-2/practice-bot.mjs', 'games/poker414-2/rules.mjs', 'games/poker414-2/art.mjs', 'games/poker414-2/cards.mjs', 'games/poker414-2/patterns.mjs',
       'games/poker414-2/presentation.mjs', 'games/poker414-2/page-ui.mjs', 'games/poker414-2/layout.mjs',
       'games/poker414-2/styles.css', 'games/poker414-2/game-page.mjs', 'games/poker414-2/room-controller.mjs'] },
+  { gameType: 'hyakki-trading', name: '幽街商人', page: 'hyakki.html', minPlayers: 2, maxPlayers: 2,
+    createHint: '双人经营 · 每回合行动可调', availabilityFlag: 'hyakkiEnabled',
+    practicePage: 'hyakki-practice.html', scoreKind: 'outcome',
+    timeout: { action: '按当前步骤默认选择', hint: '主动回合30分钟，对方回应60秒；掉线保留当前材料并挂起' },
+    assets: ['hyakki.html', 'hyakki-practice.html', 'hyakki-catalog.html',
+      ...['game-page.mjs', 'room-controller.mjs', 'presentation.mjs', 'game-ui.mjs', 'game-ui-model.mjs', 'game-ui.css',
+        'practice-page.mjs', 'practice-engine.mjs', 'practice-bot.mjs', 'rules.mjs', 'model.mjs', 'effects.mjs', 'tools.mjs',
+        'auction.mjs', 'decision.mjs', 'lifecycle.mjs', 'validation.mjs', 'view.mjs', 'content/definitions.mjs', 'content/manifest.mjs',
+        'digital-page-ui.mjs', 'digital-card-ui.mjs', 'digital-card.css', 'digital-styles.css', 'digital-catalog.mjs', 'digital-catalog-page.mjs', 'digital-catalog.css']
+        .map(file => `games/hyakki-trading/${file}`),
+      ...['firearms', 'imports', 'curios', 'beasts', 'antiques', 'salt-iron', 'card-back'].map(id => `assets/hyakki/v2/${id}.svg`),
+      ...['c01', 'c02', 'c03', 'c04', 'c05', 'c06', 'c07', 'c08', 'c09', 'c10', 'c11', 'c12', 'c13',
+        'm01', 'm02', 'm03', 'm04', 'm05', 'm06', 'm07', 'm08', 't01', 't02', 't03', 't04', 't05', 't06', 't07', 't08', 't09', 't10', 'stall-permit']
+        .map(id => `assets/hyakki/v2/${id}.webp`)] },
 ];
 
 function safePage(page) { return typeof page === 'string' && /^[a-z][a-z0-9-]*\.html$/.test(page); }
@@ -66,7 +80,7 @@ export function createPresentationCatalog(definitions) {
       || item.practicePage !== null && !safePage(item.practicePage)
       || !['points', 'outcome', 'score'].includes(item.scoreKind)
       || typeof item.createHint !== 'string' || !item.createHint.trim()
-      || ![null, 'drawingEnabled', 'poker414Enabled'].includes(item.availabilityFlag)
+      || ![null, 'drawingEnabled', 'poker414Enabled', 'hyakkiEnabled'].includes(item.availabilityFlag)
       || !item.timeout || typeof item.timeout.action !== 'string' || !item.timeout.action
       || typeof item.timeout.hint !== 'string' || !item.timeout.hint
       || Object.keys(item.timeout).some(field => !['action', 'hint'].includes(field))

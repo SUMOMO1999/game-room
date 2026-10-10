@@ -38,7 +38,7 @@ function metadataOnly(value) {
 
 test('browser game catalog contains only immutable presentation metadata matching server types, routes and capacities', () => {
   const source = readFileSync(join(projectRoot, 'app/games/catalog.mjs'), 'utf8').replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
-  assert.equal(/\bimport\s*(?:\(|[{*'"\w])/.test(source), false, 'catalog must not import an executable game module');
+  assert.equal(/\bimport\b\s*(?:\(|[{*'"\w])/.test(source), false, 'catalog must not import an executable game module');
   const allowed = ['gameType', 'name', 'page', 'minPlayers', 'maxPlayers', 'practicePage', 'scoreKind', 'timeout', 'assets', 'route', 'createHint', 'availabilityFlag'].sort();
   for (const game of gamePresentations()) {
     assert.deepEqual(Object.keys(game).sort(), allowed); assert.equal(metadataOnly(game), true);
@@ -86,7 +86,7 @@ test('all declared public paths exist; old aliases and canonical modules are pub
     assert.throws(() => publicAssetPaths([{ assets: [path] }], []), TypeError, path);
 });
 
-test('release packaging recursively retains canonical runtime modules and excludes nested tests and fixture directories', t => {
+test('release packaging follows production imports and excludes unreferenced experiments and fixtures', t => {
   const directory = mkdtempSync(join(tmpdir(), 'game-catalog-release-')); t.after(() => rmSync(directory, { recursive: true, force: true }));
   const root = join(directory, 'source');
   const fixtureFiles = ['package.json', 'package-lock.json', 'app/index.html', 'app/games/demo/public.mjs',
@@ -96,11 +96,13 @@ test('release packaging recursively retains canonical runtime modules and exclud
     ...['production-start.mjs', 'production-preflight.mjs', 'initialize-store-key.mjs', 'store-backup.mjs', 'store-restore.mjs', 'scheduled-backup.mjs', 'release-compatibility.mjs'].map(file => `scripts/${file}`),
     ...['Caddyfile', 'game-room.service', 'game-room-identity-batch.conf', 'game-room-backup.service', 'game-room-backup.timer', 'runtime.env.example', 'install-release.sh', 'activate-release.sh'].map(file => `infra/${file}`)];
   for (const path of fixtureFiles) { const target = join(root, path); mkdirSync(dirname(target), { recursive: true }); writeFileSync(target, 'synthetic packaging fixture\n'); }
-  const sources = releaseSources(root);
+  writeFileSync(join(root, 'scripts/production-start.mjs'), "import '../server/games/demo/adapter.mjs';\n");
+  const publicPaths = ['index.html', 'games/demo/public.mjs'];
+  const sources = releaseSources(root, { publicPaths });
   assert.ok(sources.includes('app/games/demo/public.mjs')); assert.ok(sources.includes('server/games/demo/adapter.mjs'));
   assert.ok(sources.includes('infra/game-room-identity-batch.conf'));
   assert.equal(sources.some(path => /(?:^|\/)(?:test-support|tests|fixtures|__tests__|__fixtures__)(?:\/|$)|\.test\.mjs$/.test(path)), false);
-  const release = buildRelease({ projectRoot: root, outputRoot: join(directory, 'artifacts') });
+  const release = buildRelease({ projectRoot: root, outputRoot: join(directory, 'artifacts'), publicPaths });
   const members = execFileSync('tar', ['-tzf', release.artifact], { encoding: 'utf8' }).trim().split('\n');
   assert.deepEqual(members.sort(), [...sources, 'release-manifest.json'].sort());
   assert.equal(releaseSources(projectRoot).includes('app/games/catalog-boundary.test.mjs'), false);

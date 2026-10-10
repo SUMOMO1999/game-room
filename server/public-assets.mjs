@@ -12,11 +12,11 @@ const platformAssets = Object.freeze(['index.html', 'lobby.mjs', 'lobby-model.mj
 // This remains an explicit allow-list, not a recursive publication of app/.
 export function publicAssetPaths(games = gamePresentations(), shared = platformAssets) {
   const paths = [...shared, ...games.flatMap(game => game.assets)];
-  const forbidden = /(?:^|\/)(?:server|private|test-support|tests|__tests__|fixtures|__fixtures__|node_modules|ops|specs)(?:\/|$)|(?:^|\/)(?:rooms|game-registry|multiplayer-rules|army-rules|adapter|multiplayer)\.mjs$|games\/army-flip\/rules\.mjs$|(?:^|\/)poker414-preview\.html$|games\/poker414-2\/preview\.mjs$|\.test\.mjs$/;
+  const forbidden = /(?:^|\/)(?:server|private|test-support|tests|__tests__|fixtures|__fixtures__|node_modules|ops|specs)(?:\/|$)|(?:^|\/)(?:rooms|game-registry|multiplayer-rules|army-rules|adapter|multiplayer)\.mjs$|games\/army-flip\/rules\.mjs$|(?:^|\/)(?:hyakki|poker414)-preview\.html$|games\/(?:hyakki-trading|poker414-2)\/(?:digital-)?preview\.mjs$|(?:^|\/)parks(?:\/|-)|\.test\.mjs$/;
   for (const file of paths) {
     if (typeof file !== 'string' || !/^[a-zA-Z0-9_./-]+$/.test(file)
       || file.startsWith('/') || file.split('/').some(part => !part || part === '.' || part === '..')
-      || !/\.(?:html|css|mjs|js|svg|png|webmanifest)$/.test(file) || forbidden.test(file)) {
+      || !/\.(?:html|css|mjs|js|svg|png|webp|webmanifest)$/.test(file) || forbidden.test(file)) {
       throw new TypeError('静态公开资源包含不安全路径。');
     }
   }

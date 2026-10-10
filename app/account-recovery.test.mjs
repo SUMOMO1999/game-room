@@ -31,12 +31,16 @@ async function fixture(t, initial = []) {
 test('game availability requires explicit server booleans and is withdrawn during identity recovery', async t => {
   const { account, authenticate } = await fixture(t);
   assert.equal(account.accountState().poker414Enabled, false);
-  await authenticate({ poker414Enabled: 'true', drawingEnabled: true });
+  assert.equal(account.accountState().hyakkiEnabled, false);
+  await authenticate({ poker414Enabled: 'true', hyakkiEnabled: 'true', drawingEnabled: true });
   assert.equal(account.accountState().poker414Enabled, false);
   assert.equal(account.accountState().drawingEnabled, true);
-  await authenticate({ poker414Enabled: true });
+  assert.equal(account.accountState().hyakkiEnabled, false);
+  await authenticate({ poker414Enabled: true, hyakkiEnabled: true });
   assert.equal(account.accountState().poker414Enabled, true);
+  assert.equal(account.accountState().hyakkiEnabled, true);
   account.reportAuthFailure({ status: 503 });
+  assert.equal(account.accountState().hyakkiEnabled, false);
   assert.equal(account.accountState().poker414Enabled, false);
   await authenticate();
   assert.equal(account.accountState().poker414Enabled, false);
@@ -44,7 +48,7 @@ test('game availability requires explicit server booleans and is withdrawn durin
 
 test('each game room can return from login without allowing arbitrary paths or extra role fields', async t => {
   const { account } = await fixture(t);
-  for (const name of ['room', 'army', 'flying', 'drawing', 'poker414']) {
+  for (const name of ['room', 'army', 'flying', 'drawing', 'poker414', 'hyakki']) {
     const path = `/${name}.html?code=123456`;
     assert.equal(new URL(account.loginHref(path), 'http://localhost').searchParams.get('returnTo'), path);
     assert.equal(new URL(account.loginHref(path + '&role=host'), 'http://localhost').searchParams.get('returnTo'), '/');
