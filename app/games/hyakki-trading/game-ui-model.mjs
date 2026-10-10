@@ -134,6 +134,7 @@ export function actionDraft(game, selfId, card, type, input = {}) {
           || !self.goods[input.ownGoodId] || !peer?.goods[input.otherGoodId]) return fail('请选择双方当前库存中的各一件货物。');
       params.ownGoodId = input.ownGoodId; params.otherGoodId = input.otherGoodId;
     }
+    if (input.toolSelection !== undefined) Object.assign(params, structuredClone(input.toolSelection));
     return { cardId: key, params };
   }
   if (game.stage !== 'use' || !self.hand.some(item => cardKey(item) === key)) return fail('请先进入用牌阶段，并使用自己的手牌。');
@@ -147,6 +148,7 @@ export function actionDraft(game, selfId, card, type, input = {}) {
     return { cardId: key };
   }
   if (type === 'play-character' && ['ordinary_character', 'monitored_character'].includes(face.category) && !['C04','C07'].includes(face.sourceCode)) {
+    if (input.initialChoices !== undefined) params.initialChoices = structuredClone(input.initialChoices);
     if (face.sourceCode === 'M01') {
       if (!ids.includes(input.goodsId) || !peer.goods[input.goodsId]) return fail('请选择对手现有的一件货物。');
       return { cardId: key, params: { ...params, goodsId: input.goodsId } };

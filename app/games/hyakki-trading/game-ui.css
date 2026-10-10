@@ -341,6 +341,10 @@
 .hy-real .yg-playfield:not([data-stage-profile="mobile"]) .hy-work-copy>p { display:block; font-size:calc(14px / var(--stage-scale,1)); line-height:1.4; }
 #hyakki-digital-root.hy-real .yg-playfield .hy-inline-actions button,
 #hyakki-digital-root.hy-real .yg-playfield .hy-work-actions button { min-width:calc(44px / var(--stage-scale,1)); min-height:calc(44px / var(--stage-scale,1)); }
+#hyakki-digital-root.hy-real .yg-playfield[data-stage-profile] .hy-inline-secondary button { min-width:calc(44px / var(--stage-scale,1)); min-height:calc(44px / var(--stage-scale,1)); }
+.hy-real.hy-card-selected .yg-playfield[data-stage-profile] .hy-inline-copy>.hy-work-cost,
+.hy-real.hy-card-selected .yg-playfield[data-stage-profile] .hy-inline-copy>.hy-action-note { font-size:calc(14px / var(--stage-scale,1)); line-height:1.2; }
+#hyakki-digital-root.hy-real .yg-playfield[data-stage-profile] .hy-material-quantity button { min-width:calc(44px / var(--stage-scale,1)); min-height:calc(44px / var(--stage-scale,1)); }
 .hy-real .yg-playfield[data-stage-profile="compact"] .yg-stage,
 .hy-real.hy-card-selected .yg-playfield[data-stage-profile="classic"] .yg-stage,
 .hy-real.hy-pending-inline .yg-playfield[data-stage-profile="classic"] .yg-stage { display:none; }
@@ -357,8 +361,9 @@
 .hy-real .yg-playfield[data-stage-profile="compact"] .hy-work-heading>strong { font-size:18px; line-height:1.3; }
 .hy-real .yg-playfield[data-stage-profile="compact"] .hy-work-heading>small { font-size:12px; line-height:1.4; }
 .hy-real .yg-playfield[data-stage-profile="compact"] .hy-work-copy { display:block; }
-.hy-real .yg-playfield[data-stage-profile="compact"] .yg-lower.hy-has-materials { grid-template-columns:150px minmax(0,1fr) minmax(0,.85fr); }
-.hy-real .yg-playfield:not([data-stage-profile="mobile"]) .yg-lower.hy-has-materials { grid-template-columns:150px minmax(0,1fr) minmax(0,.85fr); grid-template-rows:minmax(0,1fr); }
+.hy-real .yg-playfield[data-stage-profile="compact"] .yg-lower.hy-has-materials { grid-template-columns:210px minmax(0,1fr) minmax(0,.85fr); }
+.hy-real .yg-playfield:not([data-stage-profile="mobile"]) .yg-lower.hy-has-materials { grid-template-columns:210px minmax(0,1fr) minmax(0,.85fr); grid-template-rows:minmax(0,1fr); }
+.hy-real .yg-playfield[data-stage-profile="mobile"] .yg-lower.hy-has-materials { grid-template-columns:210px minmax(0,1fr) minmax(0,.65fr); grid-template-rows:minmax(0,1fr); }
 /* Every material group has a real intrinsic width. Children may scroll as a
    whole strip, but may never paint over the adjacent owner's goods. */
 .hy-real .hy-material-group { flex:0 0 auto; width:max-content; min-width:max-content; align-self:stretch; }
@@ -375,10 +380,37 @@
 .hy-real .yg-playfield[data-stage-profile="mobile"] .hy-target-summary,
 .hy-real .yg-playfield[data-stage-profile="mobile"] .hy-work-copy>p { display:block; font-size:14px; line-height:1.3; }
 .hy-real .yg-playfield[data-stage-profile="mobile"] .hy-decision-heading { margin-bottom:3px; }
+.hy-real .yg-playfield[data-stage-profile="mobile"] .hy-decision-heading>strong { font-size:14px; line-height:1.2; }
+.hy-real .yg-playfield[data-stage-profile="mobile"] .hy-decision-heading .hy-inline-secondary { display:none; }
 .hy-real .yg-playfield[data-stage-profile="mobile"] .hy-inline-actions { margin-top:4px; }
 .hy-real.hy-card-selected .yg-playfield[data-stage-profile="mobile"] .yg-table:has(.yg-peer.is-multiplayer) .yg-centre { grid-row:1/3; }
 .hy-real.hy-card-selected .yg-playfield[data-stage-profile="mobile"] .yg-peer.is-multiplayer .yg-seat-strip { grid-column:2; }
 .hy-real .yg-playfield[data-stage-profile="mobile"] .hy-exchange-preview { margin:3px 0; line-height:1.3; }
+.hy-real .yg-playfield[data-stage-profile="mobile"] .hy-material-card { display:grid; grid-template-rows:minmax(0,1fr) auto; height:100%; }
+.hy-real .yg-playfield[data-stage-profile="mobile"] .hy-material-card .yousei-card { height:100%; min-height:0; }
+#hyakki-digital-root.hy-real .yg-playfield:is([data-stage-profile="compact"],[data-stage-profile="mobile"]) .hy-material-card:has(>.hy-material-caption) { display:grid; grid-template-columns:minmax(0,1fr) 24px; grid-template-rows:minmax(0,1fr); align-items:stretch; height:100%; flex-basis:108px; }
+.hy-real .yg-playfield:is([data-stage-profile="compact"],[data-stage-profile="mobile"]) .hy-material-card:has(>.hy-material-caption)>.yousei-card { width:100%; height:100%; min-height:0; }
+.hy-real .yg-playfield:is([data-stage-profile="compact"],[data-stage-profile="mobile"]) .hy-material-caption { writing-mode:vertical-rl; line-height:1.2; }
+/* Short screens keep the decision in one surface. The action cost carries the
+   committed state, so the repeated turn subtitle does not need another row. */
+.hy-real.hy-pending-inline .yg-playfield[data-stage-profile="mobile"],
+.hy-real.hy-card-selected .yg-playfield[data-stage-profile="mobile"] { --yg-mobile-hand-budget:120px; }
+.hy-real .yg-playfield[data-stage-profile="mobile"] .hy-native-work .hy-work-heading>small { display:none; }
+.hy-real .yg-playfield[data-stage-profile="mobile"] .hy-work-copy>p { margin:1px 0; line-height:1.2; }
+/* Bidding needs one numeric row, not stacked +/- controls. On a short phone
+   the public inventories use compact pairs to leave real reading width. */
+.hy-real .yg-playfield[data-stage-profile="mobile"] .yg-table:has(.hy-native-work[data-step-kind="auction"]) { grid-template-columns:140px minmax(0,1fr) 144px; padding:2px; gap:4px 6px; }
+.hy-real .yg-playfield[data-stage-profile="mobile"] .yg-table:has(.yg-peer.is-multiplayer):has(.hy-native-work[data-step-kind="auction"]) { grid-template-columns:54px 140px minmax(0,1fr) 144px; }
+.hy-real .yg-playfield[data-stage-profile="mobile"] .yg-table:has(.hy-native-work[data-step-kind="auction"]) .yg-market-good { flex-direction:row; gap:2px; }
+.hy-real .yg-playfield[data-stage-profile="mobile"] .yg-table:has(.hy-native-work[data-step-kind="auction"]) .yg-stock-slots { grid-template-columns:repeat(3,minmax(0,1fr)); gap:0; }
+.hy-real .yg-playfield[data-stage-profile="mobile"] .yg-table:has(.hy-native-work[data-step-kind="auction"]) .yg-owned-good { flex-direction:row; gap:1px; }
+.hy-real .yg-playfield[data-stage-profile="mobile"] .hy-native-work[data-step-kind="auction"] .hy-work-heading { margin:0; }
+.hy-real .yg-playfield[data-stage-profile="mobile"] .hy-native-work[data-step-kind="auction"] .hy-work-copy>p { margin:0; line-height:1.15; }
+.hy-real .yg-playfield[data-stage-profile="mobile"] .hy-native-work[data-step-kind="auction"] .hy-work-actions { margin-top:2px; }
+.hy-real .yg-playfield[data-stage-profile="mobile"] .hy-native-bid { gap:3px; flex-wrap:nowrap; }
+.hy-real .yg-playfield[data-stage-profile="mobile"] .hy-native-bid label { gap:1px; }
+#hyakki-digital-root.hy-real .yg-playfield[data-stage-profile="mobile"] .hy-native-bid input { width:44px; padding:3px; font-size:18px; }
+.hy-real .yg-playfield[data-stage-profile="mobile"] .hy-native-bid>small { white-space:nowrap; font-size:11px; }
 #hyakki-digital-root.hy-real .yg-playfield .hy-inline-actions button,
 #hyakki-digital-root.hy-real .yg-playfield .hy-work-actions button { flex:0 1 auto; width:max-content; max-width:100%; }
 #hyakki-digital-root.hy-real .yg-playfield .hy-exchange-draft [data-hy-action="cancel-exchange"] { background:transparent; color:var(--theme-ink); border-color:var(--theme-border); font-weight:500; }
@@ -395,4 +427,16 @@
 }
 @media (max-width:750px) and (orientation:landscape) {
   .hy-real .yg-playfield[data-stage-profile="mobile"] { --yg-mobile-hand-budget:120px; }
+}
+@media (max-height:350px) and (orientation:landscape) {
+  .hy-real .yg-playfield[data-stage-profile="mobile"],
+  .hy-real.hy-pending-inline .yg-playfield[data-stage-profile="mobile"],
+  .hy-real.hy-card-selected .yg-playfield[data-stage-profile="mobile"] { --yg-mobile-hand-budget:106px; }
+  .hy-real .yg-playfield[data-stage-profile="mobile"] .yg-table:has(.hy-native-work[data-step-kind]) { padding:1px; }
+  .hy-real .yg-playfield[data-stage-profile="mobile"] .hy-native-work { grid-template-columns:56px minmax(0,1fr); gap:8px; }
+  .hy-real .yg-playfield[data-stage-profile="mobile"] .hy-native-work .hy-work-face { width:56px; height:110px; }
+  #hyakki-digital-root.hy-real .yg-playfield[data-stage-profile="mobile"] .hy-native-work .hy-work-face .yousei-card { width:56px; height:110px; }
+  .hy-real .yg-playfield[data-stage-profile="mobile"] .hy-native-work .hy-work-heading { margin:0; }
+  .hy-real .yg-playfield[data-stage-profile="mobile"] .hy-native-work .hy-work-copy>p { margin:0; line-height:1.15; }
+  .hy-real .yg-playfield[data-stage-profile="mobile"] .hy-native-work .hy-work-actions { margin-top:2px; }
 }

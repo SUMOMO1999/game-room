@@ -39,6 +39,10 @@ function actionProblem(action) {
       || action.params !== undefined && (!plainObject(action.params) || !jsonInput(action.params))
       || action.type === 'choose-effect' && !jsonInput(action.selection)
       || action.type === 'bid' && !integer(action.amount, 1)) return problem(400, 'INVALID_ACTION', '请选择合法的牌、目标或金额。');
+  if (Object.hasOwn(action.params ?? {}, 'initialChoices') && (action.type !== 'play-character'
+      || !Array.isArray(action.params.initialChoices) || action.params.initialChoices.length < 1 || action.params.initialChoices.length > 2
+      || action.params.initialChoices.some(step => !exactFields(step, ['kind', 'selection'])
+        || !token(step.kind) || !plainObject(step.selection)))) return problem(400, 'INVALID_ACTION', '人物预选步骤无效。');
   return null;
 }
 function domainAction(action) {

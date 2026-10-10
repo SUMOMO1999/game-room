@@ -85,3 +85,15 @@ test('adapter config preserves old omitted settings, rejects malformed values an
   assert.equal(adapter.snapshotProblem({ ...envelope, hyakkiConfig: modern.hyakkiConfig }), true);
   assert.equal(adapter.snapshotProblem({ ...envelope, schemaVersion: 13, hyakkiConfig: modern.hyakkiConfig }), false);
 });
+
+test('adapter permits bounded character initialChoices inside params and rejects malformed or tool envelopes', () => {
+  const adapter = createHyakkiAdapter(), initialChoices = [{ kind: 'sell-stock', selection: { goods: { ...emptyGoods(), firearms: 1 } } }];
+  const action = { type: 'play-character', requestId: 'initial-choice', expectedRevision: 0,
+    matchId: 'c'.repeat(32), turnId: 'turn-1', cardId: 'yousei.c13#01', params: { initialChoices } };
+  assert.equal(adapter.validateAction(action), null);
+  for (const steps of [null, [], [...initialChoices,...initialChoices,...initialChoices], [{ kind: 'sell-stock' }],
+    [{ ...initialChoices[0], extra: true }], [{ kind: 'sell-stock', selection: [] }]]) {
+    assert.equal(adapter.validateAction({ ...action, params: { initialChoices: steps } }).code, 'INVALID_ACTION');
+  }
+  assert.equal(adapter.validateAction({ ...action, type: 'activate-tool', cardId: 'yousei.t10#01' }).code, 'INVALID_ACTION');
+});

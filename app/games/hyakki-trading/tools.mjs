@@ -66,6 +66,20 @@ export function toolProblem(state, ownerId, copyId, params = {}, options = {}) {
     const code = definition(copyId).sourceCode;
     const allowed = [...(selectionKeys[code] ?? []), ...(isMultiplayer(state) && pairedTool(code) ? ['targetId'] : [])];
     if (!plain(params) || Object.keys(params).some(key => !allowed.includes(key))) return '道具选择参数无效。';
+    if (code === 'T01' && Object.keys(params).length) {
+      const owner = player(state, ownerId);
+      if (!(exact(params, ['kind']) && params.kind === 'silver' && owner.silver >= 1)
+        && !(exact(params, ['kind', 'cardId']) && params.kind === 'card' && owner.hand.includes(params.cardId))) {
+        return '请选择可支付的1两或自己的手牌。';
+      }
+    }
+    if (options.preselected) {
+      // Future private draws are not a material the player can select now.
+      const selections = Object.fromEntries(Object.entries(params).filter(([key]) => key !== 'targetId'));
+      const keys = code === 'T01' ? selections.kind === 'card' ? ['kind', 'cardId'] : ['kind']
+        : code === 'T04' ? [] : selectionKeys[code];
+      if (!keys || !exact(selections, keys)) return '请先选齐本次道具所需材料。';
+    }
     return effectProblem(state, ownerId, copyId, { ...options, targetId: params.targetId });
   } catch (error) {
     if (error instanceof RuleError || error instanceof RangeError) return '道具或使用者无效。';

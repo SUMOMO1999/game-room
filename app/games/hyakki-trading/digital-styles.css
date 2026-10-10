@@ -405,13 +405,50 @@ html:has(body.hyakki-digital-body),body.hyakki-digital-body { margin:0; min-heig
 .yg-shell .yg-playfield[data-stage-profile="classic"] .yg-track { grid-column:1; grid-row:2; }
 .yg-shell .yg-playfield[data-stage-profile="classic"] .yg-scene-content { grid-row:3; }
 .yg-shell:has(.yg-playfield[data-stage-profile="mobile"]) { gap:4px; }
-.yg-shell .yg-playfield[data-stage-profile="mobile"] { --yg-mobile-hand-budget:clamp(118px,calc(var(--stage-height) - 170px),136px); grid-template-rows:minmax(0,1fr) var(--yg-mobile-hand-budget); gap:4px; }
+.yg-shell .yg-playfield[data-stage-profile="mobile"] { --yg-mobile-hand-budget:clamp(118px,calc(var(--stage-height) - 186px),136px); grid-template-rows:minmax(0,1fr) var(--yg-mobile-hand-budget); gap:4px; }
 .yg-shell .yg-playfield[data-stage-profile="mobile"]:has(#yg-observer-note:not([hidden])),.hy-real:has(#yg-readiness:not([hidden])) .yg-shell .yg-playfield { grid-template-rows:minmax(0,1fr) 48px; }
 .yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-feedback { display:none; }
 .yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-hand { --hyakki-card-width:calc((var(--yg-mobile-hand-budget) - 28px) * .8); --hyakki-card-height:calc(var(--yg-mobile-hand-budget) - 28px); }
+.yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-hand .yousei-card__heading { display:none; }
+.yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-hand .yousei-card[data-card-category="monitored_character"] .yousei-card__name::before { content:"◉ "; color:var(--theme-accent); }
 #hyakki-digital-root .yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-equipped { height:100%; max-height:100%; }
 #hyakki-digital-root .yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-equipped .yousei-card { height:100%; }
 .yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-table { padding:6px; }
 .yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-centre { gap:4px; }
+/* Six 44px targets cannot share a 202px row. Compact inventories retain every
+   counter and capacity/fee note in two balanced rows on short phones. */
+.yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-storage { gap:0; }
+.yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-public { gap:0; }
+.yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-public-heading { line-height:13px; }
+#hyakki-digital-root .yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-market { grid-template-columns:repeat(3,minmax(0,1fr)); padding:0; gap:0; }
+.yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-personal { padding:0 2px; gap:3px; }
+#hyakki-digital-root .yg-shell .yg-playfield[data-stage-profile="mobile"] #yg-shop-detail { padding:0; gap:0; }
+.yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-personal-heading { line-height:14px; }
+.yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-stock-slots { gap:1px; }
+.yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-owned-good { gap:0; }
+.yg-shell .yg-playfield[data-stage-profile="mobile"] :is(.yg-owned-good,.yg-market-good) .yousei-good-icon { width:18px; height:18px; }
+.yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-owned-good b { line-height:13px; }
+.yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-shop-note { white-space:normal; line-height:10px; }
+/* Equipment owns three real slots; its contents never spill into materials. */
+.yg-shell .yg-playfield .yg-tool-zone { min-width:0; }
+.yg-shell .yg-playfield .yg-tools { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); grid-template-rows:minmax(0,1fr); gap:4px; min-width:0; width:100%; }
+#hyakki-digital-root .yg-shell .yg-playfield .yg-equipped { width:100%; flex:none; }
+.yg-shell .yg-playfield .yg-tool-empty { grid-column:1/-1; }
+.yg-shell .yg-playfield .yg-equipped .yousei-card__name { white-space:normal; }
+.yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-lower { grid-template-columns:210px minmax(0,1fr); }
+.yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-equipped .yousei-card { gap:2px; }
 /* Scaling may enlarge the logical hit area, never reduce the physical target. */
 #hyakki-digital-root .yg-shell .yg-playfield button,#hyakki-digital-root .yg-shell .yg-playfield select,#hyakki-digital-root .yg-shell .yg-playfield input { min-width:calc(44px / var(--stage-scale,1)); min-height:calc(44px / var(--stage-scale,1)); }
+/* The shortest supported phone keeps full card costs; counters sit beside
+   their icons so the same inventory fits without borrowing the hand's space. */
+@media (max-height:350px) and (orientation:landscape) {
+  .yg-shell .yg-playfield[data-stage-profile="mobile"] { --yg-mobile-hand-budget:106px; }
+  .yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-table { padding:1px; }
+  .yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-hand { --hyakki-card-width:80px; }
+  #hyakki-digital-root .yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-hand .yousei-card { padding:2px; gap:1px; }
+  #hyakki-digital-root .yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-equipped { padding:2px; gap:0; }
+  #hyakki-digital-root .yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-equipped .yousei-card { padding:2px; gap:1px; }
+  .yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-stock-slots { gap:0; }
+  .yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-owned-good { flex-direction:row; gap:0; }
+  .yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-owned-good .yousei-good-icon { flex:0 1 18px; min-width:12px; }
+}
