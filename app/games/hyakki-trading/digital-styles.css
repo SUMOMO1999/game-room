@@ -18,8 +18,8 @@ html:has(body.hyakki-digital-body),body.hyakki-digital-body { margin:0; min-heig
 .yg-header .room-toolbar { position:relative; margin:0; flex:none; }
 .yg-header .room-toolbar-actions { display:flex; gap:8px; align-items:center; }
 #hyakki-digital-root .room-toolbar-exit,#hyakki-digital-root .close-button { display:grid; place-items:center; width:44px; height:44px; padding:0; line-height:1; font-size:27px; flex:none; }
-.yg-table { min-height:0; min-width:0; display:grid; grid-template-columns:100px minmax(0,1fr) 300px; gap:20px; padding:20px; border:1px solid var(--theme-border); border-radius:20px; background:var(--theme-table); box-shadow:inset 0 0 32px var(--theme-shadow); overflow:hidden; }
-.yg-piles { min-height:0; display:grid; grid-template-rows:1fr 1fr; gap:14px; }
+.yg-table { min-height:0; min-width:0; display:grid; grid-template-columns:100px minmax(0,1fr) 300px; grid-template-rows:minmax(0,1fr) auto; gap:20px; padding:20px; border:1px solid var(--theme-border); border-radius:20px; background:var(--theme-table); box-shadow:inset 0 0 32px var(--theme-shadow); overflow:hidden; }
+.yg-piles { grid-column:1; grid-row:1 / 3; min-height:0; display:grid; grid-template-rows:1fr 1fr; gap:14px; }
 #hyakki-digital-root .yg-pile { min-height:44px; min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; overflow:hidden; padding:8px; background:var(--theme-surface); }
 .yg-pile-art { --hyakki-card-width:64px; --hyakki-card-height:80px; display:block; pointer-events:none; }
 .yg-pile-art .yousei-card { min-height:0; }
@@ -27,7 +27,7 @@ html:has(body.hyakki-digital-body),body.hyakki-digital-body { margin:0; min-heig
 .yg-pile > span:last-child { display:grid; gap:3px; font-size:13px; }
 .yg-pile b { font-variant-numeric:tabular-nums; }
 .yg-discard-mark { display:grid; width:58px; height:65px; align-items:center; border:1px dashed var(--theme-border); border-radius:8px; font:32px ui-serif,serif; color:var(--theme-accent); }
-.yg-centre { display:flex; flex-direction:column; min-height:0; min-width:0; gap:16px; }
+.yg-centre { grid-column:2; grid-row:1; display:flex; flex-direction:column; min-height:0; min-width:0; gap:16px; }
 .yg-stage { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
 .yg-stage > div:first-child { min-width:0; }
 .yg-stage h1 { margin:0 0 5px; font:700 clamp(18px,2.1vw,29px)/1.3 ui-serif,"Songti SC",serif; }
@@ -60,7 +60,7 @@ html:has(body.hyakki-digital-body),body.hyakki-digital-body { margin:0; min-heig
 .yg-table-actions button { white-space:nowrap; }
 .yg-readonly { color:var(--theme-muted); }
 /* Both stock zones live on the tabletop; equipped cards stay beside the hand. */
-.yg-storage { display:flex; flex-direction:column; gap:12px; min-width:0; min-height:0; justify-content:center; }
+.yg-storage { grid-column:3; grid-row:1 / 3; display:flex; flex-direction:column; gap:12px; min-width:0; min-height:0; justify-content:center; }
 .yg-public { display:grid; gap:7px; min-width:0; }
 .yg-public-heading,.yg-personal-heading { display:flex; justify-content:space-between; align-items:center; gap:8px; }
 .yg-public-heading span { color:var(--theme-muted); font-size:11px; }
@@ -78,10 +78,26 @@ html:has(body.hyakki-digital-body),body.hyakki-digital-body { margin:0; min-heig
 .yg-owned-good .yousei-good-icon { width:28px; height:28px; }
 .yg-owned-good b { font-size:16px; line-height:1; color:var(--theme-ink); }
 .yg-shop-note { font-size:10px; color:var(--theme-muted); line-height:1.3; }
-.yg-peer { margin-top:auto; min-width:0; }
-#hyakki-digital-root .yg-peer button { display:flex; align-items:center; gap:12px; max-width:100%; min-width:0; text-align:left; font-size:12px; }
-.yg-peer strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.yg-peer span { color:var(--theme-muted); }
+/* Opponent information belongs to the tabletop; only own equipment sits below. */
+.yg-peer { grid-column:2; grid-row:2; display:grid; gap:8px; min-width:0; min-height:0; }
+.yg-peer-panel { display:grid; grid-template-columns:minmax(0,1fr) minmax(144px,1fr); align-items:center; gap:8px; min-width:0; padding:6px; border:1px solid var(--theme-border); border-radius:12px; background:color-mix(in srgb,var(--theme-surface) 45%,var(--theme-table)); }
+#hyakki-digital-root .yg-peer-overview { display:grid; gap:5px; min-width:0; padding:3px; text-align:left; border:0; background:transparent; }
+.yg-peer-heading { display:flex; align-items:center; gap:6px; min-width:0; font-size:12px; line-height:16px; }
+.yg-peer-heading strong { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.yg-peer-heading>b { color:var(--theme-accent); white-space:nowrap; }.yg-peer-heading>span { white-space:nowrap; }
+.yg-peer-goods { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:3px; }
+.yg-peer-good { display:grid; justify-items:center; gap:1px; min-width:0; }
+.yg-peer-good .yousei-good-icon { width:24px; height:24px; }.yg-peer-good b { font-size:13px; line-height:14px; }
+.yg-peer-badges { display:flex; gap:4px; color:var(--theme-accent); font-size:11px; line-height:13px; }
+.yg-peer-tools { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px; min-width:0; }
+#hyakki-digital-root .yg-peer-tool { display:grid; justify-items:center; min-width:0; padding:3px; gap:1px; border-radius:8px; }
+#hyakki-digital-root .yg-peer-tool .yousei-card { display:block; width:40px; height:36px; min-width:0; max-width:100%; padding:0; min-height:0; border:0; background:transparent; box-shadow:none; }
+.yg-peer-tool .yousei-card>:not(.yousei-card__portrait) { display:none; }.yg-peer-tool .yousei-card__portrait { position:relative; width:100%; height:100%; min-height:0; overflow:hidden; border-radius:4px; background:var(--yousei-paper,#fcf6e8); }
+.yg-peer-tool .yousei-card__portrait img { inset:0; width:100%; height:100%; max-width:100%; transform:none; object-fit:contain; }
+.yg-peer-tool-name { max-width:100%; font-size:11px; line-height:14px; white-space:nowrap; }
+.yg-peer-tool-state { font-size:11px; line-height:13px; color:var(--theme-accent); }
+#hyakki-digital-root .yg-peer-tool.is-tapped { border-style:dashed; }.yg-peer-tool.is-tapped .yg-peer-tool-state { color:var(--theme-muted); }
+.yg-peer-no-tools { grid-column:1/-1; align-self:center; text-align:center; font-size:12px; color:var(--theme-muted); }
 .yg-lower { min-height:0; min-width:0; display:grid; grid-template-columns:240px minmax(0,1fr); gap:18px; }
 .yg-tool-zone { display:grid; grid-template-rows:22px minmax(0,1fr); gap:6px; min-height:0; border-right:1px solid var(--theme-border); padding-right:12px; }
 .yg-tool-heading,.yg-hand-heading { display:flex; align-items:center; justify-content:space-between; min-width:0; gap:8px; }
@@ -174,7 +190,7 @@ html:has(body.hyakki-digital-body),body.hyakki-digital-body { margin:0; min-heig
   .yg-personal { padding:2px 4px; border-radius:10px; }
   #hyakki-digital-root #yg-shop-detail { gap:2px; font-size:12px; }
   .yg-stock-slots { gap:2px; }.yg-owned-good { display:flex; flex-direction:column; align-items:center; gap:1px; }.yg-owned-good .yousei-good-icon { width:24px; height:24px; }.yg-owned-good b { font-size:12px; }
-  .yg-shop-note { font-size:9px; line-height:12px; white-space:nowrap; }.yg-peer { display:none; }
+  .yg-shop-note { font-size:9px; line-height:12px; white-space:nowrap; }
   .yg-lower { grid-template-columns:180px minmax(0,1fr); gap:10px; }
   .yg-tool-zone,.yg-hand-section { grid-template-rows:18px minmax(0,1fr); gap:4px; }.yg-tool-zone { padding-right:8px; }
   .yg-hand { --hyakki-card-width:98px; --hyakki-card-height:145px; gap:6px; padding:2px 3px 4px; }
@@ -240,4 +256,42 @@ html:has(body.hyakki-digital-body),body.hyakki-digital-body { margin:0; min-heig
   #hyakki-digital-root.hy-real.hy-card-selected .hy-inline-actions select { width:100%; font-size:12px; }
   .hy-real.hy-card-selected .hy-inline-actions>p { margin:0; font-size:12px; line-height:16px; }
   .hy-real:not(.hy-card-selected) #yg-scene-content .yg-scene-note { display:block; margin:0; font-size:12px; line-height:16px; text-align:center; }
+}
+
+@media (max-height:600px) and (orientation:landscape) {
+  .yg-table { grid-template-columns:160px minmax(0,1fr) 266px; grid-template-rows:minmax(0,1fr) 44px; row-gap:4px; }
+  .yg-peer { grid-column:1; grid-row:1; gap:4px; align-content:start; }
+  .yg-piles { grid-column:1; grid-row:2; grid-template-columns:1fr 1fr; grid-template-rows:44px; gap:4px; }
+  .yg-centre { grid-column:2; grid-row:1 / 3; }
+  .yg-peer-panel { grid-template-columns:minmax(0,1fr); padding:1px; gap:1px; border-radius:9px; }
+  #hyakki-digital-root .yg-peer-overview { padding:0 2px; gap:1px; min-height:0; }
+  .yg-peer-heading { gap:3px; font-size:11px; line-height:14px; }
+  .yg-peer-goods { gap:2px; }.yg-peer-good { gap:0; }
+  .yg-peer-good .yousei-good-icon { width:18px; height:18px; }.yg-peer-good b { font-size:11px; line-height:11px; }
+  .yg-peer-badges { font-size:10px; line-height:11px; }
+  .yg-peer-tools { gap:2px; }
+  #hyakki-digital-root .yg-peer-tool { padding:0 1px; gap:0; min-height:44px; border-radius:5px; }
+  #hyakki-digital-root .yg-peer-tool .yousei-card { width:22px; height:20px; }
+  .yg-peer-tool-name { font-size:10px; line-height:11px; }.yg-peer-tool-state { font-size:10px; line-height:11px; }
+  .yg-peer-no-tools { min-height:32px; display:grid; place-items:center; font-size:11px; }
+  .yg-shell:has(#yg-observer-note:not([hidden])) { grid-template-rows:44px minmax(0,1fr) 48px; }
+  .yg-observer-note { padding:4px; }.yg-observer-note h2 { margin:0; font-size:13px; }.yg-observer-note p { font-size:11px; }
+}
+@media (max-width:750px) and (max-height:600px) and (orientation:landscape) {
+  .yg-shell { grid-template-rows:44px minmax(0,1fr) 160px; }
+  .yg-table { grid-template-columns:160px minmax(0,1fr) 238px; }
+  .yg-hand { --hyakki-card-height:131px; }
+  .yg-table-actions { width:100%; flex-wrap:nowrap; }
+  #hyakki-digital-root .yg-table-actions button { min-width:0; flex:1; padding:4px 3px; white-space:normal; line-height:16px; }
+}
+
+@media (max-height:600px) and (orientation:landscape) {
+  /* Waiting rooms have settings instead of a hand, so keep all setup controls on the table. */
+  .hy-real:has(#yg-readiness:not([hidden])) .yg-shell { grid-template-rows:44px minmax(0,1fr) 48px; }
+  .hy-real:has(#yg-readiness:not([hidden])) .yg-table-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); width:100%; gap:4px; }
+  #hyakki-digital-root.hy-real:has(#yg-readiness:not([hidden])) .yg-table-actions button { width:100%; min-width:0; min-height:44px; white-space:normal; padding:4px; }
+  .hy-real:has(#yg-readiness:not([hidden])) .hy-config { flex-direction:column; align-items:stretch; gap:1px; font-size:11px; line-height:13px; }
+  #hyakki-digital-root.hy-real:has(#yg-readiness:not([hidden])) .hy-config select { width:100%; min-height:44px!important; padding:4px 24px 4px 8px; }
+  .hy-real:has(#yg-readiness:not([hidden])) .yg-tool-empty { padding:0; font-size:10px; line-height:11px; }
+  .hy-real:has(#yg-readiness:not([hidden])) .yg-empty { margin:0; font-size:11px; }
 }

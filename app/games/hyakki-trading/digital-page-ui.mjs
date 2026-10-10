@@ -39,6 +39,19 @@ export function renderDecisionCandidates(decision, selected = []) {
     ${candidate.kind === 'card' ? `<button type="button" data-detail-id="${candidate.card.definitionId}" aria-label="查看${escape(definition(candidate.card).name)}详情">看详情</button>` : ''}</div></article>`).join('');
 }
 
+/** Uses only a role-filtered table projection; tool controls always read a definition. */
+export function renderPublicPlayerPanel(player, { bookLayers = 0, finalTurn = false } = {}) {
+  const badges = [bookLayers ? `书算${bookLayers}层` : '', finalTurn ? '末回合' : ''].filter(Boolean);
+  return `<section class="yg-peer-panel" data-public-player="${escape(player.id)}" aria-label="${escape(player.name)}的公开商铺">
+    <button type="button" class="yg-peer-overview" data-player="${escape(player.id)}" aria-label="查看${escape(player.name)}的公开商铺详情">
+      <span class="yg-peer-heading"><strong title="${escape(player.name)}">${escape(player.name)}</strong><b>${player.silver}两</b><span>手牌${player.handCount}张</span></span>
+      ${badges.length ? `<span class="yg-peer-badges">${badges.map(badge => `<span>${badge}</span>`).join('')}</span>` : ''}
+      <span class="yg-peer-goods">${GOODS.map(good => { const count = player.goods.find(item => item.id === good.id)?.count ?? 0; return `<span class="yg-peer-good" data-good-id="${good.id}" title="${good.name}${count}件" aria-label="${good.name}${count}件">${renderGoodsIcon(good.id)}<b>${count}</b></span>`; }).join('')}</span>
+    </button>
+    <div class="yg-peer-tools" aria-label="已装备道具">${player.tools.length ? player.tools.map(tool => { const face = definition(tool); return `<button type="button" class="yg-peer-tool${tool.tapped ? ' is-tapped' : ''}" data-detail-id="${face.id}" aria-label="${face.name}，${tool.tapped ? '已用' : '可用'}，查看牌文">${renderCard(tool, { interactive: false })}<span class="yg-peer-tool-name">${face.name}</span><span class="yg-peer-tool-state">${tool.tapped ? '已用' : '可用'}</span></button>`; }).join('') : '<span class="yg-peer-no-tools">尚未装备道具</span>'}</div>
+  </section>`;
+}
+
 export function renderPersonalSlots(player) {
   const occupied = player.goods.flatMap(item => Array.from({ length: item.count }, () => item.id));
   const ordinary = Array.from({ length: player.ordinaryCapacity }, (_, index) => occupied[index] ?? null);
@@ -77,8 +90,8 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
       <main class="yg-centre"><div class="yg-stage"><div><h1 id="yg-title">轮到你经营</h1><span id="yg-room-code">示例房号610036</span></div><div class="yg-time"><strong id="yg-clock">24:12</strong><small id="yg-clock-label">定格时钟示例</small></div></div>
         <div id="yg-track" class="yg-track" aria-label="共享行动条"><span id="yg-track-label"></span><div id="yg-track-steps" role="meter" aria-labelledby="yg-track-label" aria-valuemin="0"></div></div><div id="yg-readiness" class="yg-readiness" hidden></div>
         <div id="yg-scene-content" class="yg-scene-content"></div>
-        <div id="yg-peer" class="yg-peer"></div>
       </main>
+      <aside id="yg-peer" class="yg-peer" aria-label="其他玩家的公开商铺"></aside>
       <aside class="yg-storage"><section id="yg-public-stock" class="yg-public"><div class="yg-public-heading"><strong>公共货摊</strong><span id="yg-stock-limit"></span></div><button type="button" id="yg-market" class="yg-market" aria-label="查看六类公共货物和库存详情"></button></section>
         <section id="yg-personal" class="yg-personal" aria-label="我的货物"><button type="button" id="yg-shop-detail"><span class="yg-personal-heading"><strong>我的货物</strong><span id="yg-silver"></span></span><span id="yg-stock-slots" class="yg-stock-slots"></span><span class="yg-shop-note" id="yg-shop-note"></span></button>${button('yg-expand', '扩摊', 'aria-label="查看扩摊费用"')}</section>
       </aside>
@@ -184,8 +197,12 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
     $('yg-discard-pile').disabled = !view.discard;
     $('yg-market').innerHTML = view.market.map(good => `<span class="yg-market-good" aria-label="公共${escape(good.name)}${good.count}件">${renderGoodsIcon(good.id)}<span>${escape(good.name)}</span><strong>${good.count}</strong></span>`).join('');
     $('yg-stock-limit').textContent = `每类${view.goodsPerType ?? 6}件`;
-    const peer = view.players.find(entry => entry.id !== view.selfId) ?? view.players[1];
-    $('yg-peer').innerHTML = `<button type="button" data-player="${peer.id}"><strong>${escape(peer.name)}</strong><span>${peer.silver}两 · 手牌${peer.handCount}张 · 库存${totalGoods(peer)}件</span></button>`;
+    const publicPlayers = view.selfRole === 'player' ? view.players.filter(entry => entry.id !== view.selfId) : view.players;
+    $('yg-peer').classList.toggle('is-observer', view.selfRole !== 'player');
+    $('yg-peer').innerHTML = publicPlayers.map(entry => renderPublicPlayerPanel(entry, {
+      bookLayers: entry.id === view.currentPlayerId ? view.bookLayers : 0,
+      finalTurn: entry.id === view.closing?.finalPlayerId,
+    })).join('');
     const self = view.selfRole === 'player' ? view.players.find(entry => entry.id === view.selfId) : null;
     $('yg-personal').hidden = !self; $('yg-hand-section').hidden = !self; $('yg-tool-zone').hidden = !self; $('yg-observer-note').hidden = !!self;
     if (self) {

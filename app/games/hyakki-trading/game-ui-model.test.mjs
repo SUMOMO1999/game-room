@@ -50,3 +50,18 @@ test('real oracle private choice renders each candidate as a selectable complete
 test('public history presents translated events, never raw JSON',()=>{
  assert.match(publicEventText({type:'bid-raised',actorSeatId:ids[0],silver:5},[{id:ids[0],name:'甲'}]),/甲报价5两/);assert.equal(publicEventText({type:'unknown',secret:'do not render'}),'公开步骤已更新');
 });
+test('both seats and observer retain public stock, tool state and turn badges without other hands',()=>{
+ const state=fresh(),tool=hand(state,'t05');state.players[0].hand=state.players[0].hand.filter(id=>id!==tool);
+ state.players[1].tools.push({cardId:tool,exhausted:true});
+ state.players[1].goods.firearms=6;state.bankGoods.firearms-=6;state.players[1].temporaryOccupied=true;
+ state.actionsUsed=2;state.bookLayers=2;state.closing={triggerPlayerId:ids[1],finalPlayerId:ids[0]};
+ for(const viewer of [...ids,null]){
+  const game=viewer?privateView(state,viewer):spectatorView(state);
+  const table=tableProjection({selfId:viewer??'observer',selfRole:viewer?'player':'spectator',players:ids.map((id,i)=>({id,name:`成员${i}`})),game});
+  assert.equal(table.bookLayers,2);assert.deepEqual(table.closing,state.closing);
+  assert.equal(table.players[1].goods.find(good=>good.id==='firearms').count,6);assert.equal(table.players[1].temporaryOccupied,true);
+  assert.equal(table.players[1].tools[0].tapped,true);
+  for(const player of table.players)if(player.id!==viewer){assert.equal(player.hand,undefined);assert.ok(player.tools.every(item=>item.cardId===undefined));}
+  assert.equal(table.hand.length,viewer?state.players.find(player=>player.id===viewer).hand.length:0);
+ }
+});

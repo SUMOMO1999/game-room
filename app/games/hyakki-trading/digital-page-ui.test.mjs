@@ -95,3 +95,27 @@ test('dense hand keeps all artwork cards mounted, preserves scrolling, and separ
   assert.equal(hand.scrollLeft, 0);
   assert.equal(f.byId('yg-tool-zone').hidden, true);
 });
+
+
+test('public shop panels show six inventories and read-only tools for opponents and both spectator seats', t => {
+  const f = fixture(t), view = digitalFixture('active'), peer = view.players[1];
+  peer.tools[0].tapped = true;
+  peer.hand = [{ id: 'private-copy-canary', definitionId: 'yousei.m08' }];
+  view.currentPlayerId = peer.id; view.bookLayers = 2; view.closing = { finalPlayerId: peer.id };
+  f.ui.applyView(view);
+  const panel = f.byId('yg-peer');
+  assert.equal(panel.querySelectorAll('[data-public-player]').length, 1);
+  assert.equal(panel.querySelectorAll('[data-good-id]').length, 6);
+  assert.match(panel.textContent, /书算2层/); assert.match(panel.textContent, /末回合/);
+  assert.match(panel.textContent, /已用/);
+  assert.equal(panel.querySelectorAll('[data-tool-id]').length, 0);
+  assert.equal(panel.innerHTML.includes('private-copy-canary'), false);
+  assert.equal(panel.innerHTML.includes('yousei.m08'), false);
+  const tool = panel.querySelector('[data-detail-id]'); f.eventAt(tool);
+  assert.ok(f.byId('yg-inspector-body').querySelector('[data-card-id]'));
+  assert.equal(f.byId('yg-inspector-body').querySelector('[data-preview-action]'), null);
+  f.ui.applyView(digitalFixture('spectator'));
+  assert.equal(panel.querySelectorAll('[data-public-player]').length, 2);
+  assert.equal(panel.querySelectorAll('[data-good-id]').length, 12);
+  assert.equal(f.byId('yg-hand').querySelectorAll('[data-card-id]').length, 0);
+});
