@@ -15,7 +15,7 @@ const definition = card => getCard(card?.definitionId ?? card?.id ?? card);
 const goodName = id => GOODS.find(good => good.id === id)?.name ?? id;
 const totalGoods = player => player.goods.reduce((sum, item) => sum + item.count, 0);
 const isOwnDecision = view => view?.selfRole === 'player' && view.decision?.actorId === view.selfId;
-const canOperate = view => view?.phase === 'playing' && view.selfRole === 'player'
+const canOperate = view => !view?.layoutOnly && view?.phase === 'playing' && view.selfRole === 'player'
   && view.currentPlayerId === view.selfId && !view.decision;
 
 /** A read-only ruler: its number of intervals follows the room's action limit. */
@@ -114,7 +114,7 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
   const $ = id => document.getElementById(id), removers = [];
   let view = null, selectedHand = null, selectedChoices = [], destroyed = false;
   let returnToDecision = false, pendingDraft = null, appliedScope = null, appliedDecisionId = null, bidDraft = null, feedbackTimer;
-  let renderedHand = null;
+  let renderedHand = null, focusedPublicPlayer = null;
   const audio = createGameAudio({ document, window });
   const audioControls = mountRoomAudioControls({ audio, document });
   const unmountArt = mountArtFallback(root);
@@ -144,7 +144,10 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
     $('yg-inspector').close(); pendingDraft = null;
     if (returnToDecision && isOwnDecision(view)) { returnToDecision = false; openDecision(); }
   }
-  function invoke(type, fields = {}) { if (!destroyed) onAction?.(type, { ...fields, decisionId: view.decision?.id }); }
+  function invoke(type, fields = {}) {
+    if (view?.layoutOnly) { feedback('布局演示：只可看牌与公开商铺，不进行游戏操作。'); return; }
+    if (!destroyed) onAction?.(type, { ...fields, decisionId: view.decision?.id });
+  }
   const filteredHand = () => (view?.selfRole === 'player' ? view.hand : []).filter(card =>
     $('yg-hand-filter').value === 'all' || definition(card).category === $('yg-hand-filter').value);
   function renderHand() {
@@ -155,6 +158,7 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
     if (renderedHand !== markup) { hand.innerHTML = markup; renderedHand = markup; hand.scrollLeft = scroll; }
   }
   function actions() {
+    if (view.layoutOnly) return '<span class="yg-readonly">布局演示 · 点席位查看公开商铺，横滑查看自己的牌。</span>';
     if (view.phase === 'waiting') return (view.selfRole === 'player' ? action('ready', view.players[0].ready ? '取消准备' : '准备好了', 'class="yg-primary"') : '<strong>你正在观战</strong>')
       + action('start', '开始样板', view.players.every(player => player.ready) && view.selfRole === 'player' ? '' : 'disabled')
       + action('role', view.selfRole === 'player' ? '改为观战' : '加入对局');
@@ -167,12 +171,13 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
   }
   function renderTable() {
     const player = view.players.find(entry => entry.id === view.currentPlayerId);
-    const title = view.phase === 'waiting' ? '两个人坐好，就开张。' : view.phase === 'finished' ? '夜市收市 · 我方68两获胜'
+    const title = view.layoutOnly ? '桌面布局演示' : view.phase === 'waiting' ? '两个人坐好，就开张。' : view.phase === 'finished' ? '夜市收市 · 我方68两获胜'
       : view.scene === 'paused' ? '共同暂停 · 余时冻结' : view.scene === 'suspended' ? '伙伴离线 · 当前步骤已挂起'
       : isOwnDecision(view) ? view.decision.title : view.selfRole === 'spectator' ? '观战 · 只读公开牌面'
       : canOperate(view) ? '轮到你经营' : '灯笼铺老板正在经营';
     $('yg-title').textContent = title; $('yg-title').title = title;
-    $('yg-room-code').textContent = `示例房号 ${view.roomCode} · ${view.spectatorCount}位观众`;
+    if (!externalDecisions) root.querySelector('.yg-brand span').textContent = view.layoutOnly ? view.layoutLabel : '本地合成样板 · 未联网／未保存';
+    $('yg-room-code').textContent = view.layoutOnly ? `${view.players.length}人构图 · 只读样板` : `示例房号 ${view.roomCode} · ${view.spectatorCount}位观众`;
     $('yg-clock').textContent = view.scene === 'paused' ? '24:12' : view.scene === 'suspended' ? '29:42' : view.decision?.clock ?? view.clock;
     $('yg-clock-label').textContent = view.scene === 'suspended' ? '保席余时示例' : view.decision ? '选择余时示例' : '主动余时示例';
     $('yg-track').hidden = ['waiting', 'finished'].includes(view.phase);
@@ -184,7 +189,8 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
     $('yg-track-steps').setAttribute('aria-valuetext', `已用${view.actionsUsed}步，余${view.actionLimit - view.actionsUsed}步`);
     $('yg-track-steps').innerHTML = renderActionTrack(view.actionsUsed, view.actionLimit);
     let note = '先选手牌阅读费用和效果；未确认前可取消。';
-    if (view.decision) note = view.decision.description;
+    if (view.layoutOnly) note = view.layoutLabel;
+    else if (view.decision) note = view.decision.description;
     else if (view.phase === 'waiting') note = `${view.players.map(entry => `${entry.name}：${entry.ready ? '已准备' : '未准备'}`).join(' · ')}。邀请与观战仅作页面演示。`;
     else if (view.phase === 'finished') note = `${view.resultReason} 伙伴64两；本局财富不累计到账号。`;
     else if (view.scene === 'paused') note = '双方已同意暂停，原选择和余时保留。7天截止不因自然离线而改成30分钟。';
@@ -198,11 +204,21 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
     $('yg-market').innerHTML = view.market.map(good => `<span class="yg-market-good" aria-label="公共${escape(good.name)}${good.count}件">${renderGoodsIcon(good.id)}<span>${escape(good.name)}</span><strong>${good.count}</strong></span>`).join('');
     $('yg-stock-limit').textContent = `每类${view.goodsPerType ?? 6}件`;
     const publicPlayers = view.selfRole === 'player' ? view.players.filter(entry => entry.id !== view.selfId) : view.players;
+    const seatScroll = $('yg-peer').querySelector('.yg-seat-strip')?.scrollLeft ?? 0;
     $('yg-peer').classList.toggle('is-observer', view.selfRole !== 'player');
-    $('yg-peer').innerHTML = publicPlayers.map(entry => renderPublicPlayerPanel(entry, {
+    $('yg-peer').classList.toggle('is-multiplayer', view.players.length > 2);
+    $('yg-peer').dataset.playerCount = String(view.players.length);
+    const panel = entry => renderPublicPlayerPanel(entry, {
       bookLayers: entry.id === view.currentPlayerId ? view.bookLayers : 0,
       finalTurn: entry.id === view.closing?.finalPlayerId,
-    })).join('');
+    });
+    if (view.players.length > 2) {
+      if (!publicPlayers.some(entry => entry.id === focusedPublicPlayer)) {
+        focusedPublicPlayer = publicPlayers.find(entry => entry.id === view.currentPlayerId)?.id ?? publicPlayers[0]?.id;
+      }
+      $('yg-peer').innerHTML = `<nav class="yg-seat-strip" aria-label="公开席位，点选查看商铺">${publicPlayers.map(entry => `<button type="button" class="yg-seat${entry.id === view.currentPlayerId ? ' is-current' : ''}" data-focus-player="${escape(entry.id)}" title="${escape(entry.name)}" aria-label="第${entry.seatOrder ?? view.players.indexOf(entry) + 1}席，${escape(entry.name)}，${entry.silver}两，手牌${entry.handCount}张${entry.id === view.currentPlayerId ? '，正在经营' : ''}" aria-pressed="${entry.id === focusedPublicPlayer}"><span class="yg-seat-name"><small>${entry.seatOrder ?? view.players.indexOf(entry) + 1}</small><strong>${escape(entry.name)}</strong></span><span class="yg-seat-status"><b>${entry.silver}两</b><span>手牌${entry.handCount}张</span></span></button>`).join('')}</nav><div class="yg-peer-detail">${publicPlayers.filter(entry => entry.id === focusedPublicPlayer).map(panel).join('')}</div>`;
+      $('yg-peer').querySelector('.yg-seat-strip').scrollLeft = seatScroll;
+    } else $('yg-peer').innerHTML = publicPlayers.map(panel).join('');
     const self = view.selfRole === 'player' ? view.players.find(entry => entry.id === view.selfId) : null;
     $('yg-personal').hidden = !self; $('yg-hand-section').hidden = !self; $('yg-tool-zone').hidden = !self; $('yg-observer-note').hidden = !!self;
     if (self) {
@@ -273,7 +289,10 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
     const scopeChanged = appliedScope !== scope;
     const decisionChanged = appliedDecisionId !== next.decision?.id;
     if (!externalDecisions && view !== next) closeDialogs();
-    if (scopeChanged) { selectedHand = null; $('yg-hand-filter').value = 'all'; $('yg-hand').scrollLeft = 0; }
+    if (scopeChanged) {
+      selectedHand = null; focusedPublicPlayer = null; $('yg-hand-filter').value = 'all'; $('yg-hand').scrollLeft = 0;
+      const seats = $('yg-peer').querySelector('.yg-seat-strip'); if (seats) seats.scrollLeft = 0;
+    }
     if (scopeChanged || decisionChanged) { clearPrivatePanels(); selectedChoices = []; bidDraft = null; }
     view = next; appliedScope = scope; appliedDecisionId = view.decision?.id;
     root.dataset.scene = view.scene; root.dataset.role = view.selfRole;
@@ -287,6 +306,13 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
   }
   listen(root, 'click', event => {
     const node = event.target.closest('button'); if (!node || node.disabled || destroyed) return;
+    if (node.dataset.focusPlayer) {
+      if (view.players.some(entry => entry.id === node.dataset.focusPlayer && entry.id !== view.selfId)) {
+        focusedPublicPlayer = node.dataset.focusPlayer; renderTable();
+        [...$('yg-peer').querySelectorAll('[data-focus-player]')].find(seat => seat.dataset.focusPlayer === focusedPublicPlayer)?.focus({ preventScroll: true });
+      }
+      return;
+    }
     if (node.dataset.previewAction) {
       const type = node.dataset.previewAction;
       if (type.startsWith('prepare-')) { showPrepared(type); return; }

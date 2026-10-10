@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { choiceModel, buildChoiceSelection, defaultChoiceInput, actionDraft, knownCards, tableProjection } from './game-ui-model.mjs';
+import { choiceModel, buildChoiceSelection, defaultChoiceInput, actionDraft, knownCards, tableProjection, tradeAvailability } from './game-ui-model.mjs';
 import { renderChoiceForm, publicEventText } from './game-ui.mjs';
 import { GOODS } from './content/definitions.mjs';
 import { createGame, applyGameAction, currentDecision } from './rules.mjs';
@@ -37,6 +37,22 @@ test('real private peek projection has only the owner candidate; spectator model
 test('action drafts require current turn/own card and send only current projection identities',()=>{
  let state=fresh();const id=hand(state,'g01');state=act(act(state,'peek'),'keep-peek');const game=privateView(state,ids[0]),card=game.players[0].hand.find(c=>c.cardId===id);
  assert.deepEqual(actionDraft(game,ids[0],card,'buy'),{cardId:id});assert.throws(()=>actionDraft(game,ids[1],card,'buy'),RangeError);assert.throws(()=>actionDraft({...game,clock:{paused:true}},ids[0],card,'buy'),RangeError);assert.throws(()=>actionDraft(game,ids[0],{cardId:'forged',definitionId:'yousei.g01'},'buy'),RangeError);
+});
+test('trade hints match real discounted settlement, temporary fee, and atomic insufficient-stock/space rejection',()=>{
+ const initial=fresh(),cardId=hand(initial,'g01');
+ const base=act(act(initial,'peek'),'keep-peek');
+ base.bookLayers=2;base.actionsUsed=3;base.players[0].goods.imports=3;base.bankGoods.imports-=3;base.players[0].silver=2;
+ const hint=state=>{const game=privateView(state,ids[0]);return tradeAvailability(game,ids[0],game.players[0].hand.find(card=>card.cardId===cardId));};
+ const available=hint(base);assert.equal(available.buyPrice,0);assert.equal(available.temporaryFee,2);assert.equal(available.buyTotal,2);assert.equal(available.sellPrice,14);assert.equal(available.canBuy,true);assert.equal(available.canSell,false);
+ const bought=act(base,'buy',{cardId});assert.equal(bought.players[0].silver,0);assert.equal(bought.players[0].temporaryOccupied,true);
+ const cases=[
+  [state=>{state.players[0].silver=1;},'silver'],
+  [state=>{state.players[0].goods.imports++;state.bankGoods.imports--;},'space'],
+  [state=>{state.players[1].goods.firearms=state.bankGoods.firearms-2;state.players[1].temporaryOccupied=state.players[1].goods.firearms>5;state.bankGoods.firearms=2;},'publicStock'],
+ ];
+ for(const [setup,condition] of cases){const state=structuredClone(base);setup(state);const before=structuredClone(state);assert.equal(hint(state)[condition],false);assert.equal(hint(state).canBuy,false);const result=applyGameAction(state,ids[0],{type:'buy',cardId,matchId:state.matchId,turnId:state.turnId},ctx);assert.equal(result.ok,false);assert.deepEqual(state,before);}
+ const full=structuredClone(base);full.players[0].goods.firearms=3;full.bankGoods.firearms-=3;full.players[0].temporaryOccupied=true;
+ assert.equal(hint(full).canSell,true);const sold=act(full,'sell',{cardId});assert.equal(sold.players[0].silver,16);assert.equal(sold.players[0].temporaryOccupied,false);
 });
 test('character target draft preserves opponent public tool ref instead of a hidden copy ID',()=>{
  let state=fresh();const actor=hand(state,'m08'),tool=hand(state,'t05');state.players[0].hand=state.players[0].hand.filter(id=>id!==tool);state.players[1].tools.push({cardId:tool,exhausted:false});state=act(act(state,'peek'),'keep-peek');const game=privateView(state,ids[0]);const ref=game.players[1].tools[0].ref;
