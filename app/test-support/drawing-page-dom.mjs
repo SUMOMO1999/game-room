@@ -2,7 +2,8 @@
 export function drawingTestDOM(html,{missingId=null}={}) {
   const nodes=new Map();let document;
   class Node extends EventTarget {
-    constructor(tag='div'){super();this.tagName=tag.toUpperCase();this.children=[];this.parentNode=null;this.attributes={};this.dataset={};this.hidden=false;this.disabled=false;this.value='';this.open=false;this._text='';this._class='';this.style={setProperty(){}};this.scrollTop=0;this.scrollHeight=0;
+    constructor(tag='div'){super();this.tagName=tag.toUpperCase();this.children=[];this.parentNode=null;this.attributes={};this.dataset={};this.hidden=false;this.disabled=false;this.value='';this.open=false;this._text='';this._class='';
+      const properties=new Map();this.style={setProperty(name,value,priority=''){properties.set(name,{value:String(value),priority});},getPropertyValue:name=>properties.get(name)?.value??'',getPropertyPriority:name=>properties.get(name)?.priority??'',removeProperty(name){const old=properties.get(name)?.value??'';properties.delete(name);return old;}};this.scrollTop=0;this.scrollHeight=0;
       this.classList={contains:name=>this._class.split(/\s+/).includes(name),toggle:(name,force)=>{const set=new Set(this._class.split(/\s+/).filter(Boolean)),enabled=force??!set.has(name);enabled?set.add(name):set.delete(name);this._class=[...set].join(' ');return enabled;},add:(...names)=>names.forEach(name=>this.classList.toggle(name,true)),remove:(...names)=>names.forEach(name=>this.classList.toggle(name,false))};}
     set id(value){this.attributes.id=value;nodes.set(value,this);}get id(){return this.attributes.id;}
     get parentElement(){return this.parentNode;}get options(){return this.children;}get clientWidth(){return 600;}get clientHeight(){return 400;}

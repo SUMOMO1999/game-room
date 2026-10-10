@@ -1,5 +1,6 @@
 /** Small deterministic practice opponent. Scheduling and applying actions belong to the controller. */
 import { cardsProblem, enumerateLegalPlays, chooseResponseCards, beatsPattern } from './patterns.mjs';
+import { getCard } from './cards.mjs';
 
 function privateHand(game, playerId) {
   // A full state or spectator projection would let future strategies accidentally cheat.
@@ -10,16 +11,32 @@ function privateHand(game, playerId) {
   return cardsProblem(hand) || !hand.length ? null : hand;
 }
 
-function chooseOrdinaryPlay(choices, handSize, hasTarget) {
-  const finishing = choices.find(choice => choice.cardIds.length === handSize);
+function chooseOrdinaryPlay(choices, hand, hasTarget) {
+  const finishing = choices.find(choice => choice.cardIds.length === hand.length);
   if (finishing) return finishing;
   if (!hasTarget) {
     // Shed useful combinations together, with stable low ranks winning equal-size ties.
     return choices.sort((a, b) => b.cardIds.length - a.cardIds.length
       || a.pattern.rank - b.pattern.rank || a.pattern.rocketTier - b.pattern.rocketTier)[0];
   }
+  // Keep a complete same-rank bomb together when another legal reply exists.
+  // Three cards are already a bomb here: 555 should answer 333 before taking
+  // just 444 out of 4444. This is selection policy, not another strength table.
+  const rankCounts = new Map();
+  for (const id of hand) {
+    const rank = getCard(id).rank;
+    rankCounts.set(rank, (rankCounts.get(rank) || 0) + 1);
+  }
+  const intactChoices = choices.filter(choice => {
+    const used = new Map();
+    for (const id of choice.cardIds) {
+      const rank = getCard(id).rank;
+      used.set(rank, (used.get(rank) || 0) + 1);
+    }
+    return [...used].every(([rank, count]) => rank > 15 || rankCounts.get(rank) < 3 || count === rankCounts.get(rank));
+  });
   // The rule comparator also handles bombs and rocket grades; do not copy its strength table.
-  return choices.reduce((smallest, candidate) => !smallest || beatsPattern(smallest.pattern, candidate.pattern)
+  return (intactChoices.length ? intactChoices : choices).reduce((smallest, candidate) => !smallest || beatsPattern(smallest.pattern, candidate.pattern)
     ? candidate : smallest, null);
 }
 
@@ -40,7 +57,7 @@ export function choosePoker414BotAction(projectedGame, playerId, { now = Date.no
   }
   if (game.turnPlayerId !== playerId) return null;
   const choices = enumerateLegalPlays(hand, game.target?.pattern || null);
-  const chosen = chooseOrdinaryPlay(choices, hand.length, Boolean(game.target));
+  const chosen = chooseOrdinaryPlay(choices, hand, Boolean(game.target));
   if (chosen) return { type: 'play', ...common, cardIds: chosen.cardIds };
   return game.target ? { type: 'pass', ...common } : null;
 }

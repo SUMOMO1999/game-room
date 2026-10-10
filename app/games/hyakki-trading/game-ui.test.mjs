@@ -107,3 +107,31 @@ test('short response uses a concise confirmation while the free cost and discard
   assert.match(f.byId('yg-scene-content').textContent,/阻止对方拿走火器×1/u);
   assert.match(f.byId('yg-scene-content').textContent,/锦衣卫和梁上君子弃置/u);
 });
+
+test('wish well prepares cancellable local materials then settles one complete authority command',t=>{
+  const f=fixture(t);let game=fresh();const cardId=give(game,'t02');
+  game.players[0].hand=game.players[0].hand.filter(id=>id!==cardId);
+  game.players[0].tools.push({cardId,exhausted:false});
+  game.players[0].goods.firearms=1;game.bankGoods.firearms--;
+  game.players[1].goods.imports=1;game.bankGoods.imports--;
+  game=act(act(game,'peek'),'keep-peek');const before=structuredClone(game);
+  f.ui.applyView(room(game));f.ui.selectHandCard(privateView(game,ids[0]).players[0].tools[0],true);
+  const control=action=>f.root.querySelector(`[data-hy-action="${action}"]`);
+  const decodedFields=node=>node.dataset.hyFields.replace(/&quot;/gu,'"');
+  const choose=(field,id)=>{const node=f.root.querySelectorAll('[data-hy-action="draft-value"]').find(node=>{const value=JSON.parse(decodedFields(node));return value.field===field&&value.id===id;});node.setAttribute('data-hy-fields',decodedFields(node));f.click(node);};
+  f.click(control('prepare-exchange'));choose('ownGoodId','firearms');choose('otherGoodId','imports');
+  assert.equal(f.root.querySelectorAll('.hy-material-group').length,2);
+  assert.match(f.byId('yg-scene-content').textContent,/交出火器1件.*(?:换取|换入)番货1件/u);
+  f.click(control('cancel-exchange'));
+  assert.deepEqual(f.commands,[]);assert.deepEqual(game,before);
+  assert.equal(game.players[0].tools[0].exhausted,false);
+  assert.equal(f.root.querySelectorAll('.hy-material-group').length,0);
+  f.click(control('prepare-exchange'));choose('ownGoodId','firearms');choose('otherGoodId','imports');
+  const confirm=control('confirm-card');confirm.setAttribute('data-hy-fields',decodedFields(confirm));f.click(confirm);
+  assert.deepEqual(f.commands,[{type:'activate-tool',fields:{cardId,params:{ownGoodId:'firearms',otherGoodId:'imports'}}}]);
+  game=act(game,f.commands[0].type,f.commands[0].fields);
+  assert.equal(game.actionsUsed,before.actionsUsed+1);assert.equal(game.pending,null);
+  assert.equal(game.players[0].tools[0].exhausted,true);
+  assert.equal(game.players[0].goods.firearms,0);assert.equal(game.players[0].goods.imports,1);
+  assert.equal(game.players[1].goods.firearms,1);assert.equal(game.players[1].goods.imports,0);
+});

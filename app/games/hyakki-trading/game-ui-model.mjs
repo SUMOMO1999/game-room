@@ -129,6 +129,11 @@ export function actionDraft(game, selfId, card, type, input = {}) {
   if (type === 'activate-tool') {
     if (!self.tools.some(tool => cardKey(tool) === key && !tool.exhausted)) return fail('该道具目前不可使用。');
     if (face.sourceCode === 'T07' ? game.stage !== 'draw' || game.drawStarted : game.stage !== 'use') return fail('不在这张道具的使用时机。');
+    if (face.sourceCode === 'T02' && (input.ownGoodId !== undefined || input.otherGoodId !== undefined)) {
+      if (!ids.includes(input.ownGoodId) || !ids.includes(input.otherGoodId)
+          || !self.goods[input.ownGoodId] || !peer?.goods[input.otherGoodId]) return fail('请选择双方当前库存中的各一件货物。');
+      params.ownGoodId = input.ownGoodId; params.otherGoodId = input.otherGoodId;
+    }
     return { cardId: key, params };
   }
   if (game.stage !== 'use' || !self.hand.some(item => cardKey(item) === key)) return fail('请先进入用牌阶段，并使用自己的手牌。');

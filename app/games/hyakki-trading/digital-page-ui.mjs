@@ -5,6 +5,7 @@ import { createGameAudio } from '../../game-audio.mjs';
 import { mountRoomAudioControls } from '../../platform/room-audio-controls.mjs';
 import { mountRoomSettings } from '../../platform/room-settings.mjs';
 import { mountGameViewport } from '../../platform/room-viewport.mjs';
+import { mountGameStageFit } from '../../platform/game-stage-fit.mjs';
 import { gameViewport } from '../../game-viewport.mjs';
 import { roomChatMarkup } from '../../room-chat.mjs';
 
@@ -75,7 +76,7 @@ const RULES = [
 ];
 
 /** Renders safe synthetic projections. It never owns rules, accounts or writes. */
-export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onPeerMessage, externalDecisions = false } = {}) {
+export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onPeerMessage, onLayout, externalDecisions = false } = {}) {
   if (!root) throw new TypeError('新版样板缺少挂载点。');
   const document = root.ownerDocument, window = document.defaultView;
   root.innerHTML = `<div class="yg-shell">
@@ -84,6 +85,7 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
         ${button('chat-toggle', '聊天 <span id="chat-unread" class="chat-unread" hidden></span>', 'class="chat-toggle room-toolbar-action" aria-controls="room-chat" aria-expanded="false" hidden')}
         ${button('yg-settings', '设置', 'class="room-toolbar-action"')}${button('yg-exit', '×', 'class="room-toolbar-action room-toolbar-exit room-exit" aria-label="退出本地样板"')}
       </div></div></header>
+    <div id="yg-playfield-host" class="yg-playfield-host"><div id="yg-playfield" class="yg-playfield">
     <section class="yg-table" aria-label="公共桌面" data-chat-dismiss-notices>
       <aside class="yg-piles" aria-label="抽牌与弃牌"><button type="button" id="yg-draw-pile" class="yg-pile"><span class="yg-pile-art">${renderCardBack()}</span><span>抽牌堆 <b id="yg-deck-count"></b></span></button>
         <button type="button" id="yg-discard-pile" class="yg-pile"><span id="yg-discard-art" class="yg-pile-art"><span class="yg-discard-mark" aria-hidden="true">弃</span></span><span>弃牌区 <b id="yg-discard-count"></b></span></button></aside>
@@ -99,7 +101,9 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
     <div class="yg-lower" data-chat-dismiss-notices><section id="yg-tool-zone" class="yg-tool-zone" aria-label="已装备道具"><div class="yg-tool-heading"><strong>已装备</strong><span id="yg-tool-count"></span></div><div id="yg-tools" class="yg-tools"></div></section>
       <section id="yg-hand-section" class="yg-hand-section" aria-label="我的手牌"><div class="yg-hand-heading"><strong id="yg-hand-title">我的手牌</strong><span class="yg-hand-guide">横滑看牌 · 点牌选择</span></div><div id="yg-hand" class="yg-hand" tabindex="0" aria-label="全部手牌，左右滑动或方向键浏览"></div></section>
       <section id="yg-observer-note" class="yg-observer-note" hidden><h2>观战只看公开信息</h2><p>这里不会显示任何人的手牌、私看候选或未公开的牌序。</p></section>
-    </div><p id="yg-feedback" class="yg-feedback" role="status" aria-live="polite">合成局面只用于检查页面和选择流程；主题、音量偏好沿用本机设置。</p>
+    </div><p id="yg-feedback" class="yg-feedback" role="status" aria-live="polite">合成局面只用于检查页面和选择流程；主题、音量偏好沿用本机设置。</p></div>
+      <div id="yg-window-hint" class="yg-window-hint" role="status" hidden><strong>扩大窗口，展开完整牌桌。</strong><span>当前选择与进度保留；设置、聊天和退出仍可使用。</span></div>
+    </div>
     <section id="yg-rotation" class="yg-rotation" hidden><div aria-hidden="true" class="yg-rotate-icon">↻</div><h2>横过来，展开整张夜市。</h2><p>聊天、设置和退出仍在上方。横竖切换保留当前选择与聊天草稿。</p><div id="yg-portrait-decision"></div><small>本地合成样板 · 不保存牌局</small></section>
     </div>
     <dialog id="yg-options" class="yg-dialog"><div class="dialog-heading"><h2>设置</h2>${button('yg-options-close', '×', 'class="close-button" aria-label="关闭设置"')}</div><div class="game-settings-body">
@@ -281,7 +285,9 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
     root.style.setProperty('--yg-height', `${frame.height}px`); root.style.setProperty('--yg-top', `${frame.top}px`);
     const portrait = window.innerWidth < window.innerHeight;
     root.classList.toggle('yg-portrait', portrait); $('yg-rotation').hidden = !portrait;
-    root.querySelector('.yg-table').inert = portrait; root.querySelector('.yg-lower').inert = portrait;
+    const fit = stageFit.update();
+    $('yg-playfield').inert = portrait || !!fit?.unsupported;
+    $('yg-window-hint').hidden = portrait || !fit?.unsupported;
     document.body.classList.toggle('yg-keyboard', frame.height < window.innerHeight - 80);
     if (frame.resetScroll && (window.scrollX || window.scrollY)) window.scrollTo(0, 0);
   }
@@ -367,6 +373,28 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
   listen($('yg-decision'), 'input', event => {
     if (event.target.id === 'yg-bid') { bidDraft = event.target.value; event.target.setCustomValidity(''); }
   });
+  const bounded = (value, minimum, maximum) => Math.max(minimum, Math.min(maximum, value));
+  const stageFit = mountGameStageFit({ host: $('yg-playfield-host'), stage: $('yg-playfield'), window, minScale: .85,
+    profiles: [
+      // Touch has its own composition. Browser CSS pixels, not device pixels,
+      // decide which composition fits beneath the unscaled room toolbar.
+      { id: 'mobile', match: ({ width, height }) => width <= 1100 && height < 560,
+        width: ({ width }) => Math.max(640, width), height: ({ height }) => Math.max(280, height), scale: false },
+      { id: 'compact', match: ({ height }) => height < 630,
+        width: ({ width }) => bounded(width, 1100, 1600), height: ({ height }) => bounded(height, 550, 620) },
+      { id: 'ultrawide', match: ({ width, height }) => width / height >= 2.45 && width >= 1680,
+        width: ({ width }) => bounded(width, 1680, 2560), height: ({ height }) => bounded(height, 630, 900) },
+      { id: 'classic', match: ({ width, height }) => width / height < 1.7,
+        width: ({ width }) => bounded(width, 1024, 1280), height: ({ height }) => bounded(height, 660, 900) },
+      { id: 'desktop', width: ({ width }) => bounded(width, 1280, 1600), height: ({ height }) => bounded(height, 640, 900) },
+    ],
+    onFit(fit) {
+      root.classList.toggle('yg-window-small', fit.unsupported);
+      $('yg-window-hint').hidden = root.classList.contains('yg-portrait') || !fit.unsupported;
+      $('yg-playfield').inert = root.classList.contains('yg-portrait') || fit.unsupported;
+      onLayout?.(fit);
+    },
+  });
   const viewport = mountGameViewport({ window, document, sync: resize, recoveryDelays: [80, 250] });
   const observer = new window.ResizeObserver(resize); observer.observe($('yg-hand'));
   const chatObserver = new window.MutationObserver(syncChatDecision); chatObserver.observe($('room-chat'), { attributes: true, attributeFilter: ['hidden'] });
@@ -377,7 +405,7 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
       focusedPublicPlayer=id;renderTable();return true;
     }, destroy() {
     if (destroyed) return; destroyed = true; clearPrivatePanels(); removers.forEach(remove => remove());
-    viewport.destroy(); observer.disconnect(); chatObserver.disconnect(); settings.destroy(); audioControls.destroy(); void audio.close();
+    viewport.destroy(); stageFit.destroy(); observer.disconnect(); chatObserver.disconnect(); settings.destroy(); audioControls.destroy(); void audio.close();
     unmountArt(); window.clearTimeout(feedbackTimer); document.body.classList.remove('yg-keyboard', 'yg-has-chat-decision');
     view = null; selectedChoices = []; selectedHand = null; bidDraft = null; root.replaceChildren();
   } };
