@@ -16,7 +16,7 @@ function conserved(state) {
   assert.deepEqual([...state.deck, ...state.discard, ...state.players.flatMap(owner => [...owner.hand, ...owner.tools.map(tool => tool.cardId)]),
     ...(state.pending?.sourceCards ?? []), ...(state.pending?.poolCards ?? [])].sort(), allCards);
   for (const good of GOODS) assert.equal(state.bankGoods[good.id] + state.players.reduce((sum, owner) => sum + owner.goods[good.id], 0)
-    + (state.pending?.goods[good.id] ?? 0), 6);
+    + (state.pending?.goods[good.id] ?? 0), state.goodsPerType ?? 6);
   assert.equal(state.availableStalls + state.players.reduce((sum, owner) => sum + owner.stallCount, 0), 5);
 }
 function fixture(code) {

@@ -110,7 +110,7 @@ test('crossing sixty during a card effect and spending back below it does not tr
 });
 
 test('the documented sixteen-turn ledger runs through the real engine to 64:59 with all material conserved', () => {
-  let state = arrangeHands(fresh(), [[copy('t05'), copy('stall-permit'), copy('g03'), copy('g03', 2), copy('g04')],
+  let state = arrangeHands(fresh({ goodsPerType: 6 }), [[copy('t05'), copy('stall-permit'), copy('g03'), copy('g03', 2), copy('g04')],
     [copy('g19', 3), copy('g19', 4), copy('g01'), copy('g01', 2), copy('stall-permit', 2)]]);
   const order = [copy('m08'), copy('g04', 2), copy('g09'), copy('g09', 2), copy('g02'), copy('g17'), copy('g02', 2),
     copy('g17', 2), copy('g05'), copy('g18'), copy('g18', 2), copy('g05', 2), copy('g06'), copy('g06', 2), copy('g07'), copy('g19'), copy('g19', 2), copy('g07', 2)];

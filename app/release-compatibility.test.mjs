@@ -83,6 +83,18 @@ test('declaration conservatively forbids schema2/nine-scope rollback to undeclar
   assert.equal(same.rollbackCompatible, true); assert.equal(same.forwardCompatible, true);
 });
 
+test('configurable hyakki schema13 cannot roll back to a schema12 reader even with identical eighteen backup scopes', t => {
+  const prior = current(); prior.roomSnapshots = { read: prior.roomSnapshots.read.filter(version => version <= 12),
+    write: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] };
+  const f = fixture(t, { prior });
+  assert.deepEqual(compareReleaseCompatibility(manifest(candidateId, current()), manifest(priorId, prior)),
+    { forwardCompatible: true, rollbackCompatible: false, initial: false, priorLegacy: false });
+  assert.equal(activationPolicy(f.candidateManifest, f.priorManifest), 'rollback-forbidden');
+  const result = f.run(); assert.equal(result.status, 1); assert.match(result.stderr, /AUTOMATIC ROLLBACK FORBIDDEN/);
+  assert.equal(realpathSync(f.link), f.candidateDir); assert.equal(readFileSync(f.database, 'utf8'), 'candidate-data-retained');
+  assert.ok(!f.commands().includes(`start game-room.service ${f.priorDir}`));
+});
+
 test('schema3 military snapshots prohibit rollback to the current schema2 Rummikub release', (t) => {
   const prior=current();prior.roomSnapshots={read:[1,2],write:[2]};
   const f=fixture(t,{prior});

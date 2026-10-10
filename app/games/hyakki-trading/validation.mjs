@@ -5,6 +5,7 @@ import { CHARACTER_PENDING_CONTRACTS } from './effects.mjs';
 import { TOOL_PENDING_CONTRACTS } from './tools.mjs';
 import { AUCTION_PENDING_CONTRACT } from './auction.mjs';
 import { currentDecision } from './decision.mjs';
+import { MAX_GOODS_PER_TYPE, goodsPerTypeOf, validGoodsPerType } from './model.mjs';
 
 export const plainObject = value => value !== null && typeof value === 'object' && !Array.isArray(value)
   && [Object.prototype, null].includes(Object.getPrototypeOf(value));
@@ -18,7 +19,7 @@ const definitions = new Map(CARDS.map(card => [card.id, card]));
 const goodsIds = GOODS.map(good => good.id);
 export const validCopy = value => typeof value === 'string' && copies.has(value);
 export const cardDefinition = copyId => definitions.get(copies.get(copyId));
-export const goodsVector = value => exactFields(value, goodsIds) && goodsIds.every(id => integer(value[id], 0, 6));
+export const goodsVector = value => exactFields(value, goodsIds) && goodsIds.every(id => integer(value[id], 0, MAX_GOODS_PER_TYPE));
 const countGoods = vector => goodsIds.reduce((total, id) => total + vector[id], 0);
 const uniqueCopies = value => Array.isArray(value) && value.length <= 110 && value.every(validCopy) && new Set(value).size === value.length;
 const boundedJson = (value, depth = 0) => depth <= 8 && (value === null || typeof value === 'boolean'
@@ -43,7 +44,7 @@ const eventFields = {
 };
 const endReasons = ['voluntary-leave', 'normal-close', 'absence-expired', 'room-expired', 'cancelled'];
 const eventReasons = [...endReasons, 'capacity', 'disconnected', 'server-recovery'];
-function publicEvent(value, ids) {
+function publicEvent(value, ids, goodsPerType) {
   const fields = eventFields[value?.type];
   if (!fields || !plainObject(value) || Object.keys(value).some(key => key !== 'type' && !fields.includes(key))) return false;
   if (fields.includes('actorSeatId') && !ids.includes(value.actorSeatId)) return false;
@@ -52,7 +53,7 @@ function publicEvent(value, ids) {
     if (key === 'cardId' && !definitions.has(item)) return false;
     if (key === 'cardIds' && (!Array.isArray(item) || item.length > 110 || !item.every(id => definitions.has(id)))) return false;
     if (key === 'goods' && (!Array.isArray(item) || item.length > 6 || new Set(item.map(good => good?.id)).size !== item.length
-      || item.some(good => !exactFields(good, ['id', 'count']) || !goodsIds.includes(good.id) || !integer(good.count, 0, 6)))) return false;
+      || item.some(good => !exactFields(good, ['id', 'count']) || !goodsIds.includes(good.id) || !integer(good.count, 0, goodsPerType)))) return false;
     if (key === 'silver' && !integer(item) || key === 'count' && !integer(item, 0, 110) || key === 'reason' && !eventReasons.includes(item)) return false;
   }
   return !['suspended', 'pending-closed', 'match-ended'].includes(value.type) || eventReasons.includes(value.reason);
@@ -277,8 +278,11 @@ export function pendingProblem(state, pending) {
 
 export function gameProblem(state) {
   try {
-    if (!exactFields(state, stateFields) || state.version !== 1 || state.gameType !== 'hyakki-trading'
+    const fields = plainObject(state) && Object.hasOwn(state, 'goodsPerType') ? [...stateFields, 'goodsPerType'] : stateFields;
+    if (!exactFields(state, fields) || state.version !== 1 || state.gameType !== 'hyakki-trading'
         || state.ruleVersion !== DIGITAL_RULE_VERSION || state.contentVersion !== CONTENT_VERSION || !seatId(state.matchId)) return '不支持的幽街存档格式。';
+    const goodsPerType = goodsPerTypeOf(state);
+    if (!validGoodsPerType(goodsPerType)) return '每类货物数量须为4～20件。';
     if (!Array.isArray(state.players) || state.players.length !== 2 || new Set(state.players.map(player => player?.id)).size !== 2
         || state.players.some(player => !exactFields(player, playerFields) || !seatId(player.id) || !uniqueCopies(player.hand)
           || !Array.isArray(player.tools) || player.tools.length > 3 || player.tools.some(tool => !exactFields(tool, ['cardId', 'exhausted'])
@@ -304,9 +308,9 @@ export function gameProblem(state) {
     const material = [...state.deck, ...state.discard, ...state.players.flatMap(player => [...player.hand, ...player.tools.map(tool => tool.cardId)]),
       ...(state.pending ? [...state.pending.sourceCards, ...state.pending.poolCards] : [])];
     if (material.length !== 110 || new Set(material).size !== 110 || material.some(card => !copies.has(card))) return '110张实体牌必须各处于一个材料区。';
-    if (goodsIds.some(id => state.bankGoods[id] + state.players.reduce((sum, player) => sum + player.goods[id], 0) + (state.pending?.goods[id] ?? 0) !== 6)) return '六类货物必须各守恒6件。';
+    if (goodsIds.some(id => state.bankGoods[id] + state.players.reduce((sum, player) => sum + player.goods[id], 0) + (state.pending?.goods[id] ?? 0) !== goodsPerType)) return `六类货物必须各守恒${goodsPerType}件。`;
     if (!Array.isArray(state.lastPublicEvents) || !state.lastPublicEvents.length || state.lastPublicEvents.length > 64
-        || state.lastPublicEvents.some(event => !publicEvent(event, ids))) return '保存的公开事件无效。';
+        || state.lastPublicEvents.some(event => !publicEvent(event, ids, goodsPerType))) return '保存的公开事件无效。';
     const timing = hyakkiTimingProblem(state); if (timing) return timing;
     if (state.timing.active.id !== state.turnId || state.committedAt < state.lifecycle.startedAt) return '回合与时钟代际不一致。';
     const decision = currentDecision(state), expectedActor = decision?.actorId;

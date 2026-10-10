@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { recordKey, decryptStoredRecord } from '../../storage.mjs';
 import { CARDS, GOODS, CONTENT_VERSION, DIGITAL_RULE_VERSION } from '../../../app/games/hyakki-trading/content/definitions.mjs';
+import { MAX_GOODS_PER_TYPE } from '../../../app/games/hyakki-trading/model.mjs';
 
 export const HYAKKI_EVENT_SCOPES = Object.freeze({ events: 'hyakki-events', meta: 'hyakki-event-meta' });
 export const HYAKKI_EVENT_FOREVER = Number.MAX_SAFE_INTEGER;
@@ -63,7 +64,7 @@ export function validateHyakkiPublicEvent(value) {
     if (key === 'cardId') demand(cardIds.has(item));
     if (key === 'cardIds') demand(Array.isArray(item) && item.length <= 110 && item.every(id => cardIds.has(id)));
     if (key === 'goods') demand(Array.isArray(item) && item.length <= 6 && new Set(item.map(good => good?.id)).size === item.length
-      && item.every(good => exact(good, ['id', 'count']) && goodIds.has(good.id) && integer(good.count) && good.count <= 6));
+      && item.every(good => exact(good, ['id', 'count']) && goodIds.has(good.id) && integer(good.count) && good.count <= MAX_GOODS_PER_TYPE));
     if (key === 'silver') demand(integer(item));
     if (key === 'count') demand(integer(item) && item <= 110);
     if (key === 'reason') demand(reasons.has(item));

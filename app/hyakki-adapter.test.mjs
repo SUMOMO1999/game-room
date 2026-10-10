@@ -14,7 +14,7 @@ import { validateMatchSummary } from '../server/match-history.mjs';
 
 const ids = ['a'.repeat(32), 'b'.repeat(32)], users = ['a'.repeat(64), 'b'.repeat(64)], matchId = 'c'.repeat(32);
 const adapter = createHyakkiAdapter();
-function fresh() { return createGame(ids, { matchId, now: 1000, randomInt: max => max - 1, actionLimit: 10 }); }
+function fresh() { return createGame(ids, { matchId, now: 1000, randomInt: max => max - 1, actionLimit: 10, goodsPerType: 6 }); }
 const registry = () => createGameRegistry([...defaultGameRegistry.knownTypes().filter(type => type !== 'hyakki-trading').map(type => defaultGameRegistry.gameAdapter(type)), adapter]);
 function run(game, type, extra = {}) {
   const decision = currentDecision(game), actor = decision?.actorId ?? game.turnPlayerId;
@@ -74,8 +74,15 @@ test('real room configuration, business action, exported snapshot and closed-cre
   assert.notEqual(snapshot.revision, snapshot.game.revision);
   action(actor, 'peek', { matchId: snapshot.matchId, turnId: snapshot.game.turnId });
   snapshot = rooms.exportSnapshot(host.roomCode);
-  assert.equal(snapshot.schemaVersion, 12); assert.equal(snapshot.hyakkiConfig.actionLimit, 4);
+  assert.equal(snapshot.schemaVersion, 13); assert.equal(snapshot.hyakkiConfig.actionLimit, 4);
+  assert.equal(snapshot.hyakkiConfig.goodsPerType, 8); assert.equal(snapshot.game.goodsPerType, 8);
   assert.equal(adapter.roomStateProblem(snapshot, true), null);
+  assert.throws(() => action(users[0], 'configure', { hyakkiConfig: { actionLimit: 5, goodsPerType: 20 } }), { code: 'ROOM_LOCKED' });
+  const rejected = rooms.exportSnapshot(host.roomCode);
+  assert.deepEqual(rejected.game, snapshot.game); assert.deepEqual(rejected.hyakkiConfig, snapshot.hyakkiConfig);
+  assert.equal(rejected.revision, snapshot.revision);
+  const wrongConfig = structuredClone(snapshot); wrongConfig.hyakkiConfig.goodsPerType = 20;
+  assert.ok(adapter.roomStateProblem(wrongConfig, true));
   const readRegistry = createGameRegistry(gameRegistry.knownTypes().map(type => gameRegistry.gameAdapter(type)), { creationTypes: defaultGameRegistry.creationTypes() });
   const recovered = createRoomStore({ gameRegistry: readRegistry, now: () => at });
   try {

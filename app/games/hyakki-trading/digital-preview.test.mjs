@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { digitalFixture, DIGITAL_SCENES, validPreviewChoice } from './test-support/digital-preview-fixtures.mjs';
 import { nextPreviewScene } from './digital-preview.mjs';
-import { renderDecisionCandidates, renderPersonalSlots, renderHandSummary, handPageSize, renderActionTrack } from './digital-page-ui.mjs';
+import { renderDecisionCandidates, renderPersonalSlots, renderActionTrack } from './digital-page-ui.mjs';
 import { getCard } from './content/definitions.mjs';
 
 test('all 20 synthetic scenes have readable known card references and explicit nonpersistent identity', () => {
@@ -89,13 +89,6 @@ test('draft confirmation remains bound to the selected owned card and originatin
   assert.equal(nextPreviewScene(view, 'confirm-draft', { ...fields, cardId: 'invented' }), null);
 });
 
-test('dense hands keep 110 unique entities and short-screen summaries retain prices and readable identity', () => {
-  const view = digitalFixture('dense');
-  assert.equal(view.hand.length, 110); assert.equal(new Set(view.hand.map(card => card.id)).size, 110);
-  const markup = renderHandSummary(getCard('yousei.g19'));
-  assert.match(markup, /六类货物各1件/); assert.match(markup, /买10 · 卖18两/); assert.match(markup, /摘要 · 点开详情/);
-});
-
 test('every shown physical card belongs to one visible zone, including candidate pools and dense hands', () => {
   for (const [scene] of DIGITAL_SCENES) {
     const view = digitalFixture(scene);
@@ -104,14 +97,6 @@ test('every shown physical card belongs to one visible zone, including candidate
     assert.equal(new Set(cards.map(card => card.id)).size, cards.length, scene);
   }
 });
-
-test('hand pagination accounts for its padded content width instead of overflowing the last card', () => {
-  assert.equal(handPageSize({ width: 700, cardWidth: 132, gap: 8, padding: 6 }), 5);
-  assert.equal(handPageSize({ width: 732, cardWidth: 116, gap: 6, padding: 4 }), 6);
-  assert.equal(handPageSize({ width: 731.9, cardWidth: 116, gap: 6, padding: 4 }), 6);
-  assert.equal(handPageSize({ width: 731, cardWidth: 116, gap: 6, padding: 6 }), 5);
-});
-
 
 test('read-only action ruler represents every configured limit and boundary without interactive controls', () => {
   for (let limit = 1; limit <= 10; limit += 1) {

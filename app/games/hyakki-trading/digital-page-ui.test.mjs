@@ -79,3 +79,19 @@ test('destroy removes private DOM and all audio/viewport listeners, and stays id
   assert.equal(f.root.children.length, 0);
   for (const type of ['focus', 'blur', 'pagehide', 'pageshow', 'resize']) assert.equal(getEventListeners(f.window, type).length, 0, type);
 });
+
+
+test('dense hand keeps all artwork cards mounted, preserves scrolling, and separates equipment from tabletop goods', t => {
+  const f = fixture(t, 'dense'), hand = f.byId('yg-hand');
+  assert.equal(hand.querySelectorAll('[data-card-id]').length, 110);
+  assert.equal(f.byId('yg-hand-next'), null);
+  assert.equal(hand.querySelector('.yg-hand-summary'), null);
+  assert.ok(f.byId('yg-personal').closest('.yg-table'));
+  assert.ok(f.byId('yg-tool-zone').closest('.yg-lower'));
+  hand.scrollLeft = 240;
+  f.ui.applyView(digitalFixture('dense'));
+  assert.equal(hand.scrollLeft, 240);
+  f.ui.applyView(digitalFixture('spectator'));
+  assert.equal(hand.scrollLeft, 0);
+  assert.equal(f.byId('yg-tool-zone').hidden, true);
+});

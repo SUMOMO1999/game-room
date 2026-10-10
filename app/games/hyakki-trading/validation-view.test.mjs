@@ -7,7 +7,7 @@ import { privateView, spectatorView } from './view.mjs';
 import { definition, emptyGoods } from './model.mjs';
 
 const ids = ['a'.repeat(32), 'b'.repeat(32)], matchId = 'c'.repeat(32);
-function fresh() { return createGame(ids, { matchId, now: 1000, randomInt: max => max - 1, actionLimit: 10 }); }
+function fresh() { return createGame(ids, { matchId, now: 1000, randomInt: max => max - 1, actionLimit: 10, goodsPerType: 6 }); }
 function run(game, type, extra = {}, actorId = currentDecision(game)?.actorId ?? game.turnPlayerId) {
   const decision = currentDecision(game);
   const result = applyGameAction(game, actorId, { type, matchId: game.matchId, turnId: game.turnId,
@@ -125,7 +125,7 @@ test('goods retention pending remains conserved and rejects a foreign selection 
 
 test('numeric-leading seat identities remain valid in M05 temporary-payment bookkeeping', () => {
   const numeric = ['1'.repeat(32), '2'.repeat(32)];
-  let state = createGame(numeric, { matchId, now: 1000, randomInt: max => max - 1, actionLimit: 10 });
+  let state = createGame(numeric, { matchId, now: 1000, randomInt: max => max - 1, actionLimit: 10, goodsPerType: 6 });
   state = run(state, 'finish-draw');
   state.players[0].goods.firearms = 6; state.players[0].temporaryOccupied = true; state.bankGoods.firearms = 0;
   const cardId = take(state, 'M05'); state = run(state, 'play-character', { cardId }); state = run(state, 'decline-response');

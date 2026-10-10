@@ -1,8 +1,9 @@
 /** Authoritative pure rules. One accepted command creates one validated revision. */
-import { createDeck, INITIAL_STOCK, CONTENT_VERSION, DIGITAL_RULE_VERSION } from './content/definitions.mjs';
+import { createDeck, GOODS, CONTENT_VERSION, DIGITAL_RULE_VERSION } from './content/definitions.mjs';
 import { RuleError, requireRule, definition, player, opponent, emptyGoods, goodsCount, goodsEntries, addSilver,
   moveGoods, removeCard, discardCards, drawCards, availableCards, shuffled, canReceive, ordinaryCapacity,
-  refreshTemporary, createPending, completePending, resolveReceipt, resolveActionReferences, emit } from './model.mjs';
+  refreshTemporary, createPending, completePending, resolveReceipt, resolveActionReferences, emit,
+  DEFAULT_ACTION_LIMIT, DEFAULT_GOODS_PER_TYPE, validActionLimit, validGoodsPerType } from './model.mjs';
 import { characterProblem, startCharacter, continueCharacter, chooseCharacter } from './effects.mjs';
 import { toolProblem, startTool, continueTool, chooseTool } from './tools.mjs';
 import { bid, passBid, continueAuction } from './auction.mjs';
@@ -17,14 +18,16 @@ const failure = error => ({ ok: false, error: error.message, code: error.code })
 function check(state) { const issue = gameProblem(state); requireRule(!issue, issue, 'INVALID_GAME_STATE'); }
 const runningClock = state => state.timing.decision ?? state.timing.active;
 
-export function createGame(playerIds, { matchId, now, randomInt, actionLimit = 5, firstPlayerId = playerIds?.[0], presence } = {}) {
+export function createGame(playerIds, { matchId, now, randomInt, actionLimit = DEFAULT_ACTION_LIMIT,
+  goodsPerType = DEFAULT_GOODS_PER_TYPE, firstPlayerId = playerIds?.[0], presence } = {}) {
   requireRule(Array.isArray(playerIds) && playerIds.length === 2 && new Set(playerIds).size === 2
     && playerIds.includes(firstPlayerId), '幽街商人需要两位不同的参赛者。');
-  requireRule(stamp(now) && Number.isSafeInteger(now + TURN_MS) && Number.isInteger(actionLimit) && actionLimit >= 1 && actionLimit <= 10, '开局参数无效。');
+  requireRule(stamp(now) && Number.isSafeInteger(now + TURN_MS) && validActionLimit(actionLimit) && validGoodsPerType(goodsPerType), '开局参数无效。');
   const deck = shuffled(createDeck().map(card => card.id), randomInt);
   const players = playerIds.map(id => ({ id, hand: deck.splice(0, 5), tools: [], goods: emptyGoods(), silver: 20, stallCount: 0, temporaryOccupied: false }));
   const state = { version: 1, gameType: 'hyakki-trading', ruleVersion: DIGITAL_RULE_VERSION, contentVersion: CONTENT_VERSION, matchId,
-    players, deck, discard: [], bankGoods: { ...INITIAL_STOCK }, availableStalls: 5, purchasedStalls: 0, status: 'playing', result: null,
+    players, deck, discard: [], bankGoods: Object.fromEntries(GOODS.map(good => [good.id, goodsPerType])), goodsPerType,
+    availableStalls: 5, purchasedStalls: 0, status: 'playing', result: null,
     firstPlayerId, turnPlayerId: firstPlayerId, turnIndex: playerIds.indexOf(firstPlayerId), turnNumber: 1, turnId: 'turn-1', round: 1,
     stage: 'draw', actionsUsed: 0, actionLimit, drawStarted: false, bookLayers: 0, closing: null,
     revision: 0, publicEventSequence: 1, lastPublicEvents: [{ type: 'match-started' }], committedAt: now,

@@ -109,7 +109,7 @@ function assertMaterials(state) {
     ...(state.pending?.sourceCards ?? []), ...(state.pending?.poolCards ?? [])].sort();
   assert.deepEqual(actual, cardIds);
   for (const { id } of GOODS) assert.equal(state.bankGoods[id] + state.players.reduce((sum, owner) => sum + owner.goods[id], 0)
-    + (state.pending?.goods[id] ?? 0), 6);
+    + (state.pending?.goods[id] ?? 0), state.goodsPerType ?? 6);
   assert.equal(state.availableStalls + state.players.reduce((sum, owner) => sum + owner.stallCount, 0), 5);
   assert.equal(state.purchasedStalls, state.players.reduce((sum, owner) => sum + owner.stallCount, 0));
 }

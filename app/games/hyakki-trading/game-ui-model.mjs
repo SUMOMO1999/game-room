@@ -97,8 +97,8 @@ export function tableProjection(room) {
   while (players.length < 2) players.push({ id: 'empty-seat', name: '等待伙伴', ready: false, silver: 0, handCount: 0, ordinaryCapacity: 5, goods: GOODS.map(good => ({id:good.id,count:0})),tools:[] });
   return {roomId:room.roomId ?? room.code,matchId:game?.matchId ?? room.matchId,selfId:room.selfId,selfRole:room.selfRole,roomCode:room.roomCode ?? room.code,
     scene: 'active',phase:room.phase,players,currentPlayerId:game?.turnPlayerId ?? room.selfId,decision:null,
-    hand:(self?.hand??[]).map(card=>({...card,id:cardKey(card)})),actionLimit:game?.actionLimit??room.hyakkiConfig?.actionLimit??5,actionsUsed:game?.actionsUsed??0,
+    hand:(self?.hand??[]).map(card=>({...card,id:cardKey(card)})),actionLimit:game?.actionLimit??room.hyakkiConfig?.actionLimit??5,actionsUsed:game?.actionsUsed??0,goodsPerType:game?.goodsPerType??room.hyakkiConfig?.goodsPerType??6,
     clock:'--:--',deckCount:game?.deckCount??0,discardCount:game?.discard?.length??0,discard:game?.discard?.at(-1)?{...game.discard.at(-1),id:cardKey(game.discard.at(-1))}:null,
-    market:GOODS.map(good=>({...good,count:game?.bankGoods?.[good.id]??6})),spectatorCount:room.spectators?.length??0,
+    market:GOODS.map(good=>({...good,count:game?.bankGoods?.[good.id]??room.hyakkiConfig?.goodsPerType??6})),spectatorCount:room.spectators?.length??0,
     temporaryPaid:!!self?.temporaryOccupied,expansionStock:game?.availableStalls??5,expansionPrice:game?.purchasedStalls?3:6,resultReason:''};
 }

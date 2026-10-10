@@ -9,7 +9,7 @@ const ids = ['a'.repeat(32), 'b'.repeat(32)];
 const ctx = { now: 1000, randomInt: limit => limit - 1 };
 const goods = entries => ({ ...emptyGoods(), ...entries });
 function fixture(code) {
-  const state = createGame(ids, { ...ctx, matchId: 'c'.repeat(32), actionLimit: 10, firstPlayerId: ids[0] });
+  const state = createGame(ids, { ...ctx, matchId: 'c'.repeat(32), actionLimit: 10, goodsPerType: 6, firstPlayerId: ids[0] });
   state.deck = [...state.deck, ...state.players.flatMap(owner => owner.hand)].sort();
   state.players.forEach(owner => { owner.hand = []; });
   state.stage = 'use'; state.drawStarted = true;

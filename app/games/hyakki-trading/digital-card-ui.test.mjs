@@ -7,7 +7,7 @@ import { filterCards } from './digital-catalog.mjs';
 
 const textOnly = html => html.replace(/<[^>]+>/gu, ' ').replace(/\s+/gu, ' ').trim();
 
-test('all 51 complete faces and details use canonical content and readable goods quantities without images', () => {
+test('all 51 image faces preserve canonical labels and complete rules in details', () => {
   for (const card of CARDS) {
     const markup = renderCard(card), text = textOnly(markup), detail = renderCardDetails(card);
     assert.match(markup, /^<button type="button" aria-pressed="false"/u);
@@ -17,11 +17,13 @@ test('all 51 complete faces and details use canonical content and readable goods
     assert.ok(detail.includes(card.costText));
     for (const paragraph of card.details) assert.ok(detail.includes(paragraph));
     if (card.category === 'goods') {
-      for (const [id, count] of Object.entries(card.goods)) assert.ok(text.includes(`${getGood(id).name} ×${count}`));
+      for (const [id, count] of Object.entries(card.goods)) { assert.ok(markup.includes(`aria-label="${getGood(id).name}×${count}"`)); assert.ok(markup.includes(`<b>×${count}</b>`)); assert.ok(markup.includes(assetPath(id))); }
       assert.ok(text.includes(`买 ${card.buySilver}`));
       assert.ok(text.includes(`卖 ${card.sellSilver}`));
     } else {
-      assert.ok(text.includes(card.name) && text.includes(card.compactText));
+      assert.ok(text.includes(card.name));
+      assert.doesNotMatch(markup, /yousei-card__effect/u);
+      assert.ok(detail.includes(card.summary));
       assert.ok(markup.includes(assetPath(card.artId)));
       assert.match(markup, /loading="eager"[^>]+decoding="sync"/u);
     }
@@ -101,4 +103,15 @@ test('art fallback covers cached and later errors, recovers after load and relea
   assert.equal(states.get('pending:frame:is-loaded'), true);
   dispose();
   assert.equal(listeners.size, 0);
+});
+
+test('six-kind goods use six image/quantity cells rather than a long name list', () => {
+  const markup=renderCard('yousei.g19');
+  assert.equal((markup.match(/class="yousei-card__good"/gu)||[]).length,6);
+  assert.equal((markup.match(/<b>×1<\/b>/gu)||[]).length,6);
+  for(const good of GOODS)assert.ok(!textOnly(markup).includes(good.name));
+  assert.match(markup,/yousei-card__goods--6/u);
+  assert.match(renderCard('yousei.t04'),/装1步 · 用1步/u);
+  assert.match(renderCard('yousei.c07'),/回应 · 0步/u);
+  assert.match(renderCard('yousei.m08'),/行动 · 1步/u);
 });

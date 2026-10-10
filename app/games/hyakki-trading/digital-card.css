@@ -33,38 +33,40 @@ button.yousei-card { cursor: pointer; }
 .yousei-card__heading { display: flex; justify-content: space-between; align-items: baseline; gap: 3px; min-height: 14px; font-size: 10px; font-weight: 700; white-space: nowrap; }
 .yousei-card__code { color: #74634e; }
 .yousei-card__name { display: block; flex: none; font-size: 14px; font-weight: 800; line-height: 18px; }
-.yousei-card__goods { flex: 1; min-height: 0; display: grid; align-content: center; gap: 4px; }
-.yousei-card__good { display: grid; grid-template-columns: 21px minmax(0, 1fr) auto; align-items: center; gap: 4px; font-size: 14px; line-height: 18px; }
-.yousei-card__good b { font-size: 14px; font-variant-numeric: tabular-nums; }
-.yousei-card__goods--six { gap: 0; }
-.yousei-good-icon { display: inline-flex; flex: none; width: 28px; height: 28px; align-items: center; justify-content: center; }
-.yousei-card__good .yousei-good-icon { width: 20px; height: 18px; }
+/* Faces prioritize recognizable material, not abbreviated rule paragraphs. */
+.yousei-card[data-card-category="goods"] .yousei-card__name { display:none; }
+.yousei-card__goods { flex:1; min-height:0; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); align-content:center; align-items:center; gap:5px 3px; }
+.yousei-card__good { min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0; line-height:1; }
+.yousei-card__good b { font-size:clamp(14px,calc(var(--hyakki-card-width,132px) * .12),18px); line-height:1.1; font-weight:850; font-variant-numeric:tabular-nums; }
+.yousei-good-icon { display:inline-flex; flex:none; width:28px; height:28px; align-items:center; justify-content:center; }
+.yousei-card__good .yousei-good-icon { width:min(100%,var(--yousei-good-size,38px)); height:auto; aspect-ratio:1; }
+.yousei-card__goods--1 { grid-template-columns:minmax(0,1fr); --yousei-good-size:72px; }
+.yousei-card__goods--2 { grid-template-columns:repeat(2,minmax(0,1fr)); --yousei-good-size:52px; }
+.yousei-card__goods--1 .yousei-card__good b,.yousei-card__goods--2 .yousei-card__good b { font-size:20px; }
 .yousei-art { position: relative; display: flex; width: 100%; height: 100%; min-height: 0; align-items: center; justify-content: center; overflow: hidden; border-radius: 4px; }
 .yousei-art img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; }
 .yousei-art__fallback { visibility: visible; display: block; text-align: center; font-size: 14px; line-height: 1.3; }
 .yousei-art.is-loaded .yousei-art__fallback { visibility: hidden; }
 .yousei-art.is-missing img, .yousei-missing-art .yousei-art img { visibility: hidden; }
 .yousei-art.is-missing .yousei-art__fallback, .yousei-missing-art .yousei-art__fallback { visibility: visible; }
-.yousei-card__portrait { flex: 1; min-height: 20px; background: transparent; }
+.yousei-card__portrait { flex: 1; min-height: 44px; background: transparent; }
 .yousei-card__portrait img { inset:0 auto; left:50%; width:auto; max-width:100%; transform:translateX(-50%); object-fit:contain; mix-blend-mode:multiply;
   -webkit-mask-image:linear-gradient(90deg,transparent,#000 9%,#000 91%,transparent),linear-gradient(transparent,#000 8%,#000 92%,transparent);
   mask-image:linear-gradient(90deg,transparent,#000 9%,#000 91%,transparent),linear-gradient(transparent,#000 8%,#000 92%,transparent);
   -webkit-mask-composite:source-in; mask-composite:intersect;
 }
 .yousei-card__portrait .yousei-art__fallback { color:#766750; font:13px/1.4 ui-serif,"Songti SC",serif; letter-spacing:.12em; }
-.yousei-card__effect { flex: none; display: block; text-align: center; font-weight: 750; font-size: 14px; line-height: 17px; }
-.yousei-card__cost { flex: none; text-align: center; font-size: 14px; line-height: 17px; }
-.yousei-card__prices { display: flex; flex: none; justify-content: space-between; gap: 5px; padding-top: 3px; border-top: 1px solid #c6ae87; font-size: 14px; }
-.yousei-card__prices > span { display: inline-flex; gap: 4px; align-items: baseline; }
-.yousei-card__prices b { font-size: 19px; font-variant-numeric: tabular-nums; }
+.yousei-card__cost { flex:none; display:block; text-align:center; white-space:nowrap; border-top:1px solid #c6ae87; padding-top:4px; font-size:clamp(10px,calc(var(--hyakki-card-width,132px) * .09),13px); font-weight:750; line-height:16px; }
+.yousei-card__prices { display: flex; flex: none; justify-content: space-between; gap: 3px; padding-top: 3px; border-top: 1px solid #c6ae87; font-size: clamp(10px,calc(var(--hyakki-card-width,132px) * .1),14px); }
+.yousei-card__prices > span { display: inline-flex; gap: 2px; align-items: baseline; }
+.yousei-card__prices b { font-size: clamp(14px,calc(var(--hyakki-card-width,132px) * .145),19px); font-variant-numeric: tabular-nums; }
 .yousei-card__prices > span:last-child { color: #8e4035; }
 .yousei-card__state { position: absolute; inset-inline: 3px; top: 43px; padding: 3px; border-radius: 4px; background: #245e56ed; color: #fff; text-align: center; font-size: 11px; font-weight: 700; }
 .yousei-card.is-unavailable .yousei-card__state { background: #655443ed; }
 /* A horizontal tool silhouette is visible without rotating text out of reading order. */
 .yousei-card.is-tapped { width: var(--hyakki-tapped-width, 192px); height: var(--hyakki-tapped-height, 132px); }
 .yousei-card.is-tapped .yousei-card__portrait { position: absolute; top: 41px; bottom: 7px; left: 7px; width: 44%; height: auto; }
-.yousei-card.is-tapped .yousei-card__effect, .yousei-card.is-tapped .yousei-card__cost { margin-left: 48%; text-align: left; }
-.yousei-card.is-tapped .yousei-card__effect { padding-top: 2px; }
+.yousei-card.is-tapped .yousei-card__cost { margin-left:48%; margin-top:auto; margin-bottom:24px; text-align:left; white-space:normal; }
 .yousei-card.is-tapped .yousei-card__state { inset-inline: auto 4px; top: auto; bottom: 4px; max-width: 48%; }
 .yousei-card--back { padding: 0; background: #1c3346; border-color: #c2a571; }
 .yousei-card__back-art { flex: 1; border-radius: 0; }
