@@ -78,6 +78,7 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
   let room=null,state={connection:'online',pending:false,canAct:true},destroyed=false,concealed=false,generation=0,scope=null,decisionId=null,presentedDecisionId=null;
   let detail=null,choiceDraft=null,cardsPage=0,decisionStep=0,responseDraft=null,history=null,historyBusy=false,practiceActions={},leaveWorking=false,destination='lobby';
   let receivedAt=0,serverTime=0,actionRequest=null;
+  const actionGateDisabled=new Map();
   const base=mountDigitalPage({root,scenes:[],externalDecisions:true,onAction:()=>{},onLeave:()=>leave(),
     onLayout:()=>{if(room&&!destroyed)render({preserveTaskDOM:true});}});
   root.classList.add('hy-real');
@@ -114,12 +115,18 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
     }
     catch(error){if(!destroyed&&stamp===generation&&current===scope)feedback(error.message||'操作未完成。');}
   }
+  // Release only this request's temporary lock before authority recomputes controls.
+  function restoreActionGate(){
+    for(const [node,disabled] of actionGateDisabled)node.disabled=disabled;
+    actionGateDisabled.clear();
+  }
   function renderActionGate(){
     root.setAttribute('aria-busy',String(!!actionRequest||state.pending));
     if(!actionRequest)return;
     $('hy-connection').hidden=false;$('hy-connection-text').textContent='正在结算这次操作，请勿重复提交。';
-    root.querySelectorAll('[data-hy-action]').forEach(node=>{if(node.tagName==='BUTTON')node.disabled=true;});
-    $('yg-scene-content').querySelectorAll('input,select').forEach(node=>{node.disabled=true;});
+    const lock=node=>{if(!actionGateDisabled.has(node))actionGateDisabled.set(node,node.disabled);node.disabled=true;};
+    root.querySelectorAll('[data-hy-action]').forEach(node=>{if(node.tagName==='BUTTON')lock(node);});
+    $('yg-scene-content').querySelectorAll('input,select').forEach(lock);
   }
   async function leave(){if(leaveWorking||destroyed)return;leaveWorking=true;$('yg-leave-confirm').disabled=true;const stamp=generation;try{await onLeave({destination});}catch(error){if(stamp===generation&&!destroyed)leaveFailure(error.message||'退出未确认，请重试。');}finally{if(stamp===generation&&!destroyed){leaveWorking=false;$('yg-leave-confirm').disabled=false;}}}
   function leaveFailure(message){leaveWorking=false;$('yg-leave-confirm').disabled=false;feedback(message);$('hy-leave-note').textContent=message;}
@@ -331,6 +338,7 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
     }
   }
   function render({preserveTaskDOM=false}={}){
+    restoreActionGate();
     const game=room.game,self=room.players.find(player=>player.id===room.selfId),isPlayer=room.selfRole==='player',host=room.hostId===room.selfId;
     $('yg-room-code').textContent=practice?'本机练习 · 电脑只看自己的手牌':room.phase==='waiting'
       ? `房间 ${room.roomCode} · 每回合${room.hyakkiConfig.actionLimit}步 · 每类${room.hyakkiConfig.goodsPerType??6}件`
@@ -403,10 +411,13 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
     $('hy-connection-text').textContent=state.pending?'操作结果正在核对，请勿重复提交。':state.canAct===false?'当前不能保存操作，请恢复存储或读取进度。':'正在恢复连接，原席位和已保存步骤会保留。';
     const shortActions=$('hy-short-actions');shortActions.innerHTML=practice?button('practice-hint','提示'):button('invite','邀请')+button('history','记录');
 
+    // Preserve an old pending dialog without overriding an in-flight lock afterward.
+    if($('yg-decision').open){$('yg-decision-body').querySelectorAll('button,input,select').forEach(node=>{if(!node.dataset.hyDetail&&!['choice-page','cards-page'].includes(node.dataset.hyAction))node.disabled=!available()||room.phase!=='playing';});}
     updateClock();renderActionGate();
   }
   function applyView(next,options={}){
     if(destroyed)return;
+    restoreActionGate();
     const before=room;
     const nextScope=sameScope(next),changed=scope!==nextScope,newDecision=next.game?.pending?.decisionId??null;
     const preserveTaskDOM=!changed&&!!newDecision&&decisionId===newDecision;
@@ -457,10 +468,9 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
       else if(previousCard&&selectedCommit&&['character-played','trade-bought','trade-sold','tool-activated'].includes(selectedCommit.type))
         void motion.move({from:previousCard,to:pending?.sourceCards?.length?'.hy-work-face .yousei-card':'#yg-discard-art .yousei-card',duration:180});
     }
-    // Existing choice DOM stays alive on presence/clock updates, retaining focus and text input.
-    if($('yg-decision').open){$('yg-decision-body').querySelectorAll('button,input,select').forEach(node=>{if(!node.dataset.hyDetail&&!['choice-page','cards-page'].includes(node.dataset.hyAction))node.disabled=!available()||room.phase!=='playing';});}
   }
   function conceal({message='正在恢复房间…',loginHref=null,reauthHref=null}={}){
+    restoreActionGate();root.setAttribute('aria-busy','false');
     handDrag.cancel();motion.cancel();generation++;actionRequest=null;concealed=true;closeDialogs();detail=null;choiceDraft=null;responseDraft=null;history=null;decisionId=null;presentedDecisionId=null;scope=null;
     if(room)base.applyView(tableProjection({...room,game:null,phase:'waiting',selfRole:'spectator',selfId:null}));
     room=null;$('hy-task-clock').hidden=true;$('hy-reader-title').textContent='完整牌文';root.querySelectorAll('#yg-scene-content,#hy-task-material-cards,#yg-inspector-body,#yg-decision-body,#hy-reader-body,#hy-decision-sources,#yg-portrait-decision,#yg-chat-decision-label').forEach(node=>node.replaceChildren());
@@ -594,5 +604,5 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
   window.addEventListener('blur',clearSelection);
   const clock=window.setInterval(updateClock,500);
   return {applyView,conceal,feedback,leaveFailure,selectHandCard,readCard,audio:base.audio,settings:base.settings,openPracticeRestart,
-    configurePractice(callbacks){practiceActions={...callbacks};},destroy(){if(destroyed)return;destroyed=true;generation++;room=null;detail=null;choiceDraft=null;history=null;removeClick();removeInput();removeChange();handDrag.destroy();motion.destroy();window.removeEventListener('blur',clearSelection);window.clearInterval(clock);base.destroy();}};
+    configurePractice(callbacks){practiceActions={...callbacks};},destroy(){if(destroyed)return;restoreActionGate();actionRequest=null;root.setAttribute('aria-busy','false');destroyed=true;generation++;room=null;detail=null;choiceDraft=null;history=null;removeClick();removeInput();removeChange();handDrag.destroy();motion.destroy();window.removeEventListener('blur',clearSelection);window.clearInterval(clock);base.destroy();}};
 }
