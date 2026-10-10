@@ -1,0 +1,101 @@
+{
+  "asOf": "2026-10-09",
+  "pairs": [
+    {
+      "objectPath": "/ObjectStates/21/ContainedObjects/0",
+      "GUID": "e7b07e",
+      "cardId": 2200,
+      "faceUrl": "https://i.ibb.co/kg3YFvZt/campsites-01.png",
+      "backUrl": "https://i.ibb.co/JjwzS67T/campsites-06.png",
+      "sourceFaceIds": [
+        1,
+        12
+      ],
+      "imageRead": "all four slots on both images visually checked against repository catalog"
+    },
+    {
+      "objectPath": "/ObjectStates/21/ContainedObjects/1",
+      "GUID": "7396f2",
+      "cardId": 2300,
+      "faceUrl": "https://i.ibb.co/FqwTJgpg/campsites-02.png",
+      "backUrl": "https://i.ibb.co/JW5BC4LP/campsites-05.png",
+      "sourceFaceIds": [
+        2,
+        11
+      ],
+      "imageRead": "all four slots on both images visually checked against repository catalog"
+    },
+    {
+      "objectPath": "/ObjectStates/21/ContainedObjects/2",
+      "GUID": "4dc187",
+      "cardId": 2500,
+      "faceUrl": "https://i.ibb.co/Lzbyq3ZV/campsites-03.png",
+      "backUrl": "https://i.ibb.co/xSmXm0z3/campsites-07.png",
+      "sourceFaceIds": [
+        3,
+        13
+      ],
+      "imageRead": "all four slots on both images visually checked against repository catalog"
+    },
+    {
+      "objectPath": "/ObjectStates/21/ContainedObjects/3",
+      "GUID": "6d7d80",
+      "cardId": 2600,
+      "faceUrl": "https://i.ibb.co/DDxg99Sz/campsites-04.png",
+      "backUrl": "https://i.ibb.co/zVFCVjH2/campsites-08.png",
+      "sourceFaceIds": [
+        4,
+        14
+      ],
+      "imageRead": "all four slots on both images visually checked against repository catalog"
+    }
+  ],
+  "source": {
+    "workshop": "https://steamcommunity.com/sharedfiles/filedetails/?id=3553489350",
+    "author": "Kosjenka",
+    "publishedfileid": "3553489350",
+    "publicMetadataEndpoint": "https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/",
+    "fileUrl": "https://cdn.steamusercontent.com/ugc/17088593081606538387/2DD386A3A52B9B504F85BB6355F859248D2C98B1/",
+    "fileSize": "272826",
+    "visibility": 0,
+    "banned": 0,
+    "execution": "Downloaded and decoded BSON as data only. No third-party code executed; no game loaded; no account created or subscription made.",
+    "level": "secondary explicit digital object relationship; unofficial fan implementation; cannot by itself certify real-world physical pairing"
+  },
+  "physicalPhoto": {
+    "listing": "https://www.ebay.com/itm/277981710336",
+    "images": [
+      "https://i.ebayimg.com/images/g/zbgAAeSwEdRpjpcv/s-l1600.webp",
+      "https://i.ebayimg.com/images/g/bA4AAeSwdW5pjpcv/s-l1600.webp"
+    ],
+    "visibleFacesTopToBottom": [
+      2,
+      12,
+      3,
+      4
+    ],
+    "observation": "Both listing photos show same four visible faces; second includes ruler. No back sides shown. Faces 2 and 12 are simultaneously on separate physical tiles in these photos.",
+    "fileNameWarning": "camp-physical-back.webp was named before inspection and is NOT a reverse-side photo.",
+    "level": "direct physical face observation; exclusion evidence only, assuming listing correctly represents one 4-tile set"
+  },
+  "sha256": {
+    "tts-public-details.json": "bf90cb91fbdd222b8c1dce373718c89173e31a50136191c9920df40cca27f8d3",
+    "tts-public-3553489350.json": "06eb5069fe15ad70c8025c4f62b88ba10049a25843c178d3560ae4d92c7380ee",
+    "tts-parsed-static.json": "794ac4dbdadf66d2a48270cf9a3b09a9ff545451e1ad5489fc00e643cecf4669",
+    "camp-physical-front.webp": "4048ad707fc7a2a65b168107dd8a9bd5db89a7fc5384dd7be3152a58b30802d4",
+    "camp-physical-back.webp": "7be765ab0d8ab785371a3654ff2cc802d449438131b9efcf68740f0c6b3e7414",
+    "tts-campsites-01.png": "6f1defe1890020481dc9c63856d7b1d49b51e742ee57a6e0969a9c6e11f4bf49",
+    "tts-campsites-02.png": "4c2db20919628b6bcc17db2913fd935b8384e75dd4bff80939ec0229e400bd14",
+    "tts-campsites-03.png": "84630eff908ce9e101dc9e3a35485637ec3d0d277e51e2e4dc71d92acc793cb5",
+    "tts-campsites-04.png": "2c3eff8240efb44a3b1a9e158016a13672d4f0b6c7fdfc7734e0dd993af91626",
+    "tts-campsites-05.png": "cb4f567b48aa045756c0dd077689dd61208fb575b9b272b836903ca5bf5b26cd",
+    "tts-campsites-06.png": "7f423b7dd4a6466048a085bf8fdcac4fbd98f908a4fe647d97d64451284ba4e3",
+    "tts-campsites-07.png": "ae3fa2b4a7a86a815b37ff70468f90440c585529bf3b1c18ad23552ecfddd7d4",
+    "tts-campsites-08.png": "5ba96a3e7a82edd102315873d1ad2e05cf3a49b60aff921b9c9f8b61691a9ad7"
+  },
+  "adoption": "adopted-for-v0.4-design-with-explicit-secondary-source-caveat",
+  "independentPhysicalFlipVerified": false,
+  "sourceImagesImportedToProject": false,
+  "thirdPartyCodeExecuted": false,
+  "review": "all eight images visually mapped by researcher and root reviewer"
+}

@@ -17,10 +17,10 @@ import { EncryptedStore, MemoryAdapter } from '../server/storage.mjs';
 import { MockProvider } from '../server/auth.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const privatePaths = ['hyakki-preview.html', 'parks-preview.html', 'parks-catalog.html',
+const privatePaths = ['hyakki-preview.html', 'parks-preview.html', 'games/parks/preview-fixtures.mjs',
   'games/hyakki-trading/digital-preview.mjs', 'games/hyakki-trading/test-support/contract-adapter.mjs',
   'games/hyakki-trading/validation-view.test.mjs', 'server/games/hyakki-trading/adapter.mjs',
-  'assets/hyakki/v2/manifest.json', 'games/parks/content/catalog.mjs'];
+  'assets/hyakki/v2/manifest.json', 'games/parks/engine.mjs'];
 
 test('Hyakki browser closure contains real room, practice, catalog and every art asset, while its release excludes experiments', () => {
   const assets = new Set(publicAssetPaths()), files = new Set(releaseSources(root));
@@ -43,7 +43,7 @@ test('Hyakki browser closure contains real room, practice, catalog and every art
     }
   }
   for (const file of privatePaths) assert.equal(assets.has(file), false, file);
-  assert.equal([...files].some(file => /(?:^|\/)parks(?:\/|-)|test-support|\.test\.mjs$|hyakki-preview|digital-preview/.test(file)), false);
+  assert.equal([...files].some(file => /parks-preview|games\/parks\/(?:preview(?:-fixtures)?|page-ui)\.mjs$|test-support|\.test\.mjs$|hyakki-preview|digital-preview/.test(file)), false);
   assert.ok(files.has('server/games/hyakki-trading/event-http.mjs'));
   assert.ok(files.has('server/games/hyakki-trading/adapter.mjs'));
 });

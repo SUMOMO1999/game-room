@@ -1,9 +1,10 @@
 import { api, normalizeCode, rememberMembership, recentSeats, forgetMembership } from './room-client.mjs';
 import { loadAccount, accountState, accountGeneration, onAccountChange, logoutAccount, watchAccountLifecycle, reauthenticationHref } from './account-client.mjs';
-import { roomPhaseLabel, exitConsequence, createExitRequest, historyOutcome, historyPoints, historyBalanceLabel } from './lobby-model.mjs';
+import { roomPhaseLabel, exitConsequence, createExitRequest, historyOutcome, historyPoints, historyBalanceLabel,historyParksRating } from './lobby-model.mjs';
 import { gamePath } from './entry-path.mjs';
 import { gameName, roomHref, gameDetails } from './game-routing.mjs';
 import { gamePresentation, creatableGamePresentations } from './games/catalog.mjs';
+import { parksCreationConfiguration } from './games/parks/configuration.mjs';
 const $=id=>document.getElementById(id);
 const raw=new URLSearchParams(location.search).get('room');
 const incoming=/^\d{6}$/.test(raw || '')?raw:'';
@@ -114,7 +115,7 @@ async function loadHistory(append=false) {
       const row=document.createElement('details');row.className='history-match';
       const summary=document.createElement('summary'),title=document.createElement('strong'),time=document.createElement('span');
       title.textContent=`${gameName(item.game)} · ${historyOutcome(item)}`;time.textContent=dateText(item.endedAt);summary.append(title,time);
-      const meta=document.createElement('p');meta.textContent=`房间 ${item.roomCode} · ${historyScore(item,item.self?.score ?? item.self?.remainingPoints)}${historyBalanceLabel(item.self)?` · ${historyBalanceLabel(item.self)}`:''}`;
+      const meta=document.createElement('p');meta.textContent=`房间 ${item.roomCode} · ${historyScore(item,item.self?.score ?? item.self?.remainingPoints)}${historyBalanceLabel(item.self)?` · ${historyBalanceLabel(item.self)}`:''}${item.game==='parks' && historyParksRating(item.self)?` · ${historyParksRating(item.self)}`:''}`;
       const players=document.createElement('ul');
       for(const player of item.players || []) {const li=document.createElement('li');li.textContent=`${player.nickname || '朋友'} · ${historyOutcome({game:item.game,reason:item.reason,status:item.status,self:{outcome:player.outcome}})} · ${historyScore(item,player.score ?? player.remainingPoints)}${historyBalanceLabel(player)?` · ${historyBalanceLabel(player)}`:''}`;players.append(li);}
       row.append(summary,meta,players);$('history-list').append(row);
@@ -194,11 +195,12 @@ async function enter(form,join) {
   const gameType=join?undefined:$('create-game').value;
   const role=join?$('join-role')?.value || 'player':undefined;
   if(!join) gameDetails(gameType);
-  const fingerprint=JSON.stringify({name,code:join?code:null,...(!join?{gameType}:{role})});
+  const initialConfiguration=!join && gameType==='parks'?parksCreationConfiguration(document):undefined;
+  const fingerprint=JSON.stringify({name,code:join?code:null,...(!join?{gameType}:{role}),...(initialConfiguration?{initialConfiguration}:{})});
   if(form.requestFingerprint!==fingerprint) {form.requestFingerprint=fingerprint;form.requestId=crypto.randomUUID();}
   const submission={sequence:++entrySubmissionSequence,button,generation,epoch,navigating:false};entrySubmissions.set(form,submission);
   const live=()=>entrySubmissions.get(form)===submission && privateLive(generation,epoch);
-  try {const data=await privateApi(join?`/api/rooms/${code}/join`:'/api/rooms',{method:'POST',body:{name,...(!join?{gameType}:{role}),...(state.mode!=='legacy'?{requestId:form.requestId}:{})}});
+  try {const data=await privateApi(join?`/api/rooms/${code}/join`:'/api/rooms',{method:'POST',body:{name,...(!join?{gameType}:{role}),...(initialConfiguration?{initialConfiguration}:{}),...(state.mode!=='legacy'?{requestId:form.requestId}:{})}});
     if(!live()) return;
     go(state.mode==='legacy'?rememberMembership(data,name):data);
     submission.navigating=true;form.requestId=null;form.requestFingerprint=null;
@@ -210,6 +212,7 @@ async function enter(form,join) {
 $('create-form').addEventListener('submit',event=>{event.preventDefault();enter(event.currentTarget,false);});
 function updateCreateGame() {
   const game=gameDetails($('create-game').value);
+  const parksSettings=$('create-parks-settings');if(parksSettings)parksSettings.hidden=$('create-game').value!=='parks';
   $('create-game-description').textContent=`${game.name} · ${game.minPlayers===game.maxPlayers?game.minPlayers:`${game.minPlayers}～${game.maxPlayers}`} 人 · ${gamePresentation($('create-game').value).createHint}`;
 }
 // Preserve the current choice while the registered games supply the options.

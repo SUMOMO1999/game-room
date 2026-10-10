@@ -1,0 +1,384 @@
+{
+  "revision": "v0.4",
+  "checkedOn": "2026-10-09",
+  "scope": "design-data-source-crosscheck-and-documentation-only",
+  "designReviewStatus": "known-design-decisions-resolved-with-explicit-source-confidence-limit",
+  "checks": [
+    {
+      "name": "63公园编号图格唯一及数量",
+      "pass": true
+    },
+    {
+      "name": "公园全成本非负整数与271分27即时效果",
+      "pass": true
+    },
+    {
+      "name": "37装备13名及19/11/7费用分布",
+      "pass": true
+    },
+    {
+      "name": "6种24水壶且实体编号唯一",
+      "pass": true
+    },
+    {
+      "name": "12季节春夏秋各4",
+      "pass": true
+    },
+    {
+      "name": "8随机地点1固定公园6骰面",
+      "pass": true
+    },
+    {
+      "name": "37装备名称费用效果与公开源一致",
+      "pass": true
+    },
+    {
+      "name": "12季节指标奖励与公开源一致",
+      "pass": true
+    },
+    {
+      "name": "8露营面32营位唯一ID及位置",
+      "pass": true
+    },
+    {
+      "name": "32营位成本效果与公开源一致",
+      "pass": true
+    },
+    {
+      "name": "4组露营关联覆盖8面且实体归属相符",
+      "pass": true
+    },
+    {
+      "name": "21Teddy唯一实体及正反关联源一致",
+      "pass": true
+    },
+    {
+      "name": "Teddy移动9/9/3终点7/7/7背面8/13",
+      "pass": true
+    },
+    {
+      "name": "9项目完整名称规则钩子与中文",
+      "pass": true
+    },
+    {
+      "name": "减排移出24张剩39张",
+      "pass": true
+    },
+    {
+      "name": "3帐篷位置5/7/9及单人阈值3/4/5",
+      "pass": true
+    },
+    {
+      "name": "10热忱10功能11基础裁定10模式裁定",
+      "pass": true
+    },
+    {
+      "name": "电脑可读自身候选且正式单人沿正式时限",
+      "pass": true
+    },
+    {
+      "name": "露营一次移动提交及Teddy同位自动",
+      "pass": true
+    },
+    {
+      "name": "最终范围保留所有原盒模块及来源层级",
+      "pass": true
+    },
+    {
+      "name": "相对文件链接存在",
+      "pass": true
+    },
+    {
+      "name": "本地章节锚点匹配",
+      "pass": true
+    },
+    {
+      "name": "4组配对与实际公开原对象FaceURL/BackURL一致",
+      "pass": true
+    },
+    {
+      "name": "配对证据原包和8张图hash一致",
+      "pass": true
+    },
+    {
+      "name": "192种有序选板朝向全部恰好3个实体",
+      "pass": true
+    },
+    {
+      "name": "8面在192种配置中各出现72次",
+      "pass": true
+    },
+    {
+      "name": "实物四板可见面分别属于四实体",
+      "pass": true
+    },
+    {
+      "name": "两处任意2资源完整五类且允许重复",
+      "pass": true
+    },
+    {
+      "name": "目录费用与部分输出合同已同步",
+      "pass": true
+    },
+    {
+      "name": "非一手来源与未运行限制仍明确",
+      "pass": true
+    },
+    {
+      "name": "12个设计反例编号完整",
+      "pass": true
+    }
+  ],
+  "relativeLinksChecked": 151,
+  "linkErrors": [],
+  "anchorErrors": [],
+  "campsiteConfigurationsEnumerated": 192,
+  "blockingContentGaps": [],
+  "nonBlockingSourceFollowups": [
+    {
+      "id": "camping.independentPhysicalFlip",
+      "detail": "Adopted explicit public TTS object relationships and visually matched all 8 face images; physical 4-tile visible faces are consistent. Independent per-tile physical flip or publisher confirmation still not obtained.",
+      "affects": "evidence confidence; relationships are frozen design inputs, not implementation choices"
+    }
+  ],
+  "paperReview": {
+    "cases": 12,
+    "reference": "rule-evidence.md#6-v04-反例复核与结束路径",
+    "executedRuleEngineTests": false,
+    "fullThreeSeasonPlaythrough": false
+  },
+  "independentReview": {
+    "rules": "resource set, partial outputs, compound prerequisites, new-water sequencing, photo provenance, Wildlife cap and no-legal-move exit reviewed",
+    "pairing": "4 explicit public objects; all 8 images checked by researcher and root; no publisher claim"
+  },
+  "runtimeTestsRun": false,
+  "deployed": false,
+  "gitPublished": false,
+  "nextStages": [
+    "technical implementation plan",
+    "Step 0 representative assets and screens",
+    "all assets and rules implementation",
+    "complete-mode game, protocol and device verification",
+    "authorized final release"
+  ],
+  "previousV03Evidence": {
+    "revision": "v0.3",
+    "checkedOn": "2026-10-09",
+    "scope": "design-data-source-crosscheck-and-documentation-only",
+    "designReviewStatus": "review-completed-with-one-material-identity-blocker",
+    "checks": [
+      {
+        "name": "63公园编号图格唯一及数量",
+        "pass": true
+      },
+      {
+        "name": "公园全成本非负整数与271分27即时效果",
+        "pass": true
+      },
+      {
+        "name": "37装备13名及19/11/7费用分布",
+        "pass": true
+      },
+      {
+        "name": "6种24水壶且实体编号唯一",
+        "pass": true
+      },
+      {
+        "name": "12季节春夏秋各4",
+        "pass": true
+      },
+      {
+        "name": "8随机地点1固定公园6骰面",
+        "pass": true
+      },
+      {
+        "name": "37装备名称费用效果与公开源一致",
+        "pass": true
+      },
+      {
+        "name": "12季节指标奖励与公开源一致",
+        "pass": true
+      },
+      {
+        "name": "8露营面32营位唯一ID及位置",
+        "pass": true
+      },
+      {
+        "name": "32营位成本效果与公开源一致",
+        "pass": true
+      },
+      {
+        "name": "未核实体配对保持空值不猜填",
+        "pass": true
+      },
+      {
+        "name": "21Teddy唯一实体及正反关联源一致",
+        "pass": true
+      },
+      {
+        "name": "Teddy移动9/9/3终点7/7/7背面8/13",
+        "pass": true
+      },
+      {
+        "name": "9项目完整名称规则钩子与中文",
+        "pass": true
+      },
+      {
+        "name": "减排移出24张剩39张",
+        "pass": true
+      },
+      {
+        "name": "3帐篷位置5/7/9及单人阈值3/4/5",
+        "pass": true
+      },
+      {
+        "name": "10热忱10功能11基础裁定10模式裁定",
+        "pass": true
+      },
+      {
+        "name": "电脑可读自身候选且正式单人沿正式时限",
+        "pass": true
+      },
+      {
+        "name": "露营一次移动提交及Teddy同位自动",
+        "pass": true
+      },
+      {
+        "name": "最终范围保留所有模块与缺口",
+        "pass": true
+      },
+      {
+        "name": "相对文件链接存在",
+        "pass": true
+      },
+      {
+        "name": "本地章节锚点匹配",
+        "pass": true
+      }
+    ],
+    "relativeLinksChecked": 142,
+    "linkErrors": [],
+    "anchorErrors": [],
+    "blockingContentGaps": [
+      {
+        "id": "camping.physicalPairing",
+        "detail": "4 physical double-sided campsite tiles: which 2 of the 8 known faces belong to each tile is not directly evidenced. All 32 face effects are transcribed.",
+        "gate": "before full-mode content freeze and campsite random initialization; do not guess pairing or remove camping from release"
+      }
+    ],
+    "independentFinalReview": {
+      "ruleReview": "D01 mandatory-action deadlock and D11 weather scarcity addressed; complete optional behavior definitions reviewed",
+      "productReview": "scope, room lifecycle, pause, tutorial and sample-vs-full resource gates addressed",
+      "crossDocumentFindingsAddressed": [
+        "formal solo vs local timer",
+        "Teddy equal-position automatic selection",
+        "computer access to own private initial candidates",
+        "atomic move plus camping branch confirmation"
+      ]
+    },
+    "runtimeTestsRun": false,
+    "deployed": false,
+    "gitPublished": false,
+    "nextStages": [
+      "technical implementation plan",
+      "confirm campsite physical pairing",
+      "Step 0 representative assets and screens",
+      "all assets and rules implementation",
+      "complete-mode game, protocol and device verification",
+      "authorized final release"
+    ],
+    "previousV02Evidence": {
+      "scope": "design-data-and-documentation-only",
+      "checkedOn": "2026-10-09",
+      "dataChecks": [
+        {
+          "name": "63公园唯一编号与图格",
+          "pass": true
+        },
+        {
+          "name": "公园费用与分值全为已知整数",
+          "pass": true
+        },
+        {
+          "name": "公园总分与即时效果数",
+          "pass": true
+        },
+        {
+          "name": "63条阅读清单",
+          "pass": true
+        },
+        {
+          "name": "37装备与13名称",
+          "pass": true
+        },
+        {
+          "name": "装备费用分布19/11/7",
+          "pass": true
+        },
+        {
+          "name": "24水壶6定义",
+          "pass": true
+        },
+        {
+          "name": "12季节唯一编号",
+          "pass": true
+        },
+        {
+          "name": "8移动地点与6骰面",
+          "pass": true
+        },
+        {
+          "name": "10热忱与10功能章节",
+          "pass": true
+        },
+        {
+          "name": "10组边界解释",
+          "pass": true
+        }
+      ],
+      "relativeLinksChecked": 118,
+      "linkErrors": [],
+      "runtimeTestsRun": false,
+      "deployed": false,
+      "contentScope": {
+        "parks": 63,
+        "gearDefinitions": 37,
+        "gearNames": 13,
+        "passions": 10,
+        "canteenDefinitions": 6,
+        "canteenCopies": 24,
+        "seasons": 12,
+        "removableTrailSites": 8,
+        "fixedTrailSite": 1,
+        "dieFaces": 6
+      },
+      "sourceComparison": {
+        "parksFields": 441,
+        "parksDifferences": 0,
+        "gearRecordsCompared": 37,
+        "gearFieldsPerRecord": 4,
+        "gearDifferences": 0,
+        "seasonRecordsCompared": 12,
+        "seasonDifferences": 0,
+        "canteenCopyIdsCompared": 24,
+        "canteenGroupingDifferences": 0,
+        "limitation": "Raw static definition correspondence is not complete independent physical-card verification; semantic mapping evidence is recorded in the catalog."
+      },
+      "independentDesignReview": {
+        "passes": 2,
+        "findingsAddressed": 7,
+        "scope": "rule ordering, effect provenance, seasons, empty components, functions and claims"
+      },
+      "notCompleted": [
+        "user approval of proposed edge interpretations",
+        "second-person full physical-card image review",
+        "technical implementation plan",
+        "art assets",
+        "game engine",
+        "full game and device tests",
+        "Git publication",
+        "deployment"
+      ]
+    }
+  }
+}

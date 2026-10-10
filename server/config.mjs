@@ -53,6 +53,8 @@ export function readSettings(env = process.env) {
   if (poker414Flag !== undefined && !['0', '1'].includes(poker414Flag)) throw new Error('414 entry requires an explicit 0 or 1');
   const hyakkiFlag = env.GAME_ROOM_HYAKKI_ENABLED;
   if (hyakkiFlag !== undefined && !['0', '1'].includes(hyakkiFlag)) throw new Error('Hyakki entry requires an explicit 0 or 1');
+  const parksFlag = env.GAME_ROOM_PARKS_ENABLED;
+  if (parksFlag !== undefined && !['0','1'].includes(parksFlag)) throw new Error('PARKS entry requires an explicit 0 or 1');
   const agoraFlag = env.GAME_ROOM_AGORA_ENTRY_ENABLED;
   if (agoraFlag !== undefined && agoraFlag !== '0' && agoraFlag !== '1') throw new Error('Agora game entry requires an explicit 0 or 1');
   const agoraEntryEnabled = agoraFlag === '1';
@@ -61,6 +63,7 @@ export function readSettings(env = process.env) {
   if (!['legacy', 'disabled', 'mock', 'cognito'].includes(mode)) throw new Error('Invalid game-room identity mode');
   if (poker414Flag === '1' && !['mock', 'cognito'].includes(mode)) throw new Error('414 requires unified member accounts');
   if (hyakkiFlag === '1' && !['mock', 'cognito'].includes(mode)) throw new Error('Hyakki requires unified member accounts');
+  if (parksFlag === '1' && !['mock','cognito'].includes(mode)) throw new Error('PARKS requires unified member accounts');
   const refreshFlag = env.GAME_ROOM_SESSION_REFRESH_ENABLED;
   if (refreshFlag !== undefined && !['0', '1'].includes(refreshFlag)) throw new Error('Session refresh requires an explicit 0 or 1');
   const sessionRefreshEnabled = refreshFlag === '1';
@@ -93,6 +96,7 @@ export function readSettings(env = process.env) {
     drawingEnabled: drawingFlag === '1',
     poker414Enabled: poker414Flag === '1',
     hyakkiEnabled: hyakkiFlag === '1',
+    parksEnabled: parksFlag === '1',
     identityBatchEnabled,
     identityCheckIntervalMs,
     ...(identityBatchEnabled ? { identityBatchKeyId: env.GAME_ROOM_IDENTITY_BATCH_KEY_ID,
@@ -134,6 +138,6 @@ export function readSettings(env = process.env) {
 // URL text is checked before parsing: encoded delimiters and duplicate parameters never enter a transaction.
 export function safeReturnTo(value, origin) {
   if (typeof value !== 'string' || value.length > 80 || /[\\\x00-\x20\x7f%#]/.test(value)) return '/';
-  if (!/^(?:\/|\/\?room=\d{6}|\/words(?:\.html)?|\/(?:room|army|flying|drawing|poker414|hyakki)\.html\?code=\d{6})$/.test(value)) return '/';
+  if (!/^(?:\/|\/\?room=\d{6}|\/words(?:\.html)?|\/(?:room|army|flying|drawing|poker414|hyakki|parks)\.html\?code=\d{6})$/.test(value)) return '/';
   try { return new URL(value, origin).origin === origin ? value : '/'; } catch { return '/'; }
 }

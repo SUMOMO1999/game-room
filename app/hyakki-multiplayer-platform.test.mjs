@@ -284,7 +284,8 @@ test('real six-seat M08 preserves its source and separate third-seat recipient t
 test('schema14 writer retains old readers, rejects v2 in old envelopes and forbids the current schema13 rollback', () => {
   const adapter = createHyakkiAdapter(), current = structuredClone(CURRENT_DATA_COMPATIBILITY), old = structuredClone(current);
   old.roomSnapshots.read = old.roomSnapshots.read.filter(version => version <= 13);
-  old.roomSnapshots.write = old.roomSnapshots.write.map(version => version === 14 ? 13 : version);
+  // Reconstruct the historical schema13 capability, excluding later PARKS writes.
+  old.roomSnapshots.write = old.roomSnapshots.write.filter(version => version <= 14).map(version => version === 14 ? 13 : version);
   const manifest = (id, dataCompatibility) => ({ format: 1, project: 'game-room', releaseId: id.repeat(20), containsSecrets: false, containsUserData: false, dataCompatibility });
   const result = compareReleaseCompatibility(manifest('a', current), manifest('b', old));
   assert.equal(result.forwardCompatible, true); assert.equal(result.rollbackCompatible, false);

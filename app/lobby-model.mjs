@@ -41,10 +41,18 @@ export function historyOutcome(item) {
   if (item?.game==='poker414-2' && item.status==='aborted') return item.reason==='voluntary-leave'
     ? '主动离席中止 · 按规则记分' : '已取消 · 不计分';
   if (item?.status === 'aborted') return '已中止 · 不计输赢';
+  if (item?.game === 'parks' && item?.self?.outcome === 'completed') return '单人挑战完成';
   return ({ win: '胜', draw: '平', loss: '负', unscored: '不计分' })[item?.self?.outcome] || '本局已结束';
 }
 export function historyBalanceLabel(player) {
   return Number.isSafeInteger(player?.balanceAfter) ? `结算时累计 ${player.balanceAfter} 分` : '';
+}
+export function historyParksRating(player) {
+  if (player?.outcome!=='completed') return '';
+  const names={Dayhiker:'一日徒步者',Trekker:'徒步健将',Explorer:'探索者',Adventurer:'冒险家',Trailblazer:'开拓者'};
+  const rank=names[player.soloRank] ?? '本次未达评级';
+  const challenge=['无志愿挑战','入门挑战','进阶挑战','高级挑战','极限挑战'][player.difficulty];
+  return challenge?`${rank} · ${challenge}`:rank;
 }
 export function historyPoints(points) {
   return Number.isFinite(points) && points >= 0 ? `剩余手牌 ${points} 点` : '未计分';

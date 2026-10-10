@@ -39,7 +39,7 @@ export function validateMatchSummary(summary, { gameRegistry = defaultGameRegist
       || summary.players.some((player) => !player || typeof player !== 'object' || Array.isArray(player)
         || Object.keys(player).some((key) => !playerFields.has(key) && !adapter.historyPlayerFields?.includes(key))
         || !HEX64.test(player.userKey ?? '') || !HEX32.test(player.seatId ?? '') || !text(player.nickname, 16)
-        || !['win', 'draw', 'loss', 'unscored'].includes(player.outcome)
+        || !(adapter.historyPlayerOutcomes ?? ['win','draw','loss','unscored']).includes(player.outcome)
         || adapter.historyPlayerProblem(summary.status, player))) {
     throw new Error('Invalid match history summary');
   }
@@ -53,7 +53,7 @@ export function validateMatchSummary(summary, { gameRegistry = defaultGameRegist
 }
 
 export function validateHistoryRecord(value, options) {
-  if (![1, 2, 3].includes(value?.schemaVersion) || Object.keys(value).some((key) => !['schemaVersion', 'summary'].includes(key))) throw new Error('Invalid history record');
+  if (![1, 2, 3, 4].includes(value?.schemaVersion) || Object.keys(value).some((key) => !['schemaVersion', 'summary'].includes(key))) throw new Error('Invalid history record');
   validateMatchSummary(value.summary, options);
   if (value.schemaVersion !== ((options?.gameRegistry || defaultGameRegistry).gameAdapter(value.summary.game).historySchemaVersion ?? 1)) throw new Error('Invalid history record version');
   return value;
@@ -157,7 +157,10 @@ export function createMatchHistory({ storage, now = Date.now, maxCasAttempts = 1
       const self = summary.players.find((player) => player.userKey === userKey);
       const extra = player => Object.fromEntries((gameRegistry.gameAdapter(summary.game).historyPlayerFields || [])
         .filter(field => Object.hasOwn(player, field)).map(field => [field, player[field]]));
-      return { matchId: summary.matchId, roomCode: summary.roomCode, game: summary.game, ruleVersion: summary.ruleVersion,
+      const adapter=gameRegistry.gameAdapter(summary.game);
+      const metadata=typeof adapter.historySummary === 'function' ? Object.fromEntries((adapter.historySummaryFields ?? [])
+        .filter(field=>Object.hasOwn(summary,field)).map(field=>[field,structuredClone(summary[field])])) : {};
+      return { matchId: summary.matchId, roomCode: summary.roomCode, game: summary.game, ruleVersion: summary.ruleVersion, ...metadata,
         startedAt: summary.startedAt, endedAt: summary.endedAt, status: summary.status, reason: summary.reason,
         ...(summary.legacy ? { legacy: true } : {}),
         ...(summary.accountGroup === undefined ? {} : {

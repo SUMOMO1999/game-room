@@ -19,6 +19,7 @@
 - [分类模板入口](docs/design/game-design-template.md)：朋友写玩法和例子，维护者补技术设计。
 - [固定牌类模板](docs/design/templates/fixed-deck-game.md)：414、扑克、麻将、拉密，重点是牌组与规则。
 - [幽街商人／百鬼商会](docs/proposals/hyakki-trading/README.md)：2～6人经营桌游，51种110张卡牌；完整规则、朋友房、观战、1～5名电脑练习与全卡图鉴已上线，旧双人存档保留原规则。
+- [PARKS 国家公园设计](docs/proposals/parks/README.md)与[技术实施计划](docs/plans/parks-v1.md)：v0.4覆盖全部原盒模式、卡库与共通功能；已核对现有代码并安排资源、规则、平台、完整练习与发布验收。全部原盒规则、245项定义、76幅原创主体、正式房间、电脑／官方单人练习与12课教学已在本地实现；完整对局与实际页面正在验收，正式上线状态以实施计划为准。
 - [桌游类模板](docs/design/templates/tabletop-game.md)与[逐卡定义](docs/design/templates/card-definition.md)：不同角色、牌或地块各有行为；飞行棋可用轻版。
 - [Step 0 资源阶段](docs/design/resource-stage.md)：先做代表性资源和操作小样，完整接入前补齐本轮内容与资源。
 - [技术计划模板](docs/plans/game-implementation-plan-template.md)：维护者根据实际代码写清模块、接口、并发、存储、资源、共通接入、验收和回退，再开始实现；朋友只需参与玩法设计。
@@ -148,3 +149,9 @@ docs/proposals/            朋友提交的游戏设计
 当前正式认证实现按本项目的 Agora 契约约束提供方和身份检查端点，不是任意 OIDC 提供方即插即用的安装包。源码中的域名和 Cognito 标识是公开配置，不是登录凭据。独立部署需要设计自己的认证接入、参数和信任边界，不能复用 Agora 或日历客户端。`infra/` 是参考定义，包含收费资源，运行本机预览不需要创建它们。
 
 本仓库暂未选择开源许可证。公开浏览源码不代表额外授予再分发许可；新增图像、音效和依赖需记录来源与使用条件。
+
+### PARKS 本地资源与交互样板
+
+运行 `node scripts/parks-preview.mjs`，打开 <http://127.0.0.1:4383/>。包含完整内容图鉴、6幅代表插画、15种固定场景和两个合成成员的聊天。这里尚不能按完整规则游玩，不连接正式账号或房间；浏览器“设置”可切换场景与六主题。
+
+资源齐备程度见[资源清单](docs/assets/parks-v1.md)，唯一实施进度见[技术计划](docs/plans/parks-v1.md#10-当前进度与交接记录)。定向检查：`node --test app/games/parks/content.test.mjs app/games/parks/card-ui.test.mjs scripts/parks-contract-probe.test.mjs scripts/parks-preview.test.mjs`。浏览器检查使用已安装Playwright，将其入口文件设为`PLAYWRIGHT_MODULE`后运行`node scripts/parks-ui-audit.mjs`；脚本只接受本机预览地址，不自行安装依赖。

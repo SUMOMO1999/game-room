@@ -27,8 +27,12 @@ test('新版全量卡面都能解析到已制资源，旧实验不能冒充新�
       assert.match(bytes.toString(), /<svg[^>]+viewBox=/u, asset.file);
     }
   }
-  assert.equal(publicAssetPaths().some(path => path.includes('hyakki')), false,
-    'S0本地样板不能顺便开放生产入口或资料');
+  const publicPaths = publicAssetPaths();
+  assert.ok(publicPaths.includes('hyakki.html') && publicPaths.includes('hyakki-practice.html'), '已发布的正式和练习入口可读');
+  for (const path of ['hyakki-preview.html', 'games/hyakki-trading/digital-preview.mjs', 'games/hyakki-trading/content/definitions.test.mjs',
+    'docs/proposals/hyakki-trading/physical-card-catalog.json', 'ops/yousei-photos-2026-10-10/inventory.json']) {
+    assert.equal(publicPaths.includes(path), false, `实验和私有资料仍不可公开：${path}`);
+  }
 });
 
 test('新版两个本地路径可读真实卡面和模块，私有来源与测试仍不可下载', async () => {

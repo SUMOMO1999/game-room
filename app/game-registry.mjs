@@ -6,6 +6,7 @@ import { createFlyingChessAdapter } from '../server/games/flying-chess/adapter.m
 import { createDrawAndGuessAdapter } from '../server/games/draw-and-guess/adapter.mjs';
 import { createPoker414Adapter } from '../server/games/poker414-2/adapter.mjs';
 import { createHyakkiAdapter } from '../server/games/hyakki-trading/adapter.mjs';
+import { createParksAdapter } from '../server/games/parks/adapter.mjs';
 import { requireAdapter } from '../server/games/adapter-contract.mjs';
 
 export function createGameRegistry(adapters, { creationTypes } = {}) {
@@ -43,7 +44,7 @@ export function createGameRegistry(adapters, { creationTypes } = {}) {
     activityTypes: () => [...new Set([...catalog.values()].flatMap(adapter => adapter.actionTypes))] });
 }
 
-export const defaultGameRegistry = createGameRegistry([createRummikubAdapter(), createArmyFlipAdapter(), createFlyingChessAdapter(), createDrawAndGuessAdapter(), createPoker414Adapter(), createHyakkiAdapter()],
+export const defaultGameRegistry = createGameRegistry([createRummikubAdapter(), createArmyFlipAdapter(), createFlyingChessAdapter(), createDrawAndGuessAdapter(), createPoker414Adapter(), createHyakkiAdapter(), createParksAdapter()],
   { creationTypes: ['rummikub', 'army-flip', 'flying-chess', 'draw-and-guess'] });
 // Historical exports and default game remain available to existing callers.
 export const normalizeGameType = defaultGameRegistry.normalizeGameType;

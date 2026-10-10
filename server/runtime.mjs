@@ -25,13 +25,14 @@ export function createRuntime(settings, options = {}) {
   }
   const drawingEnabled = options.drawingEnabled ?? settings.drawingEnabled ?? false;
   const baseGameRegistry = options.gameRegistry ?? defaultGameRegistry;
-  const enabledTypes = [...(settings.poker414Enabled ? ['poker414-2'] : []), ...(settings.hyakkiEnabled ? ['hyakki-trading'] : [])];
+  const enabledTypes = [...(settings.poker414Enabled ? ['poker414-2'] : []), ...(settings.hyakkiEnabled ? ['hyakki-trading'] : []), ...(settings.parksEnabled ? ['parks'] : [])];
   const gameRegistry = options.roomOptions?.gameRegistry ?? (enabledTypes.length
     ? createGameRegistry(baseGameRegistry.knownTypes().map(type => baseGameRegistry.gameAdapter(type)),
       { creationTypes: [...new Set([...baseGameRegistry.creationTypes(), ...enabledTypes])] })
     : baseGameRegistry);
   const poker414Enabled = !options.rooms && gameRegistry.creationTypes().includes('poker414-2');
   const hyakkiEnabled = !options.rooms && gameRegistry.creationTypes().includes('hyakki-trading');
+  const parksEnabled = !options.rooms && gameRegistry.creationTypes().includes('parks');
   const hyakkiEvents = createHyakkiEventStore({ storage, now: options.now });
   const transitionPreparers = new Map([
     ...(gameRegistry.knownTypes().includes('hyakki-trading') ? createHyakkiTransitionPreparers(storage, { now: options.now }) : []),
@@ -50,5 +51,5 @@ export function createRuntime(settings, options = {}) {
   const chat = options.chat || createRoomChat({storage, rooms, now:options.now, ...options.chatOptions});
   const preview = options.preview || createRoomPreview({now:options.now,...options.previewOptions});
   const canvases = options.canvases || (drawingEnabled ? createCanvasService({ storage, rooms, now: options.now, ...options.canvasOptions }) : null);
-  return {settings,storage,sessions,rooms,chat,preview,wordbanks,wordbankReady,canvases,drawingEnabled,identityRuntime,scores,gameRegistry,poker414Enabled,hyakkiEnabled,hyakkiEvents};
+  return {settings,storage,sessions,rooms,chat,preview,wordbanks,wordbankReady,canvases,drawingEnabled,identityRuntime,scores,gameRegistry,poker414Enabled,hyakkiEnabled,parksEnabled,hyakkiEvents};
 }

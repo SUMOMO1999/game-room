@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeRecentRoom, roomPhaseLabel, exitConsequence, createExitRequest, historyOutcome, historyPoints, historyBalanceLabel } from './lobby-model.mjs';
+import { normalizeRecentRoom, roomPhaseLabel, exitConsequence, createExitRequest, historyOutcome, historyPoints, historyBalanceLabel,historyParksRating } from './lobby-model.mjs';
 
 test('server recent-room metadata is display-only and does not import identity or credentials', () => {
   const value = normalizeRecentRoom({ roomCode: '123456', playerId: 'seat-a', phase: 'paused', name: '<script>',
@@ -50,4 +50,12 @@ test('eight-player 414 recent seats and departures show the right irreversible p
   assert.equal(historyOutcome({game:'poker414-2',status:'aborted',reason:'server-recovery'}),'已取消 · 不计分');
   assert.equal(historyBalanceLabel({balanceAfter:-10}),'结算时累计 -10 分');
   assert.equal(historyBalanceLabel({score:99}),'');
+});
+test('PARKS single-player completion is a challenge rating, never a fictitious win or economic balance',()=>{
+  assert.equal(historyOutcome({game:'parks',status:'completed',self:{outcome:'completed'}}),'单人挑战完成');
+  assert.equal(historyParksRating({outcome:'completed',soloRank:'Explorer',difficulty:2}),'探索者 · 进阶挑战');
+  assert.equal(historyParksRating({outcome:'completed',soloRank:null,difficulty:0}),'本次未达评级 · 无志愿挑战');
+  assert.equal(historyParksRating({outcome:'win',soloRank:'Trailblazer',difficulty:4}),'');
+  assert.equal(historyBalanceLabel({score:50}),'');
+  assert.equal(normalizeRecentRoom({roomCode:'123456',playerId:'seat-a',gameType:'parks',playersCount:1}).gameType,'parks');
 });
