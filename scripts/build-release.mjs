@@ -11,7 +11,7 @@ const hash = value => createHash('sha256').update(value).digest('hex');
 export const PACKAGING_FORMAT = 2;
 export function releaseSources(projectRoot = root, { publicPaths = publicAssetPaths() } = {}) {
   const files = new Set();
-  const forbidden = /(?:^|\/)(?:test-support|tests|fixtures|__tests__|__fixtures__|ops|specs|node_modules|private)(?:\/|$)|\.test\.mjs$|^app\/server\.mjs$|(?:^|\/)parks(?:\/|-)|^app\/(?:hyakki|poker414)-preview\.html$|\/games\/(?:hyakki-trading|poker414-2)\/(?:digital-)?preview\.mjs$/;
+  const forbidden = /(?:^|\/)(?:test-support|tests|fixtures|__tests__|__fixtures__|ops|specs|node_modules|private)(?:\/|$)|\.test\.mjs$|^app\/server\.mjs$|^app\/(?:hyakki|poker414|parks)-preview\.html$|\/games\/(?:hyakki-trading|poker414-2)\/(?:digital-)?preview\.mjs$|\/games\/parks\/(?:preview(?:-fixtures)?|page-ui)\.mjs$/;
   function collect(file) {
     if (files.has(file)) return;
     if (!/^[a-zA-Z0-9_./-]+$/.test(file) || file.split('/').some(part => !part || part === '.' || part === '..') || forbidden.test(file))

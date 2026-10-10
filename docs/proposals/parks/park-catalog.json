@@ -1,0 +1,1633 @@
+{
+  "schemaVersion": 1,
+  "catalogId": "parks-second-edition-parks",
+  "edition": "PARKS Second Edition",
+  "rulesVersion": "1.1",
+  "recordedOn": "2026-10-09",
+  "status": "transcribed-self-checked-and-secondary-source-matched",
+  "independentReview": {
+    "status": "pending",
+    "scope": "63张逐卡积分、费用及即时效果的独立卡面对照"
+  },
+  "scope": "官方二版全部63张公园牌的规则事实转录；不含卡面美术、风景趣闻或可运行规则实现。",
+  "sources": [
+    {
+      "id": "official-all-63-parks-image",
+      "url": "https://keymaster.fun/cdn/shop/files/All-63-white_45353b61-4374-415b-9e62-0de83605bd1b.jpg?v=1747268405",
+      "publisher": "Keymaster",
+      "width": 3000,
+      "height": 6463,
+      "rows": 9,
+      "columns": 7,
+      "sourceCellConvention": "从图左上角起，行列均从1计数；卡牌按先行后列排序。",
+      "readMethod": "逐行查看原尺寸局部图，逐张读卡名、积分、费用栏和闪电后奖励；原图及阅读裁图仅在临时资料区保存。",
+      "sha256": "29518e63ea96fe608882e75b35f38ec99d2e45ddcf67024bade38f8e4e0650f2"
+    },
+    {
+      "id": "official-rules-1-1",
+      "url": "https://cdn.shopify.com/s/files/1/1898/8501/files/Parks-2nd-Edition-1.1-Rules_Online.pdf?v=1755706180",
+      "printedPages": [
+        6,
+        7
+      ],
+      "purpose": "核对费用与即时奖励分区、步道骰、水壶及摄影徽章图标，以及Grand Teton、Joshua Tree、Everglades示例。"
+    },
+    {
+      "id": "bga-public-tutorial",
+      "url": "https://boardgamearena.com/tutorial?game=parks",
+      "snapshotVersion": "250417-1214",
+      "readOn": "2026-10-09",
+      "purpose": "匿名公开教程展示的63张公园静态规则事实，仅作官方卡面转录的第二来源交叉核对。",
+      "precedence": "旧教程快照不覆盖官方二版1.1规则或之后勘误；如冲突，保留差异并回到官方证据。",
+      "reuseScope": "未复制程序或美术。"
+    }
+  ],
+  "fieldConventions": {
+    "id": "稳定ASCII slug；显示名或中文译名变化不改变id。",
+    "name": "按官方卡面记原名；统一长连字符和夏威夷语拼写的排版字符。",
+    "points": "卡面左下黑色分值徽记中的印刷分值。",
+    "cost": "只计闪电前的印刷费用；0明确表示该资源图标未印在费用栏。野生动物作为费用时必须支付野生动物，不能用普通资源反向替代。",
+    "hasInstantAction": "卡面是否印有闪电图标；与instantEffect分别记录用于复核。",
+    "instantEffect": "游览公园后立即发生；none表示卡面明确无闪电奖励，null只用于无法辨识的待复核字段。",
+    "needsReview": "true表示本条有不可辨识或冲突的事实字段；false只表示本次转录无未解读数，不等于已经通过独立复核或实现验收。"
+  },
+  "effectDefinitions": {
+    "none": "无卡面即时奖励。",
+    "gain_resources": "立即获得resources指定数量的资源，后续容量与空池遵从通用规则。",
+    "gain_canteen": "立即获得1枚水壶，后续摆放遵从水壶规则；该图标不是获得1水或立即填水壶。",
+    "take_shutterbug_badge": "取得摄影徽章；不是直接获得照片。",
+    "roll_trail_die": "掷步道骰1次并按骰面处理；实际结果属于对局状态，不写入卡库。"
+  },
+  "selfCheck": {
+    "method": "63张均按原图行列位置逐卡目视转录；结构校验另核总数、唯一id/名称/图格、五资源整数向量、积分范围和闪电/效果对应。",
+    "independentArtComparisonCompleted": false,
+    "summary": {
+      "cardCount": 63,
+      "copyCount": 63,
+      "instantActionCount": 27,
+      "withoutInstantActionCount": 36,
+      "pointsDistribution": {
+        "2": 4,
+        "3": 20,
+        "4": 15,
+        "5": 8,
+        "6": 9,
+        "7": 7
+      },
+      "instantEffectDistribution": {
+        "gain_canteen": 4,
+        "gain_resources": 15,
+        "none": 36,
+        "roll_trail_die": 4,
+        "take_shutterbug_badge": 4
+      },
+      "printedCostTotals": {
+        "mountain": 63,
+        "forest": 63,
+        "sun": 63,
+        "water": 63,
+        "wildlife": 9
+      },
+      "unresolvedCellCount": 0,
+      "printedPointsTotal": 271
+    }
+  },
+  "unresolvedCells": [],
+  "cards": [
+    {
+      "id": "acadia",
+      "name": "Acadia",
+      "copies": 1,
+      "sourceCell": {
+        "row": 1,
+        "column": 1
+      },
+      "points": 4,
+      "cost": {
+        "mountain": 0,
+        "forest": 1,
+        "sun": 0,
+        "water": 1,
+        "wildlife": 1
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "arches",
+      "name": "Arches",
+      "copies": 1,
+      "sourceCell": {
+        "row": 1,
+        "column": 2
+      },
+      "points": 3,
+      "cost": {
+        "mountain": 1,
+        "forest": 0,
+        "sun": 2,
+        "water": 0,
+        "wildlife": 0
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "badlands",
+      "name": "Badlands",
+      "copies": 1,
+      "sourceCell": {
+        "row": 1,
+        "column": 3
+      },
+      "points": 7,
+      "cost": {
+        "mountain": 2,
+        "forest": 1,
+        "sun": 4,
+        "water": 0,
+        "wildlife": 0
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "big-bend",
+      "name": "Big Bend",
+      "copies": 1,
+      "sourceCell": {
+        "row": 1,
+        "column": 4
+      },
+      "points": 5,
+      "cost": {
+        "mountain": 1,
+        "forest": 0,
+        "sun": 3,
+        "water": 2,
+        "wildlife": 0
+      },
+      "hasInstantAction": true,
+      "instantEffect": {
+        "type": "gain_resources",
+        "resources": {
+          "wildlife": 1
+        }
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "biscayne",
+      "name": "Biscayne",
+      "copies": 1,
+      "sourceCell": {
+        "row": 1,
+        "column": 5
+      },
+      "points": 3,
+      "cost": {
+        "mountain": 0,
+        "forest": 2,
+        "sun": 0,
+        "water": 1,
+        "wildlife": 0
+      },
+      "hasInstantAction": true,
+      "instantEffect": {
+        "type": "gain_canteen",
+        "amount": 1
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "black-canyon-of-the-gunnison",
+      "name": "Black Canyon of the Gunnison",
+      "copies": 1,
+      "sourceCell": {
+        "row": 1,
+        "column": 6
+      },
+      "points": 4,
+      "cost": {
+        "mountain": 2,
+        "forest": 0,
+        "sun": 0,
+        "water": 2,
+        "wildlife": 0
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "bryce-canyon",
+      "name": "Bryce Canyon",
+      "copies": 1,
+      "sourceCell": {
+        "row": 1,
+        "column": 7
+      },
+      "points": 7,
+      "cost": {
+        "mountain": 4,
+        "forest": 0,
+        "sun": 2,
+        "water": 0,
+        "wildlife": 0
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "canyonlands",
+      "name": "Canyonlands",
+      "copies": 1,
+      "sourceCell": {
+        "row": 2,
+        "column": 1
+      },
+      "points": 3,
+      "cost": {
+        "mountain": 2,
+        "forest": 0,
+        "sun": 1,
+        "water": 0,
+        "wildlife": 0
+      },
+      "hasInstantAction": true,
+      "instantEffect": {
+        "type": "gain_resources",
+        "resources": {
+          "wildlife": 1
+        }
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "capitol-reef",
+      "name": "Capitol Reef",
+      "copies": 1,
+      "sourceCell": {
+        "row": 2,
+        "column": 2
+      },
+      "points": 5,
+      "cost": {
+        "mountain": 1,
+        "forest": 1,
+        "sun": 1,
+        "water": 1,
+        "wildlife": 0
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "carlsbad-caverns",
+      "name": "Carlsbad Caverns",
+      "copies": 1,
+      "sourceCell": {
+        "row": 2,
+        "column": 3
+      },
+      "points": 2,
+      "cost": {
+        "mountain": 1,
+        "forest": 0,
+        "sun": 1,
+        "water": 0,
+        "wildlife": 0
+      },
+      "hasInstantAction": true,
+      "instantEffect": {
+        "type": "gain_resources",
+        "resources": {
+          "wildlife": 1
+        }
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "channel-islands",
+      "name": "Channel Islands",
+      "copies": 1,
+      "sourceCell": {
+        "row": 2,
+        "column": 4
+      },
+      "points": 3,
+      "cost": {
+        "mountain": 1,
+        "forest": 0,
+        "sun": 0,
+        "water": 3,
+        "wildlife": 0
+      },
+      "hasInstantAction": true,
+      "instantEffect": {
+        "type": "gain_resources",
+        "resources": {
+          "sun": 2
+        }
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "congaree",
+      "name": "Congaree",
+      "copies": 1,
+      "sourceCell": {
+        "row": 2,
+        "column": 5
+      },
+      "points": 3,
+      "cost": {
+        "mountain": 0,
+        "forest": 2,
+        "sun": 0,
+        "water": 0,
+        "wildlife": 0
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "crater-lake",
+      "name": "Crater Lake",
+      "copies": 1,
+      "sourceCell": {
+        "row": 2,
+        "column": 6
+      },
+      "points": 3,
+      "cost": {
+        "mountain": 1,
+        "forest": 1,
+        "sun": 0,
+        "water": 1,
+        "wildlife": 0
+      },
+      "hasInstantAction": true,
+      "instantEffect": {
+        "type": "take_shutterbug_badge"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "cuyahoga-valley",
+      "name": "Cuyahoga Valley",
+      "copies": 1,
+      "sourceCell": {
+        "row": 2,
+        "column": 7
+      },
+      "points": 3,
+      "cost": {
+        "mountain": 0,
+        "forest": 1,
+        "sun": 0,
+        "water": 2,
+        "wildlife": 0
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "death-valley",
+      "name": "Death Valley",
+      "copies": 1,
+      "sourceCell": {
+        "row": 3,
+        "column": 1
+      },
+      "points": 3,
+      "cost": {
+        "mountain": 0,
+        "forest": 0,
+        "sun": 4,
+        "water": 0,
+        "wildlife": 0
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "denali",
+      "name": "Denali",
+      "copies": 1,
+      "sourceCell": {
+        "row": 3,
+        "column": 2
+      },
+      "points": 6,
+      "cost": {
+        "mountain": 1,
+        "forest": 1,
+        "sun": 2,
+        "water": 2,
+        "wildlife": 0
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "dry-tortugas",
+      "name": "Dry Tortugas",
+      "copies": 1,
+      "sourceCell": {
+        "row": 3,
+        "column": 3
+      },
+      "points": 2,
+      "cost": {
+        "mountain": 0,
+        "forest": 0,
+        "sun": 0,
+        "water": 3,
+        "wildlife": 0
+      },
+      "hasInstantAction": true,
+      "instantEffect": {
+        "type": "gain_resources",
+        "resources": {
+          "sun": 2
+        }
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "everglades",
+      "name": "Everglades",
+      "copies": 1,
+      "sourceCell": {
+        "row": 3,
+        "column": 4
+      },
+      "points": 3,
+      "cost": {
+        "mountain": 0,
+        "forest": 0,
+        "sun": 0,
+        "water": 4,
+        "wildlife": 0
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "gates-of-the-arctic",
+      "name": "Gates of the Arctic",
+      "copies": 1,
+      "sourceCell": {
+        "row": 3,
+        "column": 5
+      },
+      "points": 3,
+      "cost": {
+        "mountain": 0,
+        "forest": 0,
+        "sun": 3,
+        "water": 1,
+        "wildlife": 0
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "gateway-arch",
+      "name": "Gateway Arch",
+      "copies": 1,
+      "sourceCell": {
+        "row": 3,
+        "column": 6
+      },
+      "points": 2,
+      "cost": {
+        "mountain": 0,
+        "forest": 0,
+        "sun": 3,
+        "water": 0,
+        "wildlife": 0
+      },
+      "hasInstantAction": true,
+      "instantEffect": {
+        "type": "gain_resources",
+        "resources": {
+          "water": 2
+        }
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "glacier",
+      "name": "Glacier",
+      "copies": 1,
+      "sourceCell": {
+        "row": 3,
+        "column": 7
+      },
+      "points": 4,
+      "cost": {
+        "mountain": 2,
+        "forest": 0,
+        "sun": 1,
+        "water": 1,
+        "wildlife": 0
+      },
+      "hasInstantAction": true,
+      "instantEffect": {
+        "type": "take_shutterbug_badge"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "glacier-bay",
+      "name": "Glacier Bay",
+      "copies": 1,
+      "sourceCell": {
+        "row": 4,
+        "column": 1
+      },
+      "points": 6,
+      "cost": {
+        "mountain": 1,
+        "forest": 0,
+        "sun": 0,
+        "water": 3,
+        "wildlife": 1
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "grand-canyon",
+      "name": "Grand Canyon",
+      "copies": 1,
+      "sourceCell": {
+        "row": 4,
+        "column": 2
+      },
+      "points": 7,
+      "cost": {
+        "mountain": 4,
+        "forest": 1,
+        "sun": 0,
+        "water": 0,
+        "wildlife": 0
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "grand-teton",
+      "name": "Grand Teton",
+      "copies": 1,
+      "sourceCell": {
+        "row": 4,
+        "column": 3
+      },
+      "points": 3,
+      "cost": {
+        "mountain": 1,
+        "forest": 1,
+        "sun": 1,
+        "water": 0,
+        "wildlife": 0
+      },
+      "hasInstantAction": true,
+      "instantEffect": {
+        "type": "roll_trail_die",
+        "times": 1
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "great-basin",
+      "name": "Great Basin",
+      "copies": 1,
+      "sourceCell": {
+        "row": 4,
+        "column": 4
+      },
+      "points": 4,
+      "cost": {
+        "mountain": 2,
+        "forest": 1,
+        "sun": 1,
+        "water": 0,
+        "wildlife": 0
+      },
+      "hasInstantAction": true,
+      "instantEffect": {
+        "type": "gain_resources",
+        "resources": {
+          "water": 2
+        }
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "great-sand-dunes",
+      "name": "Great Sand Dunes",
+      "copies": 1,
+      "sourceCell": {
+        "row": 4,
+        "column": 5
+      },
+      "points": 6,
+      "cost": {
+        "mountain": 3,
+        "forest": 0,
+        "sun": 3,
+        "water": 0,
+        "wildlife": 0
+      },
+      "hasInstantAction": true,
+      "instantEffect": {
+        "type": "gain_resources",
+        "resources": {
+          "water": 1
+        }
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "great-smoky-mountains",
+      "name": "Great Smoky Mountains",
+      "copies": 1,
+      "sourceCell": {
+        "row": 4,
+        "column": 6
+      },
+      "points": 7,
+      "cost": {
+        "mountain": 2,
+        "forest": 2,
+        "sun": 1,
+        "water": 1,
+        "wildlife": 0
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "guadalupe-mountains",
+      "name": "Guadalupe Mountains",
+      "copies": 1,
+      "sourceCell": {
+        "row": 4,
+        "column": 7
+      },
+      "points": 4,
+      "cost": {
+        "mountain": 1,
+        "forest": 0,
+        "sun": 1,
+        "water": 0,
+        "wildlife": 1
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "haleakala",
+      "name": "Haleakalā",
+      "copies": 1,
+      "sourceCell": {
+        "row": 5,
+        "column": 1
+      },
+      "points": 5,
+      "cost": {
+        "mountain": 4,
+        "forest": 0,
+        "sun": 0,
+        "water": 0,
+        "wildlife": 0
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "hawaii-volcanoes",
+      "name": "Hawaiʻi Volcanoes",
+      "copies": 1,
+      "sourceCell": {
+        "row": 5,
+        "column": 2
+      },
+      "points": 4,
+      "cost": {
+        "mountain": 3,
+        "forest": 0,
+        "sun": 0,
+        "water": 1,
+        "wildlife": 0
+      },
+      "hasInstantAction": true,
+      "instantEffect": {
+        "type": "roll_trail_die",
+        "times": 1
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "hot-springs",
+      "name": "Hot Springs",
+      "copies": 1,
+      "sourceCell": {
+        "row": 5,
+        "column": 3
+      },
+      "points": 3,
+      "cost": {
+        "mountain": 0,
+        "forest": 0,
+        "sun": 1,
+        "water": 3,
+        "wildlife": 0
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "indiana-dunes",
+      "name": "Indiana Dunes",
+      "copies": 1,
+      "sourceCell": {
+        "row": 5,
+        "column": 4
+      },
+      "points": 3,
+      "cost": {
+        "mountain": 1,
+        "forest": 0,
+        "sun": 1,
+        "water": 2,
+        "wildlife": 0
+      },
+      "hasInstantAction": true,
+      "instantEffect": {
+        "type": "gain_resources",
+        "resources": {
+          "wildlife": 1
+        }
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "isle-royale",
+      "name": "Isle Royale",
+      "copies": 1,
+      "sourceCell": {
+        "row": 5,
+        "column": 5
+      },
+      "points": 2,
+      "cost": {
+        "mountain": 0,
+        "forest": 1,
+        "sun": 0,
+        "water": 1,
+        "wildlife": 0
+      },
+      "hasInstantAction": true,
+      "instantEffect": {
+        "type": "gain_canteen",
+        "amount": 1
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "joshua-tree",
+      "name": "Joshua Tree",
+      "copies": 1,
+      "sourceCell": {
+        "row": 5,
+        "column": 6
+      },
+      "points": 3,
+      "cost": {
+        "mountain": 0,
+        "forest": 1,
+        "sun": 3,
+        "water": 0,
+        "wildlife": 0
+      },
+      "hasInstantAction": true,
+      "instantEffect": {
+        "type": "gain_resources",
+        "resources": {
+          "water": 2
+        }
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "katmai",
+      "name": "Katmai",
+      "copies": 1,
+      "sourceCell": {
+        "row": 5,
+        "column": 7
+      },
+      "points": 3,
+      "cost": {
+        "mountain": 0,
+        "forest": 0,
+        "sun": 0,
+        "water": 1,
+        "wildlife": 1
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "kenai-fjords",
+      "name": "Kenai Fjords",
+      "copies": 1,
+      "sourceCell": {
+        "row": 6,
+        "column": 1
+      },
+      "points": 5,
+      "cost": {
+        "mountain": 3,
+        "forest": 1,
+        "sun": 0,
+        "water": 1,
+        "wildlife": 0
+      },
+      "hasInstantAction": true,
+      "instantEffect": {
+        "type": "gain_resources",
+        "resources": {
+          "sun": 2
+        }
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "kings-canyon",
+      "name": "Kings Canyon",
+      "copies": 1,
+      "sourceCell": {
+        "row": 6,
+        "column": 2
+      },
+      "points": 4,
+      "cost": {
+        "mountain": 1,
+        "forest": 2,
+        "sun": 0,
+        "water": 1,
+        "wildlife": 0
+      },
+      "hasInstantAction": true,
+      "instantEffect": {
+        "type": "gain_resources",
+        "resources": {
+          "sun": 2
+        }
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "kobuk-valley",
+      "name": "Kobuk Valley",
+      "copies": 1,
+      "sourceCell": {
+        "row": 6,
+        "column": 3
+      },
+      "points": 3,
+      "cost": {
+        "mountain": 0,
+        "forest": 1,
+        "sun": 2,
+        "water": 1,
+        "wildlife": 0
+      },
+      "hasInstantAction": true,
+      "instantEffect": {
+        "type": "gain_canteen",
+        "amount": 1
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "lake-clark",
+      "name": "Lake Clark",
+      "copies": 1,
+      "sourceCell": {
+        "row": 6,
+        "column": 4
+      },
+      "points": 3,
+      "cost": {
+        "mountain": 1,
+        "forest": 0,
+        "sun": 0,
+        "water": 2,
+        "wildlife": 0
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "lassen-volcanic",
+      "name": "Lassen Volcanic",
+      "copies": 1,
+      "sourceCell": {
+        "row": 6,
+        "column": 5
+      },
+      "points": 4,
+      "cost": {
+        "mountain": 0,
+        "forest": 3,
+        "sun": 0,
+        "water": 0,
+        "wildlife": 0
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "mammoth-cave",
+      "name": "Mammoth Cave",
+      "copies": 1,
+      "sourceCell": {
+        "row": 6,
+        "column": 6
+      },
+      "points": 3,
+      "cost": {
+        "mountain": 2,
+        "forest": 0,
+        "sun": 0,
+        "water": 0,
+        "wildlife": 0
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "mesa-verde",
+      "name": "Mesa Verde",
+      "copies": 1,
+      "sourceCell": {
+        "row": 6,
+        "column": 7
+      },
+      "points": 6,
+      "cost": {
+        "mountain": 3,
+        "forest": 1,
+        "sun": 1,
+        "water": 0,
+        "wildlife": 0
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "mount-rainier",
+      "name": "Mount Rainier",
+      "copies": 1,
+      "sourceCell": {
+        "row": 7,
+        "column": 1
+      },
+      "points": 5,
+      "cost": {
+        "mountain": 1,
+        "forest": 3,
+        "sun": 0,
+        "water": 1,
+        "wildlife": 0
+      },
+      "hasInstantAction": true,
+      "instantEffect": {
+        "type": "gain_resources",
+        "resources": {
+          "wildlife": 1
+        }
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "american-samoa",
+      "name": "National Park of American Samoa",
+      "copies": 1,
+      "sourceCell": {
+        "row": 7,
+        "column": 2
+      },
+      "points": 6,
+      "cost": {
+        "mountain": 0,
+        "forest": 1,
+        "sun": 3,
+        "water": 0,
+        "wildlife": 1
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "new-river-gorge",
+      "name": "New River Gorge",
+      "copies": 1,
+      "sourceCell": {
+        "row": 7,
+        "column": 3
+      },
+      "points": 5,
+      "cost": {
+        "mountain": 0,
+        "forest": 1,
+        "sun": 2,
+        "water": 3,
+        "wildlife": 0
+      },
+      "hasInstantAction": true,
+      "instantEffect": {
+        "type": "gain_canteen",
+        "amount": 1
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "north-cascades",
+      "name": "North Cascades",
+      "copies": 1,
+      "sourceCell": {
+        "row": 7,
+        "column": 4
+      },
+      "points": 7,
+      "cost": {
+        "mountain": 1,
+        "forest": 2,
+        "sun": 0,
+        "water": 4,
+        "wildlife": 0
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "olympic",
+      "name": "Olympic",
+      "copies": 1,
+      "sourceCell": {
+        "row": 7,
+        "column": 5
+      },
+      "points": 4,
+      "cost": {
+        "mountain": 0,
+        "forest": 3,
+        "sun": 1,
+        "water": 0,
+        "wildlife": 0
+      },
+      "hasInstantAction": true,
+      "instantEffect": {
+        "type": "roll_trail_die",
+        "times": 1
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "petrified-forest",
+      "name": "Petrified Forest",
+      "copies": 1,
+      "sourceCell": {
+        "row": 7,
+        "column": 6
+      },
+      "points": 4,
+      "cost": {
+        "mountain": 0,
+        "forest": 2,
+        "sun": 2,
+        "water": 0,
+        "wildlife": 0
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "pinnacles",
+      "name": "Pinnacles",
+      "copies": 1,
+      "sourceCell": {
+        "row": 7,
+        "column": 7
+      },
+      "points": 4,
+      "cost": {
+        "mountain": 3,
+        "forest": 0,
+        "sun": 1,
+        "water": 0,
+        "wildlife": 0
+      },
+      "hasInstantAction": true,
+      "instantEffect": {
+        "type": "roll_trail_die",
+        "times": 1
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "redwood",
+      "name": "Redwood",
+      "copies": 1,
+      "sourceCell": {
+        "row": 8,
+        "column": 1
+      },
+      "points": 7,
+      "cost": {
+        "mountain": 1,
+        "forest": 4,
+        "sun": 0,
+        "water": 0,
+        "wildlife": 0
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "rocky-mountain",
+      "name": "Rocky Mountain",
+      "copies": 1,
+      "sourceCell": {
+        "row": 8,
+        "column": 2
+      },
+      "points": 6,
+      "cost": {
+        "mountain": 1,
+        "forest": 1,
+        "sun": 2,
+        "water": 2,
+        "wildlife": 0
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "saguaro",
+      "name": "Saguaro",
+      "copies": 1,
+      "sourceCell": {
+        "row": 8,
+        "column": 3
+      },
+      "points": 3,
+      "cost": {
+        "mountain": 0,
+        "forest": 1,
+        "sun": 2,
+        "water": 0,
+        "wildlife": 0
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "sequoia",
+      "name": "Sequoia",
+      "copies": 1,
+      "sourceCell": {
+        "row": 8,
+        "column": 4
+      },
+      "points": 5,
+      "cost": {
+        "mountain": 0,
+        "forest": 4,
+        "sun": 0,
+        "water": 0,
+        "wildlife": 0
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "shenandoah",
+      "name": "Shenandoah",
+      "copies": 1,
+      "sourceCell": {
+        "row": 8,
+        "column": 5
+      },
+      "points": 4,
+      "cost": {
+        "mountain": 0,
+        "forest": 2,
+        "sun": 1,
+        "water": 1,
+        "wildlife": 0
+      },
+      "hasInstantAction": true,
+      "instantEffect": {
+        "type": "take_shutterbug_badge"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "theodore-roosevelt",
+      "name": "Theodore Roosevelt",
+      "copies": 1,
+      "sourceCell": {
+        "row": 8,
+        "column": 6
+      },
+      "points": 5,
+      "cost": {
+        "mountain": 1,
+        "forest": 3,
+        "sun": 1,
+        "water": 0,
+        "wildlife": 0
+      },
+      "hasInstantAction": true,
+      "instantEffect": {
+        "type": "gain_resources",
+        "resources": {
+          "water": 2
+        }
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "virgin-islands",
+      "name": "Virgin Islands",
+      "copies": 1,
+      "sourceCell": {
+        "row": 8,
+        "column": 7
+      },
+      "points": 4,
+      "cost": {
+        "mountain": 0,
+        "forest": 0,
+        "sun": 2,
+        "water": 1,
+        "wildlife": 1
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "voyageurs",
+      "name": "Voyageurs",
+      "copies": 1,
+      "sourceCell": {
+        "row": 9,
+        "column": 1
+      },
+      "points": 6,
+      "cost": {
+        "mountain": 0,
+        "forest": 3,
+        "sun": 0,
+        "water": 3,
+        "wildlife": 0
+      },
+      "hasInstantAction": true,
+      "instantEffect": {
+        "type": "gain_resources",
+        "resources": {
+          "sun": 1
+        }
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "white-sands",
+      "name": "White Sands",
+      "copies": 1,
+      "sourceCell": {
+        "row": 9,
+        "column": 2
+      },
+      "points": 3,
+      "cost": {
+        "mountain": 0,
+        "forest": 0,
+        "sun": 1,
+        "water": 0,
+        "wildlife": 1
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "wind-cave",
+      "name": "Wind Cave",
+      "copies": 1,
+      "sourceCell": {
+        "row": 9,
+        "column": 3
+      },
+      "points": 4,
+      "cost": {
+        "mountain": 0,
+        "forest": 3,
+        "sun": 0,
+        "water": 1,
+        "wildlife": 0
+      },
+      "hasInstantAction": true,
+      "instantEffect": {
+        "type": "take_shutterbug_badge"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "wrangell-st-elias",
+      "name": "Wrangell–St. Elias",
+      "copies": 1,
+      "sourceCell": {
+        "row": 9,
+        "column": 4
+      },
+      "points": 7,
+      "cost": {
+        "mountain": 0,
+        "forest": 4,
+        "sun": 0,
+        "water": 2,
+        "wildlife": 0
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "yellowstone",
+      "name": "Yellowstone",
+      "copies": 1,
+      "sourceCell": {
+        "row": 9,
+        "column": 5
+      },
+      "points": 6,
+      "cost": {
+        "mountain": 0,
+        "forest": 0,
+        "sun": 2,
+        "water": 3,
+        "wildlife": 1
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "yosemite",
+      "name": "Yosemite",
+      "copies": 1,
+      "sourceCell": {
+        "row": 9,
+        "column": 6
+      },
+      "points": 6,
+      "cost": {
+        "mountain": 1,
+        "forest": 1,
+        "sun": 1,
+        "water": 1,
+        "wildlife": 1
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    },
+    {
+      "id": "zion",
+      "name": "Zion",
+      "copies": 1,
+      "sourceCell": {
+        "row": 9,
+        "column": 7
+      },
+      "points": 4,
+      "cost": {
+        "mountain": 3,
+        "forest": 0,
+        "sun": 0,
+        "water": 0,
+        "wildlife": 0
+      },
+      "hasInstantAction": false,
+      "instantEffect": {
+        "type": "none"
+      },
+      "needsReview": false,
+      "reviewNotes": []
+    }
+  ],
+  "secondarySourceCrossCheck": {
+    "sourceId": "bga-public-tutorial",
+    "status": "matched",
+    "checkedOn": "2026-10-09",
+    "matchedCardCount": 63,
+    "comparedRuleFieldCount": 441,
+    "comparedRuleFields": [
+      "points",
+      "cost.mountain",
+      "cost.forest",
+      "cost.sun",
+      "cost.water",
+      "cost.wildlife",
+      "instantEffect"
+    ],
+    "ruleDifferences": [],
+    "nameDifferences": [
+      {
+        "id": "kings-canyon",
+        "officialCard": "Kings Canyon",
+        "secondarySource": "King's Canyon",
+        "resolution": "保留官方卡名；二者费用、积分和即时效果相同。"
+      },
+      {
+        "id": "cuyahoga-valley",
+        "officialCard": "Cuyahoga Valley",
+        "secondarySource": "Cuyahoga National Park",
+        "resolution": "保留官方卡名；二者费用、积分和即时效果相同。"
+      }
+    ],
+    "normalization": "匹配时忽略通用National Park字样和名称排版字符；上述两项名称差异显式映射，不改变官方卡面事实。",
+    "limit": "已完成独立数据来源的规则字段比对，未冒称由另一人完成逐张卡面目视复核。"
+  }
+}

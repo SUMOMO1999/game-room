@@ -1,7 +1,7 @@
 import { createHash, randomBytes, randomInt } from 'node:crypto';
 import { defaultGameRegistry } from './game-registry.mjs';
 import { snapshotHasRoles, snapshotGameType, snapshotFormatProblem, serializeRoomSnapshot } from '../server/room-snapshot-compat.mjs';
-import { roomExpiry } from '../server/games/adapter-contract.mjs';
+import { roomExpiry, participantLimits } from '../server/games/adapter-contract.mjs';
 
 const COMMON_ACTIONS = new Set(['ready', 'start', 'rematch', 'leave', 'transferHost', 'pause', 'resume', 'set-role','configure']);
 export const DEFAULT_TURN_TIMEOUT_MS = 30 * 60 * 1000;
@@ -34,6 +34,22 @@ function validateName(value) {
     fail(400, 'INVALID_NAME', '称呼需要1～16个字，不能包含控制字符。');
   }
   return name;
+}
+// Both creation fingerprinting and actual construction use the existing adapter
+// configuration judge. Omitted input preserves all historical create fingerprints.
+export function normalizedInitialConfiguration(adapter, value) {
+  if (value === undefined) return undefined;
+  if (!value || typeof value !== 'object' || Array.isArray(value) || !Object.keys(value).length
+      || Object.keys(value).some(key => !adapter.configurationFields.includes(key))) fail(400,'INVALID_CONFIG','初始设置含有不适用的字段。');
+  const room = { gameType: adapter.gameType, phase: 'waiting', players: [], ...adapter.roomDefaults() };
+  const action = { type: 'configure', ...structuredClone(value) };
+  const support = adapter.configurationSupportProblem(room, action);
+  if (support) fail(support.status,support.code,support.message);
+  const result = adapter.configure(room, action);
+  if (result.problem) fail(result.problem.status,result.problem.code,result.problem.message);
+  if (!result.updates || Object.keys(result.updates).some(key => !adapter.configurationFields.includes(key))
+      || Object.keys(value).some(key => !Object.hasOwn(result.updates,key))) fail(500,'INVALID_CONFIG_CONTRACT','游戏初始设置暂时不可用。');
+  return structuredClone(result.updates);
 }
 function validateAction(action, adapter) {
   if (!action || typeof action !== 'object' || Array.isArray(action)
@@ -80,7 +96,8 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
   const closedRooms = new Map();
   const adapterFor = (room) => gameRegistry.gameAdapter(room.gameType, { gameEngine });
   const expiry = room => roomExpiry(room, adapterFor(room), { ttlMs, pausedTtlMs });
-  const activityTypes = new Set([...COMMON_ACTIONS, ...gameRegistry.activityTypes(), 'finished', 'timeout', 'cancelled', 'lifecycle']);
+  const activityTypes = new Set([...COMMON_ACTIONS, ...gameRegistry.activityTypes(), 'finished', 'timeout', 'cancelled', 'lifecycle', 'system']);
+  const limitsFor = room => participantLimits(room,adapterFor(room));
   const currentPlayer = (room) => room.game?.turnPlayerId ?? room.game?.players[room.game.turnIndex]?.id ?? null;
   function startClock(room, firstPlayerId = currentPlayer(room), durationMs = turnTimeoutMs) {
     const adapter = adapterFor(room);
@@ -154,6 +171,12 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
     room.matchEndedAt = endedAt;
     const result = status === 'completed' || lifecycleResult || typeof adapter.matchSummary === 'function' ? room.game.result : null;
     const extra = typeof adapter.matchSummary === 'function' ? adapter.matchSummary(room.game) : null;
+    const historyExtra = typeof adapter.historySummary === 'function' ? adapter.historySummary(room.game,{status,reason}) : null;
+    if (historyExtra && (typeof historyExtra !== 'object' || Array.isArray(historyExtra)
+        || Object.keys(historyExtra).some(key => !adapter.historySummaryFields.includes(key)
+          || ['matchId','roomId','roomCode','game','ruleVersion','startedAt','endedAt','status','reason','players','legacy'].includes(key)))) {
+      fail(500,'INVALID_SETTLEMENT','游戏历史摘要合同无效。');
+    }
     // Game seating may be shuffled independently of the frozen account list.
     // Ledger deltas must follow that list, not the game's presentation order.
     let deltas;
@@ -171,13 +194,14 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
       game: room.gameType, ruleVersion: room.game.ruleVersion, startedAt: room.matchStartedAt, endedAt: room.matchEndedAt,
       status, reason, ...(room.matchStartedAt === null ? { legacy: true } : {}),
       ...(extra ? { ...extra, deltas } : {}),
+      ...(historyExtra ?? {}),
       players: (room.matchParticipants ?? []).filter((player) => player.userKey).map((player) => ({
         userKey: player.userKey, seatId: player.playerId, nickname: player.name,
         ...adapter.playerResult(result, player.playerId),
       })) };
     room.pendingRecords ??= [];
     // Older anonymous or mixed-seat games have no complete account ownership; never invent history participants.
-    if (summary.players.length === room.game.players.length && summary.players.length >= 2
+    if (summary.players.length === room.game.players.length && summary.players.length >= (adapter.allowsSolo === true ? 1 : 2)
         && !room.pendingRecords.some((record) => record.matchId === summary.matchId)) room.pendingRecords.push(summary);
   }
   function resetForWaiting(room) {
@@ -278,6 +302,8 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
     return {
       roomCode: room.code, phase: room.phase, revision: room.revision,
       ...gameRegistry.gameInfo(room.gameType),
+      ...(adapterFor(room).participantLimits ? { minPlayers: limitsFor(room).playing.min,
+        maxPlayers: limitsFor(room).playing.max, participantLimits: limitsFor(room) } : {}),
       ...(room.roomId ? { roomId: room.roomId } : {}),
       hostId: room.hostId, selfId: player.id,
       selfRole,spectatorCapacity:SPECTATOR_CAPACITY,
@@ -327,7 +353,7 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
   function credentials(room, player, token) {
     return { roomCode: room.code, playerId: player.id, token, view: playerView(room, player) };
   }
-  function createRoom(name, { gameType = 'rummikub' } = {}) {
+  function createRoom(name, { gameType = 'rummikub', initialConfiguration } = {}) {
     gameType = roomType(gameType);
     sweep();
     if (rooms.size >= maxRooms) fail(503, 'ROOM_LIMIT', '本机房间已满，请稍后再试。');
@@ -337,6 +363,7 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
     const room = { code, gameType, hostId: player.id, phase: 'waiting', revision: 0,
       players: [player], game: null, listeners: new Map(), lastActiveAt: now(), hostSinceAt: now(), leaveReceipts: {}, pendingRecords: [] };
     Object.assign(room, adapterFor(room).roomDefaults());
+    Object.assign(room,normalizedInitialConfiguration(adapterFor(room),initialConfiguration));
     rooms.set(code, room);
     return credentials(room, player, token);
   }
@@ -403,7 +430,11 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
         if(player.id!==room.hostId) fail(403,'HOST_REQUIRED','只有房主可以更改本局规则。');
         const configuration = adapter.configure(room, input);
         if (configuration.problem) fail(configuration.problem.status, configuration.problem.code, configuration.problem.message);
-        Object.assign(room, configuration.updates);room.rolesEnabled=true;for(const member of room.players) member.ready=false;
+        const proposed = { ...room, ...configuration.updates };
+        if (room.players.length > limitsFor(proposed).waiting.max) fail(409,'CONFIG_PARTICIPANTS','当前玩家人数超出该模式上限，请先调整席位。');
+        const changed = canonical(configuration.updates) !== canonical(Object.fromEntries(Object.keys(configuration.updates).map(key => [key,room[key]])));
+        Object.assign(room, configuration.updates);room.rolesEnabled=true;
+        if (changed || !adapter.participantLimits) for(const member of room.players) member.ready=false;
       } else if(input.type==='set-role') {
         const current=spectator?'spectator':'player';
         if(input.role===current) fail(409,'ROLE_UNCHANGED','你已是这个房间的当前身份。');
@@ -416,8 +447,9 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
       else if (input.type === 'start') {
         roomType(room.gameType); // Restorable games may still be closed to new matches.
         if (player.id !== room.hostId) fail(403, 'HOST_REQUIRED', '只有房主可以开始对局。');
-        if (room.players.length < adapter.minPlayers || room.players.length > adapter.maxPlayers || !room.players.every((entry) => entry.ready)) {
-          fail(409, 'NOT_READY', `需要${adapter.minPlayers === adapter.maxPlayers ? adapter.minPlayers : `${adapter.minPlayers}～${adapter.maxPlayers}`}人加入，且所有人准备后才能开始。`);
+        const limits = limitsFor(room).playing;
+        if (room.players.length < limits.min || room.players.length > limits.max || !room.players.every((entry) => entry.ready)) {
+          fail(409, 'NOT_READY', `需要${limits.min === limits.max ? limits.min : `${limits.min}～${limits.max}`}人加入，且所有人准备后才能开始。`);
         }
         const newMatchId = randomBytes(16).toString('hex'), startedAt = now();
         room.game = adapter.createGame(room.players.map(({ id, name }) => ({ id, name })),
@@ -452,7 +484,8 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
           if (host) activity(room, player, 'transferHost', `${host.name}接任房主。`);
         }
         let endingText = '';
-        if (endedActiveGame) endingText = typeof adapter.lifecycleTransition !== 'function' ? '本局中止，不计输赢。'
+        if (endedActiveGame) endingText = room.game?.result?.aborted ? '本局中止，不计输赢或得分。'
+          : typeof adapter.lifecycleTransition !== 'function' ? '本局中止，不计输赢。'
           : adapter.usesPresenceLifecycle ? '本局已结束，结果已保存。' : '本局已结束，离席计分已确认。';
         activity(room, player, 'leave', `${player.name}退出房间。${endingText}`);
         room.revision += 1;
@@ -487,7 +520,9 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
           if (typeof adapter.receiptResultProblem !== 'function' || adapter.receiptResultProblem(result.guessResult)) fail(500, 'INVALID_RECEIPT', '游戏反馈暂时无法保存。');
           guessResult = structuredClone(result.guessResult);
         }
+        if (result.roomPhase !== undefined && !['playing','paused','finished'].includes(result.roomPhase)) fail(500,'INVALID_GAME_PHASE','游戏阶段合同无效。');
         room.game = result.state;
+        if (result.roomPhase !== undefined) room.phase = result.roomPhase;
         if (room.game.status === 'finished') { room.phase = 'finished'; room.pauseVote = null; conclude(room, 'completed', room.game.result.reason); }
       }
       if (['pause', 'resume'].includes(input.type) && typeof adapter.onPhaseChanged === 'function') {
@@ -533,10 +568,36 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
     if (result.changed === false) return false;
     if (clock.version === 3) room.clockAdvance = { fromRevision: room.revision, toRevision: room.revision + 1, clockId: clock.id, kind: clock.kind, matchId: room.matchId };
     room.game = result.state;
+    if (result.roomPhase !== undefined) {
+      if (!['playing','paused','finished'].includes(result.roomPhase)) fail(500,'INVALID_TIMEOUT','游戏超时阶段合同无效。');
+      room.phase = result.roomPhase;
+    }
     if (room.game.status === 'finished') { room.phase = 'finished'; room.pauseVote = null; conclude(room, 'completed', room.game.result.reason); }
     activity(room, player, 'timeout', timeoutText);
     if (room.phase === 'finished') activity(room, null, 'finished', '本局已结束，结算已保存。');
     syncClock(room); room.revision += 1; broadcast(room);
+    return true;
+  }
+  // A saved system cursor is internal authority, never a client action. The
+  // durable driver commits this exact cursor and state together using CAS.
+  function applySystemStep(code, step) {
+    const room = rooms.get(code);
+    if (!room || room.phase !== 'playing' || now() >= expiry(room)) return false;
+    const adapter = adapterFor(room), expected = adapter.nextSystemStep?.(room.game);
+    if (!expected || canonical(expected) !== canonical(step) || step.matchId !== room.matchId) return false;
+    const beforeGame = room.game;
+    const result = adapter.applySystemStep(room.game,step,{now:now(),serverRandomInt});
+    if (!result.ok) fail(500,result.code ?? 'INVALID_SYSTEM_STEP',result.error);
+    if (result.changed === false) return false;
+    if (adapter.stateProblem(result.state)) fail(500,'INVALID_SYSTEM_STEP','系统步骤产生了无效游戏状态。');
+    if (result.roomPhase !== undefined && !['playing','paused','finished'].includes(result.roomPhase)) fail(500,'INVALID_SYSTEM_STEP','系统步骤阶段无效。');
+    room.game = result.state;
+    if (result.roomPhase !== undefined) room.phase=result.roomPhase;
+    if (room.game.status === 'finished') { room.phase='finished'; room.pauseVote=null; conclude(room,'completed',room.game.result.reason); }
+    syncClock(room);
+    const text = adapter.describeSystemStep?.({step,beforeGame,afterGame:room.game});
+    if (text) activity(room,null,'system',text);
+    room.revision += 1; room.lastActiveAt=now(); broadcast(room);
     return true;
   }
   function action(code, token, input) {
@@ -564,7 +625,7 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
   function membership(room, player) {
     return { roomCode: room.code, playerId: player.id, view: playerView(room, player) };
   }
-  function createTrustedRoom(userKey, name, { code, roomId, gameType = 'rummikub' } = {}) {
+  function createTrustedRoom(userKey, name, { code, roomId, gameType = 'rummikub', initialConfiguration } = {}) {
     gameType = roomType(gameType);
     if (typeof userKey !== 'string' || !/^[a-f0-9]{64}$/.test(userKey)) fail(401, 'INVALID_IDENTITY', '请重新登录棋牌。');
     if (typeof code !== 'string' || !/^\d{6}$/.test(code) || typeof roomId !== 'string' || !/^[a-f0-9]{32}$/.test(roomId)) {
@@ -575,13 +636,15 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
     const room = { code, roomId, gameType, hostId: player.id, phase: 'waiting', revision: 0,
       players: [player], game: null, listeners: new Map(), lastActiveAt: now(), hostSinceAt: now(), leaveReceipts: {}, pendingRecords: [] };
     Object.assign(room, adapterFor(room).roomDefaults());
+    Object.assign(room,normalizedInitialConfiguration(adapterFor(room),initialConfiguration));
     rooms.set(code, room);
     return membership(room, player);
   }
   function joinRole(room,role) {
     if(role!==undefined && !['player','spectator'].includes(role)) fail(400,'INVALID_ROLE','请选择玩家或观众。');
     const resolved=room.phase==='waiting'?(role ?? 'player'):'spectator';
-    if(resolved==='player' && room.players.length>=adapterFor(room).maxPlayers) fail(409,'ROOM_FULL',`这个房间最多容纳${adapterFor(room).maxPlayers}位玩家。`);
+    const maximum=limitsFor(room).waiting.max;
+    if(resolved==='player' && room.players.length>=maximum) fail(409,'ROOM_FULL',`这个房间最多容纳${maximum}位玩家。`);
     if(resolved==='spectator' && (room.spectators ?? []).length>=SPECTATOR_CAPACITY) fail(409,'SPECTATOR_FULL',`这个房间最多容纳${SPECTATOR_CAPACITY}位观众。`);
     return resolved;
   }
@@ -667,6 +730,12 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
       fail(500, 'INVALID_SNAPSHOT', '房间保存的生命周期无效。');
     }
     data.gameType = adapter.gameType;
+    if (adapter.participantLimits) {
+      const limits=limitsFor(data),count=data.phase==='waiting'?data.players.length:(data.matchParticipants?.length ?? data.game?.players?.length);
+      const phase=data.phase==='waiting'?'waiting':'playing';
+      if (!Number.isSafeInteger(count) || count<limits[phase].min || count>limits[phase].max
+          || data.players.length>limits[phase].max) fail(500,'INVALID_SNAPSHOT','模式与冻结参赛人数不一致。');
+    }
     if (adapter.usesActionIntents && members(data).some(player =>
       new Set(player.requests.map(entry => entry?.[0])).size !== player.requests.length || player.requests.some(entry =>
         !Array.isArray(entry) || entry.length !== 2 || !/^[A-Za-z0-9_-]{1,128}$/.test(entry[0])
@@ -743,5 +812,5 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
     closedRooms.clear();
   }
   return { createRoom, joinRoom, getView, action, subscribe, sweep, close,
-    createTrustedRoom, joinTrustedRoom, getTrustedView, trustedAction, exportSnapshot, importSnapshot, expireRoom, applyTurnTimeout, applyLifecycle };
+    createTrustedRoom, joinTrustedRoom, getTrustedView, trustedAction, exportSnapshot, importSnapshot, expireRoom, applyTurnTimeout, applyLifecycle, applySystemStep };
 }

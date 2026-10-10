@@ -13,3 +13,7 @@ test('unknown game types and untrusted paths never silently route to another gam
   for (const type of ['mahjong', '', null, {}, '__proto__']) assert.throws(() => roomHref('123456', type));
   for (const code of ['../army.html', '123456&token=secret', '12345', 'ABCDEF', 123456]) assert.throws(() => roomHref(code, 'army-flip'));
 });
+test('PARKS routes to its authoritative room page while dynamic mode limits remain in server views',()=>{
+  assert.equal(roomHref('123456','parks'),'./parks.html?code=123456');assert.equal(gameName('parks'),'国家公园');
+  assert.deepEqual(gameDetails('parks'),{name:'国家公园',page:'parks.html',minPlayers:1,maxPlayers:5});
+});

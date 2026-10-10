@@ -1,0 +1,1523 @@
+{
+  "schema": "parks-research-component-catalog-v1",
+  "edition": "PARKS Second Edition",
+  "asOf": "2026-10-09",
+  "status": "research facts; not runtime data",
+  "sources": {
+    "official-1.1": {
+      "url": "https://cdn.shopify.com/s/files/1/1898/8501/files/Parks-2nd-Edition-1.1-Rules_Online.pdf?v=1755706180",
+      "readLevel": "PDF pages visually read",
+      "edition": "Second Edition rulebook 1.1",
+      "role": "primary rules and components"
+    },
+    "bga-public-tutorial": {
+      "url": "https://boardgamearena.com/tutorial?game=parks",
+      "readLevel": "anonymous public HTML static component definitions read; normal browser visually inspected, including unobstructed season faces spring512, summer502 and fall523",
+      "version": "250417-1214",
+      "readAt": "2026-10-09",
+      "role": "complete digital component inventory; older than rulebook 1.1",
+      "htmlSha256": "98a06178a1e23283082b1907da363e6941e71e57444b0392034a0a4857b72b52",
+      "limitation": "Not all 37 individual physical card images independently compared. No game source or image is included in this catalog."
+    },
+    "artist-photo": {
+      "url": "https://www.moregamesplease.com/art-in-boardgames/2025/4/18/josh-emrich-parks-2nd-edition-art-in-board-games-72",
+      "readLevel": "photo visually read",
+      "role": "Camp Mug #10, Telephoto Lens #11, partial Field Guide card corroboration"
+    },
+    "bga-help": {
+      "url": "https://en.doc.boardgamearena.com/Gamehelpparks",
+      "readLevel": "public text read",
+      "role": "site actions and die faces"
+    },
+    "designer-index": {
+      "url": "https://boardgamegeek.com/filepage/293507/parks-2nd-edition-rulebook",
+      "readLevel": "search-engine indexed complete comment read; direct page not read",
+      "role": "supporting clue for site-vs-action trigger; not independently verified erratum"
+    },
+    "bga-public-effects-help": {
+      "url": "https://x.boardgamearena.net/data/themereleases/current/games/parks/250417-1214/modules/pks-effects.js",
+      "readLevel": "public help descriptions read as text, not executed; direct mapping of 501 to printed gear sun cost and 502 to canteen count"
+    }
+  },
+  "counts": {
+    "gearCards": 37,
+    "gearDistinctNames": 13,
+    "gearDistinctDefinitions": 37,
+    "canteenTokens": 24,
+    "canteenDistinctDefinitions": 6,
+    "seasonTiles": 12,
+    "springTiles": 4,
+    "summerTiles": 4,
+    "fallTiles": 4,
+    "removableTrailTiles": 8,
+    "fixedParksSite": 1,
+    "trailActions": 9,
+    "dieFaces": 6
+  },
+  "gear": [
+    {
+      "id": "gear.01",
+      "referenceNumber": 1,
+      "name": "Flint & Tinder",
+      "zhNameProvisional": "燧石与火绒",
+      "copies": 1,
+      "sunCost": 1,
+      "trigger": {
+        "kind": "visitTrailSite",
+        "siteId": 4,
+        "description": "到访2水地点"
+      },
+      "effectSteps": [
+        "重新点燃营火"
+      ],
+      "effectSourceCodes": [
+        113
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.02",
+      "referenceNumber": 2,
+      "name": "Flint & Tinder",
+      "zhNameProvisional": "燧石与火绒",
+      "copies": 1,
+      "sunCost": 1,
+      "trigger": {
+        "kind": "visitTrailSite",
+        "siteId": 3,
+        "description": "到访2太阳地点"
+      },
+      "effectSteps": [
+        "重新点燃营火"
+      ],
+      "effectSourceCodes": [
+        113
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.03",
+      "referenceNumber": 3,
+      "name": "Flint & Tinder",
+      "zhNameProvisional": "燧石与火绒",
+      "copies": 1,
+      "sunCost": 1,
+      "trigger": {
+        "kind": "visitTrailSite",
+        "siteId": 1,
+        "description": "到访森林地点"
+      },
+      "effectSteps": [
+        "重新点燃营火"
+      ],
+      "effectSourceCodes": [
+        113
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.04",
+      "referenceNumber": 4,
+      "name": "Flint & Tinder",
+      "zhNameProvisional": "燧石与火绒",
+      "copies": 1,
+      "sunCost": 1,
+      "trigger": {
+        "kind": "visitTrailSite",
+        "siteId": 2,
+        "description": "到访山地点"
+      },
+      "effectSteps": [
+        "重新点燃营火"
+      ],
+      "effectSourceCodes": [
+        113
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.05",
+      "referenceNumber": 5,
+      "name": "Wide Angle Lens",
+      "zhNameProvisional": "广角镜头",
+      "copies": 1,
+      "sunCost": 1,
+      "trigger": {
+        "kind": "visitTrailSite",
+        "siteId": 4,
+        "description": "到访2水地点"
+      },
+      "effectSteps": [
+        "支付1资源拍1照片"
+      ],
+      "effectSourceCodes": [
+        212
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.06",
+      "referenceNumber": 6,
+      "name": "Wide Angle Lens",
+      "zhNameProvisional": "广角镜头",
+      "copies": 1,
+      "sunCost": 1,
+      "trigger": {
+        "kind": "visitTrailSite",
+        "siteId": 3,
+        "description": "到访2太阳地点"
+      },
+      "effectSteps": [
+        "支付1资源拍1照片"
+      ],
+      "effectSourceCodes": [
+        212
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.07",
+      "referenceNumber": 7,
+      "name": "Wide Angle Lens",
+      "zhNameProvisional": "广角镜头",
+      "copies": 1,
+      "sunCost": 1,
+      "trigger": {
+        "kind": "visitTrailSite",
+        "siteId": 1,
+        "description": "到访森林地点"
+      },
+      "effectSteps": [
+        "支付1资源拍1照片"
+      ],
+      "effectSourceCodes": [
+        212
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.08",
+      "referenceNumber": 8,
+      "name": "Wide Angle Lens",
+      "zhNameProvisional": "广角镜头",
+      "copies": 1,
+      "sunCost": 1,
+      "trigger": {
+        "kind": "visitTrailSite",
+        "siteId": 2,
+        "description": "到访山地点"
+      },
+      "effectSteps": [
+        "支付1资源拍1照片"
+      ],
+      "effectSourceCodes": [
+        212
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.09",
+      "referenceNumber": 9,
+      "name": "Camp Mug",
+      "zhNameProvisional": "营地杯",
+      "copies": 1,
+      "sunCost": 1,
+      "trigger": {
+        "kind": "performAction",
+        "description": "执行“支付1资源换1野生动物”",
+        "sourceCode": 211
+      },
+      "effectSteps": [
+        "获得1水壶标记"
+      ],
+      "effectSourceCodes": [
+        203
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.10",
+      "referenceNumber": 10,
+      "name": "Camp Mug",
+      "zhNameProvisional": "营地杯",
+      "copies": 1,
+      "sunCost": 1,
+      "trigger": {
+        "kind": "performAction",
+        "description": "执行“预订1公园”",
+        "sourceCode": 222
+      },
+      "effectSteps": [
+        "获得1水壶标记"
+      ],
+      "effectSourceCodes": [
+        203
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.11",
+      "referenceNumber": 11,
+      "name": "Telephoto Lens",
+      "zhNameProvisional": "长焦镜头",
+      "copies": 1,
+      "sunCost": 1,
+      "trigger": {
+        "kind": "performAction",
+        "description": "执行“支付1资源换1野生动物”",
+        "sourceCode": 211
+      },
+      "effectSteps": [
+        "支付1资源拍1照片"
+      ],
+      "effectSourceCodes": [
+        212
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.12",
+      "referenceNumber": 12,
+      "name": "Telephoto Lens",
+      "zhNameProvisional": "长焦镜头",
+      "copies": 1,
+      "sunCost": 1,
+      "trigger": {
+        "kind": "performAction",
+        "description": "执行“预订1公园”",
+        "sourceCode": 222
+      },
+      "effectSteps": [
+        "支付1资源拍1照片"
+      ],
+      "effectSourceCodes": [
+        212
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.13",
+      "referenceNumber": 13,
+      "name": "Telephoto Lens",
+      "zhNameProvisional": "长焦镜头",
+      "copies": 1,
+      "sunCost": 1,
+      "trigger": {
+        "kind": "performAction",
+        "description": "执行“掷1次步道骰并结算”",
+        "sourceCode": 110
+      },
+      "effectSteps": [
+        "支付1资源拍1照片"
+      ],
+      "effectSourceCodes": [
+        212
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.14",
+      "referenceNumber": 14,
+      "name": "Compass",
+      "zhNameProvisional": "指南针",
+      "copies": 1,
+      "sunCost": 1,
+      "trigger": {
+        "kind": "performAction",
+        "description": "执行“支付1资源换1野生动物”",
+        "sourceCode": 211
+      },
+      "effectSteps": [
+        "预订1公园"
+      ],
+      "effectSourceCodes": [
+        222
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.15",
+      "referenceNumber": 15,
+      "name": "Compass",
+      "zhNameProvisional": "指南针",
+      "copies": 1,
+      "sunCost": 1,
+      "trigger": {
+        "kind": "performAction",
+        "description": "执行“掷1次步道骰并结算”",
+        "sourceCode": 110
+      },
+      "effectSteps": [
+        "预订1公园"
+      ],
+      "effectSourceCodes": [
+        222
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.16",
+      "referenceNumber": 16,
+      "name": "Journal",
+      "zhNameProvisional": "旅行日志",
+      "copies": 1,
+      "sunCost": 1,
+      "trigger": {
+        "kind": "visitTrailSite",
+        "siteId": 4,
+        "description": "到访2水地点"
+      },
+      "effectSteps": [
+        "预订1公园"
+      ],
+      "effectSourceCodes": [
+        222
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.17",
+      "referenceNumber": 17,
+      "name": "Journal",
+      "zhNameProvisional": "旅行日志",
+      "copies": 1,
+      "sunCost": 1,
+      "trigger": {
+        "kind": "visitTrailSite",
+        "siteId": 3,
+        "description": "到访2太阳地点"
+      },
+      "effectSteps": [
+        "预订1公园"
+      ],
+      "effectSourceCodes": [
+        222
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.18",
+      "referenceNumber": 18,
+      "name": "Journal",
+      "zhNameProvisional": "旅行日志",
+      "copies": 1,
+      "sunCost": 1,
+      "trigger": {
+        "kind": "visitTrailSite",
+        "siteId": 1,
+        "description": "到访森林地点"
+      },
+      "effectSteps": [
+        "预订1公园"
+      ],
+      "effectSourceCodes": [
+        222
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.19",
+      "referenceNumber": 19,
+      "name": "Journal",
+      "zhNameProvisional": "旅行日志",
+      "copies": 1,
+      "sunCost": 1,
+      "trigger": {
+        "kind": "visitTrailSite",
+        "siteId": 2,
+        "description": "到访山地点"
+      },
+      "effectSteps": [
+        "预订1公园"
+      ],
+      "effectSourceCodes": [
+        222
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.20",
+      "referenceNumber": 20,
+      "name": "Mystery Cache",
+      "zhNameProvisional": "神秘物资箱",
+      "copies": 1,
+      "sunCost": 2,
+      "trigger": {
+        "kind": "performAction",
+        "description": "执行“支付1资源拍1照片”",
+        "sourceCode": 212
+      },
+      "effectSteps": [
+        "掷1次步道骰并结算"
+      ],
+      "effectSourceCodes": [
+        110
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.21",
+      "referenceNumber": 21,
+      "name": "Sunscreen",
+      "zhNameProvisional": "防晒霜",
+      "copies": 1,
+      "sunCost": 2,
+      "trigger": {
+        "kind": "performAction",
+        "description": "执行“支付1资源换1野生动物”",
+        "sourceCode": 211
+      },
+      "effectSteps": [
+        "获得1太阳",
+        "获得1太阳"
+      ],
+      "effectSourceCodes": [
+        103,
+        103
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.22",
+      "referenceNumber": 22,
+      "name": "Sunscreen",
+      "zhNameProvisional": "防晒霜",
+      "copies": 1,
+      "sunCost": 2,
+      "trigger": {
+        "kind": "performAction",
+        "description": "执行“支付1资源拍1照片”",
+        "sourceCode": 212
+      },
+      "effectSteps": [
+        "获得1太阳",
+        "获得1太阳"
+      ],
+      "effectSourceCodes": [
+        103,
+        103
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.23",
+      "referenceNumber": 23,
+      "name": "Rain Gear",
+      "zhNameProvisional": "雨具",
+      "copies": 1,
+      "sunCost": 2,
+      "trigger": {
+        "kind": "performAction",
+        "description": "执行“支付1资源换1野生动物”",
+        "sourceCode": 211
+      },
+      "effectSteps": [
+        "获得1水",
+        "获得1水"
+      ],
+      "effectSourceCodes": [
+        104,
+        104
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.24",
+      "referenceNumber": 24,
+      "name": "Rain Gear",
+      "zhNameProvisional": "雨具",
+      "copies": 1,
+      "sunCost": 2,
+      "trigger": {
+        "kind": "performAction",
+        "description": "执行“支付1资源拍1照片”",
+        "sourceCode": 212
+      },
+      "effectSteps": [
+        "获得1水",
+        "获得1水"
+      ],
+      "effectSourceCodes": [
+        104,
+        104
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.25",
+      "referenceNumber": 25,
+      "name": "Binoculars",
+      "zhNameProvisional": "双筒望远镜",
+      "copies": 1,
+      "sunCost": 2,
+      "trigger": {
+        "kind": "performAction",
+        "description": "执行“预订1公园”",
+        "sourceCode": 222
+      },
+      "effectSteps": [
+        "获得1山"
+      ],
+      "effectSourceCodes": [
+        102
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.26",
+      "referenceNumber": 26,
+      "name": "Binoculars",
+      "zhNameProvisional": "双筒望远镜",
+      "copies": 1,
+      "sunCost": 2,
+      "trigger": {
+        "kind": "visitTrailSite",
+        "siteId": 3,
+        "description": "到访2太阳地点"
+      },
+      "effectSteps": [
+        "获得1山"
+      ],
+      "effectSourceCodes": [
+        102
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.27",
+      "referenceNumber": 27,
+      "name": "Binoculars",
+      "zhNameProvisional": "双筒望远镜",
+      "copies": 1,
+      "sunCost": 2,
+      "trigger": {
+        "kind": "visitTrailSite",
+        "siteId": 2,
+        "description": "到访山地点"
+      },
+      "effectSteps": [
+        "获得1山"
+      ],
+      "effectSourceCodes": [
+        102
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.28",
+      "referenceNumber": 28,
+      "name": "Hiking Boots",
+      "zhNameProvisional": "徒步靴",
+      "copies": 1,
+      "sunCost": 2,
+      "trigger": {
+        "kind": "performAction",
+        "description": "执行“预订1公园”",
+        "sourceCode": 222
+      },
+      "effectSteps": [
+        "获得1森林"
+      ],
+      "effectSourceCodes": [
+        101
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.29",
+      "referenceNumber": 29,
+      "name": "Hiking Boots",
+      "zhNameProvisional": "徒步靴",
+      "copies": 1,
+      "sunCost": 2,
+      "trigger": {
+        "kind": "visitTrailSite",
+        "siteId": 4,
+        "description": "到访2水地点"
+      },
+      "effectSteps": [
+        "获得1森林"
+      ],
+      "effectSourceCodes": [
+        101
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.30",
+      "referenceNumber": 30,
+      "name": "Hiking Boots",
+      "zhNameProvisional": "徒步靴",
+      "copies": 1,
+      "sunCost": 2,
+      "trigger": {
+        "kind": "visitTrailSite",
+        "siteId": 1,
+        "description": "到访森林地点"
+      },
+      "effectSteps": [
+        "获得1森林"
+      ],
+      "effectSourceCodes": [
+        101
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.31",
+      "referenceNumber": 31,
+      "name": "Mystery Cache",
+      "zhNameProvisional": "神秘物资箱",
+      "copies": 1,
+      "sunCost": 3,
+      "trigger": {
+        "kind": "performAction",
+        "description": "执行“掷1次步道骰并结算”",
+        "sourceCode": 110
+      },
+      "effectSteps": [
+        "掷1次步道骰并结算"
+      ],
+      "effectSourceCodes": [
+        110
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.32",
+      "referenceNumber": 32,
+      "name": "Sleeping Bag",
+      "zhNameProvisional": "睡袋",
+      "copies": 1,
+      "sunCost": 3,
+      "trigger": {
+        "kind": "visitTrailSite",
+        "siteId": 2,
+        "description": "到访山地点"
+      },
+      "effectSteps": [
+        "获得1太阳",
+        "获得1太阳",
+        "重新点燃营火"
+      ],
+      "effectSourceCodes": [
+        103,
+        103,
+        113
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.33",
+      "referenceNumber": 33,
+      "name": "Sleeping Bag",
+      "zhNameProvisional": "睡袋",
+      "copies": 1,
+      "sunCost": 3,
+      "trigger": {
+        "kind": "visitTrailSite",
+        "siteId": 1,
+        "description": "到访森林地点"
+      },
+      "effectSteps": [
+        "获得1太阳",
+        "获得1太阳",
+        "重新点燃营火"
+      ],
+      "effectSourceCodes": [
+        103,
+        103,
+        113
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.34",
+      "referenceNumber": 34,
+      "name": "Field Guide",
+      "zhNameProvisional": "野外图鉴",
+      "copies": 1,
+      "sunCost": 3,
+      "trigger": {
+        "kind": "visitTrailSite",
+        "siteId": 4,
+        "description": "到访2水地点"
+      },
+      "effectSteps": [
+        "获得1野生动物"
+      ],
+      "effectSourceCodes": [
+        105
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.35",
+      "referenceNumber": 35,
+      "name": "Field Guide",
+      "zhNameProvisional": "野外图鉴",
+      "copies": 1,
+      "sunCost": 3,
+      "trigger": {
+        "kind": "visitTrailSite",
+        "siteId": 3,
+        "description": "到访2太阳地点"
+      },
+      "effectSteps": [
+        "获得1野生动物"
+      ],
+      "effectSourceCodes": [
+        105
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.36",
+      "referenceNumber": 36,
+      "name": "Field Guide",
+      "zhNameProvisional": "野外图鉴",
+      "copies": 1,
+      "sunCost": 3,
+      "trigger": {
+        "kind": "visitTrailSite",
+        "siteId": 1,
+        "description": "到访森林地点"
+      },
+      "effectSteps": [
+        "获得1野生动物"
+      ],
+      "effectSourceCodes": [
+        105
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    },
+    {
+      "id": "gear.37",
+      "referenceNumber": 37,
+      "name": "Field Guide",
+      "zhNameProvisional": "野外图鉴",
+      "copies": 1,
+      "sunCost": 3,
+      "trigger": {
+        "kind": "visitTrailSite",
+        "siteId": 2,
+        "description": "到访山地点"
+      },
+      "effectSteps": [
+        "获得1野生动物"
+      ],
+      "effectSourceCodes": [
+        105
+      ],
+      "limit": "each gear card once per turn",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p9"
+      ],
+      "reviewState": "complete static definition transcribed; physical card image comparison partial"
+    }
+  ],
+  "canteens": [
+    {
+      "id": "canteen.mountain",
+      "referenceNumbers": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "copies": 5,
+      "effect": "获得1山",
+      "sourceRefs": [
+        "bga-public-tutorial"
+      ],
+      "reviewState": "complete static definition transcribed; selected faces visually corroborated"
+    },
+    {
+      "id": "canteen.forest",
+      "referenceNumbers": [
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "copies": 5,
+      "effect": "获得1森林",
+      "sourceRefs": [
+        "bga-public-tutorial"
+      ],
+      "reviewState": "complete static definition transcribed; selected faces visually corroborated"
+    },
+    {
+      "id": "canteen.sun",
+      "referenceNumbers": [
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "copies": 5,
+      "effect": "获得2太阳",
+      "sourceRefs": [
+        "bga-public-tutorial"
+      ],
+      "reviewState": "complete static definition transcribed; selected faces visually corroborated"
+    },
+    {
+      "id": "canteen.parks",
+      "referenceNumbers": [
+        16,
+        17,
+        18
+      ],
+      "copies": 3,
+      "effect": "执行公园动作：预订1座或游览任意多座可支付的公园",
+      "sourceRefs": [
+        "bga-public-tutorial"
+      ],
+      "reviewState": "complete static definition transcribed; selected faces visually corroborated"
+    },
+    {
+      "id": "canteen.photo",
+      "referenceNumbers": [
+        19,
+        20,
+        21
+      ],
+      "copies": 3,
+      "effect": "支付1资源拍1照片",
+      "sourceRefs": [
+        "bga-public-tutorial"
+      ],
+      "reviewState": "complete static definition transcribed; selected faces visually corroborated"
+    },
+    {
+      "id": "canteen.wildlife-trade",
+      "referenceNumbers": [
+        22,
+        23,
+        24
+      ],
+      "copies": 3,
+      "effect": "支付1资源换1野生动物",
+      "sourceRefs": [
+        "bga-public-tutorial"
+      ],
+      "reviewState": "complete static definition transcribed; selected faces visually corroborated"
+    }
+  ],
+  "seasons": [
+    {
+      "id": "season.1.1",
+      "season": "spring",
+      "copies": 1,
+      "compareMetric": "背包内太阳数",
+      "metricSourceCode": 513,
+      "metricEvidence": "confirmed by official p12",
+      "rewardSteps": [
+        "免费取得装备牌堆顶牌"
+      ],
+      "rewardSourceCodes": [
+        114
+      ],
+      "minimumMetric": 1,
+      "tie": "all tied players gain reward",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p12"
+      ],
+      "reviewState": "static definition decoded with primary rule corroboration"
+    },
+    {
+      "id": "season.1.2",
+      "season": "spring",
+      "copies": 1,
+      "compareMetric": "背包内水数",
+      "metricSourceCode": 514,
+      "metricEvidence": "resource code family decoded from matching static and printed symbols",
+      "rewardSteps": [
+        "获得1水壶标记"
+      ],
+      "rewardSourceCodes": [
+        203
+      ],
+      "minimumMetric": 1,
+      "tie": "all tied players gain reward",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p12"
+      ],
+      "reviewState": "static definition decoded with primary rule corroboration"
+    },
+    {
+      "id": "season.1.3",
+      "season": "spring",
+      "copies": 1,
+      "compareMetric": "背包内森林数",
+      "metricSourceCode": 511,
+      "metricEvidence": "resource code family decoded from matching static and printed symbols",
+      "rewardSteps": [
+        "预订1公园"
+      ],
+      "rewardSourceCodes": [
+        222
+      ],
+      "minimumMetric": 1,
+      "tie": "all tied players gain reward",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p12"
+      ],
+      "reviewState": "static definition decoded with primary rule corroboration"
+    },
+    {
+      "id": "season.1.4",
+      "season": "spring",
+      "copies": 1,
+      "compareMetric": "背包内山数",
+      "metricSourceCode": 512,
+      "metricEvidence": "resource code family decoded from matching static and printed symbols",
+      "rewardSteps": [
+        "免费获得1照片"
+      ],
+      "rewardSourceCodes": [
+        106
+      ],
+      "minimumMetric": 1,
+      "tie": "all tied players gain reward",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p12"
+      ],
+      "reviewState": "static definition decoded with primary rule corroboration"
+    },
+    {
+      "id": "season.2.1",
+      "season": "summer",
+      "copies": 1,
+      "compareMetric": "已拥有装备的印刷太阳费用合计",
+      "metricSourceCode": 501,
+      "metricEvidence": "Official p2 example and exhaustive static mapping; strengthened at v0.3 RV by directly reading public pks-effects.js user-facing description: combined printed Sun cost on Gear.",
+      "rewardSteps": [
+        "掷1次步道骰并结算",
+        "掷1次步道骰并结算"
+      ],
+      "rewardSourceCodes": [
+        110,
+        110
+      ],
+      "minimumMetric": 1,
+      "tie": "all tied players gain reward",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p12"
+      ],
+      "reviewState": "mapped by exhaustive comparison of complete four-entry summer set and primary printed example"
+    },
+    {
+      "id": "season.2.2",
+      "season": "summer",
+      "copies": 1,
+      "compareMetric": "背包内野生动物数",
+      "metricSourceCode": 515,
+      "metricEvidence": "resource code family decoded from matching static and printed symbols",
+      "rewardSteps": [
+        "掷1次步道骰并结算",
+        "掷1次步道骰并结算"
+      ],
+      "rewardSourceCodes": [
+        110,
+        110
+      ],
+      "minimumMetric": 1,
+      "tie": "all tied players gain reward",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p12"
+      ],
+      "reviewState": "static definition decoded with primary rule corroboration"
+    },
+    {
+      "id": "season.2.3",
+      "season": "summer",
+      "copies": 1,
+      "compareMetric": "已拥有水壶标记数量",
+      "metricSourceCode": 502,
+      "metricEvidence": "Public tutorial rendered season face directly viewed; public pks-effects.js also directly identifies 502 as Canteen count, not filled rows or water.",
+      "rewardSteps": [
+        "掷1次步道骰并结算",
+        "掷1次步道骰并结算"
+      ],
+      "rewardSourceCodes": [
+        110,
+        110
+      ],
+      "minimumMetric": 1,
+      "tie": "all tied players gain reward",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p12"
+      ],
+      "reviewState": "complete static definition and rendered card face visually matched"
+    },
+    {
+      "id": "season.2.4",
+      "season": "summer",
+      "copies": 1,
+      "compareMetric": "已游览带即时奖励公园张数",
+      "metricSourceCode": 505,
+      "metricEvidence": "same metric used by Adventure passion; official p11 corroborates",
+      "rewardSteps": [
+        "掷1次步道骰并结算",
+        "掷1次步道骰并结算"
+      ],
+      "rewardSourceCodes": [
+        110,
+        110
+      ],
+      "minimumMetric": 1,
+      "tie": "all tied players gain reward",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p12"
+      ],
+      "reviewState": "static definition decoded with primary rule corroboration"
+    },
+    {
+      "id": "season.3.1",
+      "season": "fall",
+      "copies": 1,
+      "compareMetric": "已游览公园印刷太阳费用合计",
+      "metricSourceCode": 523,
+      "metricEvidence": "same metric family as official passion definitions; tutorial fall face inspected",
+      "rewardSteps": [
+        "获得1分",
+        "获得1分",
+        "获得1分"
+      ],
+      "rewardSourceCodes": [
+        107,
+        107,
+        107
+      ],
+      "minimumMetric": 1,
+      "tie": "all tied players gain reward",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p12"
+      ],
+      "reviewState": "static definition decoded with primary rule corroboration"
+    },
+    {
+      "id": "season.3.2",
+      "season": "fall",
+      "copies": 1,
+      "compareMetric": "已游览公园印刷森林费用合计",
+      "metricSourceCode": 521,
+      "metricEvidence": "same metric used by Botany passion; official p11 corroborates",
+      "rewardSteps": [
+        "获得1分",
+        "获得1分",
+        "获得1分"
+      ],
+      "rewardSourceCodes": [
+        107,
+        107,
+        107
+      ],
+      "minimumMetric": 1,
+      "tie": "all tied players gain reward",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p12"
+      ],
+      "reviewState": "static definition decoded with primary rule corroboration"
+    },
+    {
+      "id": "season.3.3",
+      "season": "fall",
+      "copies": 1,
+      "compareMetric": "已游览公园印刷山费用合计",
+      "metricSourceCode": 522,
+      "metricEvidence": "same metric used by Rock Climbing passion; official p11 corroborates",
+      "rewardSteps": [
+        "获得1分",
+        "获得1分",
+        "获得1分"
+      ],
+      "rewardSourceCodes": [
+        107,
+        107,
+        107
+      ],
+      "minimumMetric": 1,
+      "tie": "all tied players gain reward",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p12"
+      ],
+      "reviewState": "static definition decoded with primary rule corroboration"
+    },
+    {
+      "id": "season.3.4",
+      "season": "fall",
+      "copies": 1,
+      "compareMetric": "已游览公园印刷水费用合计",
+      "metricSourceCode": 524,
+      "metricEvidence": "same metric used by Swimming passion; official p11 corroborates",
+      "rewardSteps": [
+        "获得1分",
+        "获得1分",
+        "获得1分"
+      ],
+      "rewardSourceCodes": [
+        107,
+        107,
+        107
+      ],
+      "minimumMetric": 1,
+      "tie": "all tied players gain reward",
+      "sourceRefs": [
+        "bga-public-tutorial",
+        "official-1.1:p12"
+      ],
+      "reviewState": "static definition decoded with primary rule corroboration"
+    }
+  ],
+  "trail": {
+    "removableTiles": [
+      {
+        "id": "site.forest",
+        "copies": 1,
+        "action": "获得1森林",
+        "sourceRefs": [
+          "official-1.1:p2-5",
+          "bga-public-tutorial"
+        ]
+      },
+      {
+        "id": "site.mountain",
+        "copies": 1,
+        "action": "获得1山",
+        "sourceRefs": [
+          "official-1.1:p2-5",
+          "bga-public-tutorial"
+        ]
+      },
+      {
+        "id": "site.sun",
+        "copies": 1,
+        "action": "获得2太阳",
+        "sourceRefs": [
+          "official-1.1:p2-5",
+          "bga-public-tutorial"
+        ]
+      },
+      {
+        "id": "site.water",
+        "copies": 1,
+        "action": "获得2水",
+        "sourceRefs": [
+          "official-1.1:p2-5",
+          "bga-public-tutorial"
+        ]
+      },
+      {
+        "id": "site.wildlife-trade",
+        "copies": 1,
+        "action": "支付1资源换1野生动物",
+        "sourceRefs": [
+          "official-1.1:p2-5",
+          "bga-public-tutorial"
+        ]
+      },
+      {
+        "id": "site.canteen-or-photo",
+        "copies": 1,
+        "action": "获得1水壶标记，或支付1资源拍1照片",
+        "sourceRefs": [
+          "official-1.1:p2-5",
+          "bga-public-tutorial"
+        ]
+      },
+      {
+        "id": "site.gear",
+        "copies": 1,
+        "action": "购买1件装备",
+        "sourceRefs": [
+          "official-1.1:p2-5",
+          "bga-public-tutorial"
+        ]
+      },
+      {
+        "id": "site.trail-die",
+        "copies": 1,
+        "action": "掷1次步道骰并结算",
+        "sourceRefs": [
+          "official-1.1:p2-5",
+          "bga-public-tutorial"
+        ]
+      }
+    ],
+    "fixedSite": {
+      "id": "site.parks",
+      "location": "printed central board site, after the fourth removable tile slot",
+      "action": "预订1公园或游览任意多座可支付的公园",
+      "sourceRefs": [
+        "official-1.1:p2-3",
+        "bga-public-tutorial"
+      ]
+    },
+    "initialFace": "action side face up; decorative backside is not an alternative action"
+  },
+  "trailDie": [
+    {
+      "face": "forest",
+      "effect": "获得1森林",
+      "shutterbugSite": "site.forest",
+      "copies": 1,
+      "sourceRefs": [
+        "official-1.1:p2,p10",
+        "bga-help"
+      ]
+    },
+    {
+      "face": "mountain",
+      "effect": "获得1山",
+      "shutterbugSite": "site.mountain",
+      "copies": 1,
+      "sourceRefs": [
+        "official-1.1:p2,p10",
+        "bga-help"
+      ]
+    },
+    {
+      "face": "sun",
+      "effect": "获得2太阳",
+      "shutterbugSite": "site.sun",
+      "copies": 1,
+      "sourceRefs": [
+        "official-1.1:p2,p10",
+        "bga-help"
+      ]
+    },
+    {
+      "face": "water",
+      "effect": "获得2水",
+      "shutterbugSite": "site.water",
+      "copies": 1,
+      "sourceRefs": [
+        "official-1.1:p2,p10",
+        "bga-help"
+      ]
+    },
+    {
+      "face": "wildlife",
+      "effect": "获得1野生动物",
+      "shutterbugSite": "site.wildlife-trade",
+      "copies": 1,
+      "sourceRefs": [
+        "official-1.1:p2,p10",
+        "bga-help"
+      ]
+    },
+    {
+      "face": "canteen",
+      "effect": "获得1水壶标记",
+      "shutterbugSite": "site.canteen-or-photo",
+      "copies": 1,
+      "sourceRefs": [
+        "official-1.1:p2,p10",
+        "bga-help"
+      ]
+    }
+  ],
+  "openChecks": [
+    "Full physical-card visual corroboration of the 37 equipment faces and all canteen/season repetitions remains distinct from complete BGA static transcription.",
+    "Official p9 example prose says Wide Angle Lens while the pictured card is titled Telephoto Lens; retain independent card reference and trigger rather than merge by name.",
+    "BGA tutorial is fixed at 250417-1214. It corroborates content but is not proof of later rulebook 1.1 edge-case rulings or current BGA behavior."
+  ]
+}

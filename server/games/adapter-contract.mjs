@@ -29,13 +29,21 @@ export function requireAdapter(adapter) {
     'applyTimeout', 'describeTimeout', 'snapshotSchema', 'snapshotProblem', 'roomStateProblem',
     'historyPlayerProblem', 'historyOutcomeProblem', 'playersChanged', 'roomDefaults', 'turnTimeoutMs'];
   if (!adapter || typeof adapter.gameType !== 'string' || !adapter.gameType
-      || !Number.isSafeInteger(adapter.minPlayers) || adapter.minPlayers < 2
+      || !Number.isSafeInteger(adapter.minPlayers) || adapter.minPlayers < (adapter.allowsSolo === true ? 1 : 2)
       || !Number.isSafeInteger(adapter.maxPlayers) || adapter.maxPlayers < adapter.minPlayers
       || !Array.isArray(adapter.ruleVersions) || !adapter.ruleVersions.length
       || !Array.isArray(adapter.actionTypes) || !Array.isArray(adapter.configurationFields)
       || methods.some(name => typeof adapter[name] !== 'function')
       || ['gameClock', 'commonActionProblem', 'lifecycleTransition', 'roomRetentionDeadline', 'actionConcurrencyProblem', 'actionDeadline',
-        'gameStatusForRoomPhase', 'gameEndedAt', 'matchSummary', 'historySummaryProblem'].some(name => adapter[name] !== undefined && typeof adapter[name] !== 'function')
+        'gameStatusForRoomPhase', 'gameEndedAt', 'matchSummary', 'historySummaryProblem', 'participantLimits', 'historySummary',
+        'nextSystemStep', 'applySystemStep', 'describeSystemStep'].some(name => adapter[name] !== undefined && typeof adapter[name] !== 'function')
+      || adapter.allowsSolo !== undefined && typeof adapter.allowsSolo !== 'boolean'
+      || (adapter.nextSystemStep === undefined) !== (adapter.applySystemStep === undefined)
+      || adapter.historySummary !== undefined && (adapter.matchSummary !== undefined || !Array.isArray(adapter.historySummaryFields))
+      || adapter.historyPlayerOutcomes !== undefined && (!Array.isArray(adapter.historyPlayerOutcomes)
+        || !adapter.historyPlayerOutcomes.length || new Set(adapter.historyPlayerOutcomes).size !== adapter.historyPlayerOutcomes.length
+        || adapter.historyPlayerOutcomes.some(value => !['win','draw','loss','unscored','completed'].includes(value))
+        || adapter.historyPlayerOutcomes.includes('completed') && adapter.allowsSolo !== true)
       || adapter.clockAdvanceActionTypes !== undefined && (!Array.isArray(adapter.clockAdvanceActionTypes)
         || typeof adapter.actionConcurrencyProblem !== 'function'
         || adapter.clockAdvanceActionTypes.some(type => !adapter.actionTypes.includes(type)))
@@ -55,6 +63,19 @@ export function requireAdapter(adapter) {
         || typeof adapter.accountingPolicy.scoringVersion !== 'string' || !adapter.accountingPolicy.scoringVersion.length
         || adapter.accountingPolicy.scoringVersion.length > 80 || typeof adapter.matchSummary !== 'function')) throw new TypeError('游戏适配器不完整。');
   return adapter;
+}
+
+/** Configuration-dependent limits are opt-in; old games retain their exact start limits. */
+export function participantLimits(room, adapter) {
+  const limits = adapter.participantLimits?.(room)
+    ?? { waiting: { min: 1, max: adapter.maxPlayers }, playing: { min: adapter.minPlayers, max: adapter.maxPlayers } };
+  if (!limits || Object.keys(limits).length !== 2 || Object.keys(limits).some(key => !['waiting','playing'].includes(key))
+      || ['waiting','playing'].some(phase => !limits[phase] || Object.keys(limits[phase]).length !== 2
+        || Object.keys(limits[phase]).some(key => !['min','max'].includes(key))
+        || !Number.isSafeInteger(limits[phase].min) || !Number.isSafeInteger(limits[phase].max)
+        || limits[phase].min < 1 || limits[phase].max < limits[phase].min || limits[phase].max > adapter.maxPlayers)
+      || limits.playing.min < 2 && adapter.allowsSolo !== true) throw new TypeError('游戏参与人数合同无效。');
+  return structuredClone(limits);
 }
 
 export function roomExpiry(snapshot, adapter, { ttlMs, pausedTtlMs }) {

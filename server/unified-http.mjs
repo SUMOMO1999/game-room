@@ -76,7 +76,7 @@ async function readJson(req, maxBytes = 32768) {
 }
 export function createUnifiedServer(options) {
   const runtime=options.sessions && options.rooms ? options : createRuntime(options.settings,options);
-  const {settings,sessions,rooms,storage,chat,wordbanks,wordbankReady,canvases,drawingEnabled=false,poker414Enabled=false,hyakkiEnabled=false}=runtime;
+  const {settings,sessions,rooms,storage,chat,wordbanks,wordbankReady,canvases,drawingEnabled=false,poker414Enabled=false,hyakkiEnabled=false,parksEnabled=false}=runtime;
   const configuredEntries=makeEntries(settings,options.entries);
   if(!configuredEntries.some(entry=>entry.direct)) throw new TypeError('The original direct game entry must remain enabled');
   // Explicit dual-entry configuration is immutable. The legacy one-entry API
@@ -88,7 +88,7 @@ export function createUnifiedServer(options) {
   // Startup recovery may fail temporarily; the committed room outbox remains retryable.
   const historyRecovery=Promise.resolve().then(()=>rooms.flushPendingRecords?.()).catch(()=>{});
   const security={...baseHeaders,...(settings.production?{'Strict-Transport-Security':'max-age=31536000'}:{})};
-  const accountPublic={mode:settings.mode,loginReady:sessions.loginReady,drawingEnabled,poker414Enabled,hyakkiEnabled,reauthReady:settings.mode==='cognito',...(settings.mode==='cognito'?{reauthHref}:{})};
+  const accountPublic={mode:settings.mode,loginReady:sessions.loginReady,drawingEnabled,poker414Enabled,hyakkiEnabled,parksEnabled,reauthReady:settings.mode==='cognito',...(settings.mode==='cognito'?{reauthHref}:{})};
   const connections=new Set();const buckets=new Map();
   let queuedCanvasBytes=0;
   const maxQueuedCanvasBytes=2*1024*1024;
@@ -472,10 +472,10 @@ export function createUnifiedServer(options) {
           result=await wait(() => write?chat.send(code,session.userKey,body):chat.get(code,session.userKey,chatQuery(url.searchParams)));
         } else if(write) {
           if(create || endpoint==='join') {
-            const fields=create?['name','requestId','gameType']:['name','requestId','role'];
+            const fields=create?['name','requestId','gameType','initialConfiguration']:['name','requestId','role'];
             if(Object.keys(body).some(key=>!fields.includes(key))) throw new RoomError(400,'INVALID_BODY','创建只需要称呼、游戏类型和请求编号；加入使用已有房间的游戏。');
             limit(`${create?'create':'join'}:${session.userKey}`,create?20:40);
-            result=await wait(() => create?rooms.createRoom(session.userKey,body.name,body.requestId,body.gameType):rooms.joinRoom(code,session.userKey,body.name,body.requestId,body.role));
+            result=await wait(() => create?rooms.createRoom(session.userKey,body.name,body.requestId,body.gameType,body.initialConfiguration):rooms.joinRoom(code,session.userKey,body.name,body.requestId,body.role));
           } else result=await wait(() => rooms.action(code,session.userKey,body));
         } else result={view:await wait(() => rooms.getView(code,session.userKey))};
         const after=await sessions.authorize(webRequest,{touch:false});

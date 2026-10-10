@@ -25,7 +25,8 @@ const privatePaths = ['server/games/rummikub/adapter.mjs', 'server/games/army-fl
   'games/rummikub/multiplayer.mjs', 'games/army-flip/rules.mjs', 'multiplayer-rules.mjs',
   'army-rules.mjs', 'rooms.mjs', 'game-registry.mjs', 'games/catalog-boundary.test.mjs',
   'games/rummikub/test-support/secret.mjs', 'games/rummikub/fixtures/secret.mjs',
-  'infra/game-room-identity-batch.conf'];
+  'infra/game-room-identity-batch.conf', 'parks-preview.html', 'games/parks/engine.mjs',
+  'games/parks/preview.mjs', 'games/parks/preview-fixtures.mjs', 'games/parks/page-ui.mjs', 'server/games/parks/adapter.mjs'];
 // Public 414 presentation can read saved rooms while new creation stays gated.
 // The pure 414 engine is also used by practice; adapters and fixture previews stay private.
 const private414Paths = ['poker414-preview.html', 'server/games/poker414-2/adapter.mjs',
@@ -85,6 +86,17 @@ test('all declared public paths exist; old aliases and canonical modules are pub
   for (const path of ['../server/storage.mjs', '/games/rummikub/rules.mjs', 'games//rummikub/rules.mjs', 'games/./rummikub/rules.mjs'])
     assert.throws(() => publicAssetPaths([{ assets: [path] }], []), TypeError, path);
 });
+test('PARKS browser imports form an explicit public closure without server assembly or preview dependencies',()=>{
+  const allowed=new Set(publicAssetPaths()),visited=new Set();
+  function inspect(file) {
+    if(visited.has(file) || !file.endsWith('.mjs'))return;visited.add(file);
+    const source=readFileSync(join(projectRoot,'app',file),'utf8');
+    const imports=[...source.matchAll(/\b(?:import|export)\s+(?:[^;]*?\s+from\s*)?['"](\.[^'"]+)['"]/g),...source.matchAll(/\bimport\s*\(\s*['"](\.[^'"]+)['"]\s*\)/g)];
+    for(const match of imports){const dependency=resolve(dirname(join(projectRoot,'app',file)),match[1]).slice(join(projectRoot,'app').length+1);assert.ok(allowed.has(dependency),`${file} imports nonpublic ${dependency}`);inspect(dependency);}
+  }
+  for(const file of [...gamePresentation('parks').assets,'platform/card-room-controller.mjs','lobby.mjs'])inspect(file);
+  assert.ok(visited.has('games/parks/practice-session.mjs'));assert.ok(visited.has('games/parks/rules/index.mjs'));assert.equal(visited.has('games/parks/engine.mjs'),false);
+});
 
 test('release packaging follows production imports and excludes unreferenced experiments and fixtures', t => {
   const directory = mkdtempSync(join(tmpdir(), 'game-catalog-release-')); t.after(() => rmSync(directory, { recursive: true, force: true }));
@@ -132,7 +144,7 @@ for (const mode of ['legacy', 'unified']) test(`${mode} HTTP serves canonical an
   }
   const base = await listen(server, t); host ??= new URL(base).host;
   for (const path of ['games/catalog.mjs', 'rules.mjs', 'games/rummikub/rules.mjs', 'army-board.mjs', 'games/army-flip/board.mjs',
-    ...gamePresentation('poker414-2').assets]) {
+    ...gamePresentation('poker414-2').assets,...gamePresentation('parks').assets.filter(path=>!path.startsWith('assets/'))]) {
     const response = await request(base, '/' + path, host);
     assert.equal(response.status, 200, path); assert.equal(response.headers['cache-control'], 'no-store');
     assert.equal(response.body, readFileSync(join(projectRoot, 'app', path), 'utf8'));
@@ -151,4 +163,9 @@ test('414 routes and history metadata exist while creation requires an explicit 
   for(const value of [undefined,false,'true',1]) assert.equal(creatableGamePresentations({drawingEnabled:true,poker414Enabled:value}).some(game=>game.gameType==='poker414-2'),false);
   assert.equal(creatableGamePresentations({drawingEnabled:true,poker414Enabled:true}).length,5);
   assert.deepEqual(creatableGamePresentations().map(game=>game.gameType),['rummikub','army-flip','flying-chess']);
+});
+test('PARKS public routes and metadata do not grant creation before the explicit server capability',()=>{
+  assert.equal(gamePresentation('parks').practicePage,'parks-practice.html');assert.equal(gamePresentation('parks').minPlayers,1);assert.equal(gamePresentation('parks').maxPlayers,5);
+  for(const value of [undefined,false,'true',1])assert.equal(creatableGamePresentations({parksEnabled:value}).some(game=>game.gameType==='parks'),false);
+  assert.equal(creatableGamePresentations({parksEnabled:true}).some(game=>game.gameType==='parks'),true);
 });

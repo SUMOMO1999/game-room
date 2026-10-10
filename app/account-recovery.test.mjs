@@ -46,6 +46,17 @@ test('game availability requires explicit server booleans and is withdrawn durin
   assert.equal(account.accountState().poker414Enabled, false);
 });
 
+test('PARKS feature flag follows actual loadAccount normalization and clears without changing identity for a flag-only update', async t => {
+  const { account, authenticate } = await fixture(t);
+  assert.equal(account.accountState().parksEnabled, false);
+  await authenticate({ parksEnabled: 'true' }); assert.equal(account.accountState().parksEnabled, false);
+  const epoch = account.accountGeneration();
+  await authenticate({ parksEnabled: true }); assert.equal(account.accountState().parksEnabled, true);
+  assert.equal(account.accountGeneration(), epoch, 'availability is not a different identity');
+  account.reportAuthFailure({ status: 503 }); assert.equal(account.accountState().parksEnabled, false);
+  await authenticate(); assert.equal(account.accountState().parksEnabled, false);
+});
+
 test('each game room can return from login without allowing arbitrary paths or extra role fields', async t => {
   const { account } = await fixture(t);
   for (const name of ['room', 'army', 'flying', 'drawing', 'poker414', 'hyakki']) {

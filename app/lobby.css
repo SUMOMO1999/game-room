@@ -23,3 +23,9 @@
 .lobby-exit-actions {display:flex;justify-content:flex-end;gap:14px;margin-top:20px;}
 .lobby-exit-actions .exit-confirm {background:#a53838;color:white;border:0;border-radius:10px;padding:12px 18px;}
 @media(max-width:540px) {.lobby-shell .recent-seat {align-items:flex-start;flex-direction:column;gap:10px;}.recent-room-controls {width:100%;justify-content:space-between;}.history-match summary {gap:8px;}}
+
+.parks-create-settings {border:1px solid var(--line);border-radius:12px;padding:12px;margin:8px 0 16px;min-width:0;}
+.parks-create-settings[hidden] {display:none;}
+.parks-create-settings legend {font-size:13px;color:var(--muted);padding:0 6px;}
+.parks-create-settings .parks-create-camping {display:flex;align-items:center;gap:8px;}
+.parks-create-camping input {width:20px;height:20px;margin:0;}

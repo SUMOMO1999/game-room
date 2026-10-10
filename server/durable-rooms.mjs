@@ -1,10 +1,11 @@
 import { createHash, randomBytes, randomInt } from 'node:crypto';
-import { createRoomStore, RoomError, DEFAULT_TURN_TIMEOUT_MS } from '../app/rooms.mjs';
+import { createRoomStore, RoomError, DEFAULT_TURN_TIMEOUT_MS, normalizedInitialConfiguration } from '../app/rooms.mjs';
 import { defaultGameRegistry } from '../app/game-registry.mjs';
 import { snapshotGameType, snapshotAuthorityBindingProblem } from './room-snapshot-compat.mjs';
 import { createRoomScoreCommitter } from './room-score-commit.mjs';
 import { ScoreError } from './game-scores.mjs';
 import { roomExpiry } from './games/adapter-contract.mjs';
+import { createRoomSystemDriver } from './room-system-driver.mjs';
 
 const FOREVER = Number.MAX_SAFE_INTEGER;
 const hash = (value) => createHash('sha256').update(value).digest('hex');
@@ -54,6 +55,7 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
   const adapterFor = snapshot => gameRegistry.gameAdapter(snapshotGameType(snapshot));
   const attemptsFor = snapshot => Math.min(maxCasAttempts, adapterFor(snapshot).businessCasAttempts ?? maxCasAttempts);
   const expiry = snapshot => roomExpiry(snapshot, adapterFor(snapshot), { ttlMs, pausedTtlMs });
+  const systemDriver = createRoomSystemDriver({advance: advanceSystemStep});
   function engine(snapshot, preparedOptions = {}) {
     const store = createRoomStore({ now, ttlMs, pausedTtlMs, leaveRetentionMs, gameOptions: { ...gameOptions, ...preparedOptions }, turnTimeoutMs,
       gameRegistry, serverRandomInt, ...(gameEngine ? { gameEngine } : {}) });
@@ -217,15 +219,17 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
       return entries;
     });
   }
-  async function createRoom(userKey, name, id, gameType = 'rummikub') {
+  async function createRoom(userKey, name, id, gameType = 'rummikub', initialConfiguration) {
     identity(userKey); requestId(id); name = nickname(name);
     try { gameType = gameRegistry.normalizeGameType(gameType); }
     catch { fail(400, 'INVALID_GAME_TYPE', '请选择支持的游戏。'); }
+    const configuration = normalizedInitialConfiguration(gameRegistry.gameAdapter(gameType),initialConfiguration);
     await ensureProfile(userKey);
     const operationKey = hash(`${userKey}\0create\0${id}`);
     // Default Rummikub retains the historical fingerprint, including pending
     // create markers retried across a deployment. Other games bind their kind.
-    const fingerprint = hash(canonical(gameType === 'rummikub' ? { name } : { name, gameType }));
+    const fingerprint = hash(canonical({ ...(gameType === 'rummikub' ? {name} : {name,gameType}),
+      ...(configuration === undefined ? {} : {initialConfiguration:configuration}) }));
     let operation;
     for (let attempt = 0; attempt < maxCasAttempts; attempt += 1) {
       const previous = await storage.read('room-requests', operationKey);
@@ -234,7 +238,7 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
       const code = String(randomInt(1000000)).padStart(6, '0');
       if (!(await storage.putIfAbsent('room-invites', code, { roomId }, FOREVER))) continue;
       const roomEngine = engine();
-      roomEngine.createTrustedRoom(userKey, name, { code, roomId, gameType });
+      roomEngine.createTrustedRoom(userKey, name, { code, roomId, gameType, initialConfiguration:configuration });
       const snapshot = await prepareRoom(roomEngine.exportSnapshot(code), userKey, { expiresAt: now() + pausedTtlMs });
       // Validate trusted content assembly before a pending create becomes durable.
       engine(snapshot);
@@ -478,7 +482,10 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
         const next = { ...previous }; delete next[roomId]; return next;
       }).catch(() => {}); // A failed index cleanup cannot turn a committed departure into a failure.
       await flushPendingRecords().catch(() => {});
-      return result.left ? result : { view: project(snapshot, userKey, await context(snapshot)), ...(result.guessResult ? { guessResult: result.guessResult } : {}) };
+      const drivesSystem=!result.left && typeof adapter.nextSystemStep==='function';
+      if (drivesSystem) await systemDriver.wake(roomId);
+      const authoritative = drivesSystem ? (await storage.read('rooms',roomId))?.value.snapshot : null;
+      return result.left ? result : { view: project(authoritative ?? snapshot, userKey, await context(authoritative ?? snapshot)), ...(result.guessResult ? { guessResult: result.guessResult } : {}) };
     }
     fail(503, 'STORE_BUSY', '房间正在同步，请稍后重试。');
   }
@@ -634,6 +641,26 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
       if (presence) await reconcileLifecycle(roomId, 'server-recovery', matchId);
       else await cancelMatch(roomId, 'server-recovery', matchId);
     }
+    for (const record of await storage.scan('rooms')) if (record.value.snapshot?.phase === 'playing' && adapterFor(record.value.snapshot).nextSystemStep) await systemDriver.wake(record.value.snapshot.roomId);
+  }
+  async function advanceSystemStep(roomId) {
+    if (closed) return false;
+    const record = await storage.read('rooms',roomId), snapshot=record?.value.snapshot;
+    if (!snapshot || snapshot.phase !== 'playing' || now() >= expiry(snapshot)) return false;
+    const adapter=adapterFor(snapshot), step=adapter.nextSystemStep?.(snapshot.game);
+    if (!step) return false;
+    const roomEngine=engine(snapshot);
+    let changed,nextSnapshot;
+    try { changed=roomEngine.applySystemStep(snapshot.code,step); if (changed) nextSnapshot=roomEngine.exportSnapshot(snapshot.code); }
+    finally { roomEngine.close(); }
+    if (!changed) return false;
+    const next={...record.value,snapshot:nextSnapshot};
+    // Lost CAS simply observes the new saved cursor on the next bounded attempt.
+    // A thrown/unknown commit propagates; do not resend this state or random reveal.
+    if (!await commitRoom(roomId,record,next)) return true;
+    await publish(roomId);
+    await flushPendingRecords().catch(() => {});
+    return next.snapshot.phase === 'playing' && !!adapter.nextSystemStep(next.snapshot.game);
   }
   async function advanceExpiredTurn(roomId) {
     let limit = maxCasAttempts;
@@ -682,6 +709,7 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
         if (snapshot && adapterFor(snapshot).usesPresenceLifecycle) await reconcileLifecycle(roomId);
         else await cancelDisconnected(roomId);
         await advanceExpiredTurn(roomId);
+        if (snapshot && adapterFor(snapshot).nextSystemStep) await systemDriver.wake(roomId);
       }
     })().finally(() => { pollingFlight = null; });
     return pollingFlight;
@@ -801,6 +829,7 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
     closed = true;
     authorityMetadata.clear();
     if (timer) clearInterval(timer);
+    await systemDriver.close();
     await ready.catch(() => {});
     if (pollingFlight) await pollingFlight.catch(() => {});
     for (const [roomId, listeners] of local) {

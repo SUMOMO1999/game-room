@@ -63,6 +63,20 @@ const entries = [
       ...['c01', 'c02', 'c03', 'c04', 'c05', 'c06', 'c07', 'c08', 'c09', 'c10', 'c11', 'c12', 'c13',
         'm01', 'm02', 'm03', 'm04', 'm05', 'm06', 'm07', 'm08', 't01', 't02', 't03', 't04', 't05', 't06', 't07', 't08', 't09', 't10', 'stall-permit']
         .map(id => `assets/hyakki/v2/${id}.webp`)] },
+  { gameType:'parks',name:'国家公园',page:'parks.html',minPlayers:1,maxPlayers:5,
+    createHint:'朋友徒步、Teddy同行与单人挑战',availabilityFlag:'parksEnabled',
+    practicePage:'parks-practice.html',scoreKind:'score',
+    timeout:{action:'暂停等待本人选择',hint:'决策时间到后保留材料并暂停，由当前责任人继续选择'},
+    assets:['parks.html','parks-practice.html','parks-tutorial.html','parks-catalog.html',
+      ...['configuration.mjs','game-ui.mjs','game-ui.css','game-ui-model.mjs','presentation.mjs','room-controller.mjs','game-page.mjs','practice-page.mjs',
+        'tutorial-page.mjs','tutorial-model.mjs','card-ui.mjs','catalog-page.mjs','styles.css','view.mjs','practice-engine.mjs','practice-bot.mjs','practice-session.mjs',
+        ...['index','model','scoring','flow','effects','resources','actions','legality','validation'].map(name=>`rules/${name}.mjs`),
+        ...['behavior-data','optional-data','component-data','asset-manifest','vector-art','sample-assets','art-subjects','catalog','provenance',
+          'park-data','immutable','passion-data','original-art-assets'].map(name=>`content/${name}.mjs`)]
+        .map(file=>`games/parks/${file}`),
+      ...['parks-atlas-01','parks-atlas-02','parks-atlas-03','parks-atlas-04','parks-atlas-05','parks-atlas-06','parks-atlas-07',
+        'gear-atlas-01','gear-atlas-02','park-arches','park-grand-teton','park-acadia','park-black-canyon-of-the-gunnison','gear-flint-and-tinder','gear-camp-mug']
+        .flatMap(name=>[`assets/parks/v2/${name}.webp`,`assets/parks/v2/${name}-thumb.webp`])] },
 ];
 
 function safePage(page) { return typeof page === 'string' && /^[a-z][a-z0-9-]*\.html$/.test(page); }
@@ -81,7 +95,7 @@ export function createPresentationCatalog(definitions) {
       || item.practicePage !== null && !safePage(item.practicePage)
       || !['points', 'outcome', 'score'].includes(item.scoreKind)
       || typeof item.createHint !== 'string' || !item.createHint.trim()
-      || ![null, 'drawingEnabled', 'poker414Enabled', 'hyakkiEnabled'].includes(item.availabilityFlag)
+      || ![null, 'drawingEnabled', 'poker414Enabled', 'hyakkiEnabled','parksEnabled'].includes(item.availabilityFlag)
       || !item.timeout || typeof item.timeout.action !== 'string' || !item.timeout.action
       || typeof item.timeout.hint !== 'string' || !item.timeout.hint
       || Object.keys(item.timeout).some(field => !['action', 'hint'].includes(field))
