@@ -90,7 +90,7 @@ export function renderNativeMaterials({pending,game,selfId,draft,name,canChoose}
   }).join('');
 }
 
-export function renderNativeWork({pending,game,selfId,draft,step=0,short=false,name,canChoose}){
+export function renderNativeWork({pending,game,selfId,draft,step=0,short=false,narrow=false,name,canChoose}){
   const context=decisionContext(pending,game,selfId,name),face=context.source;
   const source=pending.sourceCards?.find(card=>card.definitionId===face?.id)??(face?{definitionId:face.id}:pending.sourceCards?.[0]);
   const sourceArt=source?renderCard(source,{interactive:false}):renderCardBack();
@@ -113,7 +113,7 @@ export function renderNativeWork({pending,game,selfId,draft,step=0,short=false,n
   let body='',actions='';
   if(!canChoose&&pending.actorId!==selfId){body=`<p class="hy-work-effect">${esc(effect)}</p><p>${esc(context.reason)}</p><p>等待${esc(name(pending.actorId))}完成这一步。</p>`;}
   else if(short&&step===0){body=`<p class="hy-work-effect">${esc(effect)}</p><p class="hy-work-task">${esc(task)}</p>`;actions=action('native-step','查看材料',{step:1},!canChoose,'hy-primary-action');}
-  else if(short&&step===1){body=`<p class="hy-work-task">${esc(task)}</p><p class="hy-work-preview">${esc(summary)}</p>`;actions=action('native-step','效果说明',{step:0},false)+action('native-step','核对费用与结果',{step:2},!canChoose||!ready,'hy-primary-action');}
+  else if(short&&step===1){body=`<p class="hy-work-task">${esc(task)}</p><p class="hy-work-preview">${esc(summary)}</p>`;actions=action('native-step','效果说明',{step:0},false)+action('native-step',narrow?'核对费用':'核对费用与结果',{step:2},!canChoose||!ready,'hy-primary-action');}
   else{
     body=`${!short?`<p class="hy-work-effect">${esc(effect)}</p><p class="hy-work-task">${esc(task)}</p>`:''}<p class="hy-work-preview">${esc(summary)}</p><p class="hy-work-cost">${esc(cost)}</p><p class="hy-work-outcome">${esc(outcome)}</p>`;
     if(pending.auction){

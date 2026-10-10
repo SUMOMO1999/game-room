@@ -70,7 +70,7 @@ test('direct and /game/ entry serve exact Hyakki assets and WebP MIME, with priv
   const base = `http://127.0.0.1:${server.address().port}`;
   for (const entry of entries) {
     const host = new URL(entry.origin).host;
-    for (const file of gamePresentation('hyakki-trading').assets) {
+    for (const file of [...gamePresentation('hyakki-trading').assets, 'platform/game-stage-fit.mjs']) {
       const result = await request(base, entry.basePath + file, host);
       assert.equal(result.status, 200, entry.basePath + file);
       assert.deepEqual(result.bytes, readFileSync(join(root, 'app', file)), file);

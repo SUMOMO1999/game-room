@@ -100,6 +100,37 @@ test('lead sheds a low long combination; following uses the smallest legal respo
   assert.equal(choosePoker414BotAction(view, 'a', { now: 1 }).type, 'pass');
 });
 
+for (const count of [4, 5, 8]) {
+  test(`following 333 uses intact 555 instead of splitting ${count} fours`, () => {
+    const view = strategyView([...rank(4, count), ...rank(5, 3)], rank(3, 3));
+    const before = structuredClone(view);
+    assert.deepEqual(choosePoker414BotAction(view, 'a', { now: 1 }).cardIds, rank(5, 3));
+    assert.deepEqual(view, before, 'a hint cannot alter the hand or target');
+  });
+}
+
+test('following protects a bomb from an ordinary reply and spends it whole when needed', () => {
+  let view = strategyView([...rank(4, 4), ...rank(6)], rank(3));
+  assert.deepEqual(choosePoker414BotAction(view, 'a', { now: 1 }).cardIds, rank(6));
+  view = strategyView([...rank(4, 4), ...rank(7)], rank(3, 3));
+  assert.deepEqual(choosePoker414BotAction(view, 'a', { now: 1 }).cardIds, rank(4, 4));
+  // The larger intact group is legal even when its rank is lower than the target.
+  view = strategyView([...rank(4, 4), ...rank(7)], rank(12, 3));
+  assert.deepEqual(choosePoker414BotAction(view, 'a', { now: 1 }).cardIds, rank(4, 4));
+});
+
+test('finishing the hand remains first; higher targets still use the existing joker and rocket comparator', () => {
+  const complete = rank(4, 8);
+  assert.deepEqual(choosePoker414BotAction(strategyView(complete, rank(3, 3)), 'a', { now: 1 }).cardIds, [...complete].sort(compareCardIds));
+  const jokers = [...rank(16), ...rank(17)];
+  let view = strategyView([...rank(4, 4), ...jokers, ...rank(7)], rank(12, 8));
+  assert.deepEqual(choosePoker414BotAction(view, 'a', { now: 1 }).cardIds, jokers);
+  // A rocket may use two of four fours when it is the only legal response.
+  view = strategyView([...rank(4, 4), ...rank(14)], jokers);
+  assert.equal(classifyPattern(choosePoker414BotAction(view, 'a', { now: 1 }).cardIds).kind, 'rocket');
+  assert.equal(choosePoker414BotAction(strategyView(rank(4, 4), jokers), 'a', { now: 1 }).type, 'pass');
+});
+
 for (const count of [3, 4, 8]) {
   test(`${count} projected bots complete a real 108-card game with valid actions and one zero-sum settlement`, () => {
     let seed = count;

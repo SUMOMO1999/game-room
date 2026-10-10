@@ -23,7 +23,7 @@
 .hy-connection p { margin:0 0 8px; }.hy-connection>div { display:flex;flex-wrap:wrap;gap:8px; }
 .hy-concealed .yg-table,.hy-concealed .yg-lower,.hy-concealed .yg-feedback,.hy-concealed .yg-rotation { visibility:hidden; }
 .hy-concealed .hy-connection { top:35%;bottom:auto; }
-@media (max-height:600px) and (orientation:landscape) {
+@container hyakki-board (max-height:560px) {
  .hy-real .yg-scene-content { overflow:visible; }
  .hy-real .yg-table-actions { gap:3px; }
  .hy-real #yg-scene-content:has(.hy-config) { overflow:auto;justify-content:flex-start; }
@@ -100,7 +100,7 @@
 .hy-real .hy-inline-secondary { gap:6px;margin-top:8px; }
 #hyakki-digital-root.hy-real .hy-inline-secondary button { font-size:12px;padding:6px 9px;border-color:color-mix(in srgb,var(--theme-border) 65%,transparent);background:transparent; }
 .hy-real #yg-hand .yg-hand-card.is-selected { border-radius:12px;outline:4px solid var(--theme-accent);outline-offset:-2px; }
-@media (max-height:600px) and (orientation:landscape) {
+@container hyakki-board (max-height:560px) {
  .hy-real #yg-decision,.hy-real #yg-inspector,.hy-real #hy-card-reader { padding:10px 12px; }
  .hy-real .yg-dialog .dialog-heading { margin-bottom:4px; }
  .hy-real .yg-dialog .dialog-heading h2 { font-size:18px; }
@@ -150,7 +150,7 @@
 .hy-real .hy-target-form select { flex:1;min-width:0; }
 .hy-real .hy-target-public { padding:8px 10px;background:var(--theme-table);border-radius:10px; }
 .hy-real #yg-inspector:has(.hy-target-form) { width:min(620px,calc(100vw - 48px)); }
-@media (max-height:600px) and (orientation:landscape) {
+@container hyakki-board (max-height:560px) {
  .hy-real #yg-decision .hy-dialog-content { padding:0; }
  .hy-real #yg-decision[data-step="0"] { width:min(600px,calc(100vw - 48px)); }
  .hy-real .hy-decision-source { gap:10px;margin-bottom:6px; }
@@ -162,7 +162,7 @@
  .hy-real .hy-choice-text { min-height:44px;padding:5px 8px; }
 }
 
-@media (max-height:600px) and (orientation:landscape) {
+@container hyakki-board (max-height:560px) {
   .hy-real.hy-card-selected .yg-stage,.hy-real.hy-card-selected .yg-track { display:none; }
   .hy-real.hy-card-selected #yg-scene-content { justify-content:center; overflow:visible; }
   .hy-real.hy-card-selected .hy-card-play { display:grid; grid-template-columns:minmax(0,1fr); grid-template-areas:"heading" "summary" "conditions" "actions"; gap:3px 6px; padding:5px 6px; border-radius:10px; }
@@ -186,7 +186,7 @@
   .hy-real:not(.hy-card-selected) #yg-scene-content .yg-scene-note { display:block; margin:0; font-size:12px; line-height:16px; text-align:center; }
 }
 
-@media (min-width:1101px) and (min-height:601px) and (max-height:800px) and (orientation:landscape) {
+@container hyakki-board (min-width:1101px) and (min-height:561px) and (max-height:800px) {
   .hy-real .hy-card-play { padding:12px 14px; }
 }
 
@@ -254,7 +254,7 @@
 .hy-real #yg-hand .is-task-material .yousei-card,.hy-real #yg-tools .is-task-material { border-color:var(--theme-accent); }
 .hy-real #yg-tools .is-selected { outline:3px solid var(--theme-accent);outline-offset:-3px; }
 .hy-real .hy-native-bid { display:flex;align-items:center;gap:7px;flex-wrap:wrap; }.hy-real .hy-native-bid>strong { font-size:23px; }.hy-real .hy-native-bid>small { font-size:12px; }.hy-real .hy-native-bid button { width:44px;font-size:20px;padding:3px; }
-@media (max-height:600px) and (orientation:landscape) {
+@container hyakki-board (max-height:560px) {
  .hy-real.hy-pending-inline .yg-peer.is-multiplayer .yg-seat-strip { grid-column:2; }
  .hy-real.hy-pending-inline .yg-table:has(.yg-peer.is-multiplayer) .yg-centre { grid-row:1/3; }
  .hy-real.hy-pending-inline .yg-stage,.hy-real.hy-pending-inline .yg-track { display:none; }
@@ -318,7 +318,7 @@
 .hy-real .hy-material-player { display:flex;flex-direction:column;justify-content:center;align-items:center;min-width:120px;min-height:70px;background:transparent; }
 .hy-real .hy-material-player.is-selected { outline:2px solid var(--theme-accent);outline-offset:-2px; }
 .hy-real .hy-native-bid label { display:flex;align-items:center;gap:4px; }
-#hyakki-digital-root.hy-real .hy-native-bid input { width:64px;min-height:44px;padding:6px;border:1px solid var(--theme-accent);border-radius:8px;background:var(--theme-surface);color:var(--theme-ink);font:700 20px ui-serif;text-align:center; }
+#hyakki-digital-root.hy-real .hy-native-bid input { width:64px;min-height:calc(44px / var(--stage-scale,1));padding:6px;border:1px solid var(--theme-accent);border-radius:8px;background:var(--theme-surface);color:var(--theme-ink);font:700 20px ui-serif;text-align:center; }
 
 #hyakki-digital-root.hy-real .hy-source-reader { display:block;width:100%;height:100%;min-height:0;min-width:0;padding:0;border:0;border-radius:10px;background:transparent;color:inherit;text-align:inherit; }
 .hy-real .hy-source-reader:focus-visible { outline:2px solid var(--theme-accent);outline-offset:3px; }
@@ -326,4 +326,73 @@
 .hy-real.hy-card-selected .yg-stage { opacity:.55; }
 
 .hy-real .hy-task-clock { font-size:12px;white-space:nowrap;color:var(--theme-muted);font-variant-numeric:tabular-nums; }
-@media (max-height:600px) and (orientation:landscape) { .hy-real .hy-task-clock { font-size:11px; } }
+@container hyakki-board (max-height:560px) { .hy-real .hy-task-clock { font-size:11px; } }
+
+/* Decision text is budgeted inside the finite playfield, not clipped by a
+   viewport-height media query. Physical controls survive bounded scaling. */
+.hy-real .yg-playfield .yg-scene-content { overflow:visible; }
+.hy-real .yg-playfield .hy-card-play { max-width:760px; padding:0; }
+.hy-real .yg-playfield:not([data-stage-profile="mobile"]) .hy-card-play { gap:18px; }
+.hy-real .yg-playfield:not([data-stage-profile="mobile"]) .hy-inline-card { flex-basis:126px; }
+.hy-real .yg-playfield:not([data-stage-profile="mobile"]) .hy-inline-card .yousei-card { width:126px; height:182px; }
+.hy-real .yg-playfield:not([data-stage-profile="mobile"]) .hy-decision-heading { margin-bottom:6px; }
+.hy-real .yg-playfield:not([data-stage-profile="mobile"]) .hy-decision-summary,
+.hy-real .yg-playfield:not([data-stage-profile="mobile"]) .hy-target-summary,
+.hy-real .yg-playfield:not([data-stage-profile="mobile"]) .hy-work-copy>p { display:block; font-size:calc(14px / var(--stage-scale,1)); line-height:1.4; }
+#hyakki-digital-root.hy-real .yg-playfield .hy-inline-actions button,
+#hyakki-digital-root.hy-real .yg-playfield .hy-work-actions button { min-width:calc(44px / var(--stage-scale,1)); min-height:calc(44px / var(--stage-scale,1)); }
+.hy-real .yg-playfield[data-stage-profile="compact"] .yg-stage,
+.hy-real.hy-card-selected .yg-playfield[data-stage-profile="classic"] .yg-stage,
+.hy-real.hy-pending-inline .yg-playfield[data-stage-profile="classic"] .yg-stage { display:none; }
+.hy-real .yg-playfield[data-stage-profile="compact"] .yg-centre { grid-template-columns:minmax(0,1fr); grid-template-rows:38px minmax(0,1fr); }
+.hy-real .yg-playfield[data-stage-profile="compact"] .yg-track { grid-column:1; grid-row:1; min-height:38px; height:38px; padding:3px 16px; display:flex; }
+.hy-real .yg-playfield[data-stage-profile="compact"] .yg-scene-content { grid-column:1; grid-row:2; }
+.hy-real .yg-playfield[data-stage-profile="compact"] .hy-card-play { display:flex; align-items:center; gap:12px; }
+.hy-real .yg-playfield[data-stage-profile="compact"] .hy-inline-copy { display:block; }
+.hy-real .yg-playfield[data-stage-profile="compact"] .hy-inline-card { display:block; flex:0 0 100px; }
+.hy-real .yg-playfield[data-stage-profile="compact"] .hy-inline-card .yousei-card { width:100px; height:146px; }
+.hy-real .yg-playfield[data-stage-profile="compact"] .hy-table-work { grid-template-columns:100px minmax(0,1fr); gap:12px; }
+.hy-real .yg-playfield[data-stage-profile="compact"] .hy-work-face { --hyakki-card-width:100px; --hyakki-card-height:146px; height:146px; }
+.hy-real .yg-playfield[data-stage-profile="compact"] .hy-work-face .yousei-card { width:100px; height:146px; }
+.hy-real .yg-playfield[data-stage-profile="compact"] .hy-work-heading>strong { font-size:18px; line-height:1.3; }
+.hy-real .yg-playfield[data-stage-profile="compact"] .hy-work-heading>small { font-size:12px; line-height:1.4; }
+.hy-real .yg-playfield[data-stage-profile="compact"] .hy-work-copy { display:block; }
+.hy-real .yg-playfield[data-stage-profile="compact"] .yg-lower.hy-has-materials { grid-template-columns:150px minmax(0,1fr) minmax(0,.85fr); }
+.hy-real .yg-playfield:not([data-stage-profile="mobile"]) .yg-lower.hy-has-materials { grid-template-columns:150px minmax(0,1fr) minmax(0,.85fr); grid-template-rows:minmax(0,1fr); }
+/* Every material group has a real intrinsic width. Children may scroll as a
+   whole strip, but may never paint over the adjacent owner's goods. */
+.hy-real .hy-material-group { flex:0 0 auto; width:max-content; min-width:max-content; align-self:stretch; }
+.hy-real .hy-material-group>strong { flex:none; }
+#hyakki-digital-root.hy-real .hy-material-group>.hy-material-good { flex:0 0 86px; width:86px; min-width:86px; }
+.hy-real .hy-material-arrow { flex:none; }
+.hy-real .hy-material-player { flex:0 0 120px; height:80px; align-self:center; }
+.hy-real .yg-playfield[data-stage-profile] .hy-exchange-preview { margin:6px 0; font-size:calc(14px / var(--stage-scale,1)); line-height:1.4; color:var(--theme-accent); }
+.hy-real .hy-exchange-preview small { display:block; margin-top:3px; font-size:calc(14px / var(--stage-scale,1)); color:var(--theme-muted); }
+.hy-real .hy-task-material-cards { overflow-x:auto; overflow-y:hidden; }
+.hy-real .yg-playfield[data-stage-profile="mobile"] .hy-card-play { display:flex; align-items:center; gap:8px; }
+.hy-real .yg-playfield[data-stage-profile="mobile"] .hy-inline-copy { display:block; }
+.hy-real .yg-playfield[data-stage-profile="mobile"] .hy-decision-summary,
+.hy-real .yg-playfield[data-stage-profile="mobile"] .hy-target-summary,
+.hy-real .yg-playfield[data-stage-profile="mobile"] .hy-work-copy>p { display:block; font-size:14px; line-height:1.3; }
+.hy-real .yg-playfield[data-stage-profile="mobile"] .hy-decision-heading { margin-bottom:3px; }
+.hy-real .yg-playfield[data-stage-profile="mobile"] .hy-inline-actions { margin-top:4px; }
+.hy-real.hy-card-selected .yg-playfield[data-stage-profile="mobile"] .yg-table:has(.yg-peer.is-multiplayer) .yg-centre { grid-row:1/3; }
+.hy-real.hy-card-selected .yg-playfield[data-stage-profile="mobile"] .yg-peer.is-multiplayer .yg-seat-strip { grid-column:2; }
+.hy-real .yg-playfield[data-stage-profile="mobile"] .hy-exchange-preview { margin:3px 0; line-height:1.3; }
+#hyakki-digital-root.hy-real .yg-playfield .hy-inline-actions button,
+#hyakki-digital-root.hy-real .yg-playfield .hy-work-actions button { flex:0 1 auto; width:max-content; max-width:100%; }
+#hyakki-digital-root.hy-real .yg-playfield .hy-exchange-draft [data-hy-action="cancel-exchange"] { background:transparent; color:var(--theme-ink); border-color:var(--theme-border); font-weight:500; }
+@container hyakki-board (max-height:560px) {
+  #hyakki-digital-root.hy-real .hy-material-group>.hy-material-good { flex-basis:68px; width:68px; min-width:68px; }
+}
+@container hyakki-board (max-width:750px) {
+  .hy-real .yg-playfield[data-stage-profile="mobile"] .hy-inline-card { flex:0 0 56px; width:56px; align-self:center; }
+  #hyakki-digital-root.hy-real .yg-playfield[data-stage-profile="mobile"] .hy-inline-card .yousei-card { width:56px; height:110px; }
+  .hy-real .yg-playfield[data-stage-profile="mobile"] .hy-table-work { grid-template-columns:56px minmax(0,1fr); gap:8px; }
+  .hy-real .yg-playfield[data-stage-profile="mobile"] .hy-work-face { width:56px; height:110px; align-self:center; }
+  #hyakki-digital-root.hy-real .yg-playfield[data-stage-profile="mobile"] .hy-work-face .yousei-card { width:56px; height:110px; }
+  .hy-real .yg-playfield[data-stage-profile="mobile"] .hy-table-peek .hy-work-heading { display:none; }
+}
+@media (max-width:750px) and (orientation:landscape) {
+  .hy-real .yg-playfield[data-stage-profile="mobile"] { --yg-mobile-hand-budget:120px; }
+}

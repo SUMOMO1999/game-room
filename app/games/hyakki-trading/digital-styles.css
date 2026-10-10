@@ -346,3 +346,72 @@ html:has(body.hyakki-digital-body),body.hyakki-digital-body { margin:0; min-heig
   .yg-centre:has(.yg-readiness:not([hidden])) .yg-scene-content { grid-row:3; }
   .yg-hand { --hyakki-card-width:126px; --hyakki-card-height:188px; }
 }
+
+/* Finite board compositions. The viewport owner fits only this playfield;
+   toolbar, chat, dialogs and travelling copies keep screen coordinates. */
+.yg-shell,.yg-shell:has(.yg-peer.is-multiplayer),.yg-shell:has(#yg-observer-note:not([hidden])),
+.hy-real:has(#yg-readiness:not([hidden])) .yg-shell { grid-template-rows:44px minmax(0,1fr); gap:8px; }
+.yg-playfield-host { position:relative; min-width:0; min-height:0; }
+.yg-shell .yg-playfield { position:absolute; inset:0 auto auto 0; width:100%; height:100%; display:grid; grid-template-rows:minmax(0,1fr) 210px 18px; gap:10px; container:hyakki-board / size; }
+.yg-shell .yg-playfield .yg-table { overflow:visible; }
+.yg-window-hint { position:absolute; inset:0; z-index:20; display:grid; align-content:center; justify-items:center; gap:12px; padding:20px; background:var(--theme-table); border:1px solid var(--theme-border); border-radius:20px; text-align:center; }
+.yg-window-hint strong { font:700 22px/1.4 ui-serif,"Songti SC",serif; }.yg-window-hint span { max-width:28em; color:var(--theme-muted); line-height:1.6; }
+.yg-shell .yg-playfield[data-stage-profile="desktop"],.yg-shell .yg-playfield[data-stage-profile="classic"],.yg-shell .yg-playfield[data-stage-profile="ultrawide"] { grid-template-rows:minmax(0,1fr) 210px 18px; }
+.yg-shell .yg-playfield[data-stage-profile="compact"] { grid-template-rows:minmax(0,1fr) 158px 18px; gap:8px; }
+.yg-shell .yg-playfield:not([data-stage-profile="mobile"]) .yg-table { grid-template-columns:190px minmax(0,1fr) 280px; grid-template-rows:minmax(0,1fr) 72px; padding:14px; gap:12px; }
+.yg-shell .yg-playfield:not([data-stage-profile="mobile"]) .yg-peer { grid-column:1; grid-row:1; display:grid; width:100%; max-width:none; justify-self:stretch; gap:8px; align-content:start; }
+.yg-shell .yg-playfield:not([data-stage-profile="mobile"]) .yg-peer-panel { grid-template-columns:minmax(0,1fr); width:100%; gap:6px; padding:8px; }
+.yg-shell .yg-playfield:not([data-stage-profile="mobile"]) .yg-peer.is-multiplayer .yg-seat-strip { grid-column:1; grid-row:auto; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px; overflow:visible; }
+.yg-shell .yg-playfield:not([data-stage-profile="mobile"]) .yg-peer.is-multiplayer .yg-peer-detail { grid-column:1; grid-row:auto; width:100%; justify-self:stretch; }
+#hyakki-digital-root .yg-shell .yg-playfield:not([data-stage-profile="mobile"]) .yg-seat { flex:none; min-width:44px; width:auto; height:auto; padding:5px; }
+.yg-shell .yg-playfield:not([data-stage-profile="mobile"]) .yg-piles { grid-column:1; grid-row:2; grid-template-columns:repeat(2,minmax(0,1fr)); grid-template-rows:72px; gap:8px; align-self:end; }
+#hyakki-digital-root .yg-shell .yg-playfield:not([data-stage-profile="mobile"]) .yg-pile { flex-direction:row; gap:4px; padding:6px; }
+.yg-shell .yg-playfield:not([data-stage-profile="mobile"]) .yg-pile-art { position:static; display:block; flex:none; width:26px; height:38px; --hyakki-card-width:26px; --hyakki-card-height:38px; }
+.yg-shell .yg-playfield:not([data-stage-profile="mobile"]) .yg-pile>span:last-child { margin-left:0; font-size:12px; }
+.yg-shell .yg-playfield:not([data-stage-profile="mobile"]) .yg-pile-art .yousei-card { min-width:0; }
+.yg-shell .yg-playfield:not([data-stage-profile="mobile"]) .yg-discard-mark { width:100%; height:100%; font-size:20px; }
+.yg-shell .yg-playfield:not([data-stage-profile="mobile"]) .yg-centre { grid-column:2; grid-row:1/3; display:grid; grid-template-columns:minmax(0,1fr) minmax(240px,48%); grid-template-rows:auto minmax(0,1fr); gap:12px; }
+.yg-shell .yg-playfield:not([data-stage-profile="mobile"]) .yg-stage { grid-column:1; grid-row:1; align-items:center; }
+.yg-shell .yg-playfield:not([data-stage-profile="mobile"]) .yg-track { grid-column:2; grid-row:1; display:flex; align-items:center; gap:6px; width:100%; height:auto; min-height:52px; padding:6px 16px; }
+.yg-shell .yg-playfield:not([data-stage-profile="mobile"]) .yg-track>span { font:12px/1.3 system-ui; letter-spacing:0; white-space:nowrap; }
+.yg-shell .yg-playfield:not([data-stage-profile="mobile"]) #yg-track-steps { flex:1; min-width:0; padding-inline:10px; }
+.yg-shell .yg-playfield:not([data-stage-profile="mobile"]) .yg-scene-content { grid-column:1/-1; grid-row:2; align-self:center; width:100%; gap:8px; }
+.yg-shell .yg-playfield:not([data-stage-profile="mobile"]) .yg-readiness { grid-column:1/-1; grid-row:2; }
+.yg-shell .yg-playfield:not([data-stage-profile="mobile"]) .yg-centre:has(.yg-readiness:not([hidden])) .yg-scene-content { grid-row:3; }
+.yg-shell .yg-playfield:not([data-stage-profile="mobile"]) .yg-storage { grid-column:3; grid-row:1/3; gap:12px; }
+.yg-shell .yg-playfield:not([data-stage-profile="mobile"]) .yg-hand { --hyakki-card-width:124px; --hyakki-card-height:180px; }
+.yg-shell .yg-playfield:not([data-stage-profile="mobile"]) .yg-lower { grid-template-columns:210px minmax(0,1fr); gap:16px; }
+.yg-shell .yg-playfield[data-stage-profile="ultrawide"] .yg-table { grid-template-columns:230px minmax(0,1fr) 320px; padding:18px; gap:18px; }
+.yg-shell .yg-playfield[data-stage-profile="ultrawide"] .yg-centre { width:100%; max-width:1040px; justify-self:center; }
+.yg-shell .yg-playfield[data-stage-profile="ultrawide"] .yg-lower { grid-template-columns:230px minmax(0,1fr); }
+.yg-shell .yg-playfield[data-stage-profile="compact"] .yg-table { grid-template-columns:180px minmax(0,1fr) 244px; padding:10px; gap:8px; grid-template-rows:minmax(0,1fr) 72px; }
+.yg-shell .yg-playfield[data-stage-profile="compact"] .yg-piles { grid-template-rows:72px; }
+.yg-shell .yg-playfield[data-stage-profile="compact"] .yg-pile-art { --hyakki-card-width:26px; --hyakki-card-height:38px; }
+.yg-shell .yg-playfield[data-stage-profile="compact"] .yg-peer-panel { padding:5px; gap:4px; }
+.yg-shell .yg-playfield[data-stage-profile="compact"] .yg-peer-tools { grid-auto-columns:48px; }
+.yg-shell .yg-playfield:not([data-stage-profile="mobile"]) .yg-peer-good .yousei-good-icon { width:20px; height:20px; }
+.yg-shell .yg-playfield:not([data-stage-profile="mobile"]) .yg-peer-good b { font-size:12px; line-height:13px; }
+#hyakki-digital-root .yg-shell .yg-playfield:not([data-stage-profile="mobile"]) .yg-peer-tool { padding:2px; gap:0; }
+#hyakki-digital-root .yg-shell .yg-playfield:not([data-stage-profile="mobile"]) .yg-peer-tool .yousei-card { width:28px; height:24px; }
+.yg-shell .yg-playfield:not([data-stage-profile="mobile"]) .yg-peer-tool-name { font-size:10px; line-height:12px; }.yg-shell .yg-playfield:not([data-stage-profile="mobile"]) .yg-peer-tool-state { font-size:10px; line-height:11px; }
+.yg-shell .yg-playfield[data-stage-profile="compact"] .yg-centre { grid-template-columns:minmax(0,1fr) minmax(230px,48%); gap:8px; }
+.yg-shell .yg-playfield[data-stage-profile="compact"] .yg-stage h1 { font-size:18px; }.yg-shell .yg-playfield[data-stage-profile="compact"] .yg-time strong { font-size:20px; }
+.yg-shell .yg-playfield[data-stage-profile="compact"] .yg-hand { --hyakki-card-width:96px; --hyakki-card-height:130px; }
+.yg-shell .yg-playfield[data-stage-profile="compact"] .yg-lower { grid-template-columns:180px minmax(0,1fr); gap:10px; }
+.yg-shell .yg-playfield[data-stage-profile="compact"] .yg-market { gap:3px; }
+.yg-shell .yg-playfield[data-stage-profile="compact"] .yg-market-good { min-height:44px; }
+.yg-shell .yg-playfield[data-stage-profile="classic"] .yg-table { grid-template-columns:170px minmax(0,1fr) 240px; gap:10px; padding:10px; }
+.yg-shell .yg-playfield[data-stage-profile="classic"] .yg-centre { grid-template-columns:minmax(0,1fr); grid-template-rows:auto auto minmax(0,1fr); gap:8px; }
+.yg-shell .yg-playfield[data-stage-profile="classic"] .yg-track { grid-column:1; grid-row:2; }
+.yg-shell .yg-playfield[data-stage-profile="classic"] .yg-scene-content { grid-row:3; }
+.yg-shell:has(.yg-playfield[data-stage-profile="mobile"]) { gap:4px; }
+.yg-shell .yg-playfield[data-stage-profile="mobile"] { --yg-mobile-hand-budget:clamp(118px,calc(var(--stage-height) - 170px),136px); grid-template-rows:minmax(0,1fr) var(--yg-mobile-hand-budget); gap:4px; }
+.yg-shell .yg-playfield[data-stage-profile="mobile"]:has(#yg-observer-note:not([hidden])),.hy-real:has(#yg-readiness:not([hidden])) .yg-shell .yg-playfield { grid-template-rows:minmax(0,1fr) 48px; }
+.yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-feedback { display:none; }
+.yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-hand { --hyakki-card-width:calc((var(--yg-mobile-hand-budget) - 28px) * .8); --hyakki-card-height:calc(var(--yg-mobile-hand-budget) - 28px); }
+#hyakki-digital-root .yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-equipped { height:100%; max-height:100%; }
+#hyakki-digital-root .yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-equipped .yousei-card { height:100%; }
+.yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-table { padding:6px; }
+.yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-centre { gap:4px; }
+/* Scaling may enlarge the logical hit area, never reduce the physical target. */
+#hyakki-digital-root .yg-shell .yg-playfield button,#hyakki-digital-root .yg-shell .yg-playfield select,#hyakki-digital-root .yg-shell .yg-playfield input { min-width:calc(44px / var(--stage-scale,1)); min-height:calc(44px / var(--stage-scale,1)); }
