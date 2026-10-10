@@ -84,7 +84,7 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
       </aside>
     </section>
     <div class="yg-lower" data-chat-dismiss-notices><section id="yg-tool-zone" class="yg-tool-zone" aria-label="已装备道具"><div class="yg-tool-heading"><strong>已装备</strong><span id="yg-tool-count"></span></div><div id="yg-tools" class="yg-tools"></div></section>
-      <section id="yg-hand-section" class="yg-hand-section" aria-label="我的手牌"><div class="yg-hand-heading"><strong id="yg-hand-title">我的手牌</strong><span class="yg-hand-guide">横滑看牌 · 点开使用</span></div><div id="yg-hand" class="yg-hand" tabindex="0" aria-label="全部手牌，左右滑动或方向键浏览"></div></section>
+      <section id="yg-hand-section" class="yg-hand-section" aria-label="我的手牌"><div class="yg-hand-heading"><strong id="yg-hand-title">我的手牌</strong><span class="yg-hand-guide">横滑看牌 · 点牌选择</span></div><div id="yg-hand" class="yg-hand" tabindex="0" aria-label="全部手牌，左右滑动或方向键浏览"></div></section>
       <section id="yg-observer-note" class="yg-observer-note" hidden><h2>观战只看公开信息</h2><p>这里不会显示任何人的手牌、私看候选或未公开的牌序。</p></section>
     </div><p id="yg-feedback" class="yg-feedback" role="status" aria-live="polite">合成局面只用于检查页面和选择流程；主题、音量偏好沿用本机设置。</p>
     <section id="yg-rotation" class="yg-rotation" hidden><div aria-hidden="true" class="yg-rotate-icon">↻</div><h2>横过来，展开整张夜市。</h2><p>聊天、设置和退出仍在上方。横竖切换保留当前选择与聊天草稿。</p><div id="yg-portrait-decision"></div><small>本地合成样板 · 不保存牌局</small></section>

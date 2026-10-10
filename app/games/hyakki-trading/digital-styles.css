@@ -200,3 +200,31 @@ html:has(body.hyakki-digital-body),body.hyakki-digital-body { margin:0; min-heig
   .yg-has-chat-decision .room-chat { bottom:98px; }.yg-chat-decision strong { max-width:55%; }.yg-keyboard .yg-chat-decision { position:absolute; bottom:0; }
 }
 @media (prefers-reduced-motion:no-preference) { .yg-candidate { transition:border-color .12s,background .12s; } }
+
+/* A hand drag only selects a card. The action buttons remain a separate decision. */
+.hy-real .yg-centre { position:relative; }
+.hy-hand-drop { position:absolute; inset:4px; z-index:6; display:grid; place-items:center; padding:16px; border:2px dashed var(--theme-accent); border-radius:14px; background:color-mix(in srgb,var(--theme-table) 92%,transparent); color:var(--theme-ink); font-weight:700; text-align:center; pointer-events:none; }
+.hy-hand-drop[hidden] { display:none; }
+.hy-hand-drop.is-over { border-style:solid; background:color-mix(in srgb,var(--theme-accent) 22%,var(--theme-table)); box-shadow:inset 0 0 0 3px var(--theme-table); }
+.hy-hand-ghost { position:fixed; z-index:100; pointer-events:none; transform:translate(-50%,-85%) rotate(-4deg); --hyakki-card-width:104px; --hyakki-card-height:156px; filter:drop-shadow(0 8px 12px #0005); }
+#hyakki-digital-root .hy-hand-ghost .yousei-card { width:104px; height:156px; padding:5px; border-radius:10px; }
+.hy-hand-dragging { user-select:none; -webkit-user-select:none; }
+.hy-real .yg-hand-card.is-selected .yousei-card { outline:3px solid var(--theme-accent); outline-offset:-3px; }
+@media (max-height:600px) and (orientation:landscape) {
+  .hy-real.hy-card-selected .yg-stage,.hy-real.hy-card-selected .yg-track { display:none; }
+  .hy-real.hy-card-selected #yg-scene-content { justify-content:center; overflow:visible; }
+  .hy-real.hy-card-selected .hy-card-play { display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"title secondary" "summary summary" "actions actions"; gap:3px 6px; }
+  .hy-real.hy-card-selected .hy-inline-copy { display:contents; }
+  .hy-real.hy-card-selected .hy-inline-card { grid-area:title; min-width:0; }
+  .hy-real.hy-card-selected .hy-inline-card .hy-compact-art,.hy-real.hy-card-selected .hy-inline-card .hy-compact-goods,.hy-real.hy-card-selected .hy-inline-card small,.hy-real.hy-card-selected .hy-inline-copy>small { display:none; }
+  .hy-real.hy-card-selected .hy-inline-card strong { display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; text-align:left; }
+  .hy-real.hy-card-selected .hy-inline-copy>p { grid-area:summary; margin:0; font-size:12px; line-height:16px; }
+  .hy-real.hy-card-selected .hy-inline-secondary { grid-area:secondary; margin:0; flex-wrap:nowrap; }
+  .hy-real.hy-card-selected .hy-inline-actions { grid-area:actions; margin:0; flex-wrap:nowrap; align-items:flex-end; gap:4px; }
+  #hyakki-digital-root.hy-real.hy-card-selected .hy-inline-secondary button { padding:4px 6px; font-size:12px; }
+  #hyakki-digital-root.hy-real.hy-card-selected .hy-inline-actions button { padding:5px 7px; font-size:13px; flex:1; }
+  .hy-real.hy-card-selected .hy-inline-actions label { min-width:0; flex:1; flex-direction:column; align-items:flex-start; gap:0; font-size:10px; line-height:12px; }
+  #hyakki-digital-root.hy-real.hy-card-selected .hy-inline-actions select { width:100%; font-size:12px; }
+  .hy-real.hy-card-selected .hy-inline-actions>p { margin:0; font-size:12px; line-height:16px; }
+  .hy-real:not(.hy-card-selected) #yg-scene-content .yg-scene-note { display:block; margin:0; font-size:12px; line-height:16px; text-align:center; }
+}

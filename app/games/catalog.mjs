@@ -53,7 +53,7 @@ const entries = [
     practicePage: 'hyakki-practice.html', scoreKind: 'outcome',
     timeout: { action: '按当前步骤默认选择', hint: '主动回合30分钟，对方回应60秒；掉线保留当前材料并挂起' },
     assets: ['hyakki.html', 'hyakki-practice.html', 'hyakki-catalog.html',
-      ...['game-page.mjs', 'room-controller.mjs', 'presentation.mjs', 'game-ui.mjs', 'game-ui-model.mjs', 'game-ui.css',
+      ...['game-page.mjs', 'room-controller.mjs', 'presentation.mjs', 'game-ui.mjs', 'game-ui-model.mjs', 'game-ui.css', 'game-dialog-ui.mjs', 'hand-drag-ui.mjs',
         'practice-page.mjs', 'practice-engine.mjs', 'practice-bot.mjs', 'rules.mjs', 'model.mjs', 'effects.mjs', 'tools.mjs',
         'auction.mjs', 'decision.mjs', 'lifecycle.mjs', 'validation.mjs', 'view.mjs', 'content/definitions.mjs', 'content/manifest.mjs',
         'digital-page-ui.mjs', 'digital-card-ui.mjs', 'digital-card.css', 'digital-styles.css', 'digital-catalog.mjs', 'digital-catalog-page.mjs', 'digital-catalog.css']
