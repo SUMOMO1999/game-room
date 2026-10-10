@@ -95,11 +95,12 @@ function candidates(view, choose) {
   const active = useCandidates(view, choose);
   if (view.stage === 'use') return active;
   const owner = view.players.find(player => player.id === view.viewerId);
-  const drawTools = !view.drawStarted && choose(4) === 0 ? owner.tools.filter(tool => !tool.exhausted && getCard(tool.definitionId).sourceCode === 'T07')
+  const drawTools = !view.drawStarted && view.remainingActions >= 2 && choose(4) === 0 ? owner.tools.filter(tool => !tool.exhausted && getCard(tool.definitionId).sourceCode === 'T07')
     .map(tool => ({ type: 'activate-tool', cardId: tool.cardId })) : [];
   const economical = active.some(command => ['buy', 'sell', 'play-character', 'activate-tool'].includes(command.type));
   const wantsCard = owner.hand.length < 4 || !economical || choose(view.actionLimit === 1 ? 3 : 4) === 0;
   const canDraw = view.deckCount + view.discard.length > 0;
+  if (!view.drawStarted && canDraw) return [...drawTools, { type: 'peek' }];
   return [...drawTools, ...(wantsCard && canDraw ? [{ type: 'peek' }] : []), { type: 'finish-draw' }, { type: 'end-turn' }];
 }
 

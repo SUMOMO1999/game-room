@@ -119,10 +119,11 @@ export function legalHyakkiPracticeActions(view, playerId = view?.viewerId, { no
   else if (view.stage === 'use') actions = ordinaryActions(view);
   else {
     const owner = view.players.find(item => item.id === playerId);
-    actions = [{ type: 'finish-draw' }, { type: 'end-turn' }];
+    const firstPeekRequired = !view.drawStarted && view.deckCount + view.discard.length > 0;
+    actions = firstPeekRequired ? [] : [{ type: 'finish-draw' }, { type: 'end-turn' }];
     if (view.remainingActions > 0) {
       if (view.deckCount + view.discard.length > 0) actions.unshift({ type: 'peek' });
-      if (!view.drawStarted && owner.hand.length && view.discard.length) for (const tool of owner.tools) {
+      if (!view.drawStarted && owner.hand.length && view.discard.length && view.remainingActions >= 2) for (const tool of owner.tools) {
         if (!tool.exhausted && getCard(tool.definitionId).sourceCode === 'T07') actions.unshift({ type: 'activate-tool', cardId: tool.cardId, params: {} });
       }
     }
@@ -197,6 +198,7 @@ export function chooseHyakkiPracticeAction(view, playerId = view?.viewerId, opti
       if (faceValue(getCard(view.discard.at(-1).definitionId)) > faceValue(getCard(low.definitionId)))
         return { ...paper, params: { cardId: low.cardId } };
     }
+    if (!view.drawStarted && view.deckCount + view.discard.length > 0) return actions.find(action => action.type === 'peek');
     if (owner.silver >= 60) return actions.find(action => action.type === 'end-turn');
     const useful = ordinaryActions(view).some(action => ['buy', 'sell', 'play-character', 'activate-tool'].includes(action.type));
     const wantsCard = owner.hand.length < 4 || !useful || jitter(`${view.matchId}:${view.turnId}:draw`) % (view.actionLimit === 1 ? 3 : 4) === 0;

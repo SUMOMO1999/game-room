@@ -24,7 +24,7 @@ function installed(game, code, ownerId = game.turnPlayerId) {
   const cardId = take(game, code, ownerId), owner = game.players.find(player => player.id === ownerId);
   owner.hand.splice(owner.hand.indexOf(cardId), 1); owner.tools.push({ cardId, exhausted: false }); return cardId;
 }
-function useStage(game) { return run(game, 'finish-draw'); }
+function useStage(game) { return run(run(game, 'peek'), 'keep-peek'); }
 function assertNoCopies(value) { assert.doesNotMatch(JSON.stringify(value), /yousei\.[a-z0-9_-]+#\d{2}/u); }
 
 test('real opening validates 110 unique card zones, six stocks and five board ownership', () => {
@@ -126,7 +126,7 @@ test('goods retention pending remains conserved and rejects a foreign selection 
 test('numeric-leading seat identities remain valid in M05 temporary-payment bookkeeping', () => {
   const numeric = ['1'.repeat(32), '2'.repeat(32)];
   let state = createGame(numeric, { matchId, now: 1000, randomInt: max => max - 1, actionLimit: 10, goodsPerType: 6 });
-  state = run(state, 'finish-draw');
+  state = useStage(state);
   state.players[0].goods.firearms = 6; state.players[0].temporaryOccupied = true; state.bankGoods.firearms = 0;
   const cardId = take(state, 'M05'); state = run(state, 'play-character', { cardId }); state = run(state, 'decline-response');
   assert.equal(state.pending.data.tempPaid[numeric[0]], true); assert.equal(gameProblem(state), null);

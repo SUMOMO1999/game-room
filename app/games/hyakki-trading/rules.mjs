@@ -113,6 +113,12 @@ function fence(state, action, actorId) {
 function consumeAction(state) {
   requireRule(state.actionsUsed < state.actionLimit, '本回合行动已经用完。'); state.actionsUsed++;
 }
+// Legacy saves already in use remain playable; only an unstarted draw stage
+// owes the first ordinary peek. An empty draw/discard pool cannot be drawn.
+const needsFirstPeek = state => state.stage === 'draw' && !state.drawStarted && availableCards(state) > 0;
+function requireFirstPeek(state) {
+  requireRule(!needsFirstPeek(state), '每回合先看一张牌，留下或弃掉都消耗1行动。', 'FIRST_PEEK_REQUIRED');
+}
 function requireUse(state) { requireRule(state.stage === 'use', '请先结束看牌阶段。'); }
 function ownedCard(state, actorId, cardId, category) {
   const owner = player(state, actorId), card = definition(cardId);
@@ -183,9 +189,9 @@ function dispatch(state, actorId, action, ctx) {
       emit(state, { type: 'draw-peeked', actorSeatId: actorId }); break;
     }
     case 'finish-draw':
-      requireRule(state.stage === 'draw', '已进入用牌阶段。'); state.stage = 'use';
+      requireRule(state.stage === 'draw', '已进入用牌阶段。'); requireFirstPeek(state); state.stage = 'use';
       emit(state, { type: 'draw-finished', actorSeatId: actorId }); break;
-    case 'end-turn': endTurn(state, ctx.now, { voluntary: true }); break;
+    case 'end-turn': requireFirstPeek(state); endTurn(state, ctx.now, { voluntary: true }); break;
     case 'buy': case 'sell': trade(state, actorId, action.cardId, action.type === 'buy'); break;
     case 'buy-stall': {
       requireUse(state); ownedCard(state, actorId, action.cardId, 'stall_permit');
@@ -214,6 +220,8 @@ function dispatch(state, actorId, action, ctx) {
       requireRule(tool && !tool.exhausted, '请选择尚未使用的自己的道具。');
       const card = definition(action.cardId); if (card.sourceCode !== 'T07') requireUse(state);
       const issue = toolProblem(state, actorId, action.cardId, action.params); requireRule(!issue, issue);
+      if (card.sourceCode === 'T07' && needsFirstPeek(state)) requireRule(state.actionLimit - state.actionsUsed >= 2,
+        '纸上仙之后仍须看第一张牌，请保留1行动。', 'FIRST_PEEK_REQUIRED');
       consumeAction(state); tool.exhausted = true;
       emit(state, { type: 'tool-activated', actorSeatId: actorId, cardId: card.id });
       startTool(state, action.cardId, action.params, ctx); break;

@@ -51,7 +51,7 @@ export function renderPersonalSlots(player) {
 
 const RULES = [
   '双人。每人20两、5张手牌、5个普通格＋1个收费临时格。六类货物默认各8件，开局前可设各4～20件；旧局保留原数量。',
-  '每回合默认5行动，开局前可设1～10。取牌与用牌共用额度：看一张即用1行动，弃掉才可继续，留下立刻进入用牌。',
+  '每回合默认5行动，开局前可设1～10。取牌与用牌共用额度：每回合第一张必摸，留下或弃掉均耗1行动，之后才可用牌；弃掉才可继续摸。',
   '按货物牌的固定配方整组买入或卖出，使用后弃牌；临时格从空变为占用时另付2两。',
   '许可购买一块3格扩摊板。全局第一次6两，此后3两，公共区总共5块。',
   '道具先放置，再使用，分别花1行动。使用后横置，本人回合结束恢复；同名道具分别使用，最多放3张。',
@@ -190,7 +190,7 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
     $('yg-personal').hidden = !self; $('yg-hand-section').hidden = !self; $('yg-tool-zone').hidden = !self; $('yg-observer-note').hidden = !!self;
     if (self) {
       $('yg-silver').textContent = `${self.silver}两`;
-      $('yg-stock-slots').innerHTML = GOODS.map(good => `<span class="yg-owned-good" aria-label="我的${escape(good.name)}${self.goods.find(item => item.id === good.id)?.count ?? 0}件" title="${escape(good.name)}">${renderGoodsIcon(good.id)}<b>×${self.goods.find(item => item.id === good.id)?.count ?? 0}</b></span>`).join('');
+      $('yg-stock-slots').innerHTML = GOODS.map(good => `<span class="yg-owned-good" aria-label="我的${escape(good.name)}${self.goods.find(item => item.id === good.id)?.count ?? 0}件" title="${escape(good.name)}">${renderGoodsIcon(good.id)}<b>${self.goods.find(item => item.id === good.id)?.count ?? 0}</b></span>`).join('');
       $('yg-shop-note').textContent = `${totalGoods(self)}/${self.ordinaryCapacity}普通格＋1临时格 · ${view.temporaryPaid ? '临时已付2两' : '临时占用付2两'}`;
       $('yg-tool-count').textContent = `${self.tools.length}/3`;
       $('yg-tools').innerHTML = self.tools.length ? self.tools.map(tool => `<button type="button" data-tool-id="${escape(tool.id)}" class="yg-equipped${tool.tapped ? ' is-tapped' : ''}" aria-label="${escape(definition(tool).name)}，${tool.tapped ? '已用，本回合不可再发动' : '可用'}">${renderCard(tool, { interactive: false })}<span class="yg-equipped-state">${tool.tapped ? '已用' : '可用'}</span></button>`).join('') : '<span class="yg-tool-empty">道具放在这里<br>先安装，再使用</span>';

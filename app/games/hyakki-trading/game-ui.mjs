@@ -63,6 +63,7 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
   const available = () => !!room&&!concealed&&!destroyed&&!state.pending&&state.canAct!==false&&state.connection==='online';
   const mine = () => room?.selfRole==='player'&&room.game?.pending?.actorId===room.selfId;
   const active = () => available()&&room.phase==='playing'&&room.selfRole==='player'&&room.game?.turnPlayerId===room.selfId&&!room.game.pending;
+  const firstPeekRequired = () => room?.game?.stage==='draw'&&!room.game.drawStarted&&room.game.deckCount+room.game.discard.length>0;
   const name = id => [...(room?.players??[]),...(room?.matchPlayers??[])].find(player=>player.id===id)?.name ?? '伙伴';
   const cardList = cards => renderCompactCards(cards,cardsPage);
   function closeDialogs(){root.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());}
@@ -80,9 +81,9 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
     const face=getCard(card.definitionId),self=room.game?.players.find(player=>player.id===room.selfId),peer=room.game?.players.find(player=>player.id!==room.selfId);
     let operations='';
     if(active()&&(tool||self?.hand?.some(item=>cardKey(item)===cardKey(card)))){
-      if(tool){if(!card.exhausted&&(face.sourceCode==='T07'?room.game.stage==='draw'&&!room.game.drawStarted:room.game.stage==='use'))operations=button('confirm-card','使用道具 · 1行动',{type:'activate-tool'});else operations='<p>已横置或不在使用时机。</p>';}
+      if(tool){if(face.sourceCode==='T07'&&firstPeekRequired()&&room.game.remainingActions<2)operations='<p>须保留1行动摸第一张牌，本回合不能先用此道具。</p>';else if(!card.exhausted&&(face.sourceCode==='T07'?room.game.stage==='draw'&&!room.game.drawStarted:room.game.stage==='use'))operations=button('confirm-card','使用道具 · 1行动',{type:'activate-tool'});else operations='<p>已横置或不在使用时机。</p>';}
       else if(['C04','C07'].includes(face.sourceCode))operations='<p>只可在对应的回应窗口使用。</p>';
-      else if(room.game.stage==='draw')operations=button('begin-play','进入用牌',{cardId:cardKey(card)});
+      else if(room.game.stage==='draw')operations=firstPeekRequired()?'<p>每回合先摸第一张，留下或弃掉都花1行动。</p>'+button('peek','先摸一张 · 1行动'):button('begin-play','进入用牌',{cardId:cardKey(card)});
       else if(face.category==='goods')operations=button('confirm-card',`整组买入 · ${Math.max(0,face.buySilver-2*room.game.bookLayers)}两`,{type:'buy'})+button('confirm-card',`整组出售 · ${face.sellSilver+2*room.game.bookLayers}两`,{type:'sell'});
       else if(face.category==='stall_permit')operations=button('confirm-card',`扩摊3格 · ${room.game.purchasedStalls?3:6}两`,{type:'buy-stall'});
       else if(face.category==='tool')operations=(self.tools.length===3?`<label>道具区已满，弃掉一张已装道具<select id="hy-replace">${self.tools.map(tool=>`<option value="${esc(cardKey(tool))}">${esc(getCard(tool.definitionId).name)}${tool.exhausted?' · 已横置':''}</option>`).join('')}</select></label>`:'')+button('confirm-card','安装道具 · 1行动',{type:'install-tool'});
@@ -163,9 +164,9 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
       note=game.pending.response?'回应期间主动操作冻结；到时按当前默认选项处理。':game.pending.auction?'整组拍品，完整付款；关闭窗口不会放弃竞价。':'材料与费用已保存，请完成当前步骤。';
       controls=button('decision',mine()?'处理当前选择':'查看公开步骤',{},false);
     }else if(active()){
-      note=game.stage==='draw'?'先看牌，或直接进入用牌。每看一张花1行动，留下即进入用牌。':'把手牌拖到桌面，或点牌选中使用。';
-      if(game.stage==='draw')controls+=button('peek','看一张 · 1行动',{},game.deckCount+game.discard.length===0)+button('finish-draw','进入用牌');
-      controls+=button('end-turn',game.remainingActions>=2?'结束回合 · 得1两':'结束回合');
+      note=game.stage==='draw'?(firstPeekRequired()?'先摸第一张牌，留下或弃掉都花1行动。':game.deckCount+game.discard.length===0?'已无可摸的牌，可以进入用牌。':'已摸过牌；可继续摸，也可进入用牌。每摸一张花1行动。'):'把手牌拖到桌面，或点牌选中使用。';
+      if(game.stage==='draw')controls+=button('peek',firstPeekRequired()?'摸第一张 · 1行动':'再摸一张 · 1行动',{},game.deckCount+game.discard.length===0)+button('finish-draw','进入用牌',{},firstPeekRequired());
+      controls+=button('end-turn',game.remainingActions>=2?'结束回合 · 得1两':'结束回合',{},firstPeekRequired());
     }else note=isPlayer?`等待${name(game?.turnPlayerId)}，可查看卡牌与公开记录。`:'正在观战；不会显示私牌和私看候选。';
     if(room.pause)note+=` ${name(room.pause.requestedBy)}申请暂停（${room.pause.agreedIds.length}/2同意）。`;
     if(room.pause&&isPlayer)controls+=button('pause',room.pause.agreedIds.includes(room.selfId)?'撤回暂停同意':'同意暂停',{agree:!room.pause.agreedIds.includes(room.selfId)},!available());
@@ -221,7 +222,7 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
   const arrangements=$('hy-pause').closest('section');
   arrangements.querySelector('.game-settings-controls').append($('yg-catalog'));
   $('yg-catalog').textContent='查看完整51种卡牌';
-  arrangements.querySelector('details').outerHTML=`<details><summary>① 回合顺序与行动例子</summary><p>每人20两、5张手牌。每回合先取牌，再用牌，最后结束；回合行动额度由房主设定（默认5步）。看1张牌用1步，弃掉可继续看；一旦留下就进入用牌。也可直接进入用牌，不花行动。</p><p>例：看第1张并弃掉，花1步；看第2张并留下，再花1步；买一组货物花1步；余2步主动结束，获得1两。耗尽行动或超时结束不赠银两。</p></details><details><summary>② 货物、摊位与临时格</summary><p>用货物牌整组买入或卖出，不能只交易其中一部分。起初5个普通货位＋1个临时位，新占临时格需付2两。人物、道具等带来货物时，按当前选择留下可容纳部分，其余退公库；最终以牌文和当前提示为准。</p><p>持摊位许可可花1步扩摊，每块加3格。全场第一块6两，后续3两；货物总量与扩摊数量有限，公库以右侧库存为准。</p></details><details><summary>③ 人物、道具与对方回应</summary><p>人物通常花1步使用。监视人物可能让对方用锦衣卫抵消；番商可在交易回应窗取走货物牌。回应者有60秒，主动玩家时钟冻结。牌、费用与选择一经提交就保存；关闭详情不会退款，也不会取消已经发动的效果。</p><p>安装道具花1步，使用另花1步，另付牌上要求的银两、货物或弃牌费用。每人最多3件，可弃旧装新；用过横置，自己回合结束复原。貔貅袋等候选牌、拍卖全组拍品与选择数量都在决定窗口显示。</p></details><details><summary>④ 收市、恢复与本机练习</summary><p>回合结束达到60两触发收市：若先手触发，后手再完成一回合；银两最多者胜，平手由最后行动者胜。财富仅属于本局，不计入账号积分。</p><p>正式房间可申请双方暂停；意外离线保留席位和待决步骤，主动退出则认输。本机练习只存在当前浏览器：打开面板、切到后台会暂停电脑，退出后可继续。遇到另一窗口已修改进度，先读取保存进度再操作。</p></details>`;
+  arrangements.querySelector('details').outerHTML=`<details><summary>① 回合顺序与行动例子</summary><p>每人20两、5张手牌。每回合先取牌，再用牌，最后结束；回合行动额度由房主设定（默认5步）。看1张牌用1步，弃掉可继续看；一旦留下就进入用牌。每回合必须先看第一张，留下或弃掉都计1步；弃掉后可结束看牌进入用牌。</p><p>例：看第1张并弃掉，花1步；看第2张并留下，再花1步；买一组货物花1步；余2步主动结束，获得1两。耗尽行动或超时结束不赠银两。</p></details><details><summary>② 货物、摊位与临时格</summary><p>用货物牌整组买入或卖出，不能只交易其中一部分。起初5个普通货位＋1个临时位，新占临时格需付2两。人物、道具等带来货物时，按当前选择留下可容纳部分，其余退公库；最终以牌文和当前提示为准。</p><p>持摊位许可可花1步扩摊，每块加3格。全场第一块6两，后续3两；货物总量与扩摊数量有限，公库以右侧库存为准。</p></details><details><summary>③ 人物、道具与对方回应</summary><p>人物通常花1步使用。监视人物可能让对方用锦衣卫抵消；番商可在交易回应窗取走货物牌。回应者有60秒，主动玩家时钟冻结。牌、费用与选择一经提交就保存；关闭详情不会退款，也不会取消已经发动的效果。</p><p>安装道具花1步，使用另花1步，另付牌上要求的银两、货物或弃牌费用。每人最多3件，可弃旧装新；用过横置，自己回合结束复原。貔貅袋等候选牌、拍卖全组拍品与选择数量都在决定窗口显示。</p></details><details><summary>④ 收市、恢复与本机练习</summary><p>回合结束达到60两触发收市：若先手触发，后手再完成一回合；银两最多者胜，平手由最后行动者胜。财富仅属于本局，不计入账号积分。</p><p>正式房间可申请双方暂停；意外离线保留席位和待决步骤，主动退出则认输。本机练习只存在当前浏览器：打开面板、切到后台会暂停电脑，退出后可继续。遇到另一窗口已修改进度，先读取保存进度再操作。</p></details>`;
   $('yg-stay').textContent='继续游戏';$('yg-leave-close').setAttribute('aria-label','继续游戏');
   $('yg-leave-confirm').textContent=practice?'返回大厅':'确认退出';
   $('chat-title').textContent='房间聊天';root.querySelector('.chat-heading p').textContent='和房间里的伙伴聊两句。';
@@ -231,6 +232,7 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
   root.insertAdjacentHTML('beforeend','<dialog id="hy-card-reader" class="yg-dialog hy-card-reader" aria-labelledby="hy-reader-title"><div class="dialog-heading"><h2 id="hy-reader-title"></h2><button type="button" id="hy-reader-close" class="close-button" aria-label="返回上一层">×</button></div><div id="hy-reader-body"></div></dialog>');
   function handleAction(type,fields){
     if(type==='cancel-card'){detail=null;render();return;}
+    if(['begin-play','finish-draw','end-turn'].includes(type)&&firstPeekRequired())return feedback('每回合必须先摸第一张牌，留下或弃掉后才能继续。');
     if(type==='begin-play'){if(!active()||room.game.stage!=='draw')return;return dispatch('finish-draw',{},()=>{if(active()&&room.game.stage==='use')selectHandCard(room.game.players.find(player=>player.id===room.selfId)?.hand.find(card=>cardKey(card)===fields.cardId));});}
     if(type==='choice-page'){choiceDraft=readChoice();choicePage=fields.page;return decision();}
     if(type==='cards-page'){cardsPage=fields.page;if($('yg-decision').open)return decision();return inspect('公开弃牌',cardList(room.game.discard));}
@@ -271,7 +273,7 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
   const removeSubmit=listen('submit',event=>{if(!['hy-choice-form','hy-bid-form'].includes(event.target.id))return;event.preventDefault();event.stopImmediatePropagation();if(!mine()||!available())return;try{if(event.target.id==='hy-choice-form'){choiceDraft=readChoice();dispatch('choose-effect',{selection:buildChoiceSelection(room.game.pending,choiceDraft)});}else{const amount=Number(event.target.elements.amount.value),bid=room.game.pending.decision.options.find(option=>option.type==='bid');if(!Number.isSafeInteger(amount)||!bid||amount<bid.minimum||amount>bid.maximum)throw new RangeError('请输入报价范围内的整数。');choiceDraft={amount};dispatch('bid',{amount});}}catch(error){feedback(error.message);}});
   const removeInput=listen('input',event=>{if(event.target.closest('#hy-choice-form'))choiceDraft=readChoice();if(event.target.closest('#hy-bid-form'))choiceDraft={amount:Number(event.target.value)};});
   const removeChange=listen('change',event=>{if(['hy-action-limit','hy-goods-limit'].includes(event.target.id))dispatch('configure',{hyakkiConfig:{actionLimit:Number($('hy-action-limit').value),goodsPerType:Number($('hy-goods-limit').value)}});});
-  const handDrag=mountHandDrag({root,getContext:()=>({scope:selectionScope(room),enabled:active(),cardIds:room?.game?.players.find(player=>player.id===room.selfId)?.hand?.map(cardKey)??[],blockedReason:room?.game?.stage==='draw'?'先看牌，或点击进入用牌。':'请先完成当前步骤，轮到你时再用牌。'}),onDrop:id=>selectHandCard(room?.game?.players.find(player=>player.id===room.selfId)?.hand?.find(card=>cardKey(card)===id)),onBlocked:feedback});
+  const handDrag=mountHandDrag({root,getContext:()=>({scope:selectionScope(room),enabled:active(),cardIds:room?.game?.players.find(player=>player.id===room.selfId)?.hand?.map(cardKey)??[],blockedReason:firstPeekRequired()?'每回合必须先摸第一张牌。':'请先完成当前步骤，轮到你时再用牌。'}),onDrop:id=>selectHandCard(room?.game?.players.find(player=>player.id===room.selfId)?.hand?.find(card=>cardKey(card)===id)),onBlocked:feedback});
   const clearSelection=()=>{if(detail){detail=null;if(room&&!destroyed)render();}};
   window.addEventListener('blur',clearSelection);
   const clock=window.setInterval(updateClock,500);
