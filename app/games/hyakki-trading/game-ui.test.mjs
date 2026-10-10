@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { drawingTestDOM } from '../../test-support/drawing-page-dom.mjs';
 import { mountHyakkiPage } from './game-ui.mjs';
 import { createGame, applyGameAction, currentDecision } from './rules.mjs';
-import { privateView } from './view.mjs';
+import { privateView, spectatorView } from './view.mjs';
 import { DIGITAL_RULE_VERSION } from './content/definitions.mjs';
 
 const ids=['a'.repeat(32),'b'.repeat(32)],context={now:1000,randomInt:n=>n-1};
@@ -18,10 +18,14 @@ function room(game,{phase='playing',selfId=ids[0],pause=null,manual=false}={}){
   return {roomId:'room',roomCode:'123456',phase,selfId,selfRole:'player',hostId:ids[0],serverTime:context.now,pause,game:projected,
     players:ids.map((id,index)=>({id,name:index?'伙伴':'我',ready:true})),spectators:[],hyakkiConfig:{actionLimit:5,goodsPerType:6}};
 }
-function fixture(t,{onAction}={}){
+function fixture(t,{onAction,practice=false}={}){
   const document=drawingTestDOM('<head></head><body><main id="hyakki-digital-root"></main></body>'),root=document.getElementById('hyakki-digital-root');
   const prototype=Object.getPrototypeOf(root),nativeQuery=prototype.querySelectorAll;
   // Extend the small shared lifecycle DOM only for APIs used by the real mount.
+  const nativeSetAttribute=prototype.setAttribute,nativeRemoveAttribute=prototype.removeAttribute;
+  prototype.setAttribute=function(name,value){nativeSetAttribute.call(this,name,value);if(name==='disabled')this.disabled=true;};
+  prototype.removeAttribute=function(name){nativeRemoveAttribute.call(this,name);if(name==='disabled')this.disabled=false;};
+  prototype.after=function(...children){const parent=this.parentNode,index=parent.children.indexOf(this)+1;for(const child of children){child.remove();child.parentNode=parent;}parent.children.splice(index,0,...children);};
   prototype.querySelectorAll=function(selector){
     if(selector.includes(','))return [...new Set(selector.split(',').flatMap(part=>this.querySelectorAll(part.trim())))];
     const parts=selector.trim().split(/\s+/u);if(parts.length===1)return nativeQuery.call(this,selector==='*'?'div,span,button,img':selector.replace(/:first-child/gu,''));
@@ -40,7 +44,7 @@ function fixture(t,{onAction}={}){
     ResizeObserver:class{observe(){}disconnect(){}},MutationObserver:class{observe(){}disconnect(){}},
     getComputedStyle:()=>({columnGap:'8px',paddingLeft:'3px',paddingRight:'3px',getPropertyValue:name=>name==='--hyakki-card-width'?'132px':'192px'})});
   document.defaultView=window;root.ownerDocument=document;
-  const commands=[],ui=mountHyakkiPage({root,onAction:(type,fields)=>{commands.push({type,fields});return onAction?onAction(type,fields):true;}});t.after(()=>ui.destroy());
+  const commands=[],ui=mountHyakkiPage({root,practice,onAction:(type,fields)=>{commands.push({type,fields});return onAction?onAction(type,fields):true;}});t.after(()=>ui.destroy());
   function click(node){const event=new Event('click');Object.defineProperty(event,'target',{value:node});root.dispatchEvent(event);}
   return {document,root,ui,commands,click,animations,byId:id=>document.getElementById(id)};
 }
@@ -90,6 +94,63 @@ for(const failure of ['false','reject'])test(`slow ${failure} save releases the 
   assert.equal(f.commands.length,2);assert.deepEqual(f.commands.map(c=>c.fields.cardId),[cardId,cardId]);
 });
 
+for(const outcome of ['true','false','reject'])test(`static practice settings survive repeated in-flight views and the ${outcome} receipt`,async t=>{
+  const waiting=deferred(),f=fixture(t,{practice:true,onAction:()=>waiting.promise}),{game}=readyCard(f);
+  const restart=actionControl(f,'practice-restart'),members=actionControl(f,'members'),unavailable=f.byId('hy-practice-reload');
+  unavailable.disabled=true;
+  f.click(actionControl(f,'confirm-card'));f.ui.settings.open();
+  assert.equal(f.byId('yg-options').open,true);assert.equal(restart.disabled,true);assert.equal(members.disabled,true);
+  f.click(restart);assert.equal(f.byId('yg-inspector').open,false,'settings cannot act during a save');
+  f.ui.applyView(room(game));f.ui.applyView(room(game));
+  assert.equal(actionControl(f,'practice-restart'),restart,'settings keep their mounted nodes');
+  assert.equal(restart.disabled,true);assert.equal(unavailable.disabled,true);assert.equal(f.commands.length,1);
+  if(outcome==='reject')waiting.reject(Error('保存未成功'));else waiting.resolve(outcome==='true');
+  await flush();
+  assert.equal(restart.disabled,false);assert.equal(members.disabled,false);assert.equal(unavailable.disabled,true,'an earlier disabled control must remain disabled');
+  assert.equal(f.root.getAttribute('aria-busy'),'false');f.ui.settings.open();f.click(restart);
+  assert.equal(f.byId('yg-inspector-title').textContent,'开始新的练习');assert.equal(f.commands.length,1);
+});
+
+test('synchronous authoritative applyView is recomputed before the save gate is released',async t=>{
+  const waiting=deferred();let f,game;
+  f=fixture(t,{onAction:(type,fields)=>{game=act(game,type,fields);f.ui.applyView(room(game),{canAct:false});return waiting.promise;}});
+  ({game}=readyCard(f));const members=actionControl(f,'members');f.click(actionControl(f,'confirm-card'));
+  assert.equal(f.root.getAttribute('aria-busy'),'true');assert.equal(members.disabled,true);
+  waiting.resolve(true);await flush();
+  assert.equal(f.root.getAttribute('aria-busy'),'false');assert.equal(members.disabled,false);
+  assert.equal(f.byId('hy-room-control').disabled,true,'authority still prevents saving');
+  assert.equal(f.root.querySelector('[data-hy-action="confirm-card"]'),null);assert.equal(f.root.querySelector('[data-hy-action="end-turn"]'),null);
+  assert.equal(f.commands.length,1);
+});
+
+for(const transition of ['paused','cannot-save','spectator'])test(`releasing a save gate preserves ${transition} authority`,async t=>{
+  const waiting=deferred(),f=fixture(t,{onAction:()=>waiting.promise}),peek=act(fresh(),'peek');
+  f.ui.applyView(room(peek));const members=actionControl(f,'members');f.click(actionControl(f,'keep-peek'));
+  if(transition==='paused')f.ui.applyView(room(peek,{phase:'paused',manual:true}));
+  else if(transition==='cannot-save')f.ui.applyView(room(peek),{canAct:false});
+  else f.ui.applyView({...room(peek),selfId:'d'.repeat(32),selfRole:'spectator',hostId:ids[1],game:spectatorView(peek)});
+  waiting.resolve(true);await flush();
+  assert.equal(f.root.getAttribute('aria-busy'),'false');assert.equal(members.disabled,false);
+  if(transition==='spectator'){
+    assert.equal(f.byId('hy-pause').hidden,true);assert.equal(f.root.querySelector('[data-hy-action="keep-peek"]'),null);
+    assert.equal(f.root.querySelector('.hy-work-face .yousei-card').classList.contains('yousei-card--back'),true,'spectators only see the card back');
+    assert.equal(f.root.querySelector('.hy-work-face .yousei-card__name'),null);
+  }else{
+    const keep=actionControl(f,'keep-peek');assert.notEqual(keep.getAttribute('disabled'),null);
+    f.click(keep);assert.equal(f.commands.length,1,'settling cannot re-enable an unauthorized game action');
+    assert.equal(f.byId('hy-room-control').disabled,transition==='cannot-save');
+  }
+});
+
+test('destroy releases temporary node state and ignores a late failed receipt',async t=>{
+  const waiting=deferred(),f=fixture(t,{onAction:()=>waiting.promise});readyCard(f);
+  const members=actionControl(f,'members');f.click(actionControl(f,'confirm-card'));assert.equal(members.disabled,true);
+  f.ui.destroy();const after=f.root.textContent;
+  assert.equal(members.disabled,false);assert.equal(f.root.getAttribute('aria-busy'),'false');
+  waiting.reject(Error('已销毁页面的迟到错误'));await flush();
+  assert.equal(f.root.textContent,after);assert.equal(f.commands.length,1);
+});
+
 test('an old scope completion cannot clear the next room draft or unlock its active save',async t=>{
   const old=deferred(),next=deferred();let attempt=0;const f=fixture(t,{onAction:()=>++attempt===1?old.promise:next.promise});readyCard(f);
   f.click(actionControl(f,'confirm-card'));
@@ -103,7 +164,10 @@ test('an old scope completion cannot clear the next room draft or unlock its act
 
 test('conceal isolates a pending completion from the next visible room draft',async t=>{
   const waiting=deferred(),f=fixture(t,{onAction:()=>waiting.promise});readyCard(f);f.click(actionControl(f,'confirm-card'));
-  f.ui.conceal();readyCard(f,'c02');waiting.resolve(true);await flush();
+  const members=actionControl(f,'members');assert.equal(members.disabled,true);
+  f.ui.conceal();assert.equal(members.disabled,false);assert.equal(f.root.getAttribute('aria-busy'),'false');
+  readyCard(f,'c02');waiting.resolve(true);await flush();
+  assert.equal(members.disabled,false);
   assert.equal(f.root.getAttribute('aria-busy'),'false');assert.ok(f.root.querySelector('.hy-action-draft'));assert.match(f.byId('yg-scene-content').textContent,/卦师/u);
 });
 
