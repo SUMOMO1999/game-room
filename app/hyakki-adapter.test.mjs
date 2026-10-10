@@ -22,6 +22,9 @@ function run(game, type, extra = {}) {
     ...(game.pending ? { effectId: game.pending.id, decisionId: decision.id } : {}), ...extra }, { now: game.committedAt + 1, randomInt: max => max - 1 });
   assert.equal(result.ok, true, result.error); return result.state;
 }
+function useStage() {
+  return run(run(run(fresh(), 'peek'), 'discard-peek'), 'finish-draw');
+}
 function take(game, code, playerId = game.turnPlayerId) {
   const zones = [game.deck, game.discard, ...game.players.map(player => player.hand)], source = zones.find(zone => zone.some(card => definition(card).sourceCode === code));
   const [cardId] = source.splice(source.findIndex(card => definition(card).sourceCode === code), 1);
@@ -72,6 +75,11 @@ test('real room configuration, business action, exported snapshot and closed-cre
   let snapshot = rooms.exportSnapshot(host.roomCode);
   const actor = snapshot.matchParticipants.find(player => player.playerId === snapshot.game.turnPlayerId).userKey;
   assert.notEqual(snapshot.revision, snapshot.game.revision);
+  for (const type of ['finish-draw', 'end-turn']) {
+    assert.throws(() => action(actor, type, { matchId: snapshot.matchId, turnId: snapshot.game.turnId }), { code: 'FIRST_PEEK_REQUIRED' });
+    const rejected = rooms.exportSnapshot(host.roomCode);
+    assert.deepEqual(rejected.game, snapshot.game); assert.equal(rejected.revision, snapshot.revision);
+  }
   action(actor, 'peek', { matchId: snapshot.matchId, turnId: snapshot.game.turnId });
   snapshot = rooms.exportSnapshot(host.roomCode);
   assert.equal(snapshot.schemaVersion, 13); assert.equal(snapshot.hyakkiConfig.actionLimit, 4);
@@ -113,7 +121,7 @@ test('resignation seals private candidates, leaves money and cards untouched, an
 });
 
 test('auction reservation releases on terminal lifecycle without buying or reallocating its lot', () => {
-  let game = run(fresh(), 'finish-draw'); const cardId = take(game, 'C12');
+  let game = useStage(); const cardId = take(game, 'C12');
   game = run(game, 'play-character', { cardId }); game = run(game, 'bid', { amount: 3 });
   assert.ok(game.timing.decision); const before = structuredClone(game);
   const held = adapter.lifecycleTransition(game, { reason: 'presence', now: 2000, presence: { observedAt: 2000, seats: [] } });
@@ -125,7 +133,7 @@ test('auction reservation releases on terminal lifecycle without buying or reall
 });
 
 test('actor-local choices have legal defaults and the opponent receives no response-card inventory', () => {
-  let game = run(fresh(), 'finish-draw'); const cardId = take(game, 'M02');
+  let game = useStage(); const cardId = take(game, 'M02');
   const responder = ids.find(id => id !== game.turnPlayerId); take(game, 'C07', responder);
   game = run(game, 'play-character', { cardId });
   const own = privateView(game, responder), peer = privateView(game, game.turnPlayerId), publicView = spectatorView(game);
@@ -135,7 +143,7 @@ test('actor-local choices have legal defaults and the opponent receives no respo
 });
 
 test('adapter rejects extra network fields and resolves only current public targets', () => {
-  let game = run(fresh(), 'finish-draw'), owner = game.players.find(player => player.id === game.turnPlayerId), peer = game.players.find(player => player.id !== owner.id);
+  let game = useStage(), owner = game.players.find(player => player.id === game.turnPlayerId), peer = game.players.find(player => player.id !== owner.id);
   const character = take(game, 'M08'), toolId = take(game, 'T08', peer.id);
   peer.hand.splice(peer.hand.indexOf(toolId), 1); peer.tools.push({ cardId: toolId, exhausted: false });
   const index = game.players.indexOf(peer), ref = `tool-${index}:${game.revision}:0`;
@@ -193,7 +201,7 @@ test('wealth-only history includes both frozen participants and never permanent 
 });
 
 test('auction pause and restart preserve bidder, amount, candidates and remaining decision time', () => {
-  let game = run(fresh(), 'finish-draw'); game = run(game, 'play-character', { cardId: take(game, 'C12') });
+  let game = useStage(); game = run(game, 'play-character', { cardId: take(game, 'C12') });
   game = run(game, 'bid', { amount: 2 });
   const original = structuredClone(game), decisionId = currentDecision(game).id;
   const paused = adapter.onPhaseChanged(game, 'paused', 1500, { presence: presence(game, 1500) });
@@ -211,7 +219,7 @@ test('auction pause and restart preserve bidder, amount, candidates and remainin
 });
 
 test('paid retention is sealed at cancellation without selecting goods or charging again', () => {
-  let game = run(fresh(), 'finish-draw'), owner = game.players.find(player => player.id === game.turnPlayerId);
+  let game = useStage(), owner = game.players.find(player => player.id === game.turnPlayerId);
   owner.goods.firearms = 5; game.bankGoods.firearms = 1;
   game = run(game, 'play-character', { cardId: take(game, 'C10') });
   game = run(game, 'choose-effect', { selection: { goodsId: 'imports' } });

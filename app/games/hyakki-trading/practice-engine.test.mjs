@@ -187,7 +187,7 @@ test('queued duplicate human commands retain the viewed revision and cannot spen
   await rejects(session.action('__proto__'), 'PRACTICE_ACTION_INVALID');
   await rejects(session.action('peek', { game }), 'PRACTICE_ACTION_INVALID');
   await rejects(session.action('peek', { expectedRevision: 0 }), 'PRACTICE_ACTION_INVALID');
-  const results = await Promise.allSettled([session.action('finish-draw'), session.action('finish-draw')]);
+  const results = await Promise.allSettled([session.action('peek'), session.action('peek')]);
   assert.equal(results[0].status, 'fulfilled'); assert.equal(results[1].reason.code, 'STALE_ACTION');
   assert.equal(savedAt(env).game.revision, 1); await session.destroy();
 });
@@ -196,7 +196,7 @@ test('two local pages cannot overwrite a changed save; reload is explicit and pa
   const env = environment(), game = createGame(ids, { ...ctx, matchId: 'd'.repeat(32) });
   env.values.set(PRACTICE_STORAGE_KEY, encodeHyakkiPractice(savedGame(game)));
   const first = await createHyakkiPracticeSession(env), second = await createHyakkiPracticeSession(env);
-  await first.action('finish-draw'); const text = env.values.get(PRACTICE_STORAGE_KEY);
+  await first.action('peek'); await first.action('keep-peek'); const text = env.values.get(PRACTICE_STORAGE_KEY);
   await rejects(second.action('peek'), 'PRACTICE_CONFLICT'); assert.equal(env.values.get(PRACTICE_STORAGE_KEY), text);
   assert.equal(second.snapshot().conflict, true); await second.reload(); assert.equal(second.snapshot().conflict, false);
   assert.equal(second.snapshot().active, false); assert.equal(second.snapshot().game.stage, 'use');

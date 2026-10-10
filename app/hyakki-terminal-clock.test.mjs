@@ -67,19 +67,21 @@ async function fixture(t, { firstIndex = 0, characterOwner = 1 } = {}) {
   const toolId = await handCard(0, 'T08'); assert.ok(toolId);
   async function drawOne(index, keep = true) { await action(index, 'peek'); await action(index, keep ? 'keep-peek' : 'discard-peek'); }
   async function enrichHost(target) {
-    if ((await saved()).game.turnPlayerId === awaitedIds[1]) await action(1, 'end-turn');
+    if ((await saved()).game.turnPlayerId === awaitedIds[1]) { await drawOne(1); await action(1, 'end-turn'); }
     for (let turn = 0; turn < 25; turn++) {
       const current = await saved();
       assert.equal(current.game.turnPlayerId, awaitedIds[0]);
-      if (!current.game.players[0].tools.length) { await action(0, 'finish-draw'); await action(0, 'install-tool', { cardId: toolId }); }
-      else await drawOne(0);
+      await drawOne(0);
+      if (!current.game.players[0].tools.length) await action(0, 'install-tool', { cardId: toolId });
       await action(0, 'activate-tool', { cardId: toolId });
       const pending = (await view(0)).game.pending;
       const payment = pending.choice.options.find(option => option.payment.zone === 'hand'
         && !['M04', 'C07'].includes(getCard(option.payment.cardId.split('#')[0]).sourceCode));
       assert.ok(payment); await action(0, 'choose-effect', { selection: payment });
       if ((await saved()).game.players[0].silver === target) return;
-      await action(0, 'end-turn'); await action(1, 'end-turn');
+      // The installation turn spends all three actions and ends after payment.
+      if ((await saved()).game.turnPlayerId === awaitedIds[0]) await action(0, 'end-turn');
+      await drawOne(1); await action(1, 'end-turn');
     }
     assert.fail('Legal economy did not reach the intended close boundary');
   }
@@ -110,7 +112,7 @@ for (const mode of ['first-final-response', 'first-final-counter', 'second-direc
     if (mode === 'second-direct-close') { f.advance(); await f.action(0, 'end-turn'); }
     else {
       await f.action(0, 'end-turn');
-      if (!first) await f.action(1, 'end-turn');
+      if (!first) { await f.drawOne(1); await f.action(1, 'end-turn'); }
       else assert.ok((await f.saved()).game.closing);
       const owner = first ? 1 : 0, responder = 1 - owner;
       await f.drawOne(owner, false); await f.drawOne(owner);
@@ -132,7 +134,7 @@ for (const mode of ['first-final-response', 'first-final-counter', 'second-direc
 
 for (const stage of ['counter', 'tribute-choice']) test(`leaving during ${stage} persists the domain terminal time despite subsequent clock reads`, async t => {
   const f = await fixture(t, { characterOwner: 0 });
-  await f.action(0, 'finish-draw'); await f.action(0, 'play-character', { cardId: await f.handCard(0, 'M04') });
+  await f.drawOne(0); await f.action(0, 'play-character', { cardId: await f.handCard(0, 'M04') });
   if (stage === 'tribute-choice') await f.action(1, 'decline-response');
   f.advance(); await f.action(stage === 'counter' ? 0 : 1, 'leave');
   const final = await f.assertTerminal('voluntary-leave'); assert.ok(final.game.pending);

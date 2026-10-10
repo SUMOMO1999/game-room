@@ -112,7 +112,31 @@ for (const code of codes.filter(code => code.startsWith('T'))) test(`M08: projec
 });
 
 function random(seed) { return bound => { seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5; return (seed >>> 0) % bound; }; }
-for (const actionLimit of [1, 5, 10]) for (const seed of [7, 37, 101, 397]) {
+test('a bot must take its first ordinary peek even with useful cards or sixty silver', () => {
+  for (const silver of [20, 60]) {
+    const state = fixture('C01').state; state.stage = 'draw'; state.drawStarted = false; state.players[0].silver = silver;
+    const { actions, chosen } = commands(state);
+    assert.deepEqual(actions.map(action => action.type), ['peek']); assert.equal(chosen.type, 'peek');
+  }
+  const state = fixture('T07').state; state.actionLimit = 1;
+  const { actions, chosen } = commands(state);
+  assert.deepEqual(actions.map(action => action.type), ['peek']); assert.equal(chosen.type, 'peek');
+});
+
+test('legacy one-action practice advances by resolving each peek without inventing income or a win', () => {
+  let state = createGame(ids, { ...context, matchId: 'c'.repeat(32), actionLimit: 1 });
+  for (let turn = 1; turn <= 12; turn++) {
+    assert.equal(state.turnNumber, turn); assert.equal(state.drawStarted, false);
+    const first = commands(state).chosen; assert.equal(first.type, 'peek');
+    state = checked(state, first); assert.equal(state.turnNumber, turn);
+    const resolution = commands(state).chosen; assert.equal(resolution.type, 'keep-peek');
+    state = checked(state, resolution); state = JSON.parse(JSON.stringify(state)); conserved(state);
+    assert.equal(state.turnNumber, turn + 1); assert.deepEqual(state.players.map(owner => owner.silver), [20, 20]);
+  }
+  assert.equal(state.status, 'playing'); assert.equal(state.result, null);
+});
+
+for (const actionLimit of [5, 10]) for (const seed of [7, 37, 101, 397]) {
   test(`normal practice bots complete true game seed=${seed} actionLimit=${actionLimit}`, t => {
     const randomInt = random(seed), ctx = { now: 0, randomInt };
     let state = createGame(ids, { ...ctx, matchId: seed.toString(16).padStart(32, '0'), actionLimit });

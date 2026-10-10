@@ -23,7 +23,8 @@ test('new games freeze five actions and eight goods by default, with independent
     assert.equal(gameProblem(state), null); assert.deepEqual(Object.values(state.bankGoods), Array(6).fill(goodsPerType));
     assert.equal(privateView(state, ids[0]).goodsPerType, goodsPerType);
     assert.equal(spectatorView(state).goodsPerType, goodsPerType);
-    assert.equal(command(state, 'end-turn').goodsPerType, goodsPerType);
+    const drawn = command(command(state, 'peek'), 'keep-peek');
+    assert.equal((actionLimit === 1 ? drawn : command(drawn, 'end-turn')).goodsPerType, goodsPerType);
   }
   for (const value of [0, 3, 21, 4.5, '8', null, NaN, Infinity]) assert.throws(() => fresh({ goodsPerType: value }), /开局参数/);
   for (const value of [0, 11, 1.5, '5', null]) assert.throws(() => fresh({ actionLimit: value }), /开局参数/);
@@ -56,7 +57,7 @@ test('goods above six move and sell through real effects without weakening per-t
   Object.assign(state.players[0], { goods: { ...emptyGoods(), firearms: 8 }, stallCount: 1 });
   state.bankGoods.firearms -= 8; state.availableStalls = 4; state.purchasedStalls = 1;
   assert.equal(gameProblem(state), null);
-  state = command(state, 'finish-draw'); state = command(state, 'play-character', { cardId });
+  state = command(command(state, 'peek'), 'keep-peek'); state = command(state, 'play-character', { cardId });
   assert.equal(state.pending.choice.options[0].maximum, 8);
   state = command(state, 'choose-effect', { selection: { goods: { ...emptyGoods(), firearms: 8 } } });
   assert.equal(state.players[0].silver, 36); assert.equal(state.bankGoods.firearms, 20); assert.equal(gameProblem(state), null);

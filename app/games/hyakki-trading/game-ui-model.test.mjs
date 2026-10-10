@@ -35,16 +35,16 @@ test('real private peek projection has only the owner candidate; spectator model
  assert.deepEqual(tableProjection(room).hand,[]);assert.equal(tableProjection(room).players.length,2);
 });
 test('action drafts require current turn/own card and send only current projection identities',()=>{
- let state=fresh();const id=hand(state,'g01');state=act(state,'finish-draw');const game=privateView(state,ids[0]),card=game.players[0].hand.find(c=>c.cardId===id);
+ let state=fresh();const id=hand(state,'g01');state=act(act(state,'peek'),'keep-peek');const game=privateView(state,ids[0]),card=game.players[0].hand.find(c=>c.cardId===id);
  assert.deepEqual(actionDraft(game,ids[0],card,'buy'),{cardId:id});assert.throws(()=>actionDraft(game,ids[1],card,'buy'),RangeError);assert.throws(()=>actionDraft({...game,clock:{paused:true}},ids[0],card,'buy'),RangeError);assert.throws(()=>actionDraft(game,ids[0],{cardId:'forged',definitionId:'yousei.g01'},'buy'),RangeError);
 });
 test('character target draft preserves opponent public tool ref instead of a hidden copy ID',()=>{
- let state=fresh();const actor=hand(state,'m08'),tool=hand(state,'t05');state.players[0].hand=state.players[0].hand.filter(id=>id!==tool);state.players[1].tools.push({cardId:tool,exhausted:false});state=act(state,'finish-draw');const game=privateView(state,ids[0]);const ref=game.players[1].tools[0].ref;
+ let state=fresh();const actor=hand(state,'m08'),tool=hand(state,'t05');state.players[0].hand=state.players[0].hand.filter(id=>id!==tool);state.players[1].tools.push({cardId:tool,exhausted:false});state=act(act(state,'peek'),'keep-peek');const game=privateView(state,ids[0]);const ref=game.players[1].tools[0].ref;
  assert.deepEqual(actionDraft(game,ids[0],game.players[0].hand.find(c=>c.cardId===actor),'play-character',{toolCardId:ref}),{cardId:actor,params:{toolCardId:ref}});
  assert.throws(()=>actionDraft(game,ids[0],game.players[0].hand.find(c=>c.cardId===actor),'play-character',{toolCardId:tool}),RangeError);
 });
 test('real oracle private choice renders each candidate as a selectable complete card',()=>{
- let state=fresh();const cardId=hand(state,'c02');state=act(state,'finish-draw');state=act(state,'play-character',{cardId});if(state.pending?.response)state=act(state,'decline-response',{},ids[1]);const game=privateView(state,ids[0]);
+ let state=fresh();const cardId=hand(state,'c02');state=act(act(state,'peek'),'keep-peek');state=act(state,'play-character',{cardId});if(state.pending?.response)state=act(state,'decline-response',{},ids[1]);const game=privateView(state,ids[0]);
  assert.equal(game.pending.choice.kind,'take-card');const form=renderChoiceForm(game.pending,game);assert.match(form,/完整牌文/);assert.equal((form.match(/name="optionIndex"/gu)||[]).length,game.pending.choice.options.length);assert.deepEqual(buildChoiceSelection(game.pending,defaultChoiceInput(game.pending)),game.pending.choice.defaultSelection);
 });
 test('public history presents translated events, never raw JSON',()=>{

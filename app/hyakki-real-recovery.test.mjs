@@ -76,7 +76,7 @@ for (const [scenario, code, goodsPerType] of scenarios) test(`real SQLite ${scen
   };
   if (['peek', 'absence-peek'].includes(scenario)) await action(users[0], 'peek');
   else {
-    await action(users[0], 'finish-draw');
+    await action(users[0], 'peek'); await decide(users[0], 'keep-peek');
     if (code.startsWith('T')) {
       await action(users[0], 'install-tool', { cardId: card.cardId });
       await action(users[0], 'activate-tool', { cardId: card.cardId });
@@ -90,7 +90,7 @@ for (const [scenario, code, goodsPerType] of scenarios) test(`real SQLite ${scen
         assert.ok(payment); await decide(users[0], 'choose-effect', { selection: payment });
         await action(users[0], 'end-turn');
         if ((await runtime.rooms.getView(host.roomCode, users[0])).game.closing) break;
-        await action(users[1], 'end-turn');
+        await action(users[1], 'peek'); await decide(users[1], 'keep-peek'); await action(users[1], 'end-turn');
         await action(users[0], 'peek'); await decide(users[0], 'keep-peek');
         await action(users[0], 'activate-tool', { cardId: card.cardId });
       }
