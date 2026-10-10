@@ -1,0 +1,205 @@
+/* Step 0 is isolated from the previous experimental board. Shared controls,
+   chat, themes and settings keep their existing owners. */
+html:has(body.hyakki-digital-body),body.hyakki-digital-body { margin:0; min-height:100%; overflow:hidden; background:var(--theme-base,#173a31); color:var(--theme-ink,#f7f4e8); }
+#hyakki-digital-root { position:fixed; inset:var(--yg-top,0) 0 auto; height:var(--yg-height,100dvh); overflow:hidden; font-size:14px; background:var(--theme-base,#173a31); color:var(--theme-ink,#f7f4e8); }
+#hyakki-digital-root [hidden] { display:none!important; }
+#hyakki-digital-root * { box-sizing:border-box; }
+#hyakki-digital-root button,#hyakki-digital-root select,#hyakki-digital-root input { font:inherit; }
+#hyakki-digital-root button { min-height:44px; border:1px solid var(--theme-border); border-radius:12px; background:var(--theme-control); color:var(--theme-ink); padding:8px 12px; cursor:pointer; }
+#hyakki-digital-root button:disabled { opacity:.48; cursor:default; }
+#hyakki-digital-root button:focus-visible,#hyakki-digital-root select:focus-visible { outline:3px solid var(--theme-accent); outline-offset:2px; }
+#hyakki-digital-root button.yg-primary { background:var(--theme-accent); border-color:var(--theme-accent); color:var(--theme-base); font-weight:750; }
+#hyakki-digital-root select,#hyakki-digital-root input:not([type=range]) { min-height:44px; min-width:0; border:1px solid var(--theme-border); border-radius:12px; background-color:var(--theme-surface); color:var(--theme-ink); padding:8px 30px 8px 10px; }
+.yg-shell { height:100%; display:grid; grid-template-rows:48px minmax(0,1fr) 248px 20px; gap:12px; padding:12px max(20px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left)); }
+.yg-header { display:flex; align-items:center; justify-content:space-between; gap:12px; min-width:0; padding:0; margin:0; border:0; }
+.yg-brand { display:flex; align-items:baseline; min-width:0; gap:16px; }
+.yg-brand strong { font:700 24px/1.2 ui-serif,"Songti SC",serif; white-space:nowrap; }
+.yg-brand span { font-size:12px; color:var(--theme-muted); }
+.yg-header .room-toolbar { position:relative; margin:0; flex:none; }
+.yg-header .room-toolbar-actions { display:flex; gap:8px; align-items:center; }
+#hyakki-digital-root .room-toolbar-exit,#hyakki-digital-root .close-button { display:grid; place-items:center; width:44px; height:44px; padding:0; line-height:1; font-size:27px; flex:none; }
+.yg-table { min-height:0; min-width:0; display:grid; grid-template-columns:100px minmax(0,1fr) 220px; gap:20px; padding:20px; border:1px solid var(--theme-border); border-radius:20px; background:var(--theme-table); box-shadow:inset 0 0 32px var(--theme-shadow); overflow:hidden; }
+.yg-piles { min-height:0; display:grid; grid-template-rows:1fr 1fr; gap:14px; }
+#hyakki-digital-root .yg-pile { min-height:44px; min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; overflow:hidden; padding:8px; background:var(--theme-surface); }
+.yg-pile-art { --hyakki-card-width:64px; --hyakki-card-height:80px; display:block; pointer-events:none; }
+.yg-pile-art .yousei-card { min-height:0; }
+.yg-pile-art .yousei-card__back-label { display:none; }
+.yg-pile > span:last-child { display:grid; gap:3px; font-size:13px; }
+.yg-pile b { font-variant-numeric:tabular-nums; }
+.yg-discard-mark { display:grid; width:58px; height:65px; align-items:center; border:1px dashed var(--theme-border); border-radius:8px; font:32px ui-serif,serif; color:var(--theme-accent); }
+.yg-centre { display:flex; flex-direction:column; min-height:0; min-width:0; gap:16px; }
+.yg-stage { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.yg-stage > div:first-child { min-width:0; }
+.yg-stage h1 { margin:0 0 5px; font:700 clamp(18px,2.1vw,29px)/1.3 ui-serif,"Songti SC",serif; }
+.yg-stage #yg-room-code { display:block; color:var(--theme-muted); font-size:12px; }
+.yg-time { text-align:right; flex:none; }
+.yg-time strong { display:block; color:var(--theme-accent); font-size:24px; font-variant-numeric:tabular-nums; }
+.yg-time small { display:block; color:var(--theme-muted); font-size:11px; }
+.yg-track { position:relative; display:grid; gap:3px; margin:0 auto; width:min(70%,560px); flex:none; padding:8px 25px 6px; border:1px solid color-mix(in srgb,var(--theme-border) 65%,transparent); border-radius:14px; background:color-mix(in srgb,var(--theme-surface) 36%,var(--theme-table)); box-shadow:inset 0 1px color-mix(in srgb,var(--theme-accent) 10%,transparent); }
+.yg-track::before,.yg-track::after { content:""; position:absolute; top:calc(50% + 8px); width:6px; height:6px; border:1px solid var(--theme-accent); opacity:.65; transform:rotate(45deg); }
+.yg-track::before { left:9px; }.yg-track::after { right:9px; }
+.yg-track > span { text-align:center; color:var(--theme-muted); font:13px/18px ui-serif,"Songti SC",serif; letter-spacing:.08em; }
+.yg-readiness { display:flex; justify-content:center; gap:16px; }.yg-readiness>span { display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--theme-surface); border-radius:9px; }.yg-readiness b { color:var(--theme-accent); }
+#yg-track-steps { min-width:0; padding-inline:12px; }
+.yg-action-rail { position:relative; height:42px; color:var(--theme-accent); }
+.yg-action-line,.yg-action-fill { position:absolute; inset:21px 0 auto; height:2px; border-radius:2px; background:var(--theme-border); }
+.yg-action-fill { right:auto; width:var(--yg-action-progress); background:currentColor; }
+.yg-action-tick { position:absolute; left:var(--yg-tick-position); top:11px; width:0; height:22px; color:var(--theme-muted); }
+.yg-action-tick > i { position:absolute; display:block; width:22px; height:22px; margin-left:-11px; border:1px solid var(--theme-border); border-radius:50%; background:var(--theme-table); box-shadow:inset 0 0 0 3px color-mix(in srgb,var(--theme-border) 20%,transparent); }
+.yg-action-tick.is-used > i { border-color:var(--theme-accent); background:color-mix(in srgb,var(--theme-accent) 17%,var(--theme-table)); }
+.yg-action-tick small { position:absolute; left:0; top:5px; transform:translateX(-50%); font:12px/12px ui-serif,"Songti SC",serif; font-variant-numeric:tabular-nums; }
+/* A lantern rests on the current numbered coin. This board remains read-only. */
+.yg-action-cursor { position:absolute; left:var(--yg-action-progress); top:6px; width:28px; height:32px; transform:translateX(-50%); border:1px solid var(--theme-accent); border-radius:40%; background:var(--theme-accent); box-shadow:0 0 0 3px var(--theme-table),0 2px 6px var(--theme-shadow); }
+.yg-action-cursor::before,.yg-action-cursor::after { content:""; position:absolute; left:5px; right:5px; height:3px; background:var(--theme-accent); }
+.yg-action-cursor::before { top:-4px; }.yg-action-cursor::after { bottom:-4px; }
+.yg-action-cursor > i { position:absolute; inset:2px 4px; border-inline:1px solid var(--theme-base); opacity:.25; border-radius:40%; }
+.yg-action-cursor > b { position:absolute; inset:0; display:grid; place-items:center; color:var(--theme-base); font:800 16px/1 ui-serif,"Songti SC",serif; }
+.yg-scene-content { display:flex; flex-direction:column; justify-content:center; align-items:center; gap:16px; flex:1; min-height:0; }
+.yg-scene-note { margin:0; line-height:1.6; max-width:44em; color:var(--theme-ink); text-align:center; }
+.yg-table-actions { display:flex; justify-content:center; gap:8px; flex-wrap:wrap; }
+.yg-table-actions button { white-space:nowrap; }
+.yg-readonly { color:var(--theme-muted); }
+.yg-public { display:flex; flex-direction:column; min-height:0; min-width:0; gap:10px; }
+.yg-public-heading { display:flex; justify-content:space-between; gap:6px; align-items:baseline; }
+.yg-public-heading span { color:var(--theme-muted); font-size:11px; }
+#hyakki-digital-root .yg-market { padding:5px; min-height:44px; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.yg-market .yg-market-good { display:grid; grid-template-columns:28px minmax(0,1fr) auto; align-items:center; gap:4px; min-width:0; min-height:50px; padding:6px; border-radius:10px; }
+.yg-market .yousei-good-icon { width:28px; height:28px; }
+.yg-market span { white-space:nowrap; }
+.yg-market strong { font-size:17px; }
+.yg-market-good { border:1px solid var(--theme-border); background:var(--theme-surface); }
+.yg-peer { margin-top:auto; min-width:0; }
+#hyakki-digital-root .yg-peer button { width:100%; min-width:0; display:grid; gap:5px; text-align:left; }
+.yg-peer strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.yg-peer span { font-size:12px; color:var(--theme-muted); }
+.yg-lower { min-height:0; min-width:0; display:grid; grid-template-columns:300px minmax(0,1fr); gap:18px; }
+.yg-personal { min-height:0; min-width:0; display:flex; flex-direction:column; gap:7px; padding:10px; border:1px solid var(--theme-border); border-radius:16px; background:var(--theme-surface); }
+.yg-personal-heading { display:flex; gap:6px; align-items:center; }
+#hyakki-digital-root #yg-shop-detail { flex:1; display:flex; justify-content:space-between; align-items:center; min-width:0; gap:8px; padding:0 3px; background:none; border:0; }
+#yg-silver { color:var(--theme-accent); font-weight:800; white-space:nowrap; }
+#hyakki-digital-root #yg-expand { padding-inline:10px; }
+.yg-stock-slots { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:5px; }
+.yg-stock-slot { height:44px; display:flex; align-items:center; justify-content:center; position:relative; background:var(--theme-table); border:1px solid var(--theme-border); border-radius:9px; }
+.yg-stock-slot .yousei-good-icon { width:30px; height:30px; }
+.yg-stock-slot small { position:absolute; right:2px; bottom:0; font-size:10px; border-radius:3px; padding:1px 2px; background:var(--theme-surface); }
+.yg-stock-slot.is-temporary { border:2px dashed var(--theme-accent); }
+.yg-stock-slot.is-empty { color:var(--theme-muted); }
+.yg-shop-note { font-size:12px; color:var(--theme-muted); line-height:1.4; }
+.yg-tools { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px; margin-top:auto; }
+#hyakki-digital-root .yg-tools button { display:grid; min-width:0; gap:4px; align-content:center; min-height:58px; padding:4px; border-radius:9px; }
+.yg-tools strong { font-size:13px; white-space:nowrap; }
+.yg-tools span { font-size:11px; }
+#hyakki-digital-root .yg-tools button.is-tapped { border-style:dashed; background:repeating-linear-gradient(135deg,transparent,transparent 8px,var(--theme-shadow) 8px,var(--theme-shadow) 10px),var(--theme-control); }
+.yg-hand-section { display:grid; grid-template-rows:44px minmax(0,1fr); gap:8px; min-width:0; min-height:0; }
+.yg-hand-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; min-width:0; }
+.yg-hand-heading > strong { white-space:nowrap; }
+.yg-hand-controls { display:flex; align-items:center; gap:6px; }
+#hyakki-digital-root .yg-hand-controls select { width:130px; }
+#hyakki-digital-root .yg-hand-controls button { width:44px; height:44px; padding:0; font-size:22px; }
+.yg-hand-controls > span { width:42px; text-align:center; font-size:13px; font-variant-numeric:tabular-nums; }
+.yg-hand { --hyakki-card-width:132px; --hyakki-card-height:192px; display:flex; align-items:start; gap:8px; min-width:0; min-height:0; overflow:hidden; padding:2px 3px 4px; }
+.yg-hand-card { flex:0 0 auto; }
+#hyakki-digital-root .yg-hand-summary { display:flex; flex-direction:column; width:var(--hyakki-card-width); height:var(--hyakki-card-height); background:#fcf6e8; color:#312d27; padding:7px; border-color:#b79a69; text-align:left; gap:3px; }
+.yg-hand-summary small { font-size:11px; color:#645747; }
+.yg-hand-summary strong { font-size:14px; line-height:18px; overflow-wrap:anywhere; }
+.yg-hand-summary>span { font-size:14px; line-height:18px; }
+.yg-hand-summary em { font:11px/15px system-ui; color:#645747; margin-top:auto; }
+#hyakki-digital-root .yg-hand-summary.is-selected { outline:3px solid #176b65; outline-offset:-3px; }
+#hyakki-digital-root .yg-hand .yousei-card { padding:7px; border-radius:10px; background:var(--yousei-paper,#fcf6e8); color:#312d27; }
+.yg-empty { color:var(--theme-muted); }
+.yg-observer-note { grid-column:1/-1; display:grid; align-content:center; justify-items:center; border:1px dashed var(--theme-border); border-radius:16px; padding:12px; text-align:center; }
+.yg-observer-note h2 { margin:0 0 8px; font-size:20px; }.yg-observer-note p { margin:0; color:var(--theme-muted); }
+.yg-feedback { margin:0; min-width:0; font-size:12px; line-height:20px; white-space:nowrap; text-overflow:ellipsis; overflow:hidden; color:var(--theme-muted); }
+.yg-feedback.is-feedback { color:var(--theme-accent); }
+.yg-dialog { width:min(960px,calc(100vw - 28px)); max-height:calc(100dvh - 28px); border:1px solid var(--theme-border); border-radius:20px; padding:20px; overflow:auto; }
+#hyakki-digital-root .yg-dialog { background:var(--theme-surface); color:var(--theme-ink); }
+.yg-dialog::backdrop { background:#071410a6; backdrop-filter:blur(3px); }
+.yg-dialog .dialog-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:0 0 16px; }
+.yg-dialog .dialog-heading h2 { margin:0; font-size:22px; line-height:1.35; }
+.yg-dialog p,.yg-dialog li { font-size:16px; line-height:1.65; }
+.yg-dialog-actions { display:flex; align-items:center; justify-content:flex-end; gap:10px; flex-wrap:wrap; margin-top:16px; }
+.yg-dialog .game-settings-body section { padding:14px; }
+.yg-dialog .game-settings-body p { font-size:14px; }
+.yg-dialog .game-settings-body > section:first-child > select { width:100%; margin:8px 0 12px; }
+.yg-dialog input[readonly] { width:100%; }
+.yg-decision-context { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+.yg-decision-context p { width:100%; margin:0; }
+.yg-decision-clock { color:var(--theme-muted); font-size:14px; }
+.yg-dialog .yg-candidates-guide { color:var(--theme-ink); padding:8px 12px; border:1px solid var(--theme-border); border-radius:10px; background:var(--theme-control); font-size:14px; line-height:1.5; }
+.yg-candidates { --hyakki-card-width:132px; --hyakki-card-height:192px; display:flex; flex-wrap:wrap; justify-content:center; align-items:start; gap:16px; }
+.yg-candidate { display:flex; flex-direction:column; align-items:center; padding:8px; gap:8px; border:2px solid transparent; border-radius:14px; min-width:0; }
+.yg-candidate.is-selected { border-color:var(--theme-accent); background:var(--theme-control); }
+.yg-candidate-actions { display:flex; gap:5px; flex-wrap:wrap; justify-content:center; max-width:160px; }
+#hyakki-digital-root .yg-candidate-actions button { padding-inline:8px; }
+.yg-good-candidate { width:132px; min-height:154px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; border:1px solid var(--theme-border); border-radius:12px; background:var(--theme-table); }
+.yg-good-candidate .yousei-good-icon { width:66px; height:66px; }
+.yg-decision-outcome { padding:12px; border-left:3px solid var(--theme-accent); background:var(--theme-control); border-radius:0 10px 10px 0; }
+.yg-committed-note { color:var(--theme-muted); font-size:14px!important; }
+.yg-decision-actions { position:sticky; bottom:-20px; z-index:2; background:var(--theme-surface); border-top:1px solid var(--theme-border); padding:12px 0; }
+.yg-bid-label { display:flex; align-items:center; gap:8px; font-size:16px; }
+#hyakki-digital-root #yg-bid { width:90px; padding:8px; font-size:18px; }
+.yg-detail-goods { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:10px; margin:18px 0; }
+.yg-detail-goods > div { display:grid; justify-items:center; gap:8px; padding:10px; border:1px solid var(--theme-border); border-radius:12px; }
+.yg-detail-goods .yousei-good-icon { width:48px; height:48px; }
+.yg-extension-slots { display:flex; gap:12px; }
+.yg-extension-slots span { padding:24px; border:1px dashed var(--theme-border); border-radius:12px; }
+.yg-catalog { --hyakki-card-width:132px; --hyakki-card-height:192px; display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:18px; }
+.yg-catalog article { display:grid; justify-items:center; align-content:start; gap:10px; }
+.yg-catalog article > button { max-width:100%; }
+.yg-rules { padding-left:24px; }.yg-rules li + li { margin-top:12px; }
+.yg-rotation { position:absolute; inset:76px 16px 24px; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:20px; text-align:center; }
+.yg-rotate-icon { font-size:72px; line-height:1; color:var(--theme-accent); }
+.yg-rotation h2 { font:700 24px/1.5 ui-serif,serif; margin:0; }.yg-rotation p { margin:0; font-size:16px; line-height:1.7; max-width:25em; }
+.yg-rotation small { color:var(--theme-muted); }.yg-rotation #yg-portrait-decision { display:grid; justify-items:center; gap:12px; }
+.yg-portrait .yg-table,.yg-portrait .yg-lower,.yg-portrait .yg-feedback { visibility:hidden; }
+.yg-chat-decision { position:fixed; z-index:180; bottom:12px; left:16px; display:flex; align-items:center; gap:12px; max-width:calc(100vw - 410px); padding:8px; border:1px solid var(--theme-accent); border-radius:12px; background:var(--theme-surface); box-shadow:0 6px 25px var(--theme-shadow); }
+.yg-chat-decision strong { font-size:14px; }
+@media (max-width:1100px) {
+  .yg-shell { gap:8px; padding:8px max(10px,env(safe-area-inset-right)) max(6px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left)); grid-template-rows:44px minmax(0,1fr) 196px 18px; }
+  .yg-table { grid-template-columns:74px minmax(0,1fr) 178px; gap:12px; padding:12px; border-radius:16px; }
+  .yg-lower { grid-template-columns:244px minmax(0,1fr); gap:12px; }.yg-hand { --hyakki-card-width:116px; --hyakki-card-height:140px; }
+  .yg-hand-card>.yousei-card { display:none; }#hyakki-digital-root .yg-hand-summary { display:flex; flex-direction:column; }
+  .yg-personal { padding:6px; gap:4px; }.yg-tools strong { font-size:14px; }.yg-tools span { font-size:10px; }.yg-brand { gap:9px; }.yg-brand span { max-width:240px; }
+  .yg-market .yg-market-good { grid-template-columns:minmax(0,1fr) auto; min-height:44px; gap:3px; font-size:13px; }
+  .yg-market .yousei-good-icon { display:none; }.yg-public-heading { font-size:13px; }.yg-public-heading span { font-size:10px; }
+  .yg-stage h1 { font-size:19px; }.yg-centre { gap:10px; }.yg-scene-content { gap:8px; }
+}
+@media (max-height:600px) and (orientation:landscape) {
+  .yg-shell { grid-template-rows:44px minmax(0,1fr) 162px 16px; gap:5px; padding:5px max(10px,env(safe-area-inset-right)) max(4px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left)); }
+  .yg-brand strong { font-size:20px; }.yg-brand span { font-size:11px; }.yg-table { padding:8px; gap:10px; grid-template-columns:72px minmax(0,1fr) 178px; }
+  .yg-piles { gap:6px; }.yg-pile-art,.yg-discard-mark { display:none; }#hyakki-digital-root .yg-pile { padding:3px; }.yg-pile>span:last-child { gap:0; font-size:12px; }
+  .yg-centre { gap:1px; }.yg-stage h1 { font:700 16px/1.1 system-ui; margin:0; }.yg-stage #yg-room-code { font-size:10px; line-height:12px; margin-top:1px; }
+  .yg-time strong { font-size:17px; }.yg-time small { display:none; }.yg-track { display:flex; width:100%; height:44px; gap:6px; align-items:center; padding:3px 14px; border-radius:10px; }.yg-track>span { font:11px/1.2 system-ui; letter-spacing:0; white-space:nowrap; }.yg-track::before,.yg-track::after { width:4px; height:4px; top:calc(50% - 2px); }.yg-track::before { left:5px; }.yg-track::after { right:5px; }
+  #yg-track-steps { flex:1; padding-inline:10px; }.yg-action-rail { height:32px; }.yg-action-line,.yg-action-fill { top:15px; }.yg-action-tick { top:7px; height:18px; }.yg-action-tick>i { width:18px; height:18px; margin-left:-9px; }.yg-action-tick small { top:3px; font-size:10px; }.yg-action-cursor { top:3px; width:22px; height:26px; }.yg-action-cursor>b { font-size:14px; }.yg-action-cursor::before,.yg-action-cursor::after { height:2px; }.yg-action-cursor::before { top:-3px; }.yg-action-cursor::after { bottom:-3px; }
+  .yg-readiness { gap:8px; }.yg-readiness>span { padding:2px 8px; font-size:12px; line-height:20px; }
+  .yg-scene-content { gap:4px; justify-content:flex-end; }.yg-scene-note { display:none; }.yg-table-actions { gap:5px; }#hyakki-digital-root .yg-table-actions button { padding:6px 8px; }
+  .yg-public { gap:4px; }.yg-public-heading { line-height:17px; }.yg-public-heading span { display:none; }.yg-market { gap:3px; }
+  .yg-market .yg-market-good { min-height:25px; height:25px; padding:1px 6px; border-radius:6px; font-size:12px; }
+  .yg-market strong { font-size:14px; }.yg-peer { display:none; }
+  .yg-lower { grid-template-columns:244px minmax(0,1fr); gap:10px; }.yg-personal { gap:2px; padding:2px 6px; border-radius:12px; }
+  #hyakki-digital-root #yg-shop-detail,#hyakki-digital-root #yg-expand { min-height:44px; height:44px; font-size:13px; padding:2px 4px; }
+  .yg-stock-slot { height:34px; border-radius:6px; }.yg-stock-slot .yousei-good-icon { width:25px; height:25px; }.yg-shop-note { font-size:11px; line-height:14px; }
+  #hyakki-digital-root .yg-tools button { min-height:44px; height:44px; gap:2px; padding:2px; }.yg-tools strong { font-size:14px; }.yg-tools span { font-size:10px; }
+  .yg-hand-section { grid-template-rows:44px 112px; gap:4px; }.yg-hand { --hyakki-card-width:116px; --hyakki-card-height:112px; gap:6px; padding:0 2px; }
+  #hyakki-digital-root .yg-hand .yousei-card { padding:4px; border-radius:8px; }
+  .yg-hand-controls { gap:3px; }#hyakki-digital-root .yg-hand-controls select { width:96px; font-size:12px; }.yg-hand-controls>span { width:34px; font-size:12px; }.yg-hand-heading>strong { font-size:13px; }
+  .yg-hand-card>.yousei-card { display:none; }#hyakki-digital-root .yg-hand-summary { display:flex; flex-direction:column; }
+  .yg-feedback { font-size:10px; line-height:16px; }.yg-dialog { max-height:calc(100dvh - 16px); width:min(960px,calc(100vw - 20px)); padding:14px; border-radius:15px; }
+  .yg-dialog .dialog-heading { margin-bottom:12px; }.yg-dialog .dialog-heading h2 { font-size:20px; }.yg-decision-actions { bottom:-14px; }
+}
+@media (max-width:750px) and (orientation:landscape) {
+  .yg-brand { display:grid; gap:2px; }.yg-brand strong { font-size:18px; }.yg-brand span { font-size:10px; }
+  .yg-table { grid-template-columns:60px minmax(0,1fr) 124px; padding:4px 6px; gap:7px; }.yg-stage h1 { font-size:15px; }.yg-stage { gap:4px; }
+  .yg-market strong { font-size:13px; }.yg-market .yg-market-good { padding-inline:4px; font-size:11px; }.yg-public-heading { font-size:12px; }
+  .yg-lower { grid-template-columns:210px minmax(0,1fr); gap:8px; }.yg-stock-slots { gap:3px; }.yg-personal { padding-inline:5px; }.yg-tools strong { font-size:14px; }
+  .yg-hand-controls>span { width:30px; }#hyakki-digital-root .yg-hand-controls select { width:85px; }.yg-hand-heading { gap:3px; }
+}
+@media (orientation:portrait) {
+  .yg-shell { grid-template-rows:52px minmax(0,1fr) 160px 18px; padding-top:max(8px,env(safe-area-inset-top)); }
+  .yg-brand { display:grid; gap:3px; }.yg-brand strong { font-size:20px; }.yg-brand span { max-width:150px; font-size:10px; }.yg-header .room-toolbar-actions { gap:5px; }
+  #hyakki-digital-root .room-toolbar-action { padding-inline:10px; }.yg-dialog { width:calc(100vw - 20px); padding:14px; }.yg-dialog .dialog-heading h2 { font-size:20px; }
+  .yg-detail-goods { grid-template-columns:repeat(3,minmax(0,1fr)); }.yg-candidates { gap:8px; }.yg-candidate { padding:4px; }.yg-decision-actions { bottom:-14px; }
+  .yg-chat-decision { z-index:180; left:10px; right:10px; bottom:10px; max-width:none; flex-wrap:wrap; justify-content:space-between; }
+  .yg-has-chat-decision .room-chat { bottom:98px; }.yg-chat-decision strong { max-width:55%; }.yg-keyboard .yg-chat-decision { position:absolute; bottom:0; }
+}
+@media (prefers-reduced-motion:no-preference) { .yg-candidate { transition:border-color .12s,background .12s; } }

@@ -1,0 +1,1880 @@
+{
+  "schema": "yousei.reference-catalog.v1",
+  "status": "reference-not-runtime-deck",
+  "reviewedAt": "2026-10-10",
+  "sourceBatch": "friend-physical-photos-2026-10-10",
+  "sourceArchiveSha256": "54f801d37caa51572ab8aee901471b4f5ca719fe543e96c51cdcce76c3cf3b3e",
+  "coverage": {
+    "rulePhotos": 10,
+    "cardFacePhotos": 50,
+    "photoBackedDefinitions": 50,
+    "rulebookOnlyDefinitions": 1,
+    "allPhysicalCopiesVerified": true,
+    "allDistinctTypesVerified": true,
+    "copyCountScreenshots": 2,
+    "verificationBasis": "朋友逐种清点截图与实拍定义一一匹配，分类总数及110张合计与R01一致；许可按说明书5张。",
+    "permitCardFaceAvailable": false,
+    "goodsTokenCountsVerified": false
+  },
+  "rulebookCategoryCopies": {
+    "goods": 40,
+    "stall_permit": 5,
+    "ordinary_character": 29,
+    "monitored_character": 14,
+    "tool": 22
+  },
+  "goodsTypes": [
+    "火器",
+    "番货",
+    "奇物",
+    "异兽",
+    "文玩",
+    "盐铁"
+  ],
+  "commonRules": "current-rules.md",
+  "cards": [
+    {
+      "id": "yousei.g01",
+      "sourceIds": [
+        "G01"
+      ],
+      "category": "goods",
+      "name": "火器×3",
+      "copies": 2,
+      "goods": {
+        "火器": 3
+      },
+      "buySilver": 3,
+      "sellSilver": 10,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K02"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "货物与许可",
+        "designAcceptanceIds": [
+          "yousei.g01-buy-sell-capacity"
+        ]
+      },
+      "rulingTopics": [
+        "capacity",
+        "supply",
+        "prices"
+      ]
+    },
+    {
+      "id": "yousei.g02",
+      "sourceIds": [
+        "G02"
+      ],
+      "category": "goods",
+      "name": "番货×1＋奇物×2",
+      "copies": 2,
+      "goods": {
+        "番货": 1,
+        "奇物": 2
+      },
+      "buySilver": 4,
+      "sellSilver": 11,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K02"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "货物与许可",
+        "designAcceptanceIds": [
+          "yousei.g02-buy-sell-capacity"
+        ]
+      },
+      "rulingTopics": [
+        "capacity",
+        "supply",
+        "prices"
+      ]
+    },
+    {
+      "id": "yousei.g03",
+      "sourceIds": [
+        "G03"
+      ],
+      "category": "goods",
+      "name": "异兽×3",
+      "copies": 2,
+      "goods": {
+        "异兽": 3
+      },
+      "buySilver": 3,
+      "sellSilver": 10,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K02"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "货物与许可",
+        "designAcceptanceIds": [
+          "yousei.g03-buy-sell-capacity"
+        ]
+      },
+      "rulingTopics": [
+        "capacity",
+        "supply",
+        "prices"
+      ]
+    },
+    {
+      "id": "yousei.g04",
+      "sourceIds": [
+        "G04"
+      ],
+      "category": "goods",
+      "name": "番货×3",
+      "copies": 2,
+      "goods": {
+        "番货": 3
+      },
+      "buySilver": 3,
+      "sellSilver": 10,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K02"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "货物与许可",
+        "designAcceptanceIds": [
+          "yousei.g04-buy-sell-capacity"
+        ]
+      },
+      "rulingTopics": [
+        "capacity",
+        "supply",
+        "prices"
+      ]
+    },
+    {
+      "id": "yousei.g05",
+      "sourceIds": [
+        "G05"
+      ],
+      "category": "goods",
+      "name": "文玩×1＋异兽×2",
+      "copies": 2,
+      "goods": {
+        "文玩": 1,
+        "异兽": 2
+      },
+      "buySilver": 4,
+      "sellSilver": 11,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K02"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "货物与许可",
+        "designAcceptanceIds": [
+          "yousei.g05-buy-sell-capacity"
+        ]
+      },
+      "rulingTopics": [
+        "capacity",
+        "supply",
+        "prices"
+      ]
+    },
+    {
+      "id": "yousei.g06",
+      "sourceIds": [
+        "G06"
+      ],
+      "category": "goods",
+      "name": "火器×1＋文玩×2",
+      "copies": 2,
+      "goods": {
+        "火器": 1,
+        "文玩": 2
+      },
+      "buySilver": 4,
+      "sellSilver": 11,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K02"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "货物与许可",
+        "designAcceptanceIds": [
+          "yousei.g06-buy-sell-capacity"
+        ]
+      },
+      "rulingTopics": [
+        "capacity",
+        "supply",
+        "prices"
+      ]
+    },
+    {
+      "id": "yousei.g07",
+      "sourceIds": [
+        "G07"
+      ],
+      "category": "goods",
+      "name": "奇物×1＋火器×1＋文玩×1",
+      "copies": 2,
+      "goods": {
+        "奇物": 1,
+        "火器": 1,
+        "文玩": 1
+      },
+      "buySilver": 5,
+      "sellSilver": 12,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K02"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "货物与许可",
+        "designAcceptanceIds": [
+          "yousei.g07-buy-sell-capacity"
+        ]
+      },
+      "rulingTopics": [
+        "capacity",
+        "supply",
+        "prices"
+      ]
+    },
+    {
+      "id": "yousei.g08",
+      "sourceIds": [
+        "G08"
+      ],
+      "category": "goods",
+      "name": "盐铁×1＋番货×2",
+      "copies": 2,
+      "goods": {
+        "盐铁": 1,
+        "番货": 2
+      },
+      "buySilver": 4,
+      "sellSilver": 11,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K02"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "货物与许可",
+        "designAcceptanceIds": [
+          "yousei.g08-buy-sell-capacity"
+        ]
+      },
+      "rulingTopics": [
+        "capacity",
+        "supply",
+        "prices"
+      ]
+    },
+    {
+      "id": "yousei.g09",
+      "sourceIds": [
+        "G09"
+      ],
+      "category": "goods",
+      "name": "奇物×3",
+      "copies": 2,
+      "goods": {
+        "奇物": 3
+      },
+      "buySilver": 3,
+      "sellSilver": 10,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K02"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "货物与许可",
+        "designAcceptanceIds": [
+          "yousei.g09-buy-sell-capacity"
+        ]
+      },
+      "rulingTopics": [
+        "capacity",
+        "supply",
+        "prices"
+      ]
+    },
+    {
+      "id": "yousei.g10",
+      "sourceIds": [
+        "G10"
+      ],
+      "category": "goods",
+      "name": "奇物×1＋文玩×1＋盐铁×1",
+      "copies": 2,
+      "goods": {
+        "奇物": 1,
+        "文玩": 1,
+        "盐铁": 1
+      },
+      "buySilver": 5,
+      "sellSilver": 12,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K02"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "货物与许可",
+        "designAcceptanceIds": [
+          "yousei.g10-buy-sell-capacity"
+        ]
+      },
+      "rulingTopics": [
+        "capacity",
+        "supply",
+        "prices"
+      ]
+    },
+    {
+      "id": "yousei.g11",
+      "sourceIds": [
+        "G11"
+      ],
+      "category": "goods",
+      "name": "奇物×1＋火器×2",
+      "copies": 2,
+      "goods": {
+        "奇物": 1,
+        "火器": 2
+      },
+      "buySilver": 4,
+      "sellSilver": 11,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K02"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "货物与许可",
+        "designAcceptanceIds": [
+          "yousei.g11-buy-sell-capacity"
+        ]
+      },
+      "rulingTopics": [
+        "capacity",
+        "supply",
+        "prices"
+      ]
+    },
+    {
+      "id": "yousei.g12",
+      "sourceIds": [
+        "G12"
+      ],
+      "category": "goods",
+      "name": "火器×1＋文玩×1＋异兽×1",
+      "copies": 2,
+      "goods": {
+        "火器": 1,
+        "文玩": 1,
+        "异兽": 1
+      },
+      "buySilver": 5,
+      "sellSilver": 12,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K02"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "货物与许可",
+        "designAcceptanceIds": [
+          "yousei.g12-buy-sell-capacity"
+        ]
+      },
+      "rulingTopics": [
+        "capacity",
+        "supply",
+        "prices"
+      ]
+    },
+    {
+      "id": "yousei.g13",
+      "sourceIds": [
+        "G13"
+      ],
+      "category": "goods",
+      "name": "火器×1＋番货×1＋异兽×1",
+      "copies": 2,
+      "goods": {
+        "火器": 1,
+        "番货": 1,
+        "异兽": 1
+      },
+      "buySilver": 5,
+      "sellSilver": 12,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K02"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "货物与许可",
+        "designAcceptanceIds": [
+          "yousei.g13-buy-sell-capacity"
+        ]
+      },
+      "rulingTopics": [
+        "capacity",
+        "supply",
+        "prices"
+      ]
+    },
+    {
+      "id": "yousei.g14",
+      "sourceIds": [
+        "G14"
+      ],
+      "category": "goods",
+      "name": "番货×1＋盐铁×1＋奇物×1",
+      "copies": 2,
+      "goods": {
+        "番货": 1,
+        "盐铁": 1,
+        "奇物": 1
+      },
+      "buySilver": 5,
+      "sellSilver": 12,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K02"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "货物与许可",
+        "designAcceptanceIds": [
+          "yousei.g14-buy-sell-capacity"
+        ]
+      },
+      "rulingTopics": [
+        "capacity",
+        "supply",
+        "prices"
+      ]
+    },
+    {
+      "id": "yousei.g15",
+      "sourceIds": [
+        "G15"
+      ],
+      "category": "goods",
+      "name": "异兽×1＋盐铁×2",
+      "copies": 2,
+      "goods": {
+        "异兽": 1,
+        "盐铁": 2
+      },
+      "buySilver": 4,
+      "sellSilver": 11,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K02"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "货物与许可",
+        "designAcceptanceIds": [
+          "yousei.g15-buy-sell-capacity"
+        ]
+      },
+      "rulingTopics": [
+        "capacity",
+        "supply",
+        "prices"
+      ]
+    },
+    {
+      "id": "yousei.g16",
+      "sourceIds": [
+        "G16"
+      ],
+      "category": "goods",
+      "name": "异兽×1＋番货×1＋盐铁×1",
+      "copies": 2,
+      "goods": {
+        "异兽": 1,
+        "番货": 1,
+        "盐铁": 1
+      },
+      "buySilver": 5,
+      "sellSilver": 12,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K02"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "货物与许可",
+        "designAcceptanceIds": [
+          "yousei.g16-buy-sell-capacity"
+        ]
+      },
+      "rulingTopics": [
+        "capacity",
+        "supply",
+        "prices"
+      ]
+    },
+    {
+      "id": "yousei.g17",
+      "sourceIds": [
+        "G17"
+      ],
+      "category": "goods",
+      "name": "文玩×3",
+      "copies": 2,
+      "goods": {
+        "文玩": 3
+      },
+      "buySilver": 3,
+      "sellSilver": 10,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K02"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "货物与许可",
+        "designAcceptanceIds": [
+          "yousei.g17-buy-sell-capacity"
+        ]
+      },
+      "rulingTopics": [
+        "capacity",
+        "supply",
+        "prices"
+      ]
+    },
+    {
+      "id": "yousei.g18",
+      "sourceIds": [
+        "G18"
+      ],
+      "category": "goods",
+      "name": "盐铁×3",
+      "copies": 2,
+      "goods": {
+        "盐铁": 3
+      },
+      "buySilver": 3,
+      "sellSilver": 10,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K02"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "货物与许可",
+        "designAcceptanceIds": [
+          "yousei.g18-buy-sell-capacity"
+        ]
+      },
+      "rulingTopics": [
+        "capacity",
+        "supply",
+        "prices"
+      ]
+    },
+    {
+      "id": "yousei.g19",
+      "sourceIds": [
+        "G19"
+      ],
+      "category": "goods",
+      "name": "番货×1＋盐铁×1＋奇物×1＋火器×1＋异兽×1＋文玩×1",
+      "copies": 4,
+      "goods": {
+        "番货": 1,
+        "盐铁": 1,
+        "奇物": 1,
+        "火器": 1,
+        "异兽": 1,
+        "文玩": 1
+      },
+      "buySilver": 10,
+      "sellSilver": 18,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K02"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "货物与许可",
+        "designAcceptanceIds": [
+          "yousei.g19-buy-sell-capacity"
+        ]
+      },
+      "rulingTopics": [
+        "capacity",
+        "supply",
+        "prices"
+      ]
+    },
+    {
+      "id": "yousei.c01",
+      "sourceIds": [
+        "C01",
+        "R08"
+      ],
+      "category": "ordinary_character",
+      "name": "把戏人",
+      "copies": 1,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "effectSummary": "自己先选获得同种货物2件或抽牌2张，对手执行另一项。",
+      "distinction": "双方分得不同收益；不是双方都任选。",
+      "cancelableByJinyiwei": false,
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K02"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "c01-把戏人",
+        "precondition": "抽牌或公库至少有一种可获得收益；使用者选择收益种类。",
+        "resolution": "使用者决定自己抽最多2张或拿最多2件同种货物；对手执行另一项。拿货的一方自己选货种，公库不足取可得数，容量按人物挑留。先使用者后对手，不从对手手牌拿卡。",
+        "designAcceptanceIds": [
+          "C01-A",
+          "C01-B"
+        ]
+      },
+      "rulingTopics": [
+        "capacity",
+        "supply"
+      ]
+    },
+    {
+      "id": "yousei.c02",
+      "sourceIds": [
+        "C02",
+        "R08"
+      ],
+      "category": "ordinary_character",
+      "name": "卦师",
+      "copies": 2,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "effectSummary": "查看牌堆顶部6张，选1张入手，其余背面向上放回堆顶。",
+      "distinction": "未选牌不进弃牌区；是否允许重排需裁定。",
+      "cancelableByJinyiwei": false,
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K02"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "c02-卦师",
+        "precondition": "可抽牌至少1张，剩余主动行动至少1。",
+        "resolution": "本人私看至多6张，选1入手；其余保持原相对顺序放回堆顶。整批抽看只花人物1步，不进入普通留弃阶段。",
+        "designAcceptanceIds": [
+          "C02-A",
+          "C02-B"
+        ]
+      },
+      "rulingTopics": [
+        "deck",
+        "visibility"
+      ]
+    },
+    {
+      "id": "yousei.c03",
+      "sourceIds": [
+        "C03",
+        "R08"
+      ],
+      "category": "ordinary_character",
+      "name": "书算",
+      "copies": 2,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "effectSummary": "本回合剩余时间内，每用一张货物牌，买价减2或卖价加2。",
+      "distinction": "修正每张货物牌的总价，不按货物件数重复加减。",
+      "cancelableByJinyiwei": false,
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K02"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "c03-书算",
+        "precondition": "自己的用牌阶段，有行动。",
+        "resolution": "计1步并增加本回合1层书算；人物弃置，效果仍持续至回合末。",
+        "designAcceptanceIds": [
+          "C03-A",
+          "C03-B"
+        ]
+      },
+      "rulingTopics": [
+        "prices"
+      ]
+    },
+    {
+      "id": "yousei.c04",
+      "sourceIds": [
+        "C04",
+        "R08"
+      ],
+      "category": "ordinary_character",
+      "name": "番商",
+      "copies": 3,
+      "actionIncrement": 0,
+      "timing": "opponent-goods-response",
+      "effectSummary": "对手打出货物牌时，可回应并将那张货物牌收入自己手牌。",
+      "distinction": "自己不计步；牌文没有说取消对手交易。",
+      "cancelableByJinyiwei": false,
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K02"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "c04-番商",
+        "precondition": "对手已完成普通货物交易或买办子交易，仍处于该牌的番商窗口；本牌在自己手中。",
+        "resolution": "免费取走待结算货物牌入自己手牌，番商弃置，交易银两及货物不回退。只允许当前对手一次响应。",
+        "designAcceptanceIds": [
+          "C04-A",
+          "C04-B"
+        ]
+      },
+      "rulingTopics": [
+        "responses",
+        "prices"
+      ]
+    },
+    {
+      "id": "yousei.c05",
+      "sourceIds": [
+        "C05",
+        "R08"
+      ],
+      "category": "ordinary_character",
+      "name": "买办",
+      "copies": 2,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "effectSummary": "随后打出一张标有3件货物的货物牌，交回任意3件货物，取得该牌卖价。",
+      "distinction": "随后货物牌免计步，买办本身仍按人物通则计步；不是按图示货物交付。",
+      "cancelableByJinyiwei": false,
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K02"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "c05-买办",
+        "precondition": "本人持有一张三件货物牌，库存至少3件，至少1步；六件配方G19不可选。",
+        "resolution": "买办进入待结算；另选货物牌也移入待结算，交回自己任意3件货物，收货物牌卖价含书算修正；开放番商，结束时分别处置两张牌。",
+        "designAcceptanceIds": [
+          "C05-A",
+          "C05-B"
+        ]
+      },
+      "rulingTopics": [
+        "responses",
+        "prices"
+      ]
+    },
+    {
+      "id": "yousei.c06",
+      "sourceIds": [
+        "C06",
+        "R08"
+      ],
+      "category": "ordinary_character",
+      "name": "货郎",
+      "copies": 2,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "effectSummary": "把自己商铺与摊位中某一种货物全部交回公库，换取等量的另一种货物。",
+      "distinction": "必须处理所选种类的全部持有量，不是任选几件。",
+      "cancelableByJinyiwei": false,
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K02"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "c06-货郎",
+        "precondition": "选自己库存数量n>=1的一种货物，公库另一种至少n件。",
+        "resolution": "本类全部交回公库、等量异种收入，按一次完整交换处理占位；不能只换原库存的一部分。",
+        "designAcceptanceIds": [
+          "C06-A",
+          "C06-B"
+        ]
+      },
+      "rulingTopics": [
+        "supply",
+        "capacity"
+      ]
+    },
+    {
+      "id": "yousei.c07",
+      "sourceIds": [
+        "C07",
+        "R08"
+      ],
+      "category": "ordinary_character",
+      "name": "锦衣卫",
+      "copies": 6,
+      "actionIncrement": 0,
+      "timing": "opponent-monitored-response",
+      "effectSummary": "回应对手打出的带监视标记人物，取消该牌效果。",
+      "distinction": "不计步；目标限监视人物，不能拦截普通人物、货物或道具。",
+      "cancelableByJinyiwei": false,
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K02"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "c07-锦衣卫",
+        "precondition": "对手刚发动监视人物，当前回应窗口有效，本牌仍在手。",
+        "resolution": "免费取消整张人物效果，人物已占1步不退；双方牌入弃牌；所有未执行效果成本/搬移不发生。",
+        "designAcceptanceIds": [
+          "C07-A",
+          "C07-B"
+        ]
+      },
+      "rulingTopics": [
+        "responses"
+      ]
+    },
+    {
+      "id": "yousei.c08",
+      "sourceIds": [
+        "C08",
+        "R08"
+      ],
+      "category": "ordinary_character",
+      "name": "典史",
+      "copies": 2,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "effectSummary": "二选一：自己补牌到5张，或令对手弃手牌到3张。",
+      "distinction": "改变到目标张数，不是额外抽5张或弃3张。",
+      "cancelableByJinyiwei": false,
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K02"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "c08-典史",
+        "precondition": "移出本牌后，自己手牌少于5且有牌可抽，或对手手牌多于3。",
+        "resolution": "使用者选择合法分支：自己补至5但不超可抽数量；或对手自己选择弃至3，弃牌公开。不合法的分支不可选。",
+        "designAcceptanceIds": [
+          "C08-A",
+          "C08-B"
+        ]
+      },
+      "rulingTopics": [
+        "no-target",
+        "deck"
+      ]
+    },
+    {
+      "id": "yousei.c09",
+      "sourceIds": [
+        "C09",
+        "R08"
+      ],
+      "category": "ordinary_character",
+      "name": "牙郎",
+      "copies": 2,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "effectSummary": "从公库选任意2件货物作为一组拍品，双方轮流竞价，一方放弃后由得标方付款取货。",
+      "distinction": "起标至少1两；牌面未写谁先叫价。",
+      "cancelableByJinyiwei": false,
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K02"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "c09-牙郎",
+        "precondition": "公库合计至少2件，至少一名玩家有1两；使用者有1步。",
+        "resolution": "先选2件同/异种货物进入公开拍品；从使用者起轮流叫价，规则见裁定§6。得标后支付和人物容量选择完成，牌弃。",
+        "designAcceptanceIds": [
+          "C09-A",
+          "C09-B"
+        ]
+      },
+      "rulingTopics": [
+        "auction",
+        "capacity",
+        "supply"
+      ]
+    },
+    {
+      "id": "yousei.c10",
+      "sourceIds": [
+        "C10",
+        "R08"
+      ],
+      "category": "ordinary_character",
+      "name": "匠人",
+      "copies": 2,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "effectSummary": "支付2两，取得同种货物2件。",
+      "distinction": "2两是效果费用，另按人物通则计1步。",
+      "cancelableByJinyiwei": false,
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K02"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "c10-匠人",
+        "precondition": "有2两、1步，公共某一货物至少2件。",
+        "resolution": "选择该货种，付2两拿同种2件；人物容量取舍后弃牌。",
+        "designAcceptanceIds": [
+          "C10-A",
+          "C10-B"
+        ]
+      },
+      "rulingTopics": [
+        "capacity",
+        "supply"
+      ]
+    },
+    {
+      "id": "yousei.c11",
+      "sourceIds": [
+        "C11",
+        "R08"
+      ],
+      "category": "ordinary_character",
+      "name": "团头",
+      "copies": 1,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "effectSummary": "从弃牌区挑选任意1张道具，加入自己手牌。",
+      "distinction": "可选整个弃牌区；不会直接安装到道具区。",
+      "cancelableByJinyiwei": false,
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K02"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "c11-团头",
+        "precondition": "弃牌区至少1张道具。",
+        "resolution": "使用者从全部弃牌中的道具选1张入手，人物最后弃置；不收安装成本，也不自动装备。",
+        "designAcceptanceIds": [
+          "C11-A",
+          "C11-B"
+        ]
+      },
+      "rulingTopics": [
+        "no-target"
+      ]
+    },
+    {
+      "id": "yousei.c12",
+      "sourceIds": [
+        "C12",
+        "R08"
+      ],
+      "category": "ordinary_character",
+      "name": "花魁",
+      "copies": 2,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "effectSummary": "抽3张并全部公开，合成一个拍品；自己先报价，双方交替直到一方放弃，得标方付款取得全部3张。",
+      "distinction": "起标至少1两；不是逐张拍卖，也不能隐藏后两张。",
+      "cancelableByJinyiwei": false,
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K02"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "c12-花魁",
+        "precondition": "能抽齐3张且至少一人有1两，使用者有1步。",
+        "resolution": "一次抽3张进入公共拍品，使用者先叫价；整组支付后全部入得标者手牌，卡面公开事实可留历史。",
+        "designAcceptanceIds": [
+          "C12-A",
+          "C12-B"
+        ]
+      },
+      "rulingTopics": [
+        "auction",
+        "deck"
+      ]
+    },
+    {
+      "id": "yousei.c13",
+      "sourceIds": [
+        "C13",
+        "R08"
+      ],
+      "category": "ordinary_character",
+      "name": "朝奉",
+      "copies": 2,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "effectSummary": "交回自己任意数量的货物，每交回1件获得2两。",
+      "distinction": "不要求同种，也不需要另外搭配货物牌。",
+      "cancelableByJinyiwei": false,
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K02"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "c13-朝奉",
+        "precondition": "自己至少1件库存，有1步。",
+        "resolution": "选至少1件、可跨类型交回公库；每件得2两，人物弃置。可卖出全部库存但不能选0。",
+        "designAcceptanceIds": [
+          "C13-A",
+          "C13-B"
+        ]
+      },
+      "rulingTopics": [
+        "no-target"
+      ]
+    },
+    {
+      "id": "yousei.m01",
+      "sourceIds": [
+        "M01",
+        "R08"
+      ],
+      "category": "monitored_character",
+      "name": "梁上君子",
+      "copies": 2,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "effectSummary": "从对手商铺或摊位取1件货物，转入自己的商铺或摊位。",
+      "distinction": "选择货物，不是偷手牌。",
+      "cancelableByJinyiwei": true,
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K01"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "m01-梁上君子",
+        "precondition": "对手商铺/摊位至少1件库存，有1步。",
+        "resolution": "公开目标货物，先过锦衣卫窗口；通过后转入自己待收货区，按人物规则挑留后人物弃。",
+        "designAcceptanceIds": [
+          "M01-A",
+          "M01-B"
+        ]
+      },
+      "rulingTopics": [
+        "capacity",
+        "no-target"
+      ]
+    },
+    {
+      "id": "yousei.m02",
+      "sourceIds": [
+        "M02",
+        "R08"
+      ],
+      "category": "monitored_character",
+      "name": "县丞",
+      "copies": 1,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "effectSummary": "双方手牌合并为公开牌池，由自己先选，双方交替每次取1张入手，直到分完。",
+      "distinction": "应先处理锦衣卫响应，再公开原本隐藏的手牌。",
+      "cancelableByJinyiwei": true,
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K01"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "m02-县丞",
+        "precondition": "双方移出发动牌后手牌合计至少1张，有1步。",
+        "resolution": "先响应；通过后双方手牌合并公开，由使用者先、每次1张交替选入手，最后人物弃。",
+        "designAcceptanceIds": [
+          "M02-A",
+          "M02-B"
+        ]
+      },
+      "rulingTopics": [
+        "responses",
+        "visibility"
+      ]
+    },
+    {
+      "id": "yousei.m03",
+      "sourceIds": [
+        "M03",
+        "R08"
+      ],
+      "category": "monitored_character",
+      "name": "魁首",
+      "copies": 1,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "effectSummary": "双方分别从自己的已放置道具中保留1张，弃掉其余。",
+      "distinction": "包括出牌者自己；不是只削减对手的道具。",
+      "cancelableByJinyiwei": true,
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K01"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "m03-魁首",
+        "precondition": "至少一方已装道具超过1张，有1步。",
+        "resolution": "先响应；双方各自保留1张道具、其余弃置，0或1张者直接保持；保留原有横置状态。",
+        "designAcceptanceIds": [
+          "M03-A",
+          "M03-B"
+        ]
+      },
+      "rulingTopics": [
+        "no-target",
+        "tools"
+      ]
+    },
+    {
+      "id": "yousei.m04",
+      "sourceIds": [
+        "M04",
+        "R08"
+      ],
+      "category": "monitored_character",
+      "name": "蛊婆",
+      "copies": 1,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "effectSummary": "由对手决定：支付给自己2两，或让自己抽2张。",
+      "distinction": "二选一的选择权在对手，收益给出牌者。",
+      "cancelableByJinyiwei": true,
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K01"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "m04-蛊婆",
+        "precondition": "使用者有1步，且对手能付2两或至少有1张可抽。",
+        "resolution": "先响应；由对手选付给使用者2两，或让使用者尽量抽2张；不足2两不能选付钱，可抽牌为0不能选抽牌。",
+        "designAcceptanceIds": [
+          "M04-A",
+          "M04-B"
+        ]
+      },
+      "rulingTopics": [
+        "no-target",
+        "deck"
+      ]
+    },
+    {
+      "id": "yousei.m05",
+      "sourceIds": [
+        "M05",
+        "R08"
+      ],
+      "category": "monitored_character",
+      "name": "船老大",
+      "copies": 1,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "effectSummary": "双方库存货物合并，自己先选，双方交替每次拿1件放进自己的商铺或摊位，直到分完。",
+      "distinction": "重新分配全部库存，不是按原所有人归还。",
+      "cancelableByJinyiwei": true,
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K01"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "m05-船老大",
+        "precondition": "双方库存合计>=1，有1步。",
+        "resolution": "先响应；全部货物进公开分配池，使用者先，交替拿1件；达到容量/无力付临时费者跳过，双方放不下的回公库。",
+        "designAcceptanceIds": [
+          "M05-A",
+          "M05-B"
+        ]
+      },
+      "rulingTopics": [
+        "capacity",
+        "no-target"
+      ]
+    },
+    {
+      "id": "yousei.m06",
+      "sourceIds": [
+        "M06",
+        "R08"
+      ],
+      "category": "monitored_character",
+      "name": "光棍",
+      "copies": 1,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "effectSummary": "双方已放置道具合并，自己先选，交替每次拿1张竖直放入各自道具区，直到分完。",
+      "distinction": "明确竖直放置；不会进入手牌。",
+      "cancelableByJinyiwei": true,
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K01"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "m06-光棍",
+        "precondition": "双方道具区合计>=1，有1步。",
+        "resolution": "先响应；全部已装道具进公开池，使用者先交替选，每张竖直直接进入道具区；最多各3，人物最后弃。",
+        "designAcceptanceIds": [
+          "M06-A",
+          "M06-B"
+        ]
+      },
+      "rulingTopics": [
+        "tools",
+        "no-target"
+      ]
+    },
+    {
+      "id": "yousei.m07",
+      "sourceIds": [
+        "M07",
+        "R08"
+      ],
+      "category": "monitored_character",
+      "name": "堪舆师",
+      "copies": 2,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "effectSummary": "先抽取对手1张手牌，再从自己的手牌选1张交回，允许交回刚抽到的牌。",
+      "distinction": "顺序是先抽后还；不要求交出自己原有的牌。",
+      "cancelableByJinyiwei": true,
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K01"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "m07-堪舆师",
+        "precondition": "对手至少1张手牌，有1步。",
+        "resolution": "先响应；服务端盲抽对手1张给使用者，再让使用者从现在手牌选1张交回；两张转移都只向合法持有人显示。",
+        "designAcceptanceIds": [
+          "M07-A",
+          "M07-B"
+        ]
+      },
+      "rulingTopics": [
+        "visibility",
+        "no-target"
+      ]
+    },
+    {
+      "id": "yousei.m08",
+      "sourceIds": [
+        "M08",
+        "R08"
+      ],
+      "category": "monitored_character",
+      "name": "术士",
+      "copies": 5,
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "effectSummary": "弃掉对手道具区1张道具，随后可立即借用它的效果。",
+      "distinction": "借用效果不另计步，术士本身计步；可弃纸上仙，但不能借用纸上仙效果。",
+      "cancelableByJinyiwei": true,
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "K01"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "m08-术士",
+        "precondition": "对手道具区>=1，有1步。",
+        "resolution": "公开所选道具，先响应；通过后弃目标，使用者再决定是否借效果。纸上仙只拆不借；其他借用不加行动但照付效果成本。",
+        "designAcceptanceIds": [
+          "M08-A",
+          "M08-B"
+        ]
+      },
+      "rulingTopics": [
+        "tools",
+        "no-target"
+      ]
+    },
+    {
+      "id": "yousei.t01",
+      "sourceIds": [
+        "T01",
+        "R09"
+      ],
+      "category": "tool",
+      "name": "貔貅袋",
+      "copies": 2,
+      "placementActionIncrement": 1,
+      "activationActionIncrement": 1,
+      "timing": "own-use",
+      "effectSummary": "依次公开翻牌，碰到第一张货物牌即停止，其他翻出牌弃掉；再付1两或弃1张手牌，将该货物牌入手。",
+      "distinction": "多张搜索不逐张计行动；要先找到牌，再处理取得牌的支付。",
+      "destination": "tool-zone-unless-sacrificed",
+      "tapOnActivation": true,
+      "untapAt": "owner-turn-end",
+      "copyCountSourceIds": [
+        "K01"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "t01-貔貅袋",
+        "precondition": "本道具竖直，至少1张可搜索，自己可付1两或弃1手牌；有1步。",
+        "resolution": "计步横置，有限公开搜索首张货物牌；找到后选完整支付，把目标入手；未命中按裁定§5结束。",
+        "designAcceptanceIds": [
+          "T01-A",
+          "T01-B"
+        ]
+      },
+      "rulingTopics": [
+        "deck",
+        "no-target"
+      ]
+    },
+    {
+      "id": "yousei.t02",
+      "sourceIds": [
+        "T02",
+        "R09"
+      ],
+      "category": "tool",
+      "name": "许愿井",
+      "copies": 2,
+      "placementActionIncrement": 1,
+      "activationActionIncrement": 1,
+      "timing": "own-use",
+      "effectSummary": "交给对手自己的1件货物，再从其商铺或摊位取回1件货物。",
+      "distinction": "完整交换，不可只给或只拿。",
+      "destination": "tool-zone-unless-sacrificed",
+      "tapOnActivation": true,
+      "untapAt": "owner-turn-end",
+      "copyCountSourceIds": [
+        "K01"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "t02-许愿井",
+        "precondition": "本道具竖直，双方各>=1件货物，有1步。",
+        "resolution": "使用者选自己1件和对手1件，完整对调；两件均从各自商铺/摊位取，按交换后占位结算；本牌横置留场。",
+        "designAcceptanceIds": [
+          "T02-A",
+          "T02-B"
+        ]
+      },
+      "rulingTopics": [
+        "capacity",
+        "no-target"
+      ]
+    },
+    {
+      "id": "yousei.t03",
+      "sourceIds": [
+        "T03",
+        "R09"
+      ],
+      "category": "tool",
+      "name": "鹤骨笛",
+      "copies": 2,
+      "placementActionIncrement": 1,
+      "activationActionIncrement": 1,
+      "timing": "own-use",
+      "effectSummary": "先弃1张或2张手牌，再抽取同样数量的牌。",
+      "distinction": "不能先抽牌再决定弃哪些。",
+      "destination": "tool-zone-unless-sacrificed",
+      "tapOnActivation": true,
+      "untapAt": "owner-turn-end",
+      "copyCountSourceIds": [
+        "K01"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "t03-鹤骨笛",
+        "precondition": "本道具竖直，自己至少1手牌，有1步。",
+        "resolution": "自己选1或2张先弃，再从牌堆/重洗弃牌抽同数，本牌横置留场。",
+        "designAcceptanceIds": [
+          "T03-A",
+          "T03-B"
+        ]
+      },
+      "rulingTopics": [
+        "deck"
+      ]
+    },
+    {
+      "id": "yousei.t04",
+      "sourceIds": [
+        "T04",
+        "R09"
+      ],
+      "category": "tool",
+      "name": "两仪灯",
+      "copies": 2,
+      "placementActionIncrement": 1,
+      "activationActionIncrement": 1,
+      "timing": "own-use",
+      "effectSummary": "抽2张，自己留其中1张，另一张给对手。",
+      "distinction": "选择来自刚抽出的两张，不能改用自己原有手牌。",
+      "destination": "tool-zone-unless-sacrificed",
+      "tapOnActivation": true,
+      "untapAt": "owner-turn-end",
+      "copyCountSourceIds": [
+        "K01"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "t04-两仪灯",
+        "precondition": "本道具竖直，可抽齐2张，有1步。",
+        "resolution": "固定两张到本人私有选择区，选1入自己手，另一张交对手，本牌横置。",
+        "designAcceptanceIds": [
+          "T04-A",
+          "T04-B"
+        ]
+      },
+      "rulingTopics": [
+        "deck",
+        "visibility"
+      ]
+    },
+    {
+      "id": "yousei.t05",
+      "sourceIds": [
+        "T05",
+        "R09"
+      ],
+      "category": "tool",
+      "name": "梅花令牌",
+      "copies": 3,
+      "placementActionIncrement": 1,
+      "activationActionIncrement": 1,
+      "timing": "own-use",
+      "effectSummary": "支付1两，抽1张牌。",
+      "distinction": "银两是激活效果费用，不能把它当成安装费用。",
+      "destination": "tool-zone-unless-sacrificed",
+      "tapOnActivation": true,
+      "untapAt": "owner-turn-end",
+      "copyCountSourceIds": [
+        "K01"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "t05-梅花令牌",
+        "precondition": "本道具竖直，至少1两和1张可抽牌，有1步。",
+        "resolution": "付1两后抽1张，本牌横置留场；不进入普通留弃流程。",
+        "designAcceptanceIds": [
+          "T05-A",
+          "T05-B"
+        ]
+      },
+      "rulingTopics": [
+        "deck"
+      ]
+    },
+    {
+      "id": "yousei.t06",
+      "sourceIds": [
+        "T06",
+        "R09"
+      ],
+      "category": "tool",
+      "name": "西域迷香",
+      "copies": 2,
+      "placementActionIncrement": 1,
+      "activationActionIncrement": 1,
+      "timing": "own-use",
+      "effectSummary": "交回公库自己的1件货物，抽1张牌。",
+      "distinction": "付出的是库存货物，不是货物牌。",
+      "destination": "tool-zone-unless-sacrificed",
+      "tapOnActivation": true,
+      "untapAt": "owner-turn-end",
+      "copyCountSourceIds": [
+        "K01"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "t06-西域迷香",
+        "precondition": "本道具竖直，自己库存>=1、可抽牌>=1，有1步。",
+        "resolution": "选自己库存1件回公库，再抽1牌，本牌横置；腾空收费格不退款。",
+        "designAcceptanceIds": [
+          "T06-A",
+          "T06-B"
+        ]
+      },
+      "rulingTopics": [
+        "deck",
+        "no-target"
+      ]
+    },
+    {
+      "id": "yousei.t07",
+      "sourceIds": [
+        "T07",
+        "R09"
+      ],
+      "category": "tool",
+      "name": "纸上仙",
+      "copies": 2,
+      "placementActionIncrement": 1,
+      "activationActionIncrement": 1,
+      "timing": "before-draw",
+      "effectSummary": "把自己的1张手牌与弃牌堆顶牌交换。",
+      "distinction": "仅抽牌阶段前可用，视为没有跳过阶段一；仍按道具通则计步并横置。",
+      "destination": "tool-zone-unless-sacrificed",
+      "tapOnActivation": true,
+      "untapAt": "owner-turn-end",
+      "copyCountSourceIds": [
+        "K01"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "t07-纸上仙",
+        "precondition": "本道具竖直，自己有手牌、弃牌有顶牌，且本回合尚未普通看牌/关闭取牌；有1步。",
+        "resolution": "手牌所选X与弃牌顶Y互换；X成为新弃牌顶、Y入手，计1步横置。其后仍可取牌或进用牌。",
+        "designAcceptanceIds": [
+          "T07-A",
+          "T07-B"
+        ]
+      },
+      "rulingTopics": [
+        "timing",
+        "no-target"
+      ]
+    },
+    {
+      "id": "yousei.t08",
+      "sourceIds": [
+        "T08",
+        "R09"
+      ],
+      "category": "tool",
+      "name": "九转金炉",
+      "copies": 2,
+      "placementActionIncrement": 1,
+      "activationActionIncrement": 1,
+      "timing": "own-use",
+      "effectSummary": "从本道具、1张手牌、道具区1张道具中选一张弃掉，获得2两。",
+      "distinction": "三选一支付；弃其他牌时，本道具留场且已横置。",
+      "destination": "tool-zone-unless-sacrificed",
+      "tapOnActivation": true,
+      "untapAt": "owner-turn-end",
+      "copyCountSourceIds": [
+        "K01"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "t08-九转金炉",
+        "precondition": "本道具竖直，有1步；可用本道具自身作为成本。",
+        "resolution": "横置后从本牌/自己1手牌/自己任意已装道具选1弃掉，得2两。",
+        "designAcceptanceIds": [
+          "T08-A",
+          "T08-B"
+        ]
+      },
+      "rulingTopics": [
+        "tools"
+      ]
+    },
+    {
+      "id": "yousei.t09",
+      "sourceIds": [
+        "T09",
+        "R09"
+      ],
+      "category": "tool",
+      "name": "采珠图",
+      "copies": 2,
+      "placementActionIncrement": 1,
+      "activationActionIncrement": 1,
+      "timing": "own-use",
+      "effectSummary": "支付2两，取得任意1件货物。",
+      "distinction": "得到的是库存货物，不是抽一张货物牌。",
+      "destination": "tool-zone-unless-sacrificed",
+      "tapOnActivation": true,
+      "untapAt": "owner-turn-end",
+      "copyCountSourceIds": [
+        "K01"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "t09-采珠图",
+        "precondition": "本道具竖直，有2两、选定货物公库>=1、可负担一个位置及临时位费，有1步。",
+        "resolution": "付2两，取得选定1件货物并放入合法空位，本牌横置。",
+        "designAcceptanceIds": [
+          "T09-A",
+          "T09-B"
+        ]
+      },
+      "rulingTopics": [
+        "capacity",
+        "supply"
+      ]
+    },
+    {
+      "id": "yousei.t10",
+      "sourceIds": [
+        "T10",
+        "R09"
+      ],
+      "category": "tool",
+      "name": "贪嘴泥翁",
+      "copies": 3,
+      "placementActionIncrement": 1,
+      "activationActionIncrement": 1,
+      "timing": "own-use",
+      "effectSummary": "从本道具、1张手牌、道具区1张道具中选一张弃掉，获得任意1件货物。",
+      "distinction": "三选一支付；手里持有本道具不等于可以直接发动。",
+      "destination": "tool-zone-unless-sacrificed",
+      "tapOnActivation": true,
+      "untapAt": "owner-turn-end",
+      "copyCountSourceIds": [
+        "K01"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "t10-贪嘴泥翁",
+        "precondition": "本道具竖直，有1步、可选货源和可负担位置；自身可作为弃牌成本。",
+        "resolution": "在本牌/自己1手牌/自己任意已装道具中选1弃，得1件所选货物；若本道具未弃则横置留场。",
+        "designAcceptanceIds": [
+          "T10-A",
+          "T10-B"
+        ]
+      },
+      "rulingTopics": [
+        "tools",
+        "capacity",
+        "supply"
+      ]
+    },
+    {
+      "id": "yousei.stall-permit",
+      "sourceIds": [
+        "R01",
+        "R08"
+      ],
+      "category": "stall_permit",
+      "name": "摊位许可牌",
+      "copies": 5,
+      "definitionEvidence": "rulebook-only-card-face-missing",
+      "actionIncrement": 1,
+      "timing": "own-use",
+      "firstGlobalPurchaseSilver": 6,
+      "laterPurchaseSilver": 3,
+      "slotsAdded": 3,
+      "sharedBoards": 5,
+      "effectSummary": "从公共供应取得一块扩展摊位板；全局第一次买板6两，此后每次3两。",
+      "destination": "discard-on-success",
+      "copyCountSourceIds": [
+        "R01"
+      ],
+      "digitalContract": {
+        "ruleVersion": "yousei-digital-v1",
+        "document": "card-resolution-contracts.md",
+        "anchor": "货物与许可",
+        "designAcceptanceIds": [
+          "permit-global-price-stock"
+        ]
+      },
+      "rulingTopics": [
+        "capacity"
+      ]
+    }
+  ],
+  "copyCountSources": [
+    {
+      "id": "K01",
+      "scope": "10种道具与8种监视人物的逐名份数"
+    },
+    {
+      "id": "K02",
+      "scope": "13种普通人物逐名份数和19种货物配方的分组份数"
+    }
+  ],
+  "digitalRuleVersion": "yousei-digital-v1",
+  "digitalRulingsDocument": "digital-rulings.md",
+  "resolvedReviewTopics": {
+    "responses": {
+      "sourceGap": "番商在交易前后哪个节点取得牌，买办嵌套货物牌能否响应；锦衣卫取消后行动、额外费用和双方牌的去向；响应必须先于秘密公开。",
+      "resolutionDocument": "digital-rulings.md",
+      "section": 3,
+      "status": "maintainer-decided-not-official"
+    },
+    "prices": {
+      "sourceGap": "多张书算是否叠加、价格下限、与买办的价格修改顺序；收费临时格另列费用，不能误算成每件货物折扣。",
+      "resolutionDocument": "digital-rulings.md",
+      "section": 4,
+      "status": "maintainer-decided-not-official"
+    },
+    "auction": {
+      "sourceGap": "牙郎先报价者、最低加价、开头放弃、付款目的地、钱不足的选择及容量；花魁已明确使用者先报价且三张整体成交。",
+      "resolutionDocument": "digital-rulings.md",
+      "section": 6,
+      "status": "maintainer-decided-not-official"
+    },
+    "capacity": {
+      "sourceGap": "临时格占用与腾空、交换重分的格位处理、人物容量不足时挑留的范围；道具得货是否允许同样取舍。",
+      "resolutionDocument": "digital-rulings.md",
+      "section": 4,
+      "status": "maintainer-decided-not-official"
+    },
+    "supply": {
+      "sourceGap": "公库某种货物不足时的合法性和交换是否必须足额；六种货物实体各有多少需清点。",
+      "resolutionDocument": "digital-rulings.md",
+      "section": 4,
+      "status": "maintainer-decided-not-official"
+    },
+    "deck": {
+      "sourceGap": "抽牌不足跨洗牌、双空、搜索全堆无目标、卦师放回顺序及重复搜索边界；不能用无限重洗卡住回合。",
+      "resolutionDocument": "digital-rulings.md",
+      "section": 5,
+      "status": "maintainer-decided-not-official"
+    },
+    "no-target": {
+      "sourceGap": "目标空缺或无变化动作是否允许发动、支付前检查和不可逆效果的取消点，集中定通则而非各界面猜测。",
+      "resolutionDocument": "digital-rulings.md",
+      "section": 5,
+      "status": "maintainer-decided-not-official"
+    },
+    "visibility": {
+      "sourceGap": "卦师和两仪灯临时牌的可见范围，堪舆师盲抽方式；县丞、花魁和公开搜索依牌效开放信息，不泄漏其余私牌。",
+      "resolutionDocument": "digital-rulings.md",
+      "section": 9,
+      "status": "maintainer-decided-not-official"
+    },
+    "tools": {
+      "sourceGap": "同名实体分别横置；光棍竖直重分后的再次使用，术士借用已横置/自弃型道具的费用与指代；牺牲对象限哪一方的区。",
+      "resolutionDocument": "digital-rulings.md",
+      "section": 6,
+      "status": "maintainer-decided-not-official"
+    },
+    "timing": {
+      "sourceGap": "纸上仙位于普通取牌前，多个同名实例与可跳过阶段一的顺序；到行动上限后应先完成在途效果再结束。",
+      "resolutionDocument": "digital-rulings.md",
+      "section": 2,
+      "status": "maintainer-decided-not-official"
+    }
+  },
+  "digitalInitialStock": {
+    "ruleVersion": "yousei-digital-v1",
+    "status": "maintainer-decided-under-user-authorization",
+    "decidedAt": "2026-10-10",
+    "basis": "用户授权维护者决定六类货物数量；数字版选择各6件，不据此认定实体版数量。",
+    "byType": {
+      "火器": 6,
+      "番货": 6,
+      "奇物": 6,
+      "异兽": 6,
+      "文玩": 6,
+      "盐铁": 6
+    },
+    "total": 36,
+    "frozenPerMatch": true,
+    "roomEditable": false
+  }
+}

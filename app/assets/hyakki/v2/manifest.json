@@ -1,0 +1,1650 @@
+{
+  "artVersion": "yousei-art-v2",
+  "contentVersion": "yousei-content-v1",
+  "createdOn": "2026-10-10",
+  "scope": "original art and 51 digital card faces; local S0, not a playable release",
+  "totalBytes": 7547931,
+  "assets": [
+    {
+      "id": "firearms",
+      "label": "火器",
+      "kind": "goods",
+      "file": "firearms.svg",
+      "source": "original-svg",
+      "cardIds": [
+        "yousei.g01",
+        "yousei.g06",
+        "yousei.g07",
+        "yousei.g11",
+        "yousei.g12",
+        "yousei.g13",
+        "yousei.g19"
+      ],
+      "scenes": [
+        "card-face",
+        "public-stock",
+        "player-shop",
+        "catalog"
+      ],
+      "bytes": 999,
+      "width": 128,
+      "height": 128,
+      "sha256": "0f6b9246c7f8e9871194a32cbe36c6c2f1aa3c69a137b134cd4d923e65e7a76a"
+    },
+    {
+      "id": "imports",
+      "label": "番货",
+      "kind": "goods",
+      "file": "imports.svg",
+      "source": "original-svg",
+      "cardIds": [
+        "yousei.g02",
+        "yousei.g04",
+        "yousei.g08",
+        "yousei.g13",
+        "yousei.g14",
+        "yousei.g16",
+        "yousei.g19"
+      ],
+      "scenes": [
+        "card-face",
+        "public-stock",
+        "player-shop",
+        "catalog"
+      ],
+      "bytes": 1004,
+      "width": 128,
+      "height": 128,
+      "sha256": "4064a9f62b1cffb98ac58d92deccae9f39b0d3c429fa86f9e4c9447390b21c26"
+    },
+    {
+      "id": "curios",
+      "label": "奇物",
+      "kind": "goods",
+      "file": "curios.svg",
+      "source": "original-svg",
+      "cardIds": [
+        "yousei.g02",
+        "yousei.g07",
+        "yousei.g09",
+        "yousei.g10",
+        "yousei.g11",
+        "yousei.g14",
+        "yousei.g19"
+      ],
+      "scenes": [
+        "card-face",
+        "public-stock",
+        "player-shop",
+        "catalog"
+      ],
+      "bytes": 999,
+      "width": 128,
+      "height": 128,
+      "sha256": "d3d220dfc007bd2c2eed5f935061ecae68422e7cbfc438852e3bbc1dc2070b0d"
+    },
+    {
+      "id": "beasts",
+      "label": "异兽",
+      "kind": "goods",
+      "file": "beasts.svg",
+      "source": "original-svg",
+      "cardIds": [
+        "yousei.g03",
+        "yousei.g05",
+        "yousei.g12",
+        "yousei.g13",
+        "yousei.g15",
+        "yousei.g16",
+        "yousei.g19"
+      ],
+      "scenes": [
+        "card-face",
+        "public-stock",
+        "player-shop",
+        "catalog"
+      ],
+      "bytes": 1050,
+      "width": 128,
+      "height": 128,
+      "sha256": "a87dc0042433a0f5e32095b790aac3b5d3a99efce6e46666e8732d7f81e1ef53"
+    },
+    {
+      "id": "antiques",
+      "label": "文玩",
+      "kind": "goods",
+      "file": "antiques.svg",
+      "source": "original-svg",
+      "cardIds": [
+        "yousei.g05",
+        "yousei.g06",
+        "yousei.g07",
+        "yousei.g10",
+        "yousei.g12",
+        "yousei.g17",
+        "yousei.g19"
+      ],
+      "scenes": [
+        "card-face",
+        "public-stock",
+        "player-shop",
+        "catalog"
+      ],
+      "bytes": 1094,
+      "width": 128,
+      "height": 128,
+      "sha256": "8e39462f7b9d666252f07bde885df61f9bbeffd2cdcb1f8b679e8bddcaf69024"
+    },
+    {
+      "id": "salt-iron",
+      "label": "盐铁",
+      "kind": "goods",
+      "file": "salt-iron.svg",
+      "source": "original-svg",
+      "cardIds": [
+        "yousei.g08",
+        "yousei.g10",
+        "yousei.g14",
+        "yousei.g15",
+        "yousei.g16",
+        "yousei.g18",
+        "yousei.g19"
+      ],
+      "scenes": [
+        "card-face",
+        "public-stock",
+        "player-shop",
+        "catalog"
+      ],
+      "bytes": 1063,
+      "width": 128,
+      "height": 128,
+      "sha256": "c7fb68aca562cd9a257f9f1bbda6bd02393dcea01ac29e4f63e05cafe68dab73"
+    },
+    {
+      "id": "c01",
+      "label": "把戏人",
+      "kind": "ordinary_character",
+      "file": "c01.webp",
+      "source": "original-imagegen",
+      "cardIds": [
+        "yousei.c01"
+      ],
+      "scenes": [
+        "card-face",
+        "card-details",
+        "catalog"
+      ],
+      "bytes": 196900,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "6f9f242a086f7fab1902cae829daebd583a304364959f8112158ca2909667f82"
+    },
+    {
+      "id": "c02",
+      "label": "卦师",
+      "kind": "ordinary_character",
+      "file": "c02.webp",
+      "source": "original-imagegen",
+      "cardIds": [
+        "yousei.c02"
+      ],
+      "scenes": [
+        "card-face",
+        "card-details",
+        "catalog"
+      ],
+      "bytes": 227880,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "392f6648c65d921b9f297d2abeb56ce13cf9a4587e8f54e53ce7f0b87749a557"
+    },
+    {
+      "id": "c03",
+      "label": "书算",
+      "kind": "ordinary_character",
+      "file": "c03.webp",
+      "source": "original-imagegen",
+      "cardIds": [
+        "yousei.c03"
+      ],
+      "scenes": [
+        "card-face",
+        "card-details",
+        "catalog"
+      ],
+      "bytes": 262824,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "0b34117f19fd3492eaa4f767642de24cf413fb960f2333f9b466ed1dea1d1887"
+    },
+    {
+      "id": "c04",
+      "label": "番商",
+      "kind": "ordinary_character",
+      "file": "c04.webp",
+      "source": "original-imagegen",
+      "cardIds": [
+        "yousei.c04"
+      ],
+      "scenes": [
+        "card-face",
+        "card-details",
+        "catalog"
+      ],
+      "bytes": 328904,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "92d48788bbc98ca655a66c92b17476958dd3ed84e62004002d6396f55c5d2b1c"
+    },
+    {
+      "id": "c05",
+      "label": "买办",
+      "kind": "ordinary_character",
+      "file": "c05.webp",
+      "source": "original-imagegen",
+      "cardIds": [
+        "yousei.c05"
+      ],
+      "scenes": [
+        "card-face",
+        "card-details",
+        "catalog"
+      ],
+      "bytes": 207950,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "bbdf8bf43748f285f09fecc3d5b5bf9502ae55f41ca43608ddbe25a8c6c41fd2"
+    },
+    {
+      "id": "c06",
+      "label": "货郎",
+      "kind": "ordinary_character",
+      "file": "c06.webp",
+      "source": "original-imagegen",
+      "cardIds": [
+        "yousei.c06"
+      ],
+      "scenes": [
+        "card-face",
+        "card-details",
+        "catalog"
+      ],
+      "bytes": 245316,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "fa8547b2ac8e79517c6bf30070fb3ddef3858fa72e5a0791e97b6f440d24609c"
+    },
+    {
+      "id": "c07",
+      "label": "锦衣卫",
+      "kind": "ordinary_character",
+      "file": "c07.webp",
+      "source": "original-imagegen",
+      "cardIds": [
+        "yousei.c07"
+      ],
+      "scenes": [
+        "card-face",
+        "card-details",
+        "catalog"
+      ],
+      "bytes": 184106,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "dc6be7ca6ce3e8f86062f0d23be553e1451ff34f9ad7e6a888343ceede3c9d67"
+    },
+    {
+      "id": "c08",
+      "label": "典史",
+      "kind": "ordinary_character",
+      "file": "c08.webp",
+      "source": "original-imagegen",
+      "cardIds": [
+        "yousei.c08"
+      ],
+      "scenes": [
+        "card-face",
+        "card-details",
+        "catalog"
+      ],
+      "bytes": 153224,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "97b2df9f17084e6f8743f3179394f2a00106a4dfa045501b5a8cd2c584d29ba3"
+    },
+    {
+      "id": "c09",
+      "label": "牙郎",
+      "kind": "ordinary_character",
+      "file": "c09.webp",
+      "source": "original-imagegen",
+      "cardIds": [
+        "yousei.c09"
+      ],
+      "scenes": [
+        "card-face",
+        "card-details",
+        "catalog"
+      ],
+      "bytes": 184982,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "29643362dfd480d649a8afc69b72466b477c14afca91903539498dff6590e6b9"
+    },
+    {
+      "id": "c10",
+      "label": "匠人",
+      "kind": "ordinary_character",
+      "file": "c10.webp",
+      "source": "original-imagegen",
+      "cardIds": [
+        "yousei.c10"
+      ],
+      "scenes": [
+        "card-face",
+        "card-details",
+        "catalog"
+      ],
+      "bytes": 185080,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "c735e0c9c7436043411cc27c1c1a4d8b4abbd9b56a64d1bbcb11e106cd15219c"
+    },
+    {
+      "id": "c11",
+      "label": "团头",
+      "kind": "ordinary_character",
+      "file": "c11.webp",
+      "source": "original-imagegen",
+      "cardIds": [
+        "yousei.c11"
+      ],
+      "scenes": [
+        "card-face",
+        "card-details",
+        "catalog"
+      ],
+      "bytes": 276818,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "f3b7e5cb89ed7ae3966a869be161e498ec8288745a65de777f0ae01215b9b314"
+    },
+    {
+      "id": "c12",
+      "label": "花魁",
+      "kind": "ordinary_character",
+      "file": "c12.webp",
+      "source": "original-imagegen",
+      "cardIds": [
+        "yousei.c12"
+      ],
+      "scenes": [
+        "card-face",
+        "card-details",
+        "catalog"
+      ],
+      "bytes": 257664,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "ebf6d9e717a18d008c3272d79294d4bff5f13031e5ccdde27a86ea038fe836a3"
+    },
+    {
+      "id": "c13",
+      "label": "朝奉",
+      "kind": "ordinary_character",
+      "file": "c13.webp",
+      "source": "original-imagegen",
+      "cardIds": [
+        "yousei.c13"
+      ],
+      "scenes": [
+        "card-face",
+        "card-details",
+        "catalog"
+      ],
+      "bytes": 175142,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "3cb2f586437233dbd3b0224051d83f4f0b17ad714c22f2a5da719b1f8417f384"
+    },
+    {
+      "id": "m01",
+      "label": "梁上君子",
+      "kind": "monitored_character",
+      "file": "m01.webp",
+      "source": "original-imagegen",
+      "cardIds": [
+        "yousei.m01"
+      ],
+      "scenes": [
+        "card-face",
+        "card-details",
+        "catalog"
+      ],
+      "bytes": 223576,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "fc5c80c743c229903c28728986302e18e4e22c12e537f7719ad8469d1886ad2f"
+    },
+    {
+      "id": "m02",
+      "label": "县丞",
+      "kind": "monitored_character",
+      "file": "m02.webp",
+      "source": "original-imagegen",
+      "cardIds": [
+        "yousei.m02"
+      ],
+      "scenes": [
+        "card-face",
+        "card-details",
+        "catalog"
+      ],
+      "bytes": 216186,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "a3c45399e8944f3e59d7322d2e339b7df5b738fd18f5197f92af69b222f3b98a"
+    },
+    {
+      "id": "m03",
+      "label": "魁首",
+      "kind": "monitored_character",
+      "file": "m03.webp",
+      "source": "original-imagegen",
+      "cardIds": [
+        "yousei.m03"
+      ],
+      "scenes": [
+        "card-face",
+        "card-details",
+        "catalog"
+      ],
+      "bytes": 227958,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "f5af2b4c12825a39c3fa824fd6a2c77479f345d16e18e895fae5ab4c5067634d"
+    },
+    {
+      "id": "m04",
+      "label": "蛊婆",
+      "kind": "monitored_character",
+      "file": "m04.webp",
+      "source": "original-imagegen",
+      "cardIds": [
+        "yousei.m04"
+      ],
+      "scenes": [
+        "card-face",
+        "card-details",
+        "catalog"
+      ],
+      "bytes": 276600,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "b73071fe702e91f1f6ed53e66cec64b387228f600feb65302745b4b51f43f598"
+    },
+    {
+      "id": "m05",
+      "label": "船老大",
+      "kind": "monitored_character",
+      "file": "m05.webp",
+      "source": "original-imagegen",
+      "cardIds": [
+        "yousei.m05"
+      ],
+      "scenes": [
+        "card-face",
+        "card-details",
+        "catalog"
+      ],
+      "bytes": 191138,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "93d0571e648e19417b780934c16a2babefb89d8a9c67819a66023208134c3218"
+    },
+    {
+      "id": "m06",
+      "label": "光棍",
+      "kind": "monitored_character",
+      "file": "m06.webp",
+      "source": "original-imagegen",
+      "cardIds": [
+        "yousei.m06"
+      ],
+      "scenes": [
+        "card-face",
+        "card-details",
+        "catalog"
+      ],
+      "bytes": 270910,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "9eb11da027f06babd26063a271f9f792154bfba3e26e82a1dada714c373b0653"
+    },
+    {
+      "id": "m07",
+      "label": "堪舆师",
+      "kind": "monitored_character",
+      "file": "m07.webp",
+      "source": "original-imagegen",
+      "cardIds": [
+        "yousei.m07"
+      ],
+      "scenes": [
+        "card-face",
+        "card-details",
+        "catalog"
+      ],
+      "bytes": 220252,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "34805faf2ed83af09d7057c5b23e117990e9fca6142867ea340172c9118ffa28"
+    },
+    {
+      "id": "m08",
+      "label": "术士",
+      "kind": "monitored_character",
+      "file": "m08.webp",
+      "source": "original-imagegen",
+      "cardIds": [
+        "yousei.m08"
+      ],
+      "scenes": [
+        "card-face",
+        "card-details",
+        "catalog"
+      ],
+      "bytes": 218332,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "65927cc8e55d88173f58ca30544a92c239be27023f8ed1d3a4cbffbeca8125f1"
+    },
+    {
+      "id": "t01",
+      "label": "貔貅袋",
+      "kind": "tool",
+      "file": "t01.webp",
+      "source": "original-imagegen",
+      "cardIds": [
+        "yousei.t01"
+      ],
+      "scenes": [
+        "card-face",
+        "card-details",
+        "catalog"
+      ],
+      "bytes": 378032,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "38896a61630cfe5d0f62a8438d40bca96de359957a20344e2e1e8216600203cf"
+    },
+    {
+      "id": "t02",
+      "label": "许愿井",
+      "kind": "tool",
+      "file": "t02.webp",
+      "source": "original-imagegen",
+      "cardIds": [
+        "yousei.t02"
+      ],
+      "scenes": [
+        "card-face",
+        "card-details",
+        "catalog"
+      ],
+      "bytes": 232168,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "f09c00de2518ce162e68c0d8c8134953e2c44a48b42ac1e4f05d03fd22e65252"
+    },
+    {
+      "id": "t03",
+      "label": "鹤骨笛",
+      "kind": "tool",
+      "file": "t03.webp",
+      "source": "original-imagegen",
+      "cardIds": [
+        "yousei.t03"
+      ],
+      "scenes": [
+        "card-face",
+        "card-details",
+        "catalog"
+      ],
+      "bytes": 133364,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "5cd80573fbc6ca15ea189b87fb9babc5193a9dee1cbb065e21142240a3bb762d"
+    },
+    {
+      "id": "t04",
+      "label": "两仪灯",
+      "kind": "tool",
+      "file": "t04.webp",
+      "source": "original-imagegen",
+      "cardIds": [
+        "yousei.t04"
+      ],
+      "scenes": [
+        "card-face",
+        "card-details",
+        "catalog"
+      ],
+      "bytes": 226196,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "d0e140ccae5459bce638b52c5f66295ecebc98b93e86653d50ac444c7021ce5a"
+    },
+    {
+      "id": "t05",
+      "label": "梅花令牌",
+      "kind": "tool",
+      "file": "t05.webp",
+      "source": "original-imagegen",
+      "cardIds": [
+        "yousei.t05"
+      ],
+      "scenes": [
+        "card-face",
+        "card-details",
+        "catalog"
+      ],
+      "bytes": 260196,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "4fadbf2a2d4c3112e015991bda753540c7afa42275421035baf3eefc48a645cb"
+    },
+    {
+      "id": "t06",
+      "label": "西域迷香",
+      "kind": "tool",
+      "file": "t06.webp",
+      "source": "original-imagegen",
+      "cardIds": [
+        "yousei.t06"
+      ],
+      "scenes": [
+        "card-face",
+        "card-details",
+        "catalog"
+      ],
+      "bytes": 187826,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "6a56f2122f73fb9addf68fceacde7878dd338beade40ae8ef6e4bf3f6e893142"
+    },
+    {
+      "id": "t07",
+      "label": "纸上仙",
+      "kind": "tool",
+      "file": "t07.webp",
+      "source": "original-imagegen",
+      "cardIds": [
+        "yousei.t07"
+      ],
+      "scenes": [
+        "card-face",
+        "card-details",
+        "catalog"
+      ],
+      "bytes": 189848,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "71a5f19fb9e1e8baf71237a2e98a3acbce4f07547879e3dd488d955452bc367b"
+    },
+    {
+      "id": "t08",
+      "label": "九转金炉",
+      "kind": "tool",
+      "file": "t08.webp",
+      "source": "original-imagegen",
+      "cardIds": [
+        "yousei.t08"
+      ],
+      "scenes": [
+        "card-face",
+        "card-details",
+        "catalog"
+      ],
+      "bytes": 290392,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "d0a2bf480a5db4a3c507d4962ff4ae808f5e7b61af4feec679c81071f735e2f7"
+    },
+    {
+      "id": "t09",
+      "label": "采珠图",
+      "kind": "tool",
+      "file": "t09.webp",
+      "source": "original-imagegen",
+      "cardIds": [
+        "yousei.t09"
+      ],
+      "scenes": [
+        "card-face",
+        "card-details",
+        "catalog"
+      ],
+      "bytes": 331718,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "a44adc73ee75ddaf5b5d2ebcbe577793366c393b441034ed17f10026b5a0ff36"
+    },
+    {
+      "id": "t10",
+      "label": "贪嘴泥翁",
+      "kind": "tool",
+      "file": "t10.webp",
+      "source": "original-imagegen",
+      "cardIds": [
+        "yousei.t10"
+      ],
+      "scenes": [
+        "card-face",
+        "card-details",
+        "catalog"
+      ],
+      "bytes": 307362,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "e5f58fd6008eeae1db509b8d4223edbc6c53931d2e3ad079a3a917be12c6ce1b"
+    },
+    {
+      "id": "stall-permit",
+      "label": "摊位许可牌",
+      "kind": "stall_permit",
+      "file": "stall-permit.webp",
+      "source": "original-imagegen",
+      "cardIds": [
+        "yousei.stall-permit"
+      ],
+      "scenes": [
+        "card-face",
+        "card-details",
+        "catalog"
+      ],
+      "bytes": 271692,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "73f116941ba088d4ceef95696368e23ff7b9cb930639bb9f254c70a77870aece"
+    },
+    {
+      "id": "card-back",
+      "label": "统一牌背",
+      "kind": "back",
+      "file": "card-back.svg",
+      "source": "original-svg",
+      "cardIds": [],
+      "scenes": [
+        "hidden-hand",
+        "draw-pile"
+      ],
+      "bytes": 1186,
+      "width": 240,
+      "height": 336,
+      "sha256": "0dc84b0dd0780e19c96d2ac1192a062c1be1ec86630f5bdd4c7eef575d4e5288"
+    }
+  ],
+  "cardFaces": [
+    {
+      "cardId": "yousei.g01",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "G01",
+      "assetIds": [
+        "firearms"
+      ],
+      "textFallback": "按牌面整组买入或卖出：基础买价3两、卖价10两。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.g02",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "G02",
+      "assetIds": [
+        "imports",
+        "curios"
+      ],
+      "textFallback": "按牌面整组买入或卖出：基础买价4两、卖价11两。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.g03",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "G03",
+      "assetIds": [
+        "beasts"
+      ],
+      "textFallback": "按牌面整组买入或卖出：基础买价3两、卖价10两。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.g04",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "G04",
+      "assetIds": [
+        "imports"
+      ],
+      "textFallback": "按牌面整组买入或卖出：基础买价3两、卖价10两。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.g05",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "G05",
+      "assetIds": [
+        "antiques",
+        "beasts"
+      ],
+      "textFallback": "按牌面整组买入或卖出：基础买价4两、卖价11两。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.g06",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "G06",
+      "assetIds": [
+        "firearms",
+        "antiques"
+      ],
+      "textFallback": "按牌面整组买入或卖出：基础买价4两、卖价11两。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.g07",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "G07",
+      "assetIds": [
+        "curios",
+        "firearms",
+        "antiques"
+      ],
+      "textFallback": "按牌面整组买入或卖出：基础买价5两、卖价12两。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.g08",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "G08",
+      "assetIds": [
+        "salt-iron",
+        "imports"
+      ],
+      "textFallback": "按牌面整组买入或卖出：基础买价4两、卖价11两。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.g09",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "G09",
+      "assetIds": [
+        "curios"
+      ],
+      "textFallback": "按牌面整组买入或卖出：基础买价3两、卖价10两。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.g10",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "G10",
+      "assetIds": [
+        "curios",
+        "antiques",
+        "salt-iron"
+      ],
+      "textFallback": "按牌面整组买入或卖出：基础买价5两、卖价12两。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.g11",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "G11",
+      "assetIds": [
+        "curios",
+        "firearms"
+      ],
+      "textFallback": "按牌面整组买入或卖出：基础买价4两、卖价11两。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.g12",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "G12",
+      "assetIds": [
+        "firearms",
+        "antiques",
+        "beasts"
+      ],
+      "textFallback": "按牌面整组买入或卖出：基础买价5两、卖价12两。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.g13",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "G13",
+      "assetIds": [
+        "firearms",
+        "imports",
+        "beasts"
+      ],
+      "textFallback": "按牌面整组买入或卖出：基础买价5两、卖价12两。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.g14",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "G14",
+      "assetIds": [
+        "imports",
+        "salt-iron",
+        "curios"
+      ],
+      "textFallback": "按牌面整组买入或卖出：基础买价5两、卖价12两。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.g15",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "G15",
+      "assetIds": [
+        "beasts",
+        "salt-iron"
+      ],
+      "textFallback": "按牌面整组买入或卖出：基础买价4两、卖价11两。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.g16",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "G16",
+      "assetIds": [
+        "beasts",
+        "imports",
+        "salt-iron"
+      ],
+      "textFallback": "按牌面整组买入或卖出：基础买价5两、卖价12两。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.g17",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "G17",
+      "assetIds": [
+        "antiques"
+      ],
+      "textFallback": "按牌面整组买入或卖出：基础买价3两、卖价10两。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.g18",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "G18",
+      "assetIds": [
+        "salt-iron"
+      ],
+      "textFallback": "按牌面整组买入或卖出：基础买价3两、卖价10两。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.g19",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "G19",
+      "assetIds": [
+        "imports",
+        "salt-iron",
+        "curios",
+        "firearms",
+        "beasts",
+        "antiques"
+      ],
+      "textFallback": "按牌面整组买入或卖出：基础买价10两、卖价18两。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.c01",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "C01",
+      "assetIds": [
+        "c01"
+      ],
+      "textFallback": "自己选抽牌或收同种货物，对手获得另一项收益。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.c02",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "C02",
+      "assetIds": [
+        "c02"
+      ],
+      "textFallback": "私看牌堆顶最多6张，留1张，其余按原顺序放回。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.c03",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "C03",
+      "assetIds": [
+        "c03"
+      ],
+      "textFallback": "本回合货物牌每张买价减2两、卖价加2两，可叠加。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.c04",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "C04",
+      "assetIds": [
+        "c04"
+      ],
+      "textFallback": "对手完成货物交易后，免费回应并取得那张货物牌。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.c05",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "C05",
+      "assetIds": [
+        "c05"
+      ],
+      "textFallback": "搭配三件货物牌，交回任意3件库存并取得该牌卖价。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.c06",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "C06",
+      "assetIds": [
+        "c06"
+      ],
+      "textFallback": "把自己某一种库存全部换成公库另一种等量货物。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.c07",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "C07",
+      "assetIds": [
+        "c07"
+      ],
+      "textFallback": "免费回应监视人物，取消其效果；对手已用行动不退。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.c08",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "C08",
+      "assetIds": [
+        "c08"
+      ],
+      "textFallback": "自己补牌至5张，或由对手自己弃牌至3张。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.c09",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "C09",
+      "assetIds": [
+        "c09"
+      ],
+      "textFallback": "从公库选2件货物作为一个拍品，由自己先竞价。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.c10",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "C10",
+      "assetIds": [
+        "c10"
+      ],
+      "textFallback": "支付2两，从公库取得同一种货物2件。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.c11",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "C11",
+      "assetIds": [
+        "c11"
+      ],
+      "textFallback": "从全部弃牌中选择1张道具加入手牌。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.c12",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "C12",
+      "assetIds": [
+        "c12"
+      ],
+      "textFallback": "公开抽出3张牌作为一个拍品，自己先竞价，整组成交。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.c13",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "C13",
+      "assetIds": [
+        "c13"
+      ],
+      "textFallback": "交回任意数量库存，每件取得2两，至少交1件。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.m01",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "M01",
+      "assetIds": [
+        "m01"
+      ],
+      "textFallback": "取走对手库存中的1件货物，转入自己的商铺。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.m02",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "M02",
+      "assetIds": [
+        "m02"
+      ],
+      "textFallback": "双方手牌合并公开，由自己先选，每次1张轮流分完。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.m03",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "M03",
+      "assetIds": [
+        "m03"
+      ],
+      "textFallback": "双方各自只保留1张已安装道具，其余全部弃置。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.m04",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "M04",
+      "assetIds": [
+        "m04"
+      ],
+      "textFallback": "由对手选择付给自己2两，或让自己抽最多2张牌。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.m05",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "M05",
+      "assetIds": [
+        "m05"
+      ],
+      "textFallback": "双方库存合并，由自己先选，每次1件轮流重新分配。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.m06",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "M06",
+      "assetIds": [
+        "m06"
+      ],
+      "textFallback": "双方已安装道具合并，由自己先选并逐张竖直重分。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.m07",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "M07",
+      "assetIds": [
+        "m07"
+      ],
+      "textFallback": "盲抽对手1张手牌，再从现在手牌中选1张交回。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.m08",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "M08",
+      "assetIds": [
+        "m08"
+      ],
+      "textFallback": "弃掉对手1张已安装道具，可立即借用一次其效果。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.t01",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "T01",
+      "assetIds": [
+        "t01"
+      ],
+      "textFallback": "公开寻找首张货物牌，再付1两或弃1张手牌取得它。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "tool-zone",
+        "tapped-tool",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.t02",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "T02",
+      "assetIds": [
+        "t02"
+      ],
+      "textFallback": "选自己和对手各1件库存，完整交换。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "tool-zone",
+        "tapped-tool",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.t03",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "T03",
+      "assetIds": [
+        "t03"
+      ],
+      "textFallback": "先弃1或2张手牌，再抽取相同张数。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "tool-zone",
+        "tapped-tool",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.t04",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "T04",
+      "assetIds": [
+        "t04"
+      ],
+      "textFallback": "私看新抽的2张牌，自己留1张，另一张交给对手。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "tool-zone",
+        "tapped-tool",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.t05",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "T05",
+      "assetIds": [
+        "t05"
+      ],
+      "textFallback": "支付1两，抽1张牌。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "tool-zone",
+        "tapped-tool",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.t06",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "T06",
+      "assetIds": [
+        "t06"
+      ],
+      "textFallback": "交回自己的1件库存货物，抽1张牌。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "tool-zone",
+        "tapped-tool",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.t07",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "T07",
+      "assetIds": [
+        "t07"
+      ],
+      "textFallback": "普通取牌前，把自己的1张手牌与弃牌堆顶交换。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "tool-zone",
+        "tapped-tool",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.t08",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "T08",
+      "assetIds": [
+        "t08"
+      ],
+      "textFallback": "弃本道具、1张自己手牌或已安装道具，获得2两。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "tool-zone",
+        "tapped-tool",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.t09",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "T09",
+      "assetIds": [
+        "t09"
+      ],
+      "textFallback": "支付2两，从公库取得任意1件货物。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "tool-zone",
+        "tapped-tool",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.t10",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "T10",
+      "assetIds": [
+        "t10"
+      ],
+      "textFallback": "弃本道具、1张自己手牌或已安装道具，取得1件货物。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "tool-zone",
+        "tapped-tool",
+        "public-selection"
+      ]
+    },
+    {
+      "cardId": "yousei.stall-permit",
+      "contentVersion": "yousei-content-v1",
+      "artVersion": "yousei-art-v2",
+      "sourceCode": "P01",
+      "assetIds": [
+        "stall-permit"
+      ],
+      "textFallback": "购买1块三格扩展摊位；整局首次6两，之后每次3两。",
+      "scenes": [
+        "catalog",
+        "details",
+        "hand",
+        "public-selection"
+      ]
+    }
+  ]
+}

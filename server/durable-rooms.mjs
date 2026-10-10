@@ -4,6 +4,7 @@ import { defaultGameRegistry } from '../app/game-registry.mjs';
 import { snapshotGameType, snapshotAuthorityBindingProblem } from './room-snapshot-compat.mjs';
 import { createRoomScoreCommitter } from './room-score-commit.mjs';
 import { ScoreError } from './game-scores.mjs';
+import { roomExpiry } from './games/adapter-contract.mjs';
 
 const FOREVER = Number.MAX_SAFE_INTEGER;
 const hash = (value) => createHash('sha256').update(value).digest('hex');
@@ -35,14 +36,14 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
   pausedTtlMs = 7 * 24 * 60 * 60 * 1000, leaveRetentionMs = 24 * 60 * 60 * 1000, hostTakeoverGraceMs = 60000,
   maxRooms = 100, gameOptions = {}, gameEngine, pollIntervalMs = 1000, presenceTtlMs = 10000,
   maxCasAttempts = 100, turnTimeoutMs = DEFAULT_TURN_TIMEOUT_MS, gameRegistry = defaultGameRegistry,
-  serverRandomInt = randomInt, scores, prepareRoom = async snapshot => snapshot, prepareAction = async () => ({}) } = {}) {
+  serverRandomInt = randomInt, scores, transitionPreparers, prepareRoom = async snapshot => snapshot, prepareAction = async () => ({}) } = {}) {
   if (!storage?.read || !storage?.replaceCAS || !storage?.guardedCAS || !storage?.putIfAbsent || !storage?.remove) throw new TypeError('Durable rooms require an atomic encrypted store.');
   if (!(ttlMs > 0) || !(presenceTtlMs > 0) || !(maxRooms > 0)) throw new TypeError('Invalid room limits.');
   const local = new Map(), authorityMetadata = new Map();
   let closed = false;
   let pollingFlight = null;
   let history = null, historyFlight = null;
-  const commitWithScores = createRoomScoreCommitter({ storage, gameRegistry, now, scores });
+  const commitWithScores = createRoomScoreCommitter({ storage, gameRegistry, now, scores, transitionPreparers });
   async function commitRoom(...args) {
     try { return await commitWithScores(...args); }
     catch (error) {
@@ -52,7 +53,7 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
   }
   const adapterFor = snapshot => gameRegistry.gameAdapter(snapshotGameType(snapshot));
   const attemptsFor = snapshot => Math.min(maxCasAttempts, adapterFor(snapshot).businessCasAttempts ?? maxCasAttempts);
-  const expiry = (snapshot) => snapshot.lastActiveAt + (snapshot.phase === 'paused' ? pausedTtlMs : ttlMs);
+  const expiry = snapshot => roomExpiry(snapshot, adapterFor(snapshot), { ttlMs, pausedTtlMs });
   function engine(snapshot, preparedOptions = {}) {
     const store = createRoomStore({ now, ttlMs, pausedTtlMs, leaveRetentionMs, gameOptions: { ...gameOptions, ...preparedOptions }, turnTimeoutMs,
       gameRegistry, serverRandomInt, ...(gameEngine ? { gameEngine } : {}) });
@@ -95,7 +96,11 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
     const roomId = invitation?.value.roomId;
     const invitationGuard = invitation ? { scope: 'room-invites', id: code, expectedVersion: invitation.version } : null;
     for (let attempt = 0; attempt < maxCasAttempts; attempt += 1) {
-      const record = roomId ? await storage.read('rooms', roomId) : null;
+      let record = roomId ? await storage.read('rooms', roomId) : null;
+      if (record?.value.snapshot && adapterFor(record.value.snapshot).usesPresenceLifecycle) {
+        await reconcileLifecycle(roomId);
+        record = await storage.read('rooms', roomId);
+      }
       // Storage revisions, rather than the game's business revision, identify
       // a validated snapshot. Missing/corrupt or replaced rows invalidate it.
       if (authorityMetadata.get(roomId)?.version !== record?.version) authorityMetadata.delete(roomId);
@@ -108,14 +113,32 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
     }
     fail(503, 'STORE_BUSY', '房间正在同步，请稍后重试。');
   }
-  function presenceData(value) { return value?.schemaVersion === 2 ? value : { schemaVersion: 2, connections: value ?? {}, lastSeen: {} }; }
+  function presenceData(value) {
+    const data = value?.schemaVersion === 2 ? value : { schemaVersion: 2, connections: value ?? {}, lastSeen: {} };
+    data.leaseExpiresAt ??= {}; data.absenceSinceAt ??= {};
+    return data;
+  }
   async function context(snapshot) {
     const record = await storage.read('room-presence', snapshot.roomId), value = presenceData(record?.value);
+    const observedAt = now();
     const connected = Object.fromEntries(Object.entries(value.connections).map(([playerId, connections]) => [playerId,
-      Object.values(connections).some((until) => until > now())]));
+      Object.values(connections).some((until) => until > observedAt)]));
+    const seats = (snapshot.matchParticipants ?? snapshot.players?.map(({ id }) => ({ playerId: id })) ?? []).map(({ playerId }) => {
+      const leases = Object.values(value.connections[playerId] ?? {});
+      const latest = Math.max(value.leaseExpiresAt[playerId] ?? 0, ...leases);
+      const online = leases.some(until => until > observedAt);
+      return { playerId, connected: online, lastSeenAt: value.lastSeen[playerId] ?? null,
+        leaseExpiresAt: latest || null,
+        absenceSinceAt: online ? null : value.absenceSinceAt[playerId] ?? (latest && latest <= observedAt ? latest : null) };
+    });
     return { connected, hostCanTakeOver: !connected[snapshot.hostId]
       && now() >= Math.max(snapshot.hostSinceAt ?? snapshot.lastActiveAt, value.lastSeen[snapshot.hostId] ?? 0) + presenceTtlMs + hostTakeoverGraceMs,
-      presenceRecord: record };
+      presence: { observedAt, seats }, presenceRecord: record };
+  }
+  function presenceGuards(roomId, trusted) {
+    const onlineLeases = trusted.presence.seats.filter(seat => seat.connected).map(seat => seat.leaseExpiresAt);
+    return [{ scope: 'room-presence', id: roomId, expectedVersion: trusted.presenceRecord?.version ?? null,
+      validUntil: onlineLeases.length ? Math.min(...onlineLeases) : FOREVER }];
   }
   async function presence(roomId) {
     const value = presenceData((await storage.read('room-presence', roomId))?.value);
@@ -172,6 +195,11 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
   async function collectExpired(roomId, record, reservedAt) {
     if (!record) return now() - reservedAt >= 60000;
     if (!record.value.snapshot) return true;
+    if (adapterFor(record.value.snapshot).usesPresenceLifecycle) {
+      await reconcileLifecycle(roomId);
+      record = await storage.read('rooms', roomId);
+      if (!record?.value.snapshot) return true;
+    }
     if (now() < expiry(record.value.snapshot)) return false;
     // A concurrent valid action may have renewed the room; never remove its capacity reservation on a failed CAS.
     return commitRoom(roomId, record, terminalRecord(record.value, 'expired'));
@@ -409,6 +437,10 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
       // A stable presence revision fences a reconnect racing an offline-host takeover.
       if (input.type === 'transferHost') await editPresence(roomId, () => {});
       const trustedContext = await context(record.value.snapshot);
+      if (adapterFor(record.value.snapshot).usesPresenceLifecycle && record.value.snapshot.phase === 'playing'
+          && !['leave', 'transferHost'].includes(input.type) && trustedContext.presence.seats.some(seat => !seat.connected)) {
+        await reconcileLifecycle(roomId); continue;
+      }
       roomEngine.getTrustedView(code, userKey, trustedContext);
       const actingSeatId = members(record.value.snapshot).find((player) => player.userKey === userKey).id;
       let result, error;
@@ -428,10 +460,16 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
           && !['leave', 'transferHost'].includes(input.type) ? record.value.snapshot.turnClock.deadlineAt : null;
       // A response prepared in time must also commit before its exact deadline.
       // Score changes and the durable room share this same guarded transaction.
-      const guards = input.type === 'transferHost' && trustedContext.presenceRecord
+      const guards = adapter.usesPresenceLifecycle ? presenceGuards(roomId, trustedContext) : input.type === 'transferHost' && trustedContext.presenceRecord
         ? [{ scope: 'room-presence', id: roomId, expectedVersion: trustedContext.presenceRecord.version,
           validUntil: expiry(record.value.snapshot) }] : [];
-      const wrote = await commitRoom(roomId, record, next, { guards, validUntil: deadline ?? FOREVER });
+      let wrote;
+      try { wrote = await commitRoom(roomId, record, next, { guards, validUntil: deadline ?? FOREVER }); }
+      catch (failure) {
+        if (failure.code !== 'GAME_HISTORY_CAPACITY' || !adapter.usesPresenceLifecycle) throw failure;
+        await reconcileLifecycle(roomId, 'capacity', record.value.snapshot.matchId);
+        throw failure;
+      }
       if (wrote === false) continue;
       if (error) throw error;
       await publish(roomId);
@@ -447,11 +485,23 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
   async function editPresence(roomId, mutate) {
     return cas('room-presence', roomId, (previous) => {
       const next = presenceData(previous);
+      const at = now(), previouslyOnline = new Set();
       for (const [playerId, connections] of Object.entries(next.connections)) {
-        for (const [connectionId, until] of Object.entries(connections)) if (until <= now()) delete connections[connectionId];
+        const leases = Object.values(connections);
+        next.leaseExpiresAt[playerId] = Math.max(next.leaseExpiresAt[playerId] ?? 0, ...leases);
+        if (leases.some(until => until > at)) previouslyOnline.add(playerId);
+        for (const [connectionId, until] of Object.entries(connections)) if (until <= at) delete connections[connectionId];
         if (!Object.keys(connections).length) delete next.connections[playerId];
       }
       mutate(next.connections, next.lastSeen);
+      for (const playerId of new Set([...Object.keys(next.leaseExpiresAt), ...Object.keys(next.connections)])) {
+        const leases = Object.values(next.connections[playerId] ?? {});
+        if (leases.some(until => until > at)) {
+          next.leaseExpiresAt[playerId] = Math.max(...leases); delete next.absenceSinceAt[playerId];
+        } else if (next.absenceSinceAt[playerId] === undefined) {
+          next.absenceSinceAt[playerId] = previouslyOnline.has(playerId) ? at : Math.min(at, next.leaseExpiresAt[playerId]);
+        }
+      }
       return next;
     }, now() + Math.max(pausedTtlMs, ttlMs));
   }
@@ -526,24 +576,84 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
     fail(503, 'STORE_BUSY', '房间正在同步，请稍后重试。');
   }
   async function cancelDisconnected(roomId) { return cancelMatch(roomId, 'disconnected'); }
+  // Presence is read and guarded together with the game. Connection IDs remain
+  // in the ephemeral presence scope; adapters receive only bounded seat evidence.
+  async function reconcileLifecycle(roomId, reason = 'presence', initialMatchId = null) {
+    let limit = maxCasAttempts, capacityApplied = false;
+    for (let attempt = 0; attempt < limit; attempt += 1) {
+      const record = await storage.read('rooms', roomId), snapshot = record?.value.snapshot;
+      if (!snapshot || !['playing', 'paused'].includes(snapshot.phase)
+          || initialMatchId && snapshot.matchId !== initialMatchId || !adapterFor(snapshot).usesPresenceLifecycle) return capacityApplied;
+      limit = attemptsFor(snapshot);
+      const trusted = await context(snapshot), roomEngine = engine(snapshot);
+      if (!roomEngine.applyLifecycle(snapshot.code, { matchId: snapshot.matchId, reason, presence: trusted.presence })) return capacityApplied;
+      const next = { ...record.value, snapshot: roomEngine.exportSnapshot(snapshot.code) };
+      const guards = presenceGuards(roomId, trusted);
+      let wrote;
+      try { wrote = await commitRoom(roomId, record, next, { guards }); }
+      catch (failure) {
+        if (failure.code !== 'GAME_HISTORY_CAPACITY' || capacityApplied || ['capacity', 'capacity-cleared'].includes(reason)) throw failure;
+        // Discard the unaffordable candidate. Suspend the persisted before-state
+        // with the same trusted evidence, using only the reserved write budget.
+        const capacityEngine = engine(snapshot);
+        if (!capacityEngine.applyLifecycle(snapshot.code, { matchId: snapshot.matchId, reason: 'capacity', presence: trusted.presence })) throw failure;
+        const held = { ...record.value, snapshot: capacityEngine.exportSnapshot(snapshot.code) };
+        // A reserve failure is not retried recursively. CAS conflicts still use
+        // the original bounded budget and re-read both room and presence.
+        if (!await commitRoom(roomId, record, held, { guards })) continue;
+        capacityApplied = true;
+        await publish(roomId);
+        await flushPendingRecords().catch(() => {});
+        // One successful fallback gets one follow-up evaluation, even when the
+        // CAS budget is one. Supplementary absence evidence must persist too.
+        attempt -= 1;
+        continue;
+      }
+      if (!wrote) continue;
+      await publish(roomId);
+      await flushPendingRecords().catch(() => {});
+      return true;
+    }
+    fail(503, 'STORE_BUSY', '房间正在同步，请稍后重试。');
+  }
+  async function applyLifecycle(code, { matchId, reason } = {}) {
+    if (reason !== 'capacity-cleared') fail(400, 'INVALID_LIFECYCLE', '系统生命周期原因无效。');
+    if (typeof matchId !== 'string' || !/^[a-f0-9]{32}$/.test(matchId)) fail(400, 'INVALID_LIFECYCLE', '系统操作需要当前比赛编号。');
+    const invitation = await storage.read('room-invites', code);
+    if (!invitation || invitation.value.retired) return false;
+    return reconcileLifecycle(invitation.value.roomId, reason, matchId);
+  }
   async function recoverStartup() {
     // Freeze the startup inventory: a newly started match can never be mistaken
     // for one that was interrupted before this store booted.
     const interrupted = (await storage.scan('rooms')).map(record => record.value.snapshot)
-      .filter(snapshot => snapshot?.phase === 'playing' && adapterFor(snapshot).recoverOnStartup)
-      .map(({ roomId, matchId }) => ({ roomId, matchId }));
-    for (const { roomId, matchId } of interrupted) await cancelMatch(roomId, 'server-recovery', matchId);
+      .filter(snapshot => snapshot && (['playing', 'paused'].includes(snapshot.phase) && adapterFor(snapshot).usesPresenceLifecycle
+        || snapshot.phase === 'playing' && adapterFor(snapshot).recoverOnStartup))
+      .map(snapshot => ({ roomId: snapshot.roomId, matchId: snapshot.matchId, presence: adapterFor(snapshot).usesPresenceLifecycle }));
+    for (const { roomId, matchId, presence } of interrupted) {
+      if (presence) await reconcileLifecycle(roomId, 'server-recovery', matchId);
+      else await cancelMatch(roomId, 'server-recovery', matchId);
+    }
   }
   async function advanceExpiredTurn(roomId) {
     let limit = maxCasAttempts;
     for (let attempt = 0; attempt < limit; attempt += 1) {
+      await reconcileLifecycle(roomId);
       const record = await storage.read('rooms', roomId), snapshot = record?.value.snapshot, clock = snapshot?.turnClock;
-      if (!clock || snapshot.phase !== 'playing' || now() < clock.deadlineAt || now() >= expiry(snapshot)) return false;
+      if (!clock || clock.deadlineAt === null || snapshot.phase !== 'playing' || now() < clock.deadlineAt || now() >= expiry(snapshot)) return false;
       limit = attemptsFor(snapshot);
+      const trusted = adapterFor(snapshot).usesPresenceLifecycle ? await context(snapshot) : null;
+      if (trusted && trusted.presence.seats.some(seat => !seat.connected)) continue;
       const roomEngine = engine(snapshot);
       if (!roomEngine.applyTurnTimeout(snapshot.code, clock)) return false;
       const next = { ...record.value, snapshot: roomEngine.exportSnapshot(snapshot.code) };
-      if (!await commitRoom(roomId, record, next)) continue;
+      let wrote;
+      try { wrote = await commitRoom(roomId, record, next, { guards: trusted ? presenceGuards(roomId, trusted) : [] }); }
+      catch (failure) {
+        if (failure.code !== 'GAME_HISTORY_CAPACITY' || !trusted) throw failure;
+        await reconcileLifecycle(roomId, 'capacity', snapshot.matchId); return false;
+      }
+      if (!wrote) continue;
       await publish(roomId);
       await flushPendingRecords().catch(() => {});
       return true;
@@ -568,7 +678,9 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
         await publish(roomId);
       }
       for (const roomId of Object.keys(registry)) {
-        await cancelDisconnected(roomId);
+        const snapshot = (await storage.read('rooms', roomId))?.value.snapshot;
+        if (snapshot && adapterFor(snapshot).usesPresenceLifecycle) await reconcileLifecycle(roomId);
+        else await cancelDisconnected(roomId);
         await advanceExpiredTurn(roomId);
       }
     })().finally(() => { pollingFlight = null; });
@@ -589,12 +701,22 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
     });
     if (!local.has(roomId)) local.set(roomId, new Set());
     local.get(roomId).add(listener);
-    await publish(roomId);
+    try {
+      await reconcileLifecycle(roomId);
+      await publish(roomId);
+    } catch (error) {
+      end(listener, '房间暂时无法同步，请稍后重连。', 503);
+      // The caller did not receive a disposer. Retire our listener even if the
+      // backing store is unavailable; any unremoved lease then expires normally.
+      await editPresence(roomId, next => { delete next[listener.playerId]?.[listener.connectionId]; }).catch(() => {});
+      throw error;
+    }
     return async () => {
       if (!listener.active) return;
       listener.active = false;
       local.get(roomId)?.delete(listener);
       await editPresence(roomId, (next, lastSeen) => { delete next[listener.playerId]?.[listener.connectionId]; lastSeen[listener.playerId] = now(); });
+      await reconcileLifecycle(roomId);
       await publish(roomId);
     };
   }
@@ -687,6 +809,7 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
       await editPresence(roomId, (next) => {
         for (const listener of closing) delete next[listener.playerId]?.[listener.connectionId];
       });
+      await reconcileLifecycle(roomId);
     }
     local.clear();
   }
@@ -694,6 +817,6 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
   ready.catch(() => {}); // Public methods still reject; this only prevents an unhandled boot promise.
   const afterReady = fn => async (...args) => { await ready; return fn(...args); };
   return { ready, ...Object.fromEntries(Object.entries({ ensureProfile, setProfile, recentRooms, createRoom, joinRoom,
-    getView, getChatMember, getGameContext, getContentReference, action, subscribe, sweep, flushPendingRecords })
+    getView, getChatMember, getGameContext, getContentReference, action, subscribe, sweep, flushPendingRecords, applyLifecycle })
     .map(([name, fn]) => [name, afterReady(fn)])), close, setHistory };
 }

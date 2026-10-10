@@ -7,13 +7,20 @@ import { publicAssetPaths } from '../server/public-assets.mjs';
 const APP_ROOT = fileURLToPath(new URL('../app/', import.meta.url));
 const PREVIEW_ASSETS = [
   'hyakki-preview.html', 'hyakki-catalog.html',
-  ...['content.mjs', 'art.mjs', 'card-ui.mjs', 'card.css', 'catalog.mjs', 'catalog.css', 'preview.mjs', 'page-ui.mjs', 'styles.css', 'test-support/preview-fixtures.mjs'].map(file => `games/hyakki-trading/${file}`),
+  ...['content.mjs', 'reference-content.mjs', 'art.mjs', 'card-ui.mjs', 'card.css', 'catalog.mjs', 'catalog.css', 'preview.mjs', 'page-ui.mjs', 'styles.css', 'test-support/preview-fixtures.mjs'].map(file => `games/hyakki-trading/${file}`),
   ...['cucumber', 'aburaage', 'lantern', 'fox-fur', 'tengu-feather', 'spirit-stone'].map(id => `assets/hyakki/v1/${id}.svg`),
   ...['festival', 'theft', 'talisman', 'auction', 'stall-permit', 'card-back'].map(id => `assets/hyakki/v1/${id}.webp`),
+  ...['definitions.mjs', 'manifest.mjs'].map(file => `games/hyakki-trading/content/${file}`),
+  ...['digital-card-ui.mjs', 'digital-card.css', 'digital-catalog.mjs', 'digital-catalog.css', 'digital-catalog-page.mjs', 'digital-preview.mjs', 'digital-page-ui.mjs', 'digital-styles.css', 'test-support/digital-preview-fixtures.mjs'].map(file => `games/hyakki-trading/${file}`),
+  ...['firearms', 'imports', 'curios', 'beasts', 'antiques', 'salt-iron', 'card-back'].map(id => `assets/hyakki/v2/${id}.svg`),
+  ...[...Array.from({ length: 13 }, (_, i) => `c${String(i + 1).padStart(2, '0')}`),
+    ...Array.from({ length: 8 }, (_, i) => `m${String(i + 1).padStart(2, '0')}`),
+    ...Array.from({ length: 10 }, (_, i) => `t${String(i + 1).padStart(2, '0')}`), 'stall-permit']
+    .map(id => `assets/hyakki/v2/${id}.webp`),
 ];
 const ASSETS = new Set([...publicAssetPaths(), ...PREVIEW_ASSETS]);
 const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.webp': 'image/webp', '.png': 'image/png' };
-const ROOT_HTML = `<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>百鬼商会 · 本地Step 0</title><style>body{font:17px/1.8 system-ui;background:#172c35;color:#f1e4cd;margin:0;padding:8vw}main{max-width:45em;margin:auto}a{display:inline-block;color:#172c35;background:#ead6ad;border-radius:10px;padding:10px 18px;margin:8px 12px 0 0;text-decoration:none}small{color:#c7cbbf}</style><main><p>HYAKKI TRADING · STEP 0</p><h1>百鬼商会</h1><p>资源与真实共通控件的本地样板。房号、身份、聊天和牌局全部是合成数据；未接入正式房间、账号或完整规则引擎。</p><p>房间样板请横屏使用；图鉴可以逐张检查完整120张示例牌。</p><a href="./hyakki-preview.html?enter=1">打开房间样板</a><a href="./hyakki-catalog.html">查看全套图鉴</a><p><small>仅监听127.0.0.1 · 不写生产数据库 · 不执行云操作</small></p></main></html>`;
+const ROOT_HTML = `<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>百鬼商会 · 本地Step 0</title><style>body{font:17px/1.8 system-ui;background:#172c35;color:#f1e4cd;margin:0;padding:8vw}main{max-width:45em;margin:auto}a{display:inline-block;color:#172c35;background:#ead6ad;border-radius:10px;padding:10px 18px;margin:8px 12px 0 0;text-decoration:none}small{color:#c7cbbf}</style><main><p>HYAKKI TRADING · STEP 0</p><h1>百鬼商会</h1><p>资源与真实共通控件的本地样板。房号、身份、聊天和牌局全部是合成数据；未接入正式房间、账号或完整规则引擎。</p><p>新版图鉴包含五类51种、110张牌的完整定义；公共货物各6件。房间样板请横屏使用，当前只验证资源、布局和共通控件，尚不能进行真实对局。</p><a href="./hyakki-preview.html?enter=1">打开房间样板</a><a href="./hyakki-catalog.html">查看分类图鉴</a><p><small>仅监听127.0.0.1 · 不写生产数据库 · 不执行云操作</small></p></main></html>`;
 function send(response, status, data, type = 'text/plain; charset=utf-8') {
   response.writeHead(status, { 'Content-Type': type, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', 'Cross-Origin-Resource-Policy': 'same-origin' });
   response.end(data);

@@ -35,7 +35,7 @@ test('complete release restores schema11 and permanent scores in new processes w
   assert.equal(seeded.completedLedgers, 2);
   const backup = join(directory, 'business-backup.sqlite'), restored = join(directory, 'restored.sqlite');
   const verified = run(join(packageRoot, 'scripts/store-backup.mjs'), ['--verify', backup]);
-  assert.equal(verified.verified, true); assert.equal(verified.scoresIncluded, true); assert.equal(verified.scopes.length, 16);
+  assert.equal(verified.verified, true); assert.equal(verified.scoresIncluded, true); assert.equal(verified.scopes.length, 18);
   const result = run(join(packageRoot, 'scripts/store-restore.mjs'), [backup, restored, '--offline']);
   assert.equal(result.authSessionsRestored, false); assert.equal(result.scoresIncluded, true);
   const first = run(worker, [packageRoot, directory, 'restore']);

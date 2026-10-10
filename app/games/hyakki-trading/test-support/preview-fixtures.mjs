@@ -19,13 +19,16 @@ export function fixture(scene = 'active') {
   const currentCard = scene === 'bidder' ? deck.filter(card => card.recipeId === 'AABBCC').at(-1)
     : scene === 'defense' ? deck.find(card => card.kind === 'theft') : null;
   return {
-    scene, synthetic: true, roomId: 'hyakki-step0-room', roomCode: '120006', selfId: 'sample-p1', selfRole: scene === 'spectator' ? 'spectator' : 'player',
+    scene, synthetic: true, sourceLabel: '朋友稿实验牌组', roomId: 'hyakki-step0-room', roomCode: '120006', selfId: 'sample-p1', selfRole: scene === 'spectator' ? 'spectator' : 'player',
     players, spectatorCount: 8, hand: scene === 'spectator' ? [] : scene === 'dense' ? [...deck] : featured.filter(card => card.id !== currentCard?.id),
     market: GOODS.map((good, index) => ({ ...good, count: [18, 16, 19, 15, 17, 18][index] })),
     actionPoints: 4, activeRemaining: 126, countdown: scene === 'defense' ? 10 : scene === 'bidder' ? 15 : 126,
     phase: scene === 'waiting' ? 'waiting' : scene === 'result' ? 'result' : 'playing',
     currentPlayerId: ['active', 'dense', 'six', 'practice'].includes(scene) ? 'sample-p1' : 'sample-p2',
     currentCard,
+    // Screenshot-derived layout sample only, not a new playable card or effect.
+    equipmentLayout: scene === 'spectator' ? [] : [{ id: 'sample-jiuzhuan-furnace', name: '九转金炉', status: 'definition-pending',
+      missing: ['具体效果与目标', '放置费用、条件与时点', '每回合使用次数、费用与限制', '失效、离场与回收方式'] }],
     selectedCardId: null,
   };
 }

@@ -166,6 +166,102 @@ html:has(.hyakki-body), .hyakki-body { width:100%;height:100%;margin:0;overflow:
   .hy-public-lot-face { display:none; }.hy-public-lot-copy { width:100%;gap:1px; }
   .hy-public-lot-copy > strong { font-size:13px;line-height:16px; }.hy-public-lot-copy > strong small { font-size:11px; }
   .hy-public-lot-data { display:flex;justify-content:space-between;gap:8px;font-size:14px;line-height:18px;white-space:nowrap; }
-  #hy-view-market { height:44px;padding:3px;font-size:13px; }
 }
 @media (max-height:600px) { .hy-market-board:has(.hy-market.is-auction) { padding-block:2px;gap:3px; } }
+/* Screenshot study: personal stock and placed tools are separate from market and hand. */
+.hy-lower-deck { min-width:0;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:18px; }
+.hy-personal-area { min-height:0;min-width:0;display:grid;grid-template-rows:24px minmax(0,1fr) 20px 48px;gap:6px;padding:9px 10px;border:1px solid var(--theme-border);border-radius:14px;background:var(--theme-surface); }
+.hy-stall-heading,.hy-equipment-heading { display:flex;justify-content:space-between;align-items:center;gap:6px;min-width:0; }
+.hy-stall-heading strong,.hy-equipment-heading strong { font-size:14px;white-space:nowrap; }
+.hy-stall-heading > span,.hy-equipment-heading > span { font-size:12px;color:var(--theme-muted);white-space:nowrap; }
+.hy-stall-goods { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:4px 6px;min-height:0; }
+.hy-stall-good { min-width:0;display:grid;grid-template-columns:21px minmax(0,1fr);grid-template-rows:18px 18px;column-gap:2px;align-content:center;padding:3px;border-radius:7px;background:var(--theme-control); }
+.hy-stall-good > :first-child { grid-row:1/3;width:21px;height:27px;align-self:center; }
+.hy-stall-good > span:not(.hyakki-good-icon) { font-size:14px;white-space:nowrap; }
+.hy-stall-good > strong { font-size:14px;line-height:18px; }
+.hy-stall-good.is-empty { background:transparent;border:1px dashed var(--theme-border); }
+.hy-equipment { min-height:0; }
+.hyakki-body .hy-equipment > button { width:100%;height:48px;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto;align-content:center;justify-items:start;gap:2px;padding:4px 10px;border-style:dashed;text-align:left; }
+.hy-equipment button > strong { display:block;min-width:max-content;flex:none;color:var(--theme-ink);font-size:15px;font-weight:700;white-space:nowrap; }.hy-equipment button > span { font-size:12px;color:var(--theme-muted); }
+.hy-equipment > p { font-size:13px;color:var(--theme-muted);margin:8px 0; }
+.hy-source-note { color:var(--theme-muted);font-size:14px!important; }
+@media (max-width:1100px) { .hy-lower-deck { grid-template-columns:minmax(0,1fr) 224px;gap:12px; }.hy-stall-good { grid-template-columns:1fr;grid-template-rows:18px 18px;justify-items:center;padding:1px; }.hy-stall-good > :first-child { display:none; }.hy-personal-area { padding:7px; }.hy-stall-heading > span { font-size:11px; } }
+@media (max-height:600px) { .hy-lower-deck { grid-template-columns:minmax(0,1fr) 200px;gap:10px; }.hy-personal-area { grid-template-rows:20px minmax(0,1fr) 18px 44px;gap:4px;padding:5px;border-radius:10px; }.hy-stall-heading strong,.hy-equipment-heading strong { font-size:13px; }.hy-stall-heading > span,.hy-equipment-heading > span { font-size:10px; }.hy-stall-goods { gap:3px; }.hy-stall-good { grid-template-columns:1fr;grid-template-rows:18px 16px;justify-items:center;padding:0; }.hy-stall-good > :first-child { display:none; }.hy-stall-good > span:not(.hyakki-good-icon),.hy-stall-good > strong { font-size:14px; }.hyakki-body .hy-equipment > button { height:44px;padding:3px; }.hy-equipment button > span { font-size:11px; }.hy-hand-tools select { width:85px; }.hy-hand-tools { gap:5px; }.hy-hand-heading { gap:5px; } }
+@media (max-width:740px) and (max-height:600px) { .hy-lower-deck { grid-template-columns:minmax(0,1fr) 190px;gap:8px; }.hy-hand { gap:6px; }.hy-hand-heading > div:first-child { gap:3px; }.hy-hand-heading strong { font-size:12px; }.hy-hand-tools select { width:76px;padding-left:5px; }.hy-hand-tools > span { width:28px; } }
+/* Shared table: piles left, shared action track at the centre, stock at the side. */
+.hy-market-board { grid-template-rows:auto minmax(0,1fr); }
+.hy-shared-table { min-width:0;min-height:0;display:grid;grid-template-columns:82px minmax(0,1fr) 230px;grid-template-rows:minmax(0,1fr);align-items:center;gap:24px;container:hyakki-shared / size; }
+.hy-table-centre { min-width:0;min-height:0;display:grid;align-content:center;gap:18px; }
+.hy-piles { display:grid;gap:14px; }
+.hy-pile { min-height:102px;display:grid;align-content:center;justify-items:center;gap:6px;border:1px solid var(--theme-border);border-radius:12px;background:var(--theme-control);box-shadow:3px 3px 0 var(--theme-surface),5px 5px 0 var(--theme-border); }
+.hy-pile > span { font-size:14px;font-weight:700; }.hy-pile > small { color:var(--theme-muted);font-size:11px; }
+.hy-pile--discard { border-style:dashed; }.hy-pile--draw { background:repeating-linear-gradient(45deg,transparent,transparent 8px,color-mix(in srgb,var(--theme-accent) 8%,transparent) 8px,color-mix(in srgb,var(--theme-accent) 8%,transparent) 10px),var(--theme-surface); }
+.hy-shared-track { padding:22px;border:1px solid var(--theme-border);border-radius:18px;background:var(--theme-surface); }
+.hy-shared-track header { display:flex;align-items:baseline;flex-wrap:wrap;justify-content:space-between;gap:6px; }
+.hy-shared-track h2 { margin:0;font:700 22px/1.3 ui-serif,serif; }
+.hy-shared-track header > span { color:var(--theme-muted);font-size:12px; }
+.hy-track-rail { position:relative;height:76px;margin:18px 0 12px;border:2px solid var(--theme-accent);border-radius:40px;background:linear-gradient(90deg,color-mix(in srgb,var(--theme-accent) 22%,transparent) 36%,transparent 36%); }
+.hy-track-marker { position:absolute;left:36%;top:50%;transform:translate(-50%,-50%);width:36px;height:48px;border-radius:18px 18px 9px 9px;background:var(--theme-accent);box-shadow:0 0 0 5px var(--theme-surface),0 4px 10px var(--theme-shadow); }
+.hy-track-marker::before { content:'';position:absolute;top:-5px;left:-6px;width:48px;height:14px;border-radius:50%;background:var(--theme-accent); }
+.hy-track-direction { position:absolute;right:18px;top:50%;transform:translateY(-50%);font:30px/1 system-ui;color:var(--theme-ink); }
+.hy-shared-track p { margin:0;color:var(--theme-muted);font-size:13px;line-height:1.5; }
+.hy-table-centre .hy-market-story { gap:7px; }.hy-table-centre .hy-market-story p { font-size:14px; }.hy-table-centre .hy-night-seal { display:none; }
+.hy-public-stall { min-width:0; }
+.hyakki-body .hy-stall-summary { width:100%;min-width:0;display:grid;gap:12px;text-align:center;padding:14px;border-radius:16px;background:var(--theme-surface); }
+.hy-stall-summary > strong { font-size:17px; }.hy-stall-summary > small { color:var(--theme-muted);font-size:12px; }
+.hy-public-stall .hy-market { width:100%;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0; }
+.hy-public-stall .hy-good { min-width:0;display:grid;grid-template-rows:36px 18px 20px;justify-items:center;gap:3px;padding:5px;border-radius:8px;background:var(--theme-control); }
+.hy-public-stall .hy-good > :first-child { width:36px;height:36px; }.hy-public-stall .hy-good > span { font-size:13px; }.hy-public-stall .hy-good > strong { font-size:17px; }
+.hy-current-effect { min-width:0; }.hy-current-effect .hy-public-lot { width:100%; }
+.hy-waiting .hy-shared-table { grid-template-columns:minmax(0,1fr); }.hy-waiting .hy-table-centre { height:100%; }
+@media (max-width:1100px) { .hy-shared-table { grid-template-columns:64px minmax(0,1fr) 190px;gap:12px; }.hy-shared-track { padding:14px; }.hy-shared-track h2 { font-size:18px; } }
+@media (max-height:600px) {
+ .hy-playing .hy-market-board { padding:3px 5px;grid-template-rows:minmax(0,1fr);gap:0; }
+ .hy-playing .hy-stage { display:none; }
+ .hy-shared-table { grid-template-columns:48px minmax(0,1fr) 166px;gap:8px;height:100%; }
+}
+/* Fit the content allocation, not a few assumed window sizes. Never crop stock. */
+@container hyakki-shared (max-height:500px) {
+ .hy-piles { gap:12px; }.hy-pile { min-height:78px; }
+ .hy-shared-track { padding:14px; }.hy-shared-track h2 { font-size:18px; }
+ .hy-track-rail { height:48px;margin:12px 0 8px; }.hy-track-marker { width:24px;height:32px; }.hy-track-marker::before { width:32px;height:10px;left:-4px;top:-3px; }
+ .hy-table-centre { gap:10px; }
+ .hyakki-body .hy-stall-summary { padding:10px;gap:8px; }
+ .hy-public-stall .hy-market { gap:6px; }
+ .hy-public-stall .hy-good { height:auto;min-height:0;grid-template-columns:28px minmax(0,1fr);grid-template-rows:18px 18px;gap:0 4px;justify-items:start;padding:5px; }
+ .hy-public-stall .hy-good > :first-child { grid-row:1/3;align-self:center;width:28px;height:28px; }
+ .hy-public-stall .hy-good > span { font-size:12px;line-height:18px; }.hy-public-stall .hy-good > strong { font-size:15px;line-height:18px; }
+ .hy-current-effect .hy-public-lot-face { display:none; }
+ .hyakki-body .hy-current-effect .hy-public-lot { padding:7px 10px;min-height:64px;height:auto; }
+ .hy-current-effect .hy-public-lot-copy { gap:3px; }
+ .hy-current-effect .hy-public-lot-copy > strong { font-size:14px;line-height:18px; }
+ .hy-current-effect .hy-public-lot-data { display:flex;flex-wrap:wrap;font-size:14px;line-height:18px;gap:0 12px; }
+}
+@container hyakki-shared (max-height:280px) {
+ .hy-piles { gap:8px; }.hy-pile { min-height:50px; }.hy-pile > small { display:none; }
+ .hy-shared-track { padding:9px; }.hy-shared-track h2 { font:700 16px/20px system-ui; }
+ .hy-track-rail { height:32px;margin:8px 0 5px; }.hy-track-marker { width:18px;height:24px; }.hy-track-marker::before { width:24px;height:7px;left:-3px;top:-2px; }
+ .hy-shared-track > p { font-size:12px; }
+ .hy-playing .hy-scene-content { display:none; }
+ .hyakki-body .hy-stall-summary { padding:7px;gap:5px; }.hy-stall-summary > strong { font-size:14px;line-height:18px; }.hy-stall-summary > small { font-size:11px;line-height:14px; }
+ .hy-public-stall .hy-market { gap:4px; }
+ .hy-public-stall .hy-good { display:flex;justify-content:space-between;align-items:baseline;gap:3px;padding:3px; }
+ .hy-public-stall .hy-good > :first-child { display:none; }
+ .hy-public-stall .hy-good > span { font-size:12px;line-height:18px; }.hy-public-stall .hy-good > strong { font-size:14px;line-height:18px; }
+ .hy-current-effect .hy-public-lot-data { display:grid;gap:0; }
+}
+@container hyakki-shared (max-height:180px) {
+ .hy-table-centre { gap:3px; }
+ .hy-piles { gap:5px; }.hy-pile { min-height:26px;border-radius:6px;box-shadow:2px 2px 0 var(--theme-border); }.hy-pile > span { font-size:11px; }
+ .hy-shared-track { padding:5px 8px;border-radius:10px; }.hy-shared-track header { gap:1px; }.hy-shared-track h2 { font:700 15px/18px system-ui; }.hy-shared-track header > span { font-size:10px; }
+ .hy-track-rail { height:24px;margin:6px 0 1px;border-width:1px; }.hy-track-marker { width:14px;height:19px;border-radius:7px 7px 3px 3px;box-shadow:0 0 0 2px var(--theme-surface); }.hy-track-marker::before { width:20px;height:6px;left:-3px;top:-2px; }.hy-track-direction { right:9px;font-size:18px; }
+ .hy-shared-track > p { display:none; }
+ .hyakki-body .hy-stall-summary { padding:3px 5px;gap:2px;border-radius:8px; }.hy-stall-summary > strong { font-size:12px;line-height:14px; }.hy-stall-summary > small { display:none; }
+ .hy-public-stall .hy-market { gap:1px 5px; }.hy-public-stall .hy-good { padding:0 2px;border-radius:3px; }
+ .hy-public-stall .hy-good > span { font-size:11px;line-height:15px; }.hy-public-stall .hy-good > strong { font-size:13px;line-height:15px; }.hy-public-stall .hy-good small { display:none; }
+ #hyakki-root[data-scene=bidder] .hy-shared-track { border:0;padding:0; }
+ #hyakki-root[data-scene=bidder] .hy-track-rail { display:none; }
+ .hyakki-body .hy-current-effect .hy-public-lot { height:48px;min-height:48px;padding:2px 5px; }
+ .hy-current-effect .hy-public-lot-copy { gap:0; }.hy-current-effect .hy-public-lot-copy > strong { font-size:12px;line-height:14px; }.hy-current-effect .hy-public-lot-copy > strong small { font-size:11px; }
+ .hy-current-effect .hy-public-lot-data { display:grid;gap:0;font-size:12px;line-height:14px; }
+}

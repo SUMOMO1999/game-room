@@ -79,7 +79,7 @@ try {
     for (const scope of ['sessions', 'transactions', 'room-presence']) await storage.put(scope, 'synthetic-ephemeral', { excluded: true }, seed.time + 60000);
     writeFileSync(seedPath, JSON.stringify(seed), { mode: 0o600 });
     const backup = await backupStore({ sourcePath: path, destinationPath: join(directory, 'business-backup.sqlite'), key, now });
-    assert.equal(backup.scopes.length, 16); assert.ok(backup.excludedRecords >= 3);
+    assert.equal(backup.scopes.length, 18); assert.ok(backup.excludedRecords >= 3);
     console.log(JSON.stringify({ phase: operation, completedLedgers: seed.ledger.length, activeRooms: seed.active.length,
       totals: seed.totals, scopes: backup.scopes.length, excludedEphemeralRecords: backup.excludedRecords }));
   } else {

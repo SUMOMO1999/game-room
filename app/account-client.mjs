@@ -1,7 +1,7 @@
 import { entryBase, gamePath, entryStorageKey } from './entry-path.mjs';
 import { normalizeRecentRoom } from './lobby-model.mjs';
 
-const EMPTY = { mode: 'legacy', loginReady: false, drawingEnabled: false, poker414Enabled: false, authenticated: false, userKey: null,
+const EMPTY = { mode: 'legacy', loginReady: false, drawingEnabled: false, poker414Enabled: false, hyakkiEnabled: false, authenticated: false, userKey: null,
   csrf: null, profile: null, recentRooms: [], failureStatus: null, reauthReady: false, reauthHref: null };
 export const ACCOUNT_CHECK_INTERVAL_MS = 15000;
 export const ACCOUNT_CHECK_TIMEOUT_MS = 10000;
@@ -80,7 +80,7 @@ function normalize(value) {
   const recentRooms = authenticated && Array.isArray(value.recentRooms)
     ? value.recentRooms.map(normalizeRecentRoom).filter(Boolean).slice(0, 8) : [];
   return { mode: value.mode, loginReady: value.loginReady === true, drawingEnabled: value.drawingEnabled === true,
-    poker414Enabled: value.poker414Enabled === true, authenticated,
+    poker414Enabled: value.poker414Enabled === true, hyakkiEnabled: value.hyakkiEnabled === true, authenticated,
     userKey: authenticated ? value.userKey : null, csrf: authenticated ? value.csrf : null,
     profile, recentRooms, expiresAt: authenticated ? value.expiresAt : null,
     idleUntil: authenticated ? value.idleUntil : null, failureStatus: null,
@@ -231,6 +231,6 @@ export async function logoutAccount() {
   }
 }
 export function loginHref(returnTo = '/') {
-  if (typeof returnTo !== 'string' || !/^(?:\/|\/\?room=\d{6}|\/(?:room|army|flying|drawing|poker414)\.html\?code=\d{6})$/.test(returnTo)) returnTo = '/';
+  if (typeof returnTo !== 'string' || !/^(?:\/|\/\?room=\d{6}|\/(?:room|army|flying|drawing|poker414|hyakki)\.html\?code=\d{6})$/.test(returnTo)) returnTo = '/';
   return gamePath(`/auth/login?returnTo=${encodeURIComponent(returnTo)}`);
 }

@@ -298,7 +298,7 @@ test('extracted release enforces v3 settings, public observers and ephemeral pre
   const { rows,manifest:backupManifest } = verifyBackup({ sourcePath: backupPath, key });
   assert.ok(rows.every(row => !/^(?:sessions|transactions|room-presence):/.test(row.key)));
   assert.ok(rows.every(row=>!row.key.includes('preview')));
-  assert.deepEqual(new Set(backupManifest.scopes),new Set(['game-profiles','room-invites','rooms','room-memberships','room-registry','room-requests','room-chat','game-history','history-index','wordbank-packs','wordbank-releases','wordbank-index','draw-canvases','game-score-ledger','game-score-balances','game-score-meta']));
+  assert.deepEqual(new Set(backupManifest.scopes),new Set(['game-profiles','room-invites','rooms','room-memberships','room-registry','room-requests','room-chat','game-history','history-index','wordbank-packs','wordbank-releases','wordbank-index','draw-canvases','game-score-ledger','game-score-balances','game-score-meta','hyakki-events','hyakki-event-meta']));
   await stop();
   const restored = restoreStore({ sourcePath: backupPath, destinationPath: restoredPath, key, offline: true });
   assert.equal(restored.authSessionsRestored, false);

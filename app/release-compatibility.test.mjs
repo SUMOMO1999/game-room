@@ -132,9 +132,9 @@ test('schema11 and permanent score scopes forbid rollback to the published schem
   const prior = current();
   prior.roomSnapshots.read = prior.roomSnapshots.read.filter(version => version <= 10);
   prior.roomSnapshots.write = prior.roomSnapshots.write.filter(version => version <= 10);
-  for (const direction of ['read', 'write']) prior.backupScopes[direction] = prior.backupScopes[direction].filter(scope => !scope.startsWith('game-score-'));
+  for (const direction of ['read', 'write']) prior.backupScopes[direction] = prior.backupScopes[direction].filter(scope => !scope.startsWith('game-score-') && !scope.startsWith('hyakki-'));
   assert.equal(prior.backupScopes.read.length, 13);
-  assert.equal(current().backupScopes.read.length, 16);
+  assert.equal(current().backupScopes.read.length, 18);
   const f = fixture(t, { prior });
   assert.equal(activationPolicy(f.candidateManifest, f.priorManifest), 'rollback-forbidden');
   const result = f.run();

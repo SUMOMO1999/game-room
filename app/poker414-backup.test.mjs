@@ -46,12 +46,12 @@ async function settle(f) {
   return { input, summary };
 }
 
-test('sixteen-scope backup restores permanent scores on a new path and new process without restoring sessions', async t => {
+test('current backup restores permanent scores on a new path and new process without restoring sessions', async t => {
   const f = fixture(t); await settle(f);
   await f.storage.put('sessions', 'excluded', { token: 'never-copy-this-session' }, 20000);
   const backupPath = join(f.directory, 'backup.sqlite'), restoredPath = join(f.directory, 'restored.sqlite');
   const captured = await f.backup('backup.sqlite');
-  assert.deepEqual(captured.scopes, RECOVERY_SCOPES); assert.equal(captured.scopes.length, 16);
+  assert.deepEqual(captured.scopes, RECOVERY_SCOPES); assert.equal(captured.scopes.length, 18);
   assert.equal(captured.excludedRecords, 1);
   const verified = verifyBackup({ sourcePath: backupPath, key: f.key, gameRegistry });
   assert.equal(verified.scoresIncluded, true);

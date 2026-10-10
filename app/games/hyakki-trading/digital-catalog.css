@@ -1,0 +1,57 @@
+body:has(.yousei-catalog) { margin: 0; background: var(--theme-base, #173a31); color: var(--theme-ink, #f7f4e8); font-family: system-ui, sans-serif; }
+.yousei-catalog, .yousei-catalog * { box-sizing: border-box; }
+.yousei-catalog { max-width: 1440px; margin: auto; padding: 32px 28px max(32px, env(safe-area-inset-bottom)); }
+.yousei-catalog__heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
+.yousei-catalog__eyebrow { margin: 0; color: var(--theme-accent, #e4ce9b); font-size: 14px; letter-spacing: .08em; }
+.yousei-catalog h1 { margin: 8px 0; font-size: clamp(28px, 5vw, 42px); letter-spacing: .06em; }
+.yousei-catalog h2 { margin: 0 0 12px; font-size: 21px; }
+.yousei-catalog p { line-height: 1.7; }
+.yousei-catalog__heading p:last-child { margin: 0; color: var(--theme-muted, #ccd8c8); }
+.yousei-catalog__link, .yousei-catalog__filters button, .yousei-catalog__result button { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; padding: 10px 14px; border: 1px solid var(--theme-border, #728b77); border-radius: 10px; background: var(--theme-control, #294e42); color: var(--theme-ink, #f7f4e8); text-decoration: none; font: inherit; font-size: 14px; cursor: pointer; }
+.yousei-catalog :is(button, input, select, a):focus-visible { outline: 3px solid var(--theme-accent, #e4ce9b); outline-offset: 3px; }
+.yousei-catalog__intro { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(240px, 1fr); gap: 32px; padding: 24px; border: 1px solid var(--theme-border, #728b77); border-radius: 16px; background: var(--theme-surface, #234b3f); }
+.yousei-catalog__intro p { margin: 8px 0; }
+.yousei-catalog__note { color: var(--theme-muted, #ccd8c8); font-size: 14px; }
+.yousei-catalog__stock { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-content: center; gap: 14px 8px; }
+.yousei-catalog__stock > span { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 5px; font-size: 14px; }
+.yousei-catalog__stock small { grid-column: 1 / -1; text-align: center; color: var(--theme-muted, #ccd8c8); }
+.yousei-catalog__filters { display: flex; flex-wrap: wrap; align-items: end; gap: 16px; margin: 28px 0 18px; }
+.yousei-catalog__filters label { display: grid; gap: 7px; font-size: 14px; }
+.yousei-catalog__filters label:first-child { flex: 1; min-width: 220px; }
+.yousei-catalog__filters input, .yousei-catalog__filters select { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--theme-border, #728b77); border-radius: 9px; background: var(--theme-control, #294e42); color: var(--theme-ink, #f7f4e8); font: inherit; font-size: 16px; }
+.yousei-catalog__filters input::placeholder { color: var(--theme-muted, #ccd8c8); }
+.yousei-catalog__filters button[aria-pressed="true"] { outline: 2px solid var(--theme-accent, #e4ce9b); outline-offset: 1px; }
+.yousei-catalog__result { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; font-size: 14px; }
+.yousei-catalog__result button { border: 0; background: transparent; text-decoration: underline; text-underline-offset: 4px; }
+.yousei-catalog__cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(142px, 1fr)); gap: 22px 18px; }
+.yousei-catalog__entry { display: flex; min-width: 0; align-items: center; flex-direction: column; padding: 14px 4px 0; border-top: 1px solid var(--theme-border, #728b77); }
+.yousei-catalog__entry p { align-self: stretch; display: grid; gap: 3px; margin: 12px 0 0; text-align: center; font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
+.yousei-catalog__entry p span { color: var(--theme-muted, #ccd8c8); font-size: 12px; }
+.yousei-catalog__empty { grid-column: 1 / -1; padding: 32px; border: 1px dashed var(--theme-border, #728b77); border-radius: 12px; text-align: center; }
+.yousei-catalog__states { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: center; margin-top: 44px; padding-top: 28px; border-top: 1px solid var(--theme-border, #728b77); }
+.yousei-catalog__states > div:last-child { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 18px; }
+.yousei-catalog__states p { max-width: 440px; color: var(--theme-muted, #ccd8c8); }
+.yousei-catalog__footer { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--theme-border, #728b77); color: var(--theme-muted, #ccd8c8); font-size: 14px; line-height: 1.7; }
+.yousei-catalog__dialog { width: min(820px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); padding: 0; border: 1px solid var(--theme-border, #728b77); border-radius: 16px; background: var(--theme-surface, #234b3f); color: var(--theme-ink, #f7f4e8); overscroll-behavior: contain; }
+.yousei-catalog__dialog::backdrop { background: #071521ba; }
+.yousei-catalog__dialog > header { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--theme-border, #728b77); background: var(--theme-surface, #234b3f); }
+.yousei-catalog__dialog > header h2 { margin: 0; font-size: 18px; }
+.yousei-catalog__dialog > header button { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 44px; height: 44px; padding: 0; border: 1px solid var(--theme-border, #728b77); border-radius: 10px; background: var(--theme-control, #294e42); color: inherit; font: 28px/1 system-ui, sans-serif; cursor: pointer; }
+.yousei-catalog__dialog > [data-catalog-detail] { padding: 22px; }
+@media (max-width: 780px) {
+  .yousei-catalog { padding: 22px 16px 32px; }
+  .yousei-catalog__intro { grid-template-columns: minmax(0, 1fr); gap: 20px; padding: 20px; }
+  .yousei-catalog__stock { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .yousei-catalog__stock > span { flex-direction: column; }
+  .yousei-catalog__states { grid-template-columns: minmax(0, 1fr); }
+  .yousei-catalog__states p { max-width: none; }
+}
+@media (max-width: 440px) {
+  .yousei-catalog { padding-inline: 14px; }
+  .yousei-catalog__heading { align-items: start; flex-direction: column; gap: 16px; }
+  .yousei-catalog__filters { gap: 12px; }
+  .yousei-catalog__filters label:first-child { flex-basis: 100%; }
+  .yousei-catalog__filters label:not(:first-child) { flex: 1; min-width: 140px; }
+  .yousei-catalog__cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 12px; }
+  .yousei-catalog__dialog > [data-catalog-detail] { padding: 18px; }
+}

@@ -190,6 +190,7 @@ test('current capability forbids rollback to schema7 while preserving all histor
   const manifest=(id,dataCompatibility)=>({format:1,project:'game-room',releaseId:id.repeat(20),containsSecrets:false,containsUserData:false,dataCompatibility});
   assert.equal(compareReleaseCompatibility(manifest('a',current),manifest('b',prior)).rollbackCompatible,false);
   assert.equal(compareReleaseCompatibility(manifest('a',current),manifest('b',prior)).forwardCompatible,true);
-  assert.equal(current.backupScopes.write.length,16);assert.equal(prior.backupScopes.write.length,9);
+  assert.equal(current.backupScopes.write.length,18);assert.equal(prior.backupScopes.write.length,9);
+  assert.deepEqual(current.backupScopes.write.slice(-2),['hyakki-events','hyakki-event-meta']);
   for(const direction of ['read','write'])assert.deepEqual(current.backupScopes[direction].slice(0,9),prior.backupScopes[direction]);
 });
