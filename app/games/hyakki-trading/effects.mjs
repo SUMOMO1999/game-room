@@ -61,9 +61,26 @@ const exchangeOptions = (state, owner) => stockTypes(owner.goods).flatMap(fromGo
   goodsIds.filter(toGoodsId => toGoodsId !== fromGoodsId && state.bankGoods[toGoodsId] >= owner.goods[fromGoodsId])
     .map(toGoodsId => ({ fromGoodsId, toGoodsId })));
 
-function fields(value, allowed) {
-  return value && typeof value === 'object' && !Array.isArray(value)
-    && Object.keys(value).every(key => allowed.includes(key));
+const plain = value => value && typeof value === 'object' && !Array.isArray(value)
+  && [Object.prototype, null].includes(Object.getPrototypeOf(value));
+function fields(value, allowed) { return plain(value) && Object.keys(value).every(key => allowed.includes(key)); }
+const initialKinds = Object.freeze({ C01: ['benefit-branch', 'benefit-good'], C05: ['trade-card', 'sell-goods'],
+  C06: ['exchange'], C08: ['hand-branch'], C09: ['auction-goods'], C10: ['artisan-good'],
+  C11: ['recover-tool'], C13: ['sell-stock'] });
+const initialSelectionKeys = Object.freeze({ 'benefit-branch': ['branch'], 'benefit-good': ['goodsId'],
+  'trade-card': ['cardId'], 'sell-goods': ['goods'], exchange: ['fromGoodsId', 'toGoodsId'],
+  'hand-branch': ['branch'], 'auction-goods': ['goods'], 'artisan-good': ['goodsId'],
+  'recover-tool': ['cardId'], 'sell-stock': ['goods'] });
+function initialChoicesProblem(state, code, steps) {
+  const kinds = initialKinds[code];
+  if (!kinds || !Array.isArray(steps) || !steps.length || steps.length > kinds.length) return '人物预选步骤无效。';
+  for (let index = 0; index < steps.length; index++) {
+    const step = steps[index], keys = initialSelectionKeys[kinds[index]];
+    if (!fields(step, ['kind', 'selection']) || Object.keys(step).length !== 2 || step.kind !== kinds[index]
+      || !fields(step.selection, keys) || Object.keys(step.selection).length !== keys.length) return '人物预选材料无效。';
+  }
+  const count = code === 'C01' ? steps[0].selection.branch === 'goods' && goodsCount(state.bankGoods) ? 2 : 1 : kinds.length;
+  return steps.length === count ? null : '请先选齐本次人物所需材料。';
 }
 function choose(state, kind, actorId, options, { visibility = 'private', defaultSelection = options[0] } = {}) {
   requireRule(options.length > 0 && defaultSelection !== undefined, '此步骤没有合法选项。');
@@ -113,8 +130,12 @@ export function characterProblem(state, ownerId, copyId, params = {}) {
   if (!implementedCharacterCodes.includes(code)) return '这张牌不是人物牌。';
   if (code === 'C04' || code === 'C07') return '这张人物只能在对应回应窗口使用。';
   const allowed = [...(code === 'M01' ? ['goodsId'] : code === 'M08' ? ['toolCardId'] : []),
-    ...(isMultiplayer(state) && pairedCharacter(code) ? ['targetId'] : [])];
+    ...(isMultiplayer(state) && pairedCharacter(code) ? ['targetId'] : []), ...(initialKinds[code] ? ['initialChoices'] : [])];
   if (!fields(params, allowed)) return '人物参数无效。';
+  if (Object.hasOwn(params, 'initialChoices')) {
+    const problem = initialChoicesProblem(state, code, params.initialChoices);
+    if (problem) return problem;
+  }
   let peer = null;
   if (pairedCharacter(code)) {
     try { peer = opponent(state, ownerId, params.targetId); }
@@ -157,6 +178,18 @@ export function startCharacter(state, copyId, params = {}, ctx) {
     return;
   }
   continueCharacter(state, ctx);
+  // Only this card's bounded, already-known owner choices may join activation.
+  // They are consumed on the candidate clone, never saved as future intentions.
+  const pendingId = state.pending?.id;
+  for (const step of params.initialChoices ?? []) {
+    const pending = state.pending;
+    requireRule(pending?.id === pendingId && pending.kind === 'character' && pending.code === code
+      && !pending.response && !pending.receipt && pending.choice?.actorId === ownerId
+      && pending.choice.kind === step.kind, '人物预选步骤已经改变。');
+    chooseCharacter(state, step.selection, ctx);
+    emit(state, { type: 'choice-resolved', actorSeatId: ownerId });
+    if (state.pending?.kind === 'character') continueCharacter(state, ctx);
+  }
 }
 
 function continueBenefits(state, ctx) {
@@ -423,8 +456,17 @@ export function chooseCharacter(state, selection, ctx) {
     }
     case 'borrow-tool': {
       requireRule(fields(selection, ['borrow', 'params']) && typeof selection.borrow === 'boolean'
-        && (selection.params === undefined || fields(selection.params, [])), '借用选择无效。');
-      if (!selection.borrow) { clearChoice(state); completePending(state); return; }
+        && (selection.params === undefined || plain(selection.params)), '借用选择无效。');
+      if (!selection.borrow) {
+        requireRule(selection.params === undefined || !Object.keys(selection.params).length, '不借用时不能指定道具材料。');
+        clearChoice(state); completePending(state); return;
+      }
+      if (selection.params && Object.keys(selection.params).length) {
+        const issue = toolProblem(state, owner.id, pending.data.toolCardId, selection.params, { borrowed: true, preselected: true });
+        requireRule(!issue, issue ?? '借用道具材料无效。');
+        const toolId = pending.data.toolCardId; clearChoice(state);
+        startTool(state, toolId, selection.params, ctx, { borrowed: true }); return;
+      }
       if (isMultiplayer(state) && ['T02', 'T04'].includes(definition(pending.data.toolCardId).sourceCode)) {
         requireRule(borrowedTargetOptions(state, owner.id, pending.data.toolCardId).length > 0, '当前没有可借用的目标。');
         pending.stage = 'borrowed-target'; break;

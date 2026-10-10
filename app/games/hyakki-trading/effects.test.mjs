@@ -1,15 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createGame, applyGameAction, currentDecision, gameProblem } from './rules.mjs';
-import { createDeck, GOODS, DIGITAL_RULE_VERSION } from './content/definitions.mjs';
+import { createDeck, GOODS, DIGITAL_RULE_VERSION, MULTIPLAYER_RULE_VERSION } from './content/definitions.mjs';
 import { definition, emptyGoods, goodsCount, refreshTemporary } from './model.mjs';
 import { implementedCharacterCodes, characterProblem } from './effects.mjs';
 
 const ids = ['a'.repeat(32), 'b'.repeat(32)];
 const ctx = { now: 1000, randomInt: limit => limit - 1 };
 const goods = entries => ({ ...emptyGoods(), ...entries });
-function fixture(code) {
-  const state = createGame(ids, { ...ctx, matchId: 'c'.repeat(32), actionLimit: 10, goodsPerType: 6, firstPlayerId: ids[0], ruleVersion: DIGITAL_RULE_VERSION });
+function fixture(code, { playerIds = ids, ruleVersion = DIGITAL_RULE_VERSION } = {}) {
+  const state = createGame(playerIds, { ...ctx, matchId: 'c'.repeat(32), actionLimit: 10, goodsPerType: 6, firstPlayerId: playerIds[0], ruleVersion });
   state.deck = [...state.deck, ...state.players.flatMap(owner => owner.hand)].sort();
   state.players.forEach(owner => { owner.hand = []; });
   state.stage = 'use'; state.drawStarted = true;
@@ -386,4 +386,195 @@ test('C13: an almost-full integer ledger permits only the safe subset of a multi
   rejected(state, 'choose-effect', { selection: { goods: goods({ imports: 2 }) } });
   state = accept(state, 'choose-effect', { selection: { goods: goods({ firearms: 1 }) } });
   assert.equal(state.players[0].silver, Number.MAX_SAFE_INTEGER - 1);
+});
+
+const initialStep = (kind, selection) => ({ kind, selection });
+const initialFixtures = {
+  C01: () => [initialStep('benefit-branch', { branch: 'goods' }), initialStep('benefit-good', { goodsId: 'imports' })],
+  C05: f => [initialStep('trade-card', { cardId: f.owner.hand.find(id => definition(id).category === 'goods') }),
+    initialStep('sell-goods', { goods: goods({ 'salt-iron': 3 }) })],
+  C06: () => [initialStep('exchange', { fromGoodsId: 'firearms', toGoodsId: 'imports' })],
+  C08: () => [initialStep('hand-branch', { branch: 'draw' })],
+  C09: () => [initialStep('auction-goods', { goods: goods({ firearms: 1, imports: 1 }) })],
+  C10: () => [initialStep('artisan-good', { goodsId: 'imports' })],
+  C11: f => [initialStep('recover-tool', { cardId: `discard:${f.state.revision}:0` })],
+  C13: () => [initialStep('sell-stock', { goods: goods({ firearms: 1 }) })],
+};
+for (const [code, selections] of Object.entries(initialFixtures)) {
+  test(`${code}: known owner materials join one atomic activation without saving future choices`, () => {
+    const f = fixture(code), before = structuredClone(f.state);
+    const initial = accept(f.state, 'play-character', { cardId: f.cardId, params: { initialChoices: selections(f) } });
+    assert.equal(initial.revision, before.revision + 1); assert.equal(initial.actionsUsed, 1);
+    assert.deepEqual(f.state, before);
+    assert.equal(JSON.stringify(initial).includes('initialChoices'), false);
+    if (code === 'C05') assert.equal(initial.pending.response.kind, 'merchant');
+    if (code === 'C09') assert.equal(initial.pending.stage, 'bidding');
+    assert.equal(settle(initial).actionsUsed, 1);
+  });
+}
+test('all eight initial-choice contracts preserve the materials and outcome of the old separate owner choices', () => {
+  for (const [code, selections] of Object.entries(initialFixtures)) {
+    const f = fixture(code), steps = selections(f);
+    const atomic = settle(accept(f.state, 'play-character', { cardId: f.cardId, params: { initialChoices: steps } }));
+    let legacy = start(f);
+    for (const step of steps) legacy = accept(legacy, 'choose-effect', { selection: code === 'C11' ? { cardId: f.state.discard[0] } : step.selection });
+    legacy = settle(legacy);
+    for (const field of ['players','deck','discard','bankGoods','bookLayers','actionsUsed','availableStalls','purchasedStalls']) {
+      assert.deepEqual(atomic[field], legacy[field], `${code} ${field}`);
+    }
+  }
+});
+test('C01: a multiplayer initial choice binds the selected peer and leaves unrelated private hands intact', () => {
+  const f = fixture('C01', { playerIds: [...ids,'d'.repeat(32)], ruleVersion: MULTIPLAYER_RULE_VERSION });
+  f.hand(f.state.players[2], 'G19');
+  const state = accept(f.state, 'play-character', { cardId: f.cardId,
+    params: { targetId: f.peer.id, initialChoices: [initialStep('benefit-branch', { branch: 'draw' })] } });
+  assert.equal(state.pending.choice.actorId, f.peer.id); assert.deepEqual(state.players[2], f.state.players[2]);
+  rejected(f.state, 'play-character', { cardId: f.cardId,
+    params: { targetId: f.owner.id, initialChoices: initialFixtures.C01(f) } });
+});
+test('C01: a preselected draw stops at the opponent goods choice; owner goods requires both known steps', () => {
+  const f = fixture('C01');
+  const state = accept(f.state, 'play-character', { cardId: f.cardId,
+    params: { initialChoices: [initialStep('benefit-branch', { branch: 'draw' })] } });
+  assert.equal(state.players[0].hand.length, 2); assert.equal(state.pending.choice.actorId, f.peer.id);
+  assert.equal(state.pending.choice.kind, 'benefit-good');
+  rejected(f.state, 'play-character', { cardId: f.cardId,
+    params: { initialChoices: [initialStep('benefit-branch', { branch: 'goods' })] } });
+});
+test('C01: the legacy zero-stock goods branch can still grant only the peer draw without a fabricated goods selection', () => {
+  const playerIds = ['a','b','c','d','e','f'].map(value => value.repeat(32));
+  const initial = createGame(playerIds, { ...ctx, matchId: 'c'.repeat(32), actionLimit: 10, goodsPerType: 6 });
+  initial.deck.push(...initial.players.flatMap(owner => owner.hand)); initial.players.forEach(owner => { owner.hand = []; });
+  const cardIndex = initial.deck.findIndex(id => definition(id).sourceCode === 'C01'), cardId = initial.deck.splice(cardIndex, 1)[0];
+  initial.players[0].hand.push(cardId); initial.stage = 'use'; initial.drawStarted = true;
+  for (let index = 0; index < GOODS.length; index++) {
+    initial.players[index].goods[GOODS[index].id] = 6; initial.players[index].temporaryOccupied = true;
+    initial.players[index].silver = 18; initial.bankGoods[GOODS[index].id] = 0;
+  }
+  const state = accept(initial, 'play-character', { cardId,
+    params: { targetId: playerIds[1], initialChoices: [initialStep('benefit-branch', { branch: 'goods' })] } });
+  assert.equal(state.pending, null); assert.equal(state.players[0].hand.length, 0); assert.equal(state.players[1].hand.length, 2);
+});
+test('C08: the owner chooses discard, but the opponent selects their own private cards after activation', () => {
+  const f = fixture('C08'); for (const code of ['G01','G02','G03','G04']) f.hand(f.peer, code);
+  const state = accept(f.state, 'play-character', { cardId: f.cardId,
+    params: { initialChoices: [initialStep('hand-branch', { branch: 'discard' })] } });
+  assert.equal(state.pending.choice.kind, 'discard-hand'); assert.equal(state.pending.choice.actorId, f.peer.id);
+  assert.deepEqual(state.players[1].hand, f.peer.hand);
+});
+test('C10: receipt remains the paid retention obligation, and restored old pending choices still settle once', () => {
+  const f = fixture('C10'); f.owner.silver = 2; f.stock(f.owner, { firearms: 5 });
+  const state = accept(f.state, 'play-character', { cardId: f.cardId, params: { initialChoices: initialFixtures.C10(f) } });
+  assert.equal(state.players[0].silver, 0); assert.equal(state.pending.choice.kind, 'retain-goods');
+  const restored = JSON.parse(JSON.stringify(state)), result = settle(restored);
+  assert.equal(result.players[0].silver, 0); assert.equal(result.actionsUsed, 1); assert.equal(goodsCount(result.players[0].goods), 5);
+});
+const invalidInitial = {
+  C01: [initialStep('benefit-branch', { branch: 'other' })],
+  C05: [initialStep('trade-card', { cardId: 'yousei.g01#01' }), initialStep('sell-goods', { goods: emptyGoods() })],
+  C06: [initialStep('exchange', { fromGoodsId: 'firearms', toGoodsId: 'firearms' })],
+  C08: [initialStep('hand-branch', { branch: 'other' })],
+  C09: [initialStep('auction-goods', { goods: goods({ firearms: 1 }) })],
+  C10: [initialStep('artisan-good', { goodsId: 'unknown' })],
+  C11: [initialStep('recover-tool', { cardId: 'yousei.c11#01' })],
+  C13: [initialStep('sell-stock', { goods: emptyGoods() })],
+};
+for (const [code, initialChoices] of Object.entries(invalidInitial)) test(`${code}: invalid atomic materials leave the original fees, zones and randomness untouched`, () => {
+  const f = fixture(code), before = structuredClone(f.state); let randomCalls = 0;
+  const result = action(f.state, 'play-character', { cardId: f.cardId, params: { initialChoices } }, f.owner.id,
+    { now: ctx.now, randomInt: limit => { randomCalls++; return limit - 1; } });
+  assert.equal(result.ok, false); assert.deepEqual(f.state, before); assert.equal(randomCalls, 0);
+});
+for (const code of ['C02','C03','C12',...implementedCharacterCodes.filter(code => code.startsWith('M'))]) {
+  test(`${code}: secret, response and future choices cannot be injected into activation`, () => {
+    const f = fixture(code); rejected(f.state, 'play-character', { cardId: f.cardId,
+      params: { ...f.params, initialChoices: [initialStep('take-card', { cardId: f.state.deck[0] })] } });
+  });
+}
+test('initial choice envelope rejects wrong order, incomplete pairs, extra steps and extra selection fields', () => {
+  const f = fixture('C05'), valid = initialFixtures.C05(f);
+  for (const initialChoices of [null, [], valid.slice(0, 1), [...valid, valid[0]], [...valid].reverse(),
+    [{ ...valid[0], extra: true }, valid[1]], [{ ...valid[0], selection: { ...valid[0].selection, extra: true } }, valid[1]]]) {
+    rejected(f.state, 'play-character', { cardId: f.cardId, params: { initialChoices } });
+  }
+});
+test('a stale public discard reference rejects the entire activation before fees', () => {
+  const f = fixture('C11'); rejected(f.state, 'play-character', { cardId: f.cardId,
+    params: { initialChoices: [initialStep('recover-tool', { cardId: 'discard:99:0' })] } });
+});
+
+function borrowFixture(code, options) {
+  const f = fixture('M08', options), original = f.peer.tools.pop(); f.state.deck.push(original.cardId);
+  f.params = { toolCardId: f.tool(f.peer, code), ...(f.state.version === 2 ? { targetId: f.peer.id } : {}) };
+  const payment = f.hand(f.owner, 'G01'); f.hand(f.owner, 'G02');
+  f.stock(f.owner, { firearms: 1 }); f.stock(f.peer, { imports: 1 });
+  const params = { T01: { kind: 'silver' }, T02: { ownGoodId: 'firearms', otherGoodId: 'imports' },
+    T03: { cardIds: [payment] }, T04: {}, T05: {}, T06: { goodId: 'firearms' },
+    T08: { payment: { zone: 'hand', cardId: payment } }, T09: { goodId: 'imports' },
+    T10: { goodId: 'imports', payment: { zone: 'hand', cardId: payment } } }[code];
+  const state = accept(start(f), 'decline-response');
+  return { f, state, params };
+}
+for (const code of ['T01','T02','T03','T04','T05','T06','T08','T09','T10']) {
+  test(`M08 / ${code}: known borrowed materials settle in one choice without another action`, () => {
+    const { f, state, params } = borrowFixture(code), before = structuredClone(state);
+    const result = accept(state, 'choose-effect', { selection: { borrow: true, params } });
+    assert.equal(result.actionsUsed, 1); assert.equal(result.revision, before.revision + 1); assert.deepEqual(state, before);
+    if (code === 'T04') assert.equal(result.pending.choice.kind, 'tool-two-cards');
+    else assert.equal(result.pending, null);
+    assert.equal(settle(result).actionsUsed, 1); assert.ok(settle(result).discard.includes(f.cardId));
+  });
+}
+test('M08 / T02: borrowed multiplayer target and both goods are one input; old empty params keeps the saved target step', () => {
+  const { f, state, params } = borrowFixture('T02', { playerIds: [...ids,'d'.repeat(32)], ruleVersion: MULTIPLAYER_RULE_VERSION });
+  // This target is chosen after removal; its public goods are still available.
+  const selectedTarget = state.players[2]; state.bankGoods.beasts--; selectedTarget.goods.beasts++;
+  const result = accept(state, 'choose-effect', { selection: { borrow: true,
+    params: { ...params, targetId: selectedTarget.id, otherGoodId: 'beasts' } } });
+  assert.equal(result.pending, null); assert.equal(result.players[0].goods.beasts, 1); assert.equal(result.players[2].goods.firearms, 1);
+  assert.equal(result.players[1].goods.imports, 1); assert.equal(result.actionsUsed, 1);
+  const legacy = accept(state, 'choose-effect', { selection: { borrow: true, params: {} } });
+  assert.equal(legacy.pending.choice.kind, 'borrowed-target'); assert.equal(gameProblem(JSON.parse(JSON.stringify(legacy))), null);
+  assert.equal(settle(legacy).actionsUsed, 1); assert.ok(result.discard.includes(f.cardId));
+});
+test('M08 / T04: selecting the borrowed target cannot preselect the two future private cards', () => {
+  const { state } = borrowFixture('T04', { playerIds: [...ids,'d'.repeat(32)], ruleVersion: MULTIPLAYER_RULE_VERSION });
+  const result = accept(state, 'choose-effect', { selection: { borrow: true, params: { targetId: state.players[2].id } } });
+  assert.equal(result.pending.choice.kind, 'tool-two-cards'); assert.equal(result.pending.data.borrowedTargetId, state.players[2].id);
+  rejected(state, 'choose-effect', { selection: { borrow: true, params: { targetId: state.players[2].id, cardId: state.deck[0] } } });
+});
+test('borrowed invalid, incomplete and opponent payments reject without refunding or advancing the existing character obligation', () => {
+  const { state } = borrowFixture('T10');
+  for (const params of [{ goodId: 'imports' }, { goodId: 'imports', payment: { zone: 'tool', cardId: state.pending.data.toolCardId } },
+    { goodId: 'imports', payment: { zone: 'hand', cardId: state.pending.sourceCards[0] } }, { goodId: 'imports', payment: { zone: 'bank', cardId: state.deck[0] } },
+    { goodId: 'imports', payment: { zone: 'hand', cardId: state.players[0].hand[0] }, extra: true }]) {
+    rejected(state, 'choose-effect', { selection: { borrow: true, params } });
+  }
+  assert.equal(state.actionsUsed, 1); assert.equal(state.pending.choice.kind, 'borrow-tool');
+  rejected(state, 'choose-effect', { selection: { borrow: false, params: { goodId: 'imports' } } });
+  const declined = accept(state, 'choose-effect', { selection: { borrow: false } });
+  assert.equal(declined.pending, null); assert.equal(declined.actionsUsed, 1);
+});
+test('T01: invalid preselected acquisition fees refuse before the ordinary or borrowed search consumes randomness', () => {
+  const { f, state } = borrowFixture('T01');
+  const ownTool = f.tool(f.owner, 'T01', false), foreignCard = f.hand(f.peer, 'G03');
+  f.state.discard.push(...f.state.deck.splice(0));
+  const borrowing = structuredClone(state); borrowing.discard.push(...borrowing.deck.splice(0));
+  borrowing.players[0].silver = 0;
+  const inputs = [{ kind: 'card', cardId: foreignCard }, { kind: 'card', cardId: ownTool }, { kind: 'unknown' }];
+  for (const params of inputs) {
+    for (const [source, type, body] of [[f.state, 'activate-tool', { cardId: ownTool, params }],
+      [borrowing, 'choose-effect', { selection: { borrow: true, params } }]]) {
+      const before = structuredClone(source); let calls = 0;
+      const result = action(source, type, body, f.owner.id, { now: ctx.now, randomInt: limit => { calls++; return limit - 1; } });
+      assert.equal(result.ok, false); assert.equal(calls, 0); assert.deepEqual(source, before);
+    }
+  }
+  const before = structuredClone(borrowing); let calls = 0;
+  const noMoney = action(borrowing, 'choose-effect', { selection: { borrow: true, params: { kind: 'silver' } } }, f.owner.id,
+    { now: ctx.now, randomInt: limit => { calls++; return limit - 1; } });
+  assert.equal(noMoney.ok, false); assert.equal(calls, 0); assert.deepEqual(borrowing, before);
+  const legacy = accept(borrowing, 'choose-effect', { selection: { borrow: true, params: {} } });
+  assert.equal(legacy.pending.choice.kind, 'tool-search-payment'); assert.equal(legacy.actionsUsed, 1);
 });
