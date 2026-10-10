@@ -14,6 +14,7 @@ import { inspectorPages as paginateInspector, roomTransition, openingProgress } 
 import { roomExitExplanation, roomDraftMatches, gameErrorMessage, orderedRoomPlayers } from '../../platform/room-presentation.mjs';
 import { roomHref } from '../../game-routing.mjs';
 import { updateTurnFeedback, turnFeedbackMessage } from './feedback.mjs';
+import { mountRummikubMotion, placementCue } from './motion-ui.mjs';
 import { sortPlayableRack, autoSplitDuplicateRun, splitRunAfterExtraction } from './assist.mjs';
 import { gameViewport } from '../../game-viewport.mjs';
 import { createPreviewPublisher,encodeBoardPositions,decodeBoardPositions } from './preview-client.mjs';
@@ -208,6 +209,7 @@ let rackFitFrame = null;
 let inspectorIndex = 0;
 let inspectorMode = 'board';
 const audio = createGameAudio();
+const objectMotion = mountRummikubMotion();
 const COLOR_MARKS={red:'● 红',blue:'▲ 蓝',orange:'◆ 黄',black:'■ 黑'};
 try { $('tile-color-assist').checked=localStorage.getItem('game-room:color-assist:v1')==='true'; } catch { /* Optional device preference. */ }
 document.body.classList.toggle('color-assist',$('tile-color-assist').checked);
@@ -504,11 +506,11 @@ function renderBoard({allowRackDrag=false}={}) {
     const jokerLocked = !canRearrangeJokers(committed) && committed.board.some((original) => original.some((tile) => tile.joker) && original.some((tile) => meld.some((current) => current.id === tile.id)));
     const locked = openingLocked || jokerLocked;
     const isNew = meld.every((tile) => !publicIds.has(tile.id));
-    const status = remotePreview?'整理中 · 未确认':openingLocked ? '开局后可重组' : jokerLocked ? '本局鬼牌组锁定' : result.valid ? `${result.type === 'run' ? '顺子' : '同数'} · ${result.points} 点` : '还差一点';
+    const status = remotePreview?'整理中 · 未确认':openingLocked ? '开局后可重组' : jokerLocked ? '本局鬼牌组锁定' : result.valid ? `${isNew?'待确认 · ':''}${result.type === 'run' ? '顺子' : '同数'} · ${result.points} 点` : '还差一点';
     const key=groupKey(meld);
     const splitting=splitKey===key;
     const tiles=meld.map((tile,tileIndex)=>(remotePreview?tileHTML(tile).replace('data-tile=','disabled data-preview-tile='):tileHTML(tile))+(splitting && !remotePreview && tileIndex<meld.length-1 ? `<button class="split-gap" style="left:calc((42px * ${tileIndex+1} - 2px) * var(--board-scale))" data-cut="${tileIndex+1}" data-meld="${index}" aria-label="在组合 ${index+1} 的第 ${tileIndex+1} 张牌后拆开" title="从这里拆开">✂</button>` : '')).join('');
-    return `<div class="meld${locked ? ' locked' : ''}${result.valid ? '' : ' invalid'}${splitting ? ' splitting' : ''}" data-zone="${index}" data-group-key="${key}" style="--meld-count:${meld.length}"><button class="meld-header" data-place="${index}" data-group="${index}" aria-label="拖动组合 ${index+1}${selection.size?'；点击加入选中牌':''}" title="拖动整组到空位整理，拖到另一组拼接"><span><span aria-hidden="true" class="group-grip">⠿</span> ${isNew ? '我的组合' : '组合'} ${String(index+1).padStart(2,'0')}</span><small>${status}</small></button><div class="meld-tiles" data-zone="${index}">${tiles}</div><button type="button" class="split-group" data-split="${index}" aria-label="${splitting?'取消拆分':'拆分组合 '+(index+1)}" aria-pressed="${splitting}" ${locked || meld.length<2 || !canAct()?'disabled':''} title="点这里，再选两张牌之间的分界">${splitting?'×':'✂'}</button></div>`;
+    return `<div class="meld${isNew&&!remotePreview?' draft-meld':''}${locked ? ' locked' : ''}${result.valid ? '' : ' invalid'}${splitting ? ' splitting' : ''}" data-zone="${index}" data-group-key="${key}" style="--meld-count:${meld.length}"><button class="meld-header" data-place="${index}" data-group="${index}" aria-label="拖动组合 ${index+1}${selection.size?'；点击加入选中牌':''}" title="拖动整组到空位整理，拖到另一组拼接"><span><span aria-hidden="true" class="group-grip">⠿</span> ${isNew ? '我的组合' : '组合'} ${String(index+1).padStart(2,'0')}</span><small>${status}</small></button><div class="meld-tiles" data-zone="${index}">${tiles}</div><button type="button" class="split-group" data-split="${index}" aria-label="${splitting?'取消拆分':'拆分组合 '+(index+1)}" aria-pressed="${splitting}" ${locked || meld.length<2 || !canAct()?'disabled':''} title="点这里，再选两张牌之间的分界">${splitting?'×':'✂'}</button></div>`;
   }).join('') + '<button class="new-meld" data-zone="new" data-place="new" aria-label="把选中牌放进新组合"><b aria-hidden="true">+</b><span>新组合 <span aria-hidden="true">·</span> 把牌放到这里</span></button></div>';
   $('board-count').textContent = `${shownBoard.flat().length} 张牌`;
   queueBoardFit({allowRackDrag});
@@ -527,6 +529,7 @@ function renderOpeningProgress(evaluation, deckOptions) {
 }
 
 function render() {
+  const motionChanged = objectMotion.begin();
   document.body.classList.toggle('rummi-spectator',spectating());
   renderRuleText();
   if(playableRackSignature!==draft.rack.map(tile=>tile.id).sort().join('|') || !['color','number'].includes(sortMode)) {playableRackGroups=[];playableRackSignature='';}
@@ -609,6 +612,7 @@ function render() {
   }
   save();
   queueRackFit();
+  objectMotion.end(motionChanged);
 }
 
 function canAct() { return !ROOM_MODE || (!spectating() && accountState().verification==='verified' && !document.hidden && roomView?.phase === 'playing' && roomView.game?.status === 'playing' && roomView.game?.turnPlayerId === roomView.selfId && !clockDisplay().expired && !busy && !leavingRoom && connection === 'online'); }
@@ -723,6 +727,8 @@ function applyRoomView(view) {
     return;
   }
   const previousView=roomView,oldGame=previousView?.game;
+  if (needsRoomBaseline || document.hidden || connection!=='online' || previousView?.matchId!==view.matchId
+      || previousView?.selfRole!==view.selfRole || !['playing','finished'].includes(view.phase)) objectMotion.baseline();
   if(previousView && (previousView.roomId!==view.roomId || previousView.matchId!==view.matchId
       || previousView.selfId!==view.selfId)) {rackPositions={};rackBasis=null;}
   if(view.selfRole==='spectator' && previousView?.selfRole!=='spectator' || !view.game && oldGame) {
@@ -743,6 +749,10 @@ function applyRoomView(view) {
   newSinceOwnTurn.clear();for(const id of turnFeedbackState?.newIds || []) newSinceOwnTurn.add(id);
   const phaseCue=audio.phaseCue(previousView,view,{baseline:needsRoomBaseline || document.hidden || connection!=='online'});
   const effects=roomTransition(previousView,view,{baseline:needsRoomBaseline || document.hidden || connection!=='online'});
+  if(effects.boardChanged && !needsRoomBaseline) {
+    const publicBefore = new Set(oldGame?.board?.flat().map(tile=>tile.id) || []);
+    objectMotion.confirmed(view.game?.board?.flat().filter(tile=>!publicBefore.has(tile.id)).map(tile=>tile.id) || []);
+  }
   observePublicPlacementView(view,{baseline:needsRoomBaseline || document.hidden || connection!=='online'});
   if(!document.hidden) needsRoomBaseline=false;
   const now=performance.now();
@@ -890,9 +900,8 @@ function moveTiles(ids, zone, beforeId = null, point = null) {
   sortMode = '';
   splitKey=null;
   if(zone!=='rack')rememberOwnPublicPlacement();
-  audio.play('placement',{gesture:true});
-  if(autoSplit)audio.play('split',{gesture:true});
-  else if(index>=0 && oldBoard.some((group,sourceIndex)=>sourceIndex!==index && group.some(tile=>ids.includes(tile.id))))audio.play('merge',{gesture:true});
+  const merged=index>=0 && oldBoard.some((group,sourceIndex)=>sourceIndex!==index && group.some(tile=>ids.includes(tile.id)));
+  audio.play(placementCue({autoSplit:Boolean(autoSplit),merged}),{gesture:true});
   render();
   if(autoSplit) toast(`已自动拆成 ${autoSplit.melds.length} 组合法组合；确认出牌后才保存。`);
   requestAnimationFrame(() => document.querySelector(`[data-tile="${moved[0].id}"]`)?.focus({ preventScroll: true }));
@@ -1097,6 +1106,7 @@ document.addEventListener('pointerup', (event) => {
     const target = document.elementFromPoint(event.clientX, event.clientY);
     const zone = target?.closest('[data-zone]');
     const targetTile = target?.closest('[data-tile]');
+    if(current.type==='tile' && ghost) objectMotion.dropOrigin(current.id, ghost.getBoundingClientRect());
     clearDrag();
     if(current.type==='group') {moveGroup(current,event.clientX,event.clientY,target);return;}
     if (zone) {
@@ -1159,8 +1169,10 @@ $('commit').addEventListener('click', () => {
   if (ROOM_MODE) { if (canAct()) roomAction('submit', { boardIds:draft.board.map(meld=>meld.map(tile=>tile.id)), rackIds:draft.rack.map(tile=>tile.id),boardPositions:captureBoardPositions() }); return; }
   const result = commitDraft(committed, draft);
   if (!result.ok) { audio.play('invalid',{gesture:true});toast(result.error); return; }
-  const opening = !committed.opened;
+  const opening = !committed.opened, publicBefore = new Set(committed.board.flat().map(tile=>tile.id));
+  const played = result.state.board.flat().filter(tile=>!publicBefore.has(tile.id)).map(tile=>tile.id);
   committed = result.state; draft = clone(committed); committedTablePositions=clone(tablePositions);history = []; selection.clear();splitKey=null;render();
+  objectMotion.confirmed(played);
   audio.play(committed.rack.length?'commit':'win',{gesture:true});
   toast(committed.rack.length ? opening ? '开局成功！现在可以接牌和重组桌面。' : '出牌成功，继续下一轮练习。' : '手牌出完了，这次练习完成！');
 });
@@ -1184,6 +1196,7 @@ $('confirm-restart').addEventListener('click', () => {
 });
 
 function clearRoomPrivate(error = {}, {preserveDraft=error.status===503} = {}) {
+  objectMotion.baseline();
   roomSession.invalidate();
   if(inspector.open) inspector.close();$('inspector-tiles').replaceChildren();
   for(const id of ['room-options-dialog','leave-room-dialog','room-activity-dialog','joker-settings-dialog']) if($(id)?.open) $(id).close();

@@ -1,3 +1,4 @@
+import { mountArmyMotion } from './games/army-flip/motion-ui.mjs';
 import * as roomClock from './platform/room-clock.mjs';
 import * as roomSession from './platform/room-session.mjs';
 import * as roomAudioControls from './platform/room-audio-controls.mjs';
@@ -125,6 +126,8 @@ async function fixture(t,{state=AUTH,query='',viewport={width:844,height:390},st
     options.sync();const svg=document.getElementById('army-lines');
     viewportSyncs.push({viewBox:svg.getAttribute('viewBox'),lines:svg.querySelectorAll('line').map(line=>({...line.attributes}))});
   }});
+  Object.assign(window,{requestAnimationFrame:context.requestAnimationFrame,cancelAnimationFrame:context.cancelAnimationFrame || (()=>{}),setTimeout:timers.setTimeout,clearTimeout:timers.clearTimeout,performance,getComputedStyle:context.getComputedStyle});
+  context.mountArmyMotion=()=>mountArmyMotion({root:document.body,document,window});
   const account=await moduleIn(context,'account-client.mjs');Object.assign(context,account);
   context.watchAccountLifecycle=options=>{const watcher=account.watchAccountLifecycle(options);watchers.push(watcher);return watcher;};
   Object.assign(context,await moduleIn(context,'room-client.mjs'));
@@ -396,6 +399,8 @@ async function practiceFixture({snapshot,mounted=false,locks,viewport={width:390
     setTimeout:timers.setTimeout,clearTimeout:timers.clearTimeout,requestAnimationFrame:()=>0,
     ...roomClock,...roomSession,...roomAudioControls,...roomViewport,...board,...army,gameViewport,createGameAudio,PRACTICE_SELF:'self',PRACTICE_STORAGE_KEY:'practice-v3-key',PRACTICE_V2_STORAGE_KEY:'practice-v2-key',PRACTICE_LEGACY_STORAGE_KEY:'practice-v1-key',
     createPracticeSession:async options=>{sessionOptions=options;changed=options.onChange;return session;},expose:value=>{pageAPI=value;}});
+  Object.assign(window,{requestAnimationFrame:context.requestAnimationFrame,cancelAnimationFrame:()=>{},setTimeout:timers.setTimeout,clearTimeout:timers.clearTimeout,performance});
+  context.mountArmyMotion=()=>mountArmyMotion({root:document.body,document,window});
   const moduleUrl=mounted?'https://agora.sumomoli.com/game/entry-path.mjs':'https://game.sumomoli.com/entry-path.mjs';
   Object.assign(context, {entryBase:()=>entryPath.entryBase(moduleUrl),entryStorageKey:key=>entryPath.entryStorageKey(key,moduleUrl)});
   const source=(await readFile(new URL('army-practice.mjs',import.meta.url),'utf8')).replace(/^import[\s\S]*?;\s*/gm,'');

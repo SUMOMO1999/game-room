@@ -46,7 +46,7 @@ test('real opening validates 110 unique card zones, six stocks and five board ow
 test('unknown versions, extra fields and private material in public events fail closed', () => {
   const state = fresh();
   const cases = [
-    value => { value.version = 2; }, value => { value.ruleVersion = 'latest'; }, value => { value.contentVersion = 'latest'; },
+    value => { value.version = 3; }, value => { value.ruleVersion = 'latest'; }, value => { value.contentVersion = 'latest'; },
     value => { value.seed = 3; }, value => { value.players[0].secret = 'x'; }, value => { value.bankGoods.secret = 1; },
     value => { value.lifecycle.sessionId = 'x'; }, value => { value.timing.active.hidden = 'x'; },
     value => { value.turnId = 'turn-9'; }, value => { value.timing.active.actorId = ids.find(id => id !== value.turnPlayerId); },

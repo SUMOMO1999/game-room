@@ -5,6 +5,7 @@ import { emptyGoods } from './model.mjs';
 import { privateView, spectatorView } from './view.mjs';
 import { createHyakkiAdapter } from '../../../server/games/hyakki-trading/adapter.mjs';
 import { validateHyakkiPublicEvent } from '../../../server/games/hyakki-trading/event-store.mjs';
+import { DIGITAL_RULE_VERSION } from './content/definitions.mjs';
 
 const ids = ['a'.repeat(32), 'b'.repeat(32)], ctx = { now: 1000, randomInt: limit => limit - 1 };
 const fresh = options => createGame(ids, { ...ctx, matchId: 'c'.repeat(32), ...options });
@@ -31,7 +32,7 @@ test('new games freeze five actions and eight goods by default, with independent
 });
 
 test('legacy missing stock setting stays six through projection, pending actions and serialization', () => {
-  const legacy = fresh({ actionLimit: 7, goodsPerType: 6 }); delete legacy.goodsPerType;
+  const legacy = fresh({ actionLimit: 7, goodsPerType: 6, ruleVersion: DIGITAL_RULE_VERSION }); delete legacy.goodsPerType;
   const before = JSON.stringify(legacy);
   assert.equal(gameProblem(legacy), null); assert.equal(spectatorView(legacy).goodsPerType, 6);
   assert.equal(JSON.stringify(legacy), before);
@@ -40,12 +41,12 @@ test('legacy missing stock setting stays six through projection, pending actions
     assert.equal(Object.hasOwn(state, 'goodsPerType'), false); assert.equal(state.actionLimit, 7);
     assert.equal(gameProblem(state), null); assert.deepEqual(Object.values(state.bankGoods), Array(6).fill(6));
   }
-  const removed = fresh(); delete removed.goodsPerType; assert.match(gameProblem(removed), /守恒6/);
+  const removed = fresh(); delete removed.goodsPerType; assert.match(gameProblem(removed), /格式/);
   for (const value of [undefined, null, 3, 21, '8', 8.5]) {
     const corrupt = fresh(); corrupt.goodsPerType = value; assert.ok(gameProblem(corrupt));
   }
   for (const mutate of [state => { state.bankGoods.firearms++; }, state => { state.extra = 8; },
-    state => { state.goodsPerType = 7; }, state => { state.version = 2; }]) {
+    state => { state.goodsPerType = 7; }, state => { state.version = 3; }]) {
     const corrupt = fresh(); mutate(corrupt); assert.ok(gameProblem(corrupt));
   }
 });
@@ -65,11 +66,11 @@ test('goods above six move and sell through real effects without weakening per-t
   assert.deepEqual(validateHyakkiPublicEvent(event), event);
   assert.throws(() => validateHyakkiPublicEvent({ ...event, goods: [{ id: 'firearms', count: 21 }] }), /局内历史/);
   state.lastPublicEvents = [event]; assert.equal(gameProblem(state), null);
-  const legacy = fresh({ goodsPerType: 6 }); delete legacy.goodsPerType; legacy.lastPublicEvents = [event];
+  const legacy = fresh({ goodsPerType: 6, ruleVersion: DIGITAL_RULE_VERSION }); delete legacy.goodsPerType; legacy.lastPublicEvents = [event];
   assert.match(gameProblem(legacy), /公开事件/);
 });
 
-test('adapter config preserves old omitted settings, rejects malformed values and writes schema13', () => {
+test('adapter config preserves old omitted settings, rejects malformed values and writes schema14', () => {
   const adapter = createHyakkiAdapter(), modern = adapter.roomDefaults(), legacy = { hyakkiConfig: { actionLimit: 7 } };
   assert.deepEqual(modern.hyakkiConfig, { actionLimit: 5, goodsPerType: 8 });
   assert.deepEqual(adapter.configure(modern, { hyakkiConfig: { actionLimit: 4 } }).updates.hyakkiConfig, { actionLimit: 4, goodsPerType: 8 });
@@ -80,7 +81,7 @@ test('adapter config preserves old omitted settings, rejects malformed values an
     { actionLimit: 5, goodsPerType: 21 }, { actionLimit: 5, goodsPerType: '8' }, { goodsPerType: 8 },
     { actionLimit: 5, goodsPerType: 8, extra: true }]) assert.equal(adapter.configure(modern, { hyakkiConfig: config }).problem.code, 'INVALID_CONFIG');
   const envelope = { schemaVersion: 12, gameType: 'hyakki-trading', turnClock: null, hyakkiConfig: legacy.hyakkiConfig, game: null };
-  assert.equal(adapter.snapshotSchema(), 13); assert.equal(adapter.snapshotProblem(envelope), false);
+  assert.equal(adapter.snapshotSchema(), 14); assert.equal(adapter.snapshotProblem(envelope), false);
   assert.equal(adapter.snapshotProblem({ ...envelope, hyakkiConfig: modern.hyakkiConfig }), true);
   assert.equal(adapter.snapshotProblem({ ...envelope, schemaVersion: 13, hyakkiConfig: modern.hyakkiConfig }), false);
 });

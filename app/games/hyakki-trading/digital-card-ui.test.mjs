@@ -22,7 +22,8 @@ test('all 51 image faces preserve canonical labels and complete rules in details
       assert.ok(text.includes(`卖 ${card.sellSilver}`));
     } else {
       assert.ok(text.includes(card.name));
-      assert.doesNotMatch(markup, /yousei-card__effect/u);
+      assert.match(markup, /yousei-card__effect/u);
+      assert.ok(text.includes(card.compactText));
       assert.ok(detail.includes(card.summary));
       assert.ok(markup.includes(assetPath(card.artId)));
       assert.match(markup, /loading="eager"[^>]+decoding="sync"/u);

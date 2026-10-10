@@ -1,5 +1,5 @@
 import { GOODS } from './content/definitions.mjs';
-import { RuleError, requireRule, definition, player, opponent, emptyGoods, goodsCount,
+import { RuleError, requireRule, definition, player, opponent, isMultiplayer, emptyGoods, goodsCount,
   addSilver, moveGoods, removeCard, discardCards, drawCards, availableCards, canReceive,
   refreshTemporary, payCard, paymentOptions, createPending, setChoice, clearChoice,
   completePending, receiveGoods, emit } from './model.mjs';
@@ -9,7 +9,7 @@ const choiceKinds = ['tool-search-payment', 'tool-exchange', 'tool-discard-draw'
   'tool-goods-draw', 'tool-discard-swap', 'tool-payment-silver', 'tool-buy-good', 'tool-payment-good'];
 export const TOOL_PENDING_CONTRACTS = Object.freeze(Object.fromEntries(implementedToolCodes.map((code, index) => [code, Object.freeze({
   stages: Object.freeze(['start', 'choosing', 'delivering', 'done']), choiceKind: choiceKinds[index],
-  dataKeys: Object.freeze(['toolId', 'borrowed', 'params', ...(code === 'T07' ? ['discardTopId'] : []),
+  dataKeys: Object.freeze(['toolId', 'borrowed', 'params', 'targetId', 'borrowedTargetId', ...(code === 'T07' ? ['discardTopId'] : []),
     ...(['T05', 'T09'].includes(code) ? ['paidSilver'] : [])]), publicPool: code === 'T01',
 })])));
 const goodIds = GOODS.map(good => good.id);
@@ -25,8 +25,11 @@ const selectionKeys = {
   T01: ['kind', 'cardId'], T02: ['ownGoodId', 'otherGoodId'], T03: ['cardIds'], T04: ['cardId'],
   T05: [], T06: ['goodId'], T07: ['cardId'], T08: ['payment'], T09: ['goodId'], T10: ['goodId', 'payment'],
 };
+const pairedTool = code => ['T02', 'T04'].includes(code);
+const targetFor = pending => pending.data.borrowed ? pending.data.borrowedTargetId : pending.data.targetId;
+const toolPeer = state => opponent(state, state.pending.ownerId, targetFor(state.pending));
 
-function effectProblem(state, ownerId, copyId, { borrowed = false, checkOrientation = true } = {}) {
+function effectProblem(state, ownerId, copyId, { borrowed = false, checkOrientation = true, targetId } = {}) {
   const card = definition(copyId), owner = player(state, ownerId);
   if (card.category !== 'tool') return '请选择道具。';
   const code = card.sourceCode;
@@ -39,10 +42,11 @@ function effectProblem(state, ownerId, copyId, { borrowed = false, checkOrientat
   if (code === 'T07') {
     if (state.stage !== 'draw' || state.drawStarted) return '纸上仙只能在第一次普通看牌之前使用。';
   } else if (!borrowed && state.stage !== 'use') return '请先结束取牌阶段。';
+  const peer = pairedTool(code) ? opponent(state, ownerId, targetId) : null;
   const available = availableCards(state), goods = goodsCount(owner.goods);
   switch (code) {
     case 'T01': return available < 1 || owner.silver < 1 && !owner.hand.length ? '需要可搜索的牌，以及1两或1张手牌。' : null;
-    case 'T02': return !goods || !goodsCount(opponent(state, ownerId).goods) ? '双方各有至少1件货物才能交换。' : null;
+    case 'T02': return !goods || !goodsCount(peer.goods) ? '双方各有至少1件货物才能交换。' : null;
     case 'T03': return !owner.hand.length ? '至少需要1张可弃手牌。' : null;
     case 'T04': return available < 2 ? '两仪灯需要至少2张可抽牌。' : null;
     case 'T05': return available < 1 || owner.silver < 1 ? '需要1两和至少1张可抽牌。' : null;
@@ -60,8 +64,9 @@ function effectProblem(state, ownerId, copyId, { borrowed = false, checkOrientat
 export function toolProblem(state, ownerId, copyId, params = {}, options = {}) {
   try {
     const code = definition(copyId).sourceCode;
-    if (!plain(params) || Object.keys(params).some(key => !selectionKeys[code]?.includes(key))) return '道具选择参数无效。';
-    return effectProblem(state, ownerId, copyId, options);
+    const allowed = [...(selectionKeys[code] ?? []), ...(isMultiplayer(state) && pairedTool(code) ? ['targetId'] : [])];
+    if (!plain(params) || Object.keys(params).some(key => !allowed.includes(key))) return '道具选择参数无效。';
+    return effectProblem(state, ownerId, copyId, { ...options, targetId: params.targetId });
   } catch (error) {
     if (error instanceof RuleError || error instanceof RangeError) return '道具或使用者无效。';
     throw error;
@@ -71,18 +76,24 @@ export function toolProblem(state, ownerId, copyId, params = {}, options = {}) {
 /** Root has already charged the action and exhausted a normally installed tool. */
 export function startTool(state, copyId, params = {}, ctx, { borrowed = false } = {}) {
   const ownerId = borrowed ? state.pending?.ownerId : state.turnPlayerId;
-  requireRule(ownerId && !effectProblem(state, ownerId, copyId, { borrowed, checkOrientation: false }), '道具当前不能发动。');
+  requireRule(ownerId && !effectProblem(state, ownerId, copyId, { borrowed, checkOrientation: false, targetId: params.targetId }), '道具当前不能发动。');
   const code = definition(copyId).sourceCode;
-  requireRule(plain(params) && Object.keys(params).every(key => selectionKeys[code].includes(key)), '道具选择参数无效。');
+  const allowed = [...selectionKeys[code], ...(isMultiplayer(state) && pairedTool(code) ? ['targetId'] : [])];
+  requireRule(plain(params) && Object.keys(params).every(key => allowed.includes(key)), '道具选择参数无效。');
+  const selections = Object.fromEntries(Object.entries(params).filter(([key]) => key !== 'targetId'));
+  const targetId = pairedTool(code) && isMultiplayer(state) ? opponent(state, ownerId, params.targetId).id : null;
   if (borrowed) {
     requireRule(state.pending && !state.pending.poolCards.length && !goodsCount(state.pending.goods)
       && !state.pending.receipt && !state.pending.response, '外层人物尚未结清。');
+    const originalTargetId = state.pending.data.targetId;
     Object.assign(state.pending, { kind: 'tool', code, stage: 'start', choice: null,
-      data: { toolId: copyId, borrowed: true, params: structuredClone(params) } });
-  } else createPending(state, { kind: 'tool', ownerId, code, data: { toolId: copyId, borrowed: false, params: structuredClone(params) } });
+      data: { toolId: copyId, borrowed: true, params: structuredClone(selections),
+        ...(isMultiplayer(state) ? { targetId: originalTargetId, ...(targetId ? { borrowedTargetId: targetId } : {}) } : {}) } });
+  } else createPending(state, { kind: 'tool', ownerId, code, data: { toolId: copyId, borrowed: false, params: structuredClone(selections),
+    ...(targetId ? { targetId } : {}) } });
   continueTool(state, ctx);
-  if (state.pending?.kind === 'tool' && state.pending.choice && Object.keys(params).length) {
-    chooseTool(state, params, ctx);
+  if (state.pending?.kind === 'tool' && state.pending.choice && Object.keys(selections).length) {
+    chooseTool(state, selections, ctx);
   }
 }
 
@@ -125,7 +136,7 @@ export function continueTool(state, ctx) {
     choose(state, 'tool-search-payment', options, options[0]); return;
   }
   if (code === 'T02') {
-    const ownGoods = selectedGoods(owner.goods), otherGoods = selectedGoods(opponent(state, owner.id).goods);
+    const ownGoods = selectedGoods(owner.goods), otherGoods = selectedGoods(toolPeer(state).goods);
     choose(state, 'tool-exchange', [{ ownGoodIds: ownGoods, otherGoodIds: otherGoods }],
       { ownGoodId: ownGoods[0], otherGoodId: otherGoods[0] }, 'public'); return;
   }
@@ -180,7 +191,7 @@ export function chooseTool(state, selection, ctx) {
     requireRule(target && definition(target).category === 'goods', '搜索目标已变化。');
     owner.hand.push(target); discardCards(state, pending.poolCards.splice(0));
   } else if (code === 'T02') {
-    const other = opponent(state, owner.id);
+    const other = toolPeer(state);
     requireRule(exact(selection, ['ownGoodId', 'otherGoodId']) && goodIds.includes(selection.ownGoodId)
       && goodIds.includes(selection.otherGoodId) && owner.goods[selection.ownGoodId] > 0 && other.goods[selection.otherGoodId] > 0, '请选择双方现有的各1件货物。');
     const own = singleGood(selection.ownGoodId), theirs = singleGood(selection.otherGoodId);
@@ -199,7 +210,7 @@ export function chooseTool(state, selection, ctx) {
   } else if (code === 'T04') {
     requireRule(exact(selection, ['cardId']) && pending.poolCards.includes(selection.cardId) && pending.poolCards.length === 2, '请选择原来的两张候选之一。');
     removeCard(pending.poolCards, selection.cardId); owner.hand.push(selection.cardId);
-    opponent(state, owner.id).hand.push(...pending.poolCards.splice(0));
+    toolPeer(state).hand.push(...pending.poolCards.splice(0));
   } else if (code === 'T06') {
     requireRule(exact(selection, ['goodId']) && goodIds.includes(selection.goodId) && owner.goods[selection.goodId] > 0, '请选择自己的1件库存。');
     moveGoods(owner.goods, state.bankGoods, singleGood(selection.goodId)); refreshTemporary(owner);

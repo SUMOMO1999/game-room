@@ -87,12 +87,12 @@ html[data-game-theme] :is(.game-screen,.army-screen,.flying-screen,.flying-body,
   color:var(--theme-ink)!important;background:var(--theme-control)!important;border-color:color-mix(in srgb,var(--theme-border) 70%,transparent)!important;
   box-shadow:inset 0 1px 0 var(--theme-glow);
 }
-html[data-game-theme] :is(.game-screen,.army-screen,.flying-screen,.flying-body,.drawing-body,.p414-body,.lab-shell) :is(.board-view-button[aria-pressed=true],.sort-button.active,.drawing-tool-row button[aria-pressed=true],.practice-lessons [aria-current=page],.room-toolbar-action[aria-expanded=true]){
+html[data-game-theme] :is(.game-screen,.army-screen,.flying-screen,.flying-body,.drawing-body,.p414-body,.lab-shell) :is(.board-view-button[aria-pressed=true],.sort-button.active,.drawing-tool-row button[aria-pressed=true],.drawing-tool-heading button[aria-pressed=true],.practice-lessons [aria-current=page],.room-toolbar-action[aria-expanded=true]){
   background:var(--theme-accent)!important;color:var(--theme-base)!important;border-color:var(--theme-accent)!important;
 }
 /* Match the themed control's scope so its important colors cannot mask the
    persistent tool selection. Focus and color-chip selection stay independent. */
-html[data-game-theme] .drawing-body .drawing-tool-row button[data-tool][aria-pressed=true]:not(:disabled){
+html[data-game-theme] .drawing-body :is(.drawing-tool-row,.drawing-tool-heading) button[data-tool][aria-pressed=true]:not(:disabled){
   background:var(--theme-accent)!important;color:var(--theme-base)!important;border-color:var(--theme-accent)!important;font-weight:750;
 }
 html[data-game-theme] :is(.game-screen,.army-screen,.flying-screen,.flying-body,.drawing-body,.lab-shell) :is(.primary-button,.flying-primary,#commit:not(:disabled),#start-room:not(:disabled),#turn-banner.your-turn,.main-action){

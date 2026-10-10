@@ -82,7 +82,7 @@ test('real room configuration, business action, exported snapshot and closed-cre
   }
   action(actor, 'peek', { matchId: snapshot.matchId, turnId: snapshot.game.turnId });
   snapshot = rooms.exportSnapshot(host.roomCode);
-  assert.equal(snapshot.schemaVersion, 13); assert.equal(snapshot.hyakkiConfig.actionLimit, 4);
+  assert.equal(snapshot.schemaVersion, 14); assert.equal(snapshot.hyakkiConfig.actionLimit, 4);
   assert.equal(snapshot.hyakkiConfig.goodsPerType, 8); assert.equal(snapshot.game.goodsPerType, 8);
   assert.equal(adapter.roomStateProblem(snapshot, true), null);
   assert.throws(() => action(users[0], 'configure', { hyakkiConfig: { actionLimit: 5, goodsPerType: 20 } }), { code: 'ROOM_LOCKED' });

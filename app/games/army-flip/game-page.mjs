@@ -11,12 +11,14 @@ import { roomHref } from '../../game-routing.mjs';
 import { BOARD_CELLS, ROAD_EDGES, RAIL_EDGES } from './board.mjs';
 import { armySideLabel, armyAssignmentText, armyBoardGeometry, armyPoint, armyCellPosition, fitArmyBoard, armyCellLabel, armyTargets, armyIntent, armyTransition, armyResultText, armyLastActionText, armyUsesFlagTransport, armyFlagMarks, armyPickups, armyRulePages, armyRuleModeLabel } from './presentation.mjs';
 import { gameViewport } from '../../game-viewport.mjs';
+import { mountArmyMotion } from './motion-ui.mjs';
 
 const $ = id => document.getElementById(id);
 const roomCode = new URLSearchParams(location.search).get('code') || '';
 const loginFailure = new URLSearchParams(location.search).get('login');
 let loginConflictNotified = false;
 const audio = createGameAudio();
+const objectMotion = mountArmyMotion();
 let view = null, client = null, chat = null, connection = 'offline', selected = null, busy = false, leaving = false;
 let baseline = true, boardSignature = '', activityPage = 0, rulePage = 0;
 let boardGeometry = armyBoardGeometry();
@@ -112,6 +114,7 @@ function renderBoard() {
     return button;
   }).filter(Boolean);
   $('army-cells').replaceChildren(...cells);
+  objectMotion.sync();
   $('army-cancel').disabled = !selected;
   requestAnimationFrame(fitBoard);
 }
@@ -265,10 +268,12 @@ function renderRules() {
 function applyView(next) {
   if (next.gameType !== 'army-flip') { clearPrivate(); try { location.replace(roomHref(roomCode, next.gameType)); } catch { clearPrivate({status:503}); } return; }
   const previous = view, soundBaseline=baseline || document.hidden || connection!=='online';
+  const motionPlan = objectMotion.prepare(previous, next, { baseline: soundBaseline });
   const effects = armyTransition(previous,next,{baseline:soundBaseline});
   const phaseCue=audio.phaseCue(previous,next,{baseline:soundBaseline}); baseline = false;
   if (!previous || previous.matchId !== next.matchId || previous.game?.revision !== next.game?.revision || previous.phase !== next.phase || previous.selfRole !== next.selfRole) {selected=null;closePickupChoice();}
   view=next; receiveTurnClock(); if((view.phase!=='playing' || spectator()) && $('army-resign-dialog').open) $('army-resign-dialog').close(); renderRoom();
+  objectMotion.play(motionPlan);
   if (!selected) feedback(`${effects.changed?armyLastActionText(next):''}${turnText()}`);
   const publicCue=effects.changed?audio.armyCue(next.game?.lastAction):null;
   const cue=['draw','placement'].includes(effects.cue)?publicCue:effects.cue;
@@ -289,6 +294,7 @@ async function action(type, fields = {}) {
   finally { if(roomSession.current(fence)) { busy=false; renderRoom(); if(!selected) feedback(`${accepted && view?.game?.lastAction?.playerId===view.selfId?armyLastActionText(view):''}${turnText()}`); } }
 }
 function clearPrivate(error = {}, {preserveDraft=error.status===503} = {}) {
+  objectMotion.cancel();
   roomSession.invalidate();
   closePickupChoice();
   client?.stop(); chat?.clear({preserveDraft}); client=null; view=null; selected=null; busy=false; leaving=false; roomExit.reset(); connection='offline'; baseline=true; boardSignature=''; activityPage=0; resetTurnClock();

@@ -20,6 +20,9 @@ export function normalizeRecentRoom(entry) {
 export function roomPhaseLabel(phase) { return PHASE_LABELS[phase] || '原来的房间'; }
 export function exitConsequence(phase,{role,gameType,playerCount}={}) {
   if(role==='spectator')return '退出观战，不会中止玩家的牌局。';
+  if(gameType==='hyakki-trading' && ['playing','paused'].includes(phase)) return playerCount===2
+    ? '退出视为认输，对手获胜；当前材料保存为终局，不再继续经营。'
+    : '退出会取消整局，不计输赢；所有材料冻结保存，其他朋友可以重新开局。';
   if(gameType==='poker414-2' && phase==='playing') {
     const count=Number.isInteger(playerCount) && playerCount>=3 && playerCount<=8?playerCount-1:null;
     return count===null?'退出将结束本局，并给其余每位参赛者5分，从你的累计积分中扣除。观众不参与。'

@@ -1,5 +1,5 @@
 import { GOODS } from './content/definitions.mjs';
-import { requireRule, definition, player, opponent, emptyGoods, goodsCount, addSilver,
+import { RuleError, requireRule, definition, player, opponent, pairIds, isMultiplayer, beginMerchantResponse, emptyGoods, goodsCount, addSilver,
   moveGoods, removeCard, discardCards, drawCards, availableCards, ordinaryCapacity,
   refreshTemporary, createPending, setChoice, clearChoice, completePending, receiveGoods, emit } from './model.mjs';
 import { beginAuction } from './auction.mjs';
@@ -35,7 +35,10 @@ export const CHARACTER_PENDING_CONTRACTS = Object.freeze(Object.fromEntries(Obje
   M07: { stages: ['start', 'return'], data: [], choices: ['return-card'] },
   M08: { stages: ['start', 'borrow'], data: ['toolCardId'], choices: ['borrow-tool'] },
 }).map(([code, contract]) => [code, Object.freeze({ ...contract,
-  stages: Object.freeze(contract.stages), data: Object.freeze(contract.data), choices: Object.freeze(contract.choices) })])));
+  stages: Object.freeze([...contract.stages, ...(code === 'M08' ? ['borrowed-target'] : [])]),
+  data: Object.freeze([...contract.data, ...(['C01', 'C08'].includes(code) || code.startsWith('M') ? ['targetId'] : []),
+    ...(code === 'M08' ? ['borrowedTargetId'] : [])]),
+  choices: Object.freeze([...contract.choices, ...(code === 'M08' ? ['borrowed-target'] : [])]) })])));
 
 const goodsIds = Object.freeze(GOODS.map(item => item.id).sort());
 const sorted = cards => [...cards].sort();
@@ -49,6 +52,11 @@ const canPayTribute = (owner, peer) => peer.silver >= 2 && Number.isSafeInteger(
 const publicTools = state => sorted(state.discard.filter(id => definition(id).category === 'tool'));
 const hasMoney = state => state.players.some(owner => owner.silver >= 1);
 const stockTypes = stock => goodsIds.filter(id => stock[id] > 0);
+const pairedCharacter = code => ['C01', 'C08'].includes(code) || /^M0[1-8]$/u.test(code);
+const pairedActors = state => pairIds(state, state.pending.ownerId).map(id => player(state, id));
+const nextPairActor = (state, actorId) => pairIds(state, state.pending.ownerId).find(id => id !== actorId);
+const borrowedTargetOptions = (state, ownerId, toolId) => state.players.filter(actor => actor.id !== ownerId
+  && !toolProblem(state, ownerId, toolId, { targetId: actor.id }, { borrowed: true })).map(actor => ({ targetId: actor.id }));
 const exchangeOptions = (state, owner) => stockTypes(owner.goods).flatMap(fromGoodsId =>
   goodsIds.filter(toGoodsId => toGoodsId !== fromGoodsId && state.bankGoods[toGoodsId] >= owner.goods[fromGoodsId])
     .map(toGoodsId => ({ fromGoodsId, toGoodsId })));
@@ -104,8 +112,15 @@ export function characterProblem(state, ownerId, copyId, params = {}) {
   const card = definition(copyId), code = card.sourceCode;
   if (!implementedCharacterCodes.includes(code)) return '这张牌不是人物牌。';
   if (code === 'C04' || code === 'C07') return '这张人物只能在对应回应窗口使用。';
-  if (!fields(params, code === 'M01' ? ['goodsId'] : code === 'M08' ? ['toolCardId'] : [])) return '人物参数无效。';
-  const peer = opponent(state, ownerId), stock = goodsCount(owner.goods), draws = availableCards(state);
+  const allowed = [...(code === 'M01' ? ['goodsId'] : code === 'M08' ? ['toolCardId'] : []),
+    ...(isMultiplayer(state) && pairedCharacter(code) ? ['targetId'] : [])];
+  if (!fields(params, allowed)) return '人物参数无效。';
+  let peer = null;
+  if (pairedCharacter(code)) {
+    try { peer = opponent(state, ownerId, params.targetId); }
+    catch (error) { if (error instanceof RuleError) return error.message; throw error; }
+  }
+  const stock = goodsCount(owner.goods), draws = availableCards(state);
   switch (code) {
     case 'C01': return draws || goodsCount(state.bankGoods) ? null : '没有可获得的牌或货物。';
     case 'C02': return draws ? null : '没有可抽的牌。';
@@ -120,7 +135,7 @@ export function characterProblem(state, ownerId, copyId, params = {}) {
     case 'C13': return sellableCount(owner) ? null : '没有可出售的库存或银两已达上限。';
     case 'M01': return goodsIds.includes(params.goodsId) && peer.goods[params.goodsId] >= 1 ? null : '请选择对手现有的一件货物。';
     case 'M02': return handWithout(owner, copyId).length + peer.hand.length ? null : '双方没有可分配的手牌。';
-    case 'M03': return state.players.some(item => item.tools.length > 1) ? null : '双方均没有多余道具。';
+    case 'M03': return owner.tools.length > 1 || peer.tools.length > 1 ? null : '双方均没有多余道具。';
     case 'M04': return canPayTribute(owner, peer) || draws ? null : '当前无法支付两两，也没有可抽牌。';
     case 'M05': return stock + goodsCount(peer.goods) ? null : '双方没有可分配的库存。';
     case 'M06': return owner.tools.length + peer.tools.length ? null : '双方没有可分配的道具。';
@@ -133,10 +148,12 @@ export function characterProblem(state, ownerId, copyId, params = {}) {
 export function startCharacter(state, copyId, params = {}, ctx) {
   const code = definition(copyId).sourceCode, ownerId = state.turnPlayerId;
   requireRule(implementedCharacterCodes.includes(code) && !['C04', 'C07'].includes(code), '这张牌不能主动发动。');
+  const peer = pairedCharacter(code) ? opponent(state, ownerId, params.targetId) : null;
   createPending(state, { kind: 'character', ownerId, code, sourceCards: [copyId],
-    data: code === 'M01' ? { goodsId: params.goodsId } : code === 'M08' ? { toolCardId: params.toolCardId } : {} });
+    data: { ...(code === 'M01' ? { goodsId: params.goodsId } : code === 'M08' ? { toolCardId: params.toolCardId } : {}),
+      ...(isMultiplayer(state) && peer ? { targetId: peer.id } : {}) } });
   if (code.startsWith('M')) {
-    state.pending.response = { kind: 'counter', actorId: opponent(state, ownerId).id, tradeCardId: null };
+    state.pending.response = { kind: 'counter', actorId: peer.id, tradeCardId: null };
     return;
   }
   continueCharacter(state, ctx);
@@ -157,7 +174,7 @@ function continueBenefits(state, ctx) {
   completePending(state);
 }
 function continueToolKeeping(state) {
-  const pending = state.pending, order = [pending.ownerId, opponent(state, pending.ownerId).id];
+  const pending = state.pending, order = pairIds(state, pending.ownerId);
   while (pending.data.playerIndex < order.length) {
     const actor = player(state, order[pending.data.playerIndex]);
     if (actor.tools.length <= 1) { pending.data.playerIndex++; continue; }
@@ -174,11 +191,11 @@ function continueDraft(state, kind) {
   if (kind === 'goods' ? !goodsCount(pending.goods) : !pending.poolCards.length) { completePending(state); return; }
   const eligible = id => kind === 'goods' ? canDraftGood(state, id) : kind === 'tools' ? player(state, id).tools.length < 3 : true;
   let actorId = pending.data.nextActorId;
-  if (!eligible(actorId)) actorId = opponent(state, actorId).id;
+  if (!eligible(actorId)) actorId = nextPairActor(state, actorId);
   if (!eligible(actorId)) {
     if (kind === 'goods') moveGoods(pending.goods, state.bankGoods, { ...pending.goods });
     else { discardCards(state, pending.poolCards, { sort: true }); pending.poolCards = []; }
-    for (const actor of state.players) refreshTemporary(actor);
+    for (const actor of pairedActors(state)) refreshTemporary(actor);
     completePending(state); return;
   }
   pending.data.nextActorId = actorId;
@@ -192,7 +209,7 @@ export function continueCharacter(state, ctx) {
   const pending = state.pending;
   requireRule(pending?.kind === 'character', '当前没有人物效果。');
   if (pending.response || pending.choice || pending.receipt) return;
-  const owner = player(state, pending.ownerId), peer = opponent(state, owner.id);
+  const owner = player(state, pending.ownerId), peer = pairedCharacter(pending.code) ? opponent(state, owner.id) : null;
   if (pending.stage === 'done') { completePending(state); return; }
   switch (pending.code) {
     case 'C01': continueBenefits(state, ctx); return;
@@ -252,8 +269,8 @@ export function continueCharacter(state, ctx) {
     }
     case 'M05':
       if (pending.stage === 'start') {
-        pending.data.tempPaid = Object.fromEntries(state.players.map(actor => [actor.id, actor.temporaryOccupied]));
-        for (const actor of state.players) { moveGoods(actor.goods, pending.goods, { ...actor.goods }); refreshTemporary(actor); }
+        pending.data.tempPaid = Object.fromEntries(pairedActors(state).map(actor => [actor.id, actor.temporaryOccupied]));
+        for (const actor of pairedActors(state)) { moveGoods(actor.goods, pending.goods, { ...actor.goods }); refreshTemporary(actor); }
         pending.stage = 'draft'; pending.data.nextActorId = owner.id;
       }
       continueDraft(state, 'goods'); return;
@@ -277,8 +294,15 @@ export function continueCharacter(state, ctx) {
         requireRule(index >= 0, '目标道具已不存在。');
         const [removed] = peer.tools.splice(index, 1); discardCards(state, [removed.cardId]); pending.stage = 'borrow';
       }
-      choose(state, 'borrow-tool', owner.id, toolProblem(state, owner.id, pending.data.toolCardId, {}, { borrowed: true })
-        ? [{ borrow: false }] : [{ borrow: true }, { borrow: false }]); return;
+      if (pending.stage === 'borrowed-target') {
+        choose(state, 'borrowed-target', owner.id, borrowedTargetOptions(state, owner.id, pending.data.toolCardId), { visibility: 'public' }); return;
+      }
+      {
+        const pairedTool = ['T02', 'T04'].includes(definition(pending.data.toolCardId).sourceCode) && isMultiplayer(state);
+        const canBorrow = pairedTool ? borrowedTargetOptions(state, owner.id, pending.data.toolCardId).length > 0
+          : !toolProblem(state, owner.id, pending.data.toolCardId, {}, { borrowed: true });
+        choose(state, 'borrow-tool', owner.id, canBorrow ? [{ borrow: true }, { borrow: false }] : [{ borrow: false }]); return;
+      }
     default: requireRule(false, '当前人物不能主动结算。');
   }
 }
@@ -287,7 +311,8 @@ export function continueCharacter(state, ctx) {
 export function chooseCharacter(state, selection, ctx) {
   const pending = state.pending, choice = pending?.choice;
   requireRule(pending?.kind === 'character' && choice && !pending.response && !pending.receipt, '当前没有人物选择。');
-  const owner = player(state, pending.ownerId), peer = opponent(state, owner.id), actor = player(state, choice.actorId);
+  const owner = player(state, pending.ownerId), peer = pairedCharacter(pending.code) ? opponent(state, owner.id) : null,
+    actor = player(state, choice.actorId);
   switch (choice.kind) {
     case 'benefit-branch':
       pending.data.branch = checkedBranch(selection, ['draw', 'goods']); pending.data.benefitIndex = 0; pending.stage = 'benefits'; break;
@@ -310,7 +335,7 @@ export function chooseCharacter(state, selection, ctx) {
       requireRule(pending.sourceCards.includes(tradeCardId) && goodsCount(definition(tradeCardId).goods) === 3, '买办货物牌无效。');
       moveGoods(owner.goods, state.bankGoods, goods); refreshTemporary(owner);
       addSilver(owner, definition(tradeCardId).sellSilver + 2 * state.bookLayers);
-      pending.stage = 'merchant'; pending.response = { kind: 'merchant', actorId: peer.id, tradeCardId };
+      pending.stage = 'merchant'; beginMerchantResponse(state, tradeCardId);
       emit(state, { type: 'trade-sold', actorSeatId: owner.id, cardId: definition(tradeCardId).id,
         goods: goodsIds.filter(id => goods[id]).map(id => ({ id, count: goods[id] })),
         silver: definition(tradeCardId).sellSilver + 2 * state.bookLayers }); break;
@@ -360,7 +385,7 @@ export function chooseCharacter(state, selection, ctx) {
     }
     case 'draft-card': {
       const id = checkedCard(selection, pending.poolCards); removeCard(pending.poolCards, id); actor.hand.push(id);
-      pending.data.nextActorId = opponent(state, actor.id).id; break;
+      pending.data.nextActorId = nextPairActor(state, actor.id); break;
     }
     case 'keep-tool': {
       const id = checkedCard(selection, actor.tools.map(tool => tool.cardId));
@@ -384,13 +409,13 @@ export function chooseCharacter(state, selection, ctx) {
         if (!pending.data.tempPaid[actor.id]) { addSilver(actor, -2); pending.data.tempPaid[actor.id] = true; }
         actor.temporaryOccupied = true;
       }
-      pending.data.nextActorId = opponent(state, actor.id).id; break;
+      pending.data.nextActorId = nextPairActor(state, actor.id); break;
     }
     case 'draft-tool': {
       const id = checkedCard(selection, pending.poolCards);
       requireRule(actor.tools.length < 3, '道具区已满。');
       removeCard(pending.poolCards, id); actor.tools.push({ cardId: id, exhausted: false });
-      pending.data.nextActorId = opponent(state, actor.id).id; break;
+      pending.data.nextActorId = nextPairActor(state, actor.id); break;
     }
     case 'return-card': {
       const id = checkedCard(selection, owner.hand); removeCard(owner.hand, id); peer.hand.push(id);
@@ -400,9 +425,20 @@ export function chooseCharacter(state, selection, ctx) {
       requireRule(fields(selection, ['borrow', 'params']) && typeof selection.borrow === 'boolean'
         && (selection.params === undefined || fields(selection.params, [])), '借用选择无效。');
       if (!selection.borrow) { clearChoice(state); completePending(state); return; }
+      if (isMultiplayer(state) && ['T02', 'T04'].includes(definition(pending.data.toolCardId).sourceCode)) {
+        requireRule(borrowedTargetOptions(state, owner.id, pending.data.toolCardId).length > 0, '当前没有可借用的目标。');
+        pending.stage = 'borrowed-target'; break;
+      }
       const problem = toolProblem(state, owner.id, pending.data.toolCardId, {}, { borrowed: true });
       requireRule(!problem, problem ?? '当前无法借用该道具。');
       const target = pending.data.toolCardId; clearChoice(state); startTool(state, target, {}, ctx, { borrowed: true }); return;
+    }
+    case 'borrowed-target': {
+      requireRule(fields(selection, ['targetId']) && borrowedTargetOptions(state, owner.id, pending.data.toolCardId)
+        .some(option => option.targetId === selection.targetId), '请选择当前可借用的其他参赛者。');
+      pending.data.borrowedTargetId = selection.targetId;
+      const toolId = pending.data.toolCardId; clearChoice(state);
+      startTool(state, toolId, { targetId: selection.targetId }, ctx, { borrowed: true }); return;
     }
     default: requireRule(false, '未知的人物选择。');
   }

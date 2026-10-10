@@ -3,7 +3,7 @@ import { randomInt } from 'node:crypto';
 import * as core from '../../../app/games/hyakki-trading/rules.mjs';
 import { privateView, spectatorView } from '../../../app/games/hyakki-trading/view.mjs';
 import { gameProblem, plainObject, exactFields, integer, seatId, validCopy } from '../../../app/games/hyakki-trading/validation.mjs';
-import { DIGITAL_RULE_VERSION } from '../../../app/games/hyakki-trading/content/definitions.mjs';
+import { DIGITAL_RULE_VERSION, MULTIPLAYER_RULE_VERSION } from '../../../app/games/hyakki-trading/content/definitions.mjs';
 import { currentDecision } from '../../../app/games/hyakki-trading/decision.mjs';
 import { DEFAULT_ACTION_LIMIT, DEFAULT_GOODS_PER_TYPE, goodsPerTypeOf,
   validActionLimit, validGoodsPerType } from '../../../app/games/hyakki-trading/model.mjs';
@@ -22,7 +22,7 @@ const actionExtras = Object.freeze({ peek: [], 'keep-peek': [], 'discard-peek': 
 const token = value => typeof value === 'string' && value.length > 0 && value.length <= 180 && !/\p{Cc}/u.test(value);
 const validConfiguration = value => (exactFields(value, ['actionLimit']) || exactFields(value, ['actionLimit', 'goodsPerType']))
   && validActionLimit(value.actionLimit) && validGoodsPerType(goodsPerTypeOf(value));
-const reference = value => validCopy(value) || typeof value === 'string' && /^(?:tool-[01]|discard|pool|source):\d+:\d+$/u.test(value);
+const reference = value => validCopy(value) || typeof value === 'string' && /^(?:tool-[0-5]|discard|pool|source):\d+:\d+$/u.test(value);
 const jsonInput = (value, depth = 0) => depth < 7 && (value === null || typeof value === 'boolean' || integer(value)
   || typeof value === 'string' && value.length <= 180 || Array.isArray(value) && value.length <= 110 && value.every(item => jsonInput(item, depth + 1))
   || plainObject(value) && Object.keys(value).length <= 12 && Object.entries(value).every(([key, item]) => /^[A-Za-z][A-Za-z0-9-]{0,40}$/u.test(key) && jsonInput(item, depth + 1)));
@@ -78,11 +78,11 @@ function roomStateProblem(room, hasRoles) {
   const game = room.game, ids = game.players.map(player => player.id);
   if (game.matchId !== room.matchId || room.matchStartedAt !== game.lifecycle.startedAt || game.actionLimit !== room.hyakkiConfig.actionLimit
       || goodsPerTypeOf(game) !== goodsPerTypeOf(room.hyakkiConfig)
-      || !Array.isArray(room.matchParticipants) || room.matchParticipants.length !== 2
-      || new Set(room.matchParticipants.map(entry => entry.userKey)).size !== 2
-      || room.matchParticipants.some(entry => !exactFields(entry, ['playerId', 'name', 'userKey']) || !ids.includes(entry.playerId)
+      || !Array.isArray(room.matchParticipants) || room.matchParticipants.length !== ids.length
+      || new Set(room.matchParticipants.map(entry => entry.userKey)).size !== ids.length
+      || room.matchParticipants.some((entry, index) => !exactFields(entry, ['playerId', 'name', 'userKey']) || entry.playerId !== ids[index]
         || !/^[a-f0-9]{64}$/u.test(entry.userKey ?? '') || typeof entry.name !== 'string' || !entry.name.length)
-      || new Set(room.matchParticipants.map(entry => entry.playerId)).size !== 2
+      || new Set(room.matchParticipants.map(entry => entry.playerId)).size !== ids.length
       || room.players.some(player => { const frozen = room.matchParticipants.find(entry => entry.playerId === player.id);
         return !frozen || frozen.userKey !== player.userKey || frozen.name !== player.name; })
       || room.spectators.some(player => ids.includes(player.id))) return '冻结参赛者与房间不一致。';
@@ -96,15 +96,15 @@ function roomStateProblem(room, hasRoles) {
 }
 
 export function createHyakkiAdapter({ maxSnapshotBytes = 256 * 1024 } = {}) {
-  return Object.freeze({ gameType, minPlayers: 2, maxPlayers: 2, ruleVersions: Object.freeze([DIGITAL_RULE_VERSION]),
+  return Object.freeze({ gameType, minPlayers: 2, maxPlayers: 6, ruleVersions: Object.freeze([DIGITAL_RULE_VERSION, MULTIPLAYER_RULE_VERSION]),
     actionTypes: Object.freeze(Object.keys(actionExtras)), configurationFields: Object.freeze(['hyakkiConfig']),
     usesActionIntents: true, usesPresenceLifecycle: true, maxSnapshotBytes, historyPlayerFields: Object.freeze(['wealth']),
     actionFields: type => Object.hasOwn(actionExtras, type) ? [...fences, ...actionExtras[type]] : null,
     validateAction: action => Object.hasOwn(actionExtras, action?.type) ? actionProblem(action) : null,
     createGame: (players, options) => core.createGame(players.map(player => player.id), options),
     gameOptions(room, options) {
-      const source = options.serverRandomInt ?? randomInt, first = source(2);
-      if (!integer(first, 0, 1)) throw new TypeError('服务端随机结果无效。');
+      const source = options.serverRandomInt ?? randomInt, first = source(room.players.length);
+      if (!integer(first, 0, room.players.length - 1)) throw new TypeError('服务端随机结果无效。');
       return { matchId: options.matchId, actionLimit: room.hyakkiConfig.actionLimit, goodsPerType: goodsPerTypeOf(room.hyakkiConfig), firstPlayerId: room.players[first].id,
         now: options.now, presence: options.presence, randomInt: source };
     },
@@ -123,15 +123,17 @@ export function createHyakkiAdapter({ maxSnapshotBytes = 256 * 1024 } = {}) {
       return { updates: { hyakkiConfig: { actionLimit: config.actionLimit,
         goodsPerType: Object.hasOwn(config, 'goodsPerType') ? config.goodsPerType : goodsPerTypeOf(room.hyakkiConfig) } } };
     },
-    roomView: room => ({ hyakkiConfig: { ...clone(room.hyakkiConfig), goodsPerType: goodsPerTypeOf(room.hyakkiConfig) }, exitPolicy: 'resign' }),
+    roomView: room => ({ hyakkiConfig: { ...clone(room.hyakkiConfig), goodsPerType: goodsPerTypeOf(room.hyakkiConfig) },
+      exitPolicy: (room.game?.players.length ?? room.players?.length ?? 2) > 2 ? 'cancel' : 'resign' }),
     playerSummary: (view, playerId) => ({ handCount: view?.players.find(player => player.id === playerId)?.handCount ?? 0 }),
     playerResult(result, playerId) { return { outcome: result?.aborted ? 'unscored'
       : result?.winnerIds?.includes(playerId) ? 'win' : result ? 'loss' : 'unscored', remainingPoints: null,
       wealth: result?.wealth?.find(entry => entry.playerId === playerId)?.silver ?? null }; },
     historyPlayerProblem: (status, player) => player.remainingPoints !== null || !integer(player.wealth)
       || (status === 'aborted' ? player.outcome !== 'unscored' : !['win', 'loss'].includes(player.outcome)),
-    historyOutcomeProblem: (wins, draws, count) => count !== 2 || wins !== 1 || draws !== 0,
+    historyOutcomeProblem: (wins, draws, count) => count < 2 || count > 6 || wins !== 1 || draws !== 0,
     historySummaryProblem(summary) {
+      if (summary.ruleVersion === DIGITAL_RULE_VERSION && summary.players.length !== 2) return true;
       if (summary.status === 'aborted') return !['absence-expired', 'room-expired', 'cancelled'].includes(summary.reason);
       if (!['normal-close', 'voluntary-leave'].includes(summary.reason)) return true;
       if (summary.reason === 'normal-close') {
@@ -140,8 +142,9 @@ export function createHyakkiAdapter({ maxSnapshotBytes = 256 * 1024 } = {}) {
       }
       return false;
     },
-    snapshotSchema: () => 13,
-    snapshotProblem: data => ![12, 13].includes(data?.schemaVersion) || data.gameType !== gameType || !Object.hasOwn(data, 'turnClock')
+    snapshotSchema: () => 14,
+    snapshotProblem: data => ![12, 13, 14].includes(data?.schemaVersion) || data.gameType !== gameType || !Object.hasOwn(data, 'turnClock')
+      || data.schemaVersion !== 14 && (data.game?.version === 2 || data.game?.ruleVersion === MULTIPLAYER_RULE_VERSION || data.players?.length > 2)
       || data.schemaVersion === 12 && (Object.hasOwn(data.hyakkiConfig ?? {}, 'goodsPerType') || Object.hasOwn(data.game ?? {}, 'goodsPerType'))
       || Buffer.byteLength(JSON.stringify(data), 'utf8') > maxSnapshotBytes,
     roomStateProblem, gameStatusForRoomPhase: phase => ['finished', 'aborted'].includes(phase) ? phase : 'playing',

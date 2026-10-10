@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createGame, applyGameAction, currentDecision, gameProblem } from './rules.mjs';
-import { createDeck, GOODS } from './content/definitions.mjs';
+import { createDeck, GOODS, DIGITAL_RULE_VERSION } from './content/definitions.mjs';
 import { definition, emptyGoods, goodsCount, refreshTemporary } from './model.mjs';
 import { implementedCharacterCodes, characterProblem } from './effects.mjs';
 
@@ -9,7 +9,7 @@ const ids = ['a'.repeat(32), 'b'.repeat(32)];
 const ctx = { now: 1000, randomInt: limit => limit - 1 };
 const goods = entries => ({ ...emptyGoods(), ...entries });
 function fixture(code) {
-  const state = createGame(ids, { ...ctx, matchId: 'c'.repeat(32), actionLimit: 10, goodsPerType: 6, firstPlayerId: ids[0] });
+  const state = createGame(ids, { ...ctx, matchId: 'c'.repeat(32), actionLimit: 10, goodsPerType: 6, firstPlayerId: ids[0], ruleVersion: DIGITAL_RULE_VERSION });
   state.deck = [...state.deck, ...state.players.flatMap(owner => owner.hand)].sort();
   state.players.forEach(owner => { owner.hand = []; });
   state.stage = 'use'; state.drawStarted = true;

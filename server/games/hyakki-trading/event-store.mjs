@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { recordKey, decryptStoredRecord } from '../../storage.mjs';
-import { CARDS, GOODS, CONTENT_VERSION, DIGITAL_RULE_VERSION } from '../../../app/games/hyakki-trading/content/definitions.mjs';
+import { CARDS, GOODS, CONTENT_VERSION, DIGITAL_RULE_VERSION, MULTIPLAYER_RULE_VERSION } from '../../../app/games/hyakki-trading/content/definitions.mjs';
 import { MAX_GOODS_PER_TYPE } from '../../../app/games/hyakki-trading/model.mjs';
 
 export const HYAKKI_EVENT_SCOPES = Object.freeze({ events: 'hyakki-events', meta: 'hyakki-event-meta' });
@@ -76,9 +76,10 @@ export function validateHyakkiPublicEvent(value) {
 const matchFields = ['roomId', 'matchId', 'ruleVersion', 'contentVersion', 'startedAt', 'participants'];
 function validMatch(value) {
   return exact(value, matchFields) && HEX32.test(value.roomId ?? '') && HEX32.test(value.matchId ?? '')
-    && value.ruleVersion === DIGITAL_RULE_VERSION && value.contentVersion === CONTENT_VERSION && integer(value.startedAt)
-    && Array.isArray(value.participants) && value.participants.length === 2
-    && new Set(value.participants.map(player => player?.seatId)).size === 2 && new Set(value.participants.map(player => player?.userKey)).size === 2
+    && [DIGITAL_RULE_VERSION, MULTIPLAYER_RULE_VERSION].includes(value.ruleVersion) && value.contentVersion === CONTENT_VERSION && integer(value.startedAt)
+    && Array.isArray(value.participants) && value.participants.length >= 2 && value.participants.length <= (value.ruleVersion === DIGITAL_RULE_VERSION ? 2 : 6)
+    && new Set(value.participants.map(player => player?.seatId)).size === value.participants.length
+    && new Set(value.participants.map(player => player?.userKey)).size === value.participants.length
     && value.participants.every(player => exact(player, ['seatId', 'userKey']) && HEX32.test(player.seatId ?? '') && HEX64.test(player.userKey ?? ''));
 }
 function validGroup(value) {
@@ -168,8 +169,8 @@ export function validateHyakkiEventState(rows, { rooms = null, summaries = [], n
     const relevantSummaries = summaries.filter(summary => summary.game === 'hyakki-trading');
     const roomByMatch = new Map(relevantRooms.map(room => [room.matchId, room]));
     const summaryByMatch = new Map(relevantSummaries.map(summary => [summary.matchId, summary]));
-    const samePeople = (people, expected) => same([...people].sort((a, b) => a.seatId.localeCompare(b.seatId)),
-      [...expected].sort((a, b) => a.seatId.localeCompare(b.seatId)));
+    // Seat order is part of a frozen match, including auction and closing order.
+    const samePeople = (people, expected) => same(people, expected);
     for (const head of heads.values()) {
       const room = roomByMatch.get(head.match.matchId), summary = summaryByMatch.get(head.match.matchId);
       if (!['terminal', 'pruning'].includes(head.phase) && !room) fail('GAME_HISTORY_REFERENCE');

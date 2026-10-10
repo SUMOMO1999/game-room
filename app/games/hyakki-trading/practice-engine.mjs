@@ -7,6 +7,7 @@ import { DEFAULT_ACTION_LIMIT, DEFAULT_GOODS_PER_TYPE, validActionLimit, validGo
 
 export const PRACTICE_SELF = '00000000000000000000000000000001';
 export const PRACTICE_BOT = '00000000000000000000000000000002';
+export const PRACTICE_BOTS = Object.freeze(Array.from({ length: 5 }, (_, index) => (index + 2).toString(16).padStart(32, '0')));
 export const PRACTICE_STORAGE_KEY = 'game-room:hyakki-trading:practice:v1';
 const SAVE_KEYS = ['version', 'kind', 'matchId', 'logicalNow', 'rngState', 'game'];
 const CLOCK_TICK = 250, MAX_ELAPSED = 2000;
@@ -16,14 +17,17 @@ const exactKeys = (value, keys) => plain(value) && Object.keys(value).length ===
 const stamp = value => Number.isSafeInteger(value) && value >= 0 && value < Number.MAX_SAFE_INTEGER - 2000000;
 const validId = value => typeof value === 'string' && /^[0-9a-f]{32}$/u.test(value);
 const validSeed = value => Number.isInteger(value) && value > 0 && value <= 0xffffffff;
+const validPlayerCount = value => Number.isInteger(value) && value >= 2 && value <= 6;
+const practiceIds = count => [PRACTICE_SELF, ...PRACTICE_BOTS.slice(0, count - 1)];
 const saveNote = '练习保存在这个浏览器，不计入正式积分。';
 function savedProblem(saved) {
-  if (!exactKeys(saved, SAVE_KEYS) || saved.version !== 1 || saved.kind !== 'hyakki-local-practice'
+  if (!exactKeys(saved, SAVE_KEYS) || ![1, 2].includes(saved.version) || saved.kind !== 'hyakki-local-practice'
       || !validId(saved.matchId) || !stamp(saved.logicalNow) || !validSeed(saved.rngState)) return '练习存档版本或字段无效。';
   const issue = gameProblem(saved.game); if (issue) return issue;
   const game = saved.game;
   if (game.matchId !== saved.matchId || game.committedAt > saved.logicalNow || game.lifecycle.startedAt !== 0
-      || game.players[0].id !== PRACTICE_SELF || game.players[1].id !== PRACTICE_BOT
+      || !validPlayerCount(game.players.length) || game.players.some((player, index) => player.id !== practiceIds(game.players.length)[index])
+      || saved.version !== game.version || saved.version === 1 && game.players.length !== 2
       || game.lifecycle.manual || game.lifecycle.absence || game.lifecycle.capacity
       || !['playing', 'finished'].includes(game.status)) return '本机练习身份、时间或牌局归属无效。';
   return null;
@@ -47,14 +51,14 @@ function randomStream(seed) {
     return state % limit;
   } };
 }
-function fresh({ actionLimit, goodsPerType, seed, requestId }) {
-  if (!validActionLimit(actionLimit) || !validGoodsPerType(goodsPerType)) throw failure('PRACTICE_OPTIONS_INVALID', '每回合行动数需要在1至10之间，每类货物需要在4至20之间。');
+function fresh({ actionLimit, goodsPerType, playerCount, seed, requestId }) {
+  if (!validActionLimit(actionLimit) || !validGoodsPerType(goodsPerType) || !validPlayerCount(playerCount)) throw failure('PRACTICE_OPTIONS_INVALID', '人数需要在2至6人之间，行动数1至10，每类货物4至20。');
   const matchId = requestId(); if (!validId(matchId)) throw failure('PRACTICE_ID_INVALID', '练习编号无效。');
   const initial = seed ?? (globalThis.crypto.getRandomValues(new Uint32Array(1))[0] || 1);
   if (!validSeed(initial)) throw failure('PRACTICE_RANDOM_INVALID', '练习随机种子无效。');
-  const random = randomStream(initial), firstPlayerId = random.randomInt(2) ? PRACTICE_BOT : PRACTICE_SELF;
-  const game = createGame([PRACTICE_SELF, PRACTICE_BOT], { matchId, now: 0, actionLimit, goodsPerType, firstPlayerId, randomInt: random.randomInt });
-  return { version: 1, kind: 'hyakki-local-practice', matchId, logicalNow: 0, rngState: random.state, game };
+  const ids = practiceIds(playerCount), random = randomStream(initial), firstPlayerId = ids[random.randomInt(playerCount)];
+  const game = createGame(ids, { matchId, now: 0, actionLimit, goodsPerType, firstPlayerId, randomInt: random.randomInt });
+  return { version: 2, kind: 'hyakki-local-practice', matchId, logicalNow: 0, rngState: random.state, game };
 }
 const successful = result => {
   if (!result.ok) throw failure(result.code || 'PRACTICE_ACTION_INVALID', result.error);
@@ -77,7 +81,7 @@ function validFields(type, fields) {
 /** Per-operation Web Locks plus a saved-text comparison prevent two pages from
  * overwriting one another. Without locks, practice remains explicitly unsaved. */
 export async function createHyakkiPracticeSession({ storage, key = PRACTICE_STORAGE_KEY, withLock, seed,
-  actionLimit = DEFAULT_ACTION_LIMIT, goodsPerType = DEFAULT_GOODS_PER_TYPE, requestId = () => globalThis.crypto.randomUUID().replaceAll('-', ''),
+  actionLimit = DEFAULT_ACTION_LIMIT, goodsPerType = DEFAULT_GOODS_PER_TYPE, playerCount = 2, requestId = () => globalThis.crypto.randomUUID().replaceAll('-', ''),
   now = () => globalThis.performance?.now() ?? Date.now(), canRun = () => true,
   onChange = () => {}, setTimer = setTimeout, clearTimer = clearTimeout, botDelayMs = 700 } = {}) {
   if (typeof key !== 'string' || !key || key.length > 256 || !Number.isSafeInteger(botDelayMs) || botDelayMs < 1 || botDelayMs > 60000
@@ -133,7 +137,7 @@ export async function createHyakkiPracticeSession({ storage, key = PRACTICE_STOR
   }
   function clearScheduled() { if (timer !== null) clearTimer(timer); timer = null; }
   function planComputer() {
-    botDueAt = saved?.game.status === 'playing' && actor(saved.game) === PRACTICE_BOT ? logicalNow + botDelayMs : null;
+    botDueAt = saved?.game.status === 'playing' && PRACTICE_BOTS.includes(actor(saved.game)) ? logicalNow + botDelayMs : null;
   }
   function commit(result, random) {
     const game = successful(result);
@@ -152,7 +156,7 @@ export async function createHyakkiPracticeSession({ storage, key = PRACTICE_STOR
       game.clock.remainingMs = game.clock.deadlineAt === null ? game.clock.remainingMs : Math.max(0, game.clock.deadlineAt - logicalNow);
       game.clock.paused ||= !running;
     }
-    return { game, selfId: PRACTICE_SELF, players: game?.players.map(player => ({ id: player.id, name: player.id === PRACTICE_SELF ? '我' : '电脑' })) ?? [],
+    return { game, selfId: PRACTICE_SELF, players: game?.players.map(player => ({ id: player.id, name: player.id === PRACTICE_SELF ? '我' : `电脑${PRACTICE_BOTS.indexOf(player.id) + 1}` })) ?? [],
       logicalNow, matchId: saved?.matchId ?? null, storageAvailable, storageNote, requiresRestart, conflict, active: running, destroyed };
   }
   function publish() { if (!destroyed) { try { onChange(snapshot()); } catch {} } }
@@ -172,11 +176,12 @@ export async function createHyakkiPracticeSession({ storage, key = PRACTICE_STOR
         if (generation !== epoch || !active || !runAllowed()) return;
         verifyUnchanged(); collectElapsed();
         if (expireDue()) return; // Never replay a queue of overdue decisions.
-        if (botDueAt !== null && logicalNow >= botDueAt && actor(saved.game) === PRACTICE_BOT) {
-          const command = chooseHyakkiPracticeAction(privateView(saved.game, PRACTICE_BOT), PRACTICE_BOT, { now: logicalNow });
+        if (botDueAt !== null && logicalNow >= botDueAt && PRACTICE_BOTS.includes(actor(saved.game))) {
+          const computerId = actor(saved.game);
+          const command = chooseHyakkiPracticeAction(privateView(saved.game, computerId), computerId, { now: logicalNow });
           if (!command) throw failure('PRACTICE_BOT_INVALID', '电脑暂时无法行动，请重新载入练习。');
           const random = randomStream(saved.rngState);
-          commit(applyGameAction(saved.game, PRACTICE_BOT, command, { now: logicalNow, randomInt: random.randomInt }), random);
+          commit(applyGameAction(saved.game, computerId, command, { now: logicalNow, randomInt: random.randomInt }), random);
         } else write({ ...saved, logicalNow });
       }).catch(error => {
         if (destroyed) return;
@@ -197,7 +202,7 @@ export async function createHyakkiPracticeSession({ storage, key = PRACTICE_STOR
     if (raw !== null) {
       saved = decodeHyakkiPractice(raw);
       if (!saved) { requiresRestart = true; storageNote = '练习存档损坏或版本不受支持，原存档未改变。请重新开始练习。'; }
-    } else write(fresh({ actionLimit, goodsPerType, seed, requestId }));
+    } else write(fresh({ actionLimit, goodsPerType, playerCount, seed, requestId }));
     logicalNow = saved?.logicalNow ?? 0; planComputer();
   });
   async function action(type, fields = {}) {
@@ -218,13 +223,13 @@ export async function createHyakkiPracticeSession({ storage, key = PRACTICE_STOR
     });
   }
   async function restart(options = {}) {
-    if (!plain(options) || Object.keys(options).some(key => !['actionLimit', 'goodsPerType'].includes(key))) {
+    if (!plain(options) || Object.keys(options).some(key => !['actionLimit', 'goodsPerType', 'playerCount'].includes(key))) {
       throw failure('PRACTICE_OPTIONS_INVALID', '本机练习配置无效。');
     }
-    const { actionLimit: limit = DEFAULT_ACTION_LIMIT, goodsPerType: stock = DEFAULT_GOODS_PER_TYPE } = options;
+    const { actionLimit: limit = DEFAULT_ACTION_LIMIT, goodsPerType: stock = DEFAULT_GOODS_PER_TYPE, playerCount: count = 2 } = options;
     return operation(() => {
       verifyUnchanged(); if (conflict) throw failure('PRACTICE_CONFLICT', storageNote);
-      const candidate = fresh({ actionLimit: limit, goodsPerType: stock, seed, requestId }); write(candidate);
+      const candidate = fresh({ actionLimit: limit, goodsPerType: stock, playerCount: count, seed, requestId }); write(candidate);
       logicalNow = 0; requiresRestart = false; epoch++; anchor = now(); planComputer();
       storageNote = storageAvailable ? saveNote : '本局仍可练习，但无法保存进度。'; return snapshot();
     });

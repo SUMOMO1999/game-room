@@ -6,7 +6,7 @@ import { chooseHyakkiPracticeAction } from './practice-bot.mjs';
 import { createGame, applyGameAction, gameProblem, currentDecision } from './rules.mjs';
 import { privateView } from './view.mjs';
 import { definition, refreshTemporary } from './model.mjs';
-import { createDeck, GOODS } from './content/definitions.mjs';
+import { createDeck, GOODS, DIGITAL_RULE_VERSION } from './content/definitions.mjs';
 
 const ids = [PRACTICE_SELF, PRACTICE_BOT], ctx = { now: 0, randomInt: limit => limit - 1 };
 const flush = () => new Promise(resolve => setImmediate(resolve));
@@ -37,7 +37,7 @@ function savedGame(game, logicalNow = 0) {
   return { version: 1, kind: 'hyakki-local-practice', matchId: game.matchId, logicalNow, rngState: 42, game };
 }
 function fixture(code, { ownerId = PRACTICE_SELF, full = false } = {}) {
-  const state = createGame(ids, { ...ctx, matchId: 'c'.repeat(32), firstPlayerId: ownerId });
+  const state = createGame(ids, { ...ctx, ruleVersion: DIGITAL_RULE_VERSION, matchId: 'c'.repeat(32), firstPlayerId: ownerId });
   state.deck.push(...state.players.flatMap(owner => owner.hand)); state.deck.sort(); state.players.forEach(owner => { owner.hand = []; });
   state.stage = 'use'; state.drawStarted = true;
   const owner = state.players.find(player => player.id === ownerId), peer = state.players.find(player => player.id !== ownerId);
@@ -79,7 +79,7 @@ test('new practice is paused, contains real materials and exposes exactly the hu
 });
 
 test('legacy six-goods practice restores untouched, while only explicit restart takes new configured stock', async () => {
-  const env = environment(), game = createGame(ids, { ...ctx, matchId: 'd'.repeat(32), actionLimit: 7, goodsPerType: 6 });
+  const env = environment(), game = createGame(ids, { ...ctx, ruleVersion: DIGITAL_RULE_VERSION, matchId: 'd'.repeat(32), actionLimit: 7, goodsPerType: 6 });
   delete game.goodsPerType;
   const pending = applyGameAction(game, PRACTICE_SELF, { type: 'peek', matchId: game.matchId, turnId: game.turnId }, ctx);
   assert.equal(pending.ok, true, pending.error);
@@ -181,7 +181,7 @@ test('sleeping device and inactive host do not fast-forward timers or replay com
 });
 
 test('queued duplicate human commands retain the viewed revision and cannot spend the next step', async () => {
-  const env = environment(); const game = createGame(ids, { ...ctx, matchId: 'd'.repeat(32) });
+  const env = environment(); const game = createGame(ids, { ...ctx, ruleVersion: DIGITAL_RULE_VERSION, matchId: 'd'.repeat(32) });
   env.values.set(PRACTICE_STORAGE_KEY, encodeHyakkiPractice(savedGame(game)));
   const session = await createHyakkiPracticeSession(env);
   await rejects(session.action('__proto__'), 'PRACTICE_ACTION_INVALID');
@@ -193,7 +193,7 @@ test('queued duplicate human commands retain the viewed revision and cannot spen
 });
 
 test('two local pages cannot overwrite a changed save; reload is explicit and paused', async () => {
-  const env = environment(), game = createGame(ids, { ...ctx, matchId: 'd'.repeat(32) });
+  const env = environment(), game = createGame(ids, { ...ctx, ruleVersion: DIGITAL_RULE_VERSION, matchId: 'd'.repeat(32) });
   env.values.set(PRACTICE_STORAGE_KEY, encodeHyakkiPractice(savedGame(game)));
   const first = await createHyakkiPracticeSession(env), second = await createHyakkiPracticeSession(env);
   await first.action('peek'); await first.action('keep-peek'); const text = env.values.get(PRACTICE_STORAGE_KEY);
@@ -205,7 +205,7 @@ test('two local pages cannot overwrite a changed save; reload is explicit and pa
 });
 
 test('invalid versions, duplicate material, foreign identity and unsupported saves are preserved until explicit restart', async () => {
-  const game = createGame(ids, { ...ctx, matchId: 'd'.repeat(32) }), valid = savedGame(game);
+  const game = createGame(ids, { ...ctx, ruleVersion: DIGITAL_RULE_VERSION, matchId: 'd'.repeat(32) }), valid = savedGame(game);
   for (const mutate of [value => { value.version = 2; }, value => { value.game.deck[0] = value.game.deck[1]; },
     value => { value.rngState = 0; }, value => { value.extra = true; }, value => { value.game.players[0].id = 'e'.repeat(32); }]) {
     const env = environment(), changed = structuredClone(valid); mutate(changed); const text = JSON.stringify(changed);
@@ -228,7 +228,7 @@ test('missing lock and read/write failures are explicitly unsaved; game remains 
 });
 
 test('rejected command cannot advance saved random state; restoration reproduces the next shuffle', async () => {
-  const env = environment(), game = createGame(ids, { ...ctx, matchId: 'd'.repeat(32) });
+  const env = environment(), game = createGame(ids, { ...ctx, ruleVersion: DIGITAL_RULE_VERSION, matchId: 'd'.repeat(32) });
   game.discard.push(...game.deck.splice(0)); const value = savedGame(game);
   env.values.set(PRACTICE_STORAGE_KEY, encodeHyakkiPractice(value));
   const session = await createHyakkiPracticeSession(env), before = env.values.get(PRACTICE_STORAGE_KEY);
@@ -265,5 +265,38 @@ for (const actionLimit of [1, 5, 10]) test(`session scheduling, human commands a
   const view = session.snapshot(); assert.equal(view.game.status, 'finished', view.storageNote); assert.equal(view.game.result.reason, 'normal-close');
   assert.ok(view.game.players.some(owner => owner.silver >= 60)); conserved(savedAt(env).game); assert.equal(env.timers.size, 0);
   assert.deepEqual([...env.values.keys()], [PRACTICE_STORAGE_KEY]); t.diagnostic(JSON.stringify({ actionLimit, turns: view.game.turnNumber, humanCommands: commands, restores }));
+  await session.destroy();
+});
+
+for (const playerCount of [3, 4, 5, 6]) test(`${playerCount}-seat practice runs only the current computer, saves all seats and finishes after reloads`, async t => {
+  const env = environment(37); let session = await createHyakkiPracticeSession({ ...env, playerCount });
+  assert.equal(savedAt(env).version, 2); assert.equal(savedAt(env).game.version, 2);
+  assert.equal(session.snapshot().players.length, playerCount); assert.equal(savedAt(env).game.deck.length, 110 - playerCount * 5);
+  assert.equal(session.snapshot().game.players.filter(player => Object.hasOwn(player, 'hand')).length, 1);
+  await session.setActive(true); let commands = 0, restores = 0;
+  for (let tick = 0; tick < 7000 && session.snapshot().game.status === 'playing'; tick++) {
+    const view = session.snapshot(), command = chooseHyakkiPracticeAction(view.game, PRACTICE_SELF, { now: view.logicalNow });
+    if (command) { await session.action(command.type, fields(command)); commands++; }
+    else {
+      const before = savedAt(env).game, deciding = currentDecision(before)?.actorId ?? before.turnPlayerId;
+      assert.notEqual(deciding, PRACTICE_SELF); await env.step(700);
+      assert.equal(savedAt(env).game.revision, before.revision + 1, 'one scheduled computer command, never a hidden-state action batch');
+    }
+    if (tick > 0 && tick % 97 === 0) {
+      const before = savedAt(env), material = session.snapshot().game; await session.destroy();
+      session = await createHyakkiPracticeSession({ ...env, playerCount: 2 });
+      assert.equal(session.snapshot().players.length, playerCount);
+      assert.deepEqual({ ...session.snapshot().game, clock: null }, { ...material, clock: null });
+      assert.equal(savedAt(env).version, before.version); await session.setActive(true); restores++;
+    }
+    assert.equal(session.snapshot().conflict, false); assert.ok(session.snapshot().game.turnNumber <= 500);
+  }
+  const view = session.snapshot(); assert.equal(view.game.status, 'finished', view.storageNote);
+  assert.equal(view.game.result.wealth.length, playerCount); conserved(savedAt(env).game); assert.equal(env.timers.size, 0);
+  t.diagnostic(JSON.stringify({ playerCount, turns: view.game.turnNumber, humanCommands: commands, restores }));
+  const original = env.values.get(PRACTICE_STORAGE_KEY);
+  for (const count of [1, 7, '6', null]) { await rejects(session.restart({ playerCount: count }), 'PRACTICE_OPTIONS_INVALID');
+    assert.equal(env.values.get(PRACTICE_STORAGE_KEY), original); }
+  await session.restart({ playerCount: 6 }); assert.equal(session.snapshot().players.length, 6);
   await session.destroy();
 });

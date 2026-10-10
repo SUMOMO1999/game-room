@@ -62,6 +62,7 @@ export function mountHandDrag({ root, getContext, onDrop, onBlocked = () => {} }
       const face = gesture.card.querySelector('.yousei-card').cloneNode(true);
       face.removeAttribute('id'); face.setAttribute('tabindex', '-1');
       ghost.append(face); root.append(ghost);
+      target.textContent=context.label??'松手选牌，再决定如何使用';
       target.hidden = false; root.classList.add('hy-hand-dragging');
     }
     if (!context.enabled) return reset(true);

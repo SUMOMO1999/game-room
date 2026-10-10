@@ -42,6 +42,8 @@ function pendingView(state, viewerId) {
   const options = choice && mine ? choice.visibility === 'public' ? publicSelection(state, choice.options) : clone(choice.options) : null;
   const defaultSelection = choice && mine ? choice.visibility === 'public' ? publicSelection(state, choice.defaultSelection) : clone(choice.defaultSelection) : null;
   const view = { id: pending.id, decisionId: decision?.id ?? null, kind: pending.kind, ownerId: pending.ownerId, code: pending.code, stage: pending.stage,
+    ...(pending.data.targetId ? { targetId: pending.data.targetId } : {}),
+    ...(pending.data.borrowedTargetId ? { borrowedTargetId: pending.data.borrowedTargetId } : {}),
     actorId, readOnly: terminal(state), sourceCards: pending.sourceCards.map((card, index) => publicCard(state, card, 'source', index)),
     poolCount: pending.poolCards.length, goods: clone(pending.goods),
     ...(publicPool ? { pool: pending.poolCards.map((card, index) => publicCard(state, card, 'pool', index)) } : {}),
@@ -50,7 +52,8 @@ function pendingView(state, viewerId) {
     choice: choice ? { id: choice.id, kind: choice.kind, actorId: choice.actorId, visibility: choice.visibility,
       ...(mine ? { options, candidateCards: candidateCards(choice.options).map(card => choice.visibility === 'public'
         ? publicReference(state, card.cardId) : card), defaultSelection } : {}) } : null,
-    response: pending.response ? { kind: pending.response.kind, actorId: pending.response.actorId } : null };
+    response: pending.response ? { kind: pending.response.kind, actorId: pending.response.actorId,
+      ...(pending.response.remainingIds ? { remainingCount: pending.response.remainingIds.length } : {}) } : null };
   if (pending.response && mine) {
     const code = pending.response.kind === 'counter' ? 'C07' : 'C04';
     const player = state.players.find(player => player.id === viewerId);

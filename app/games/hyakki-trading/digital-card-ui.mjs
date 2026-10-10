@@ -40,9 +40,10 @@ export function renderCard(card, { selected = false, disabled = false, interacti
   const footer = goods
     ? `<span class="yousei-card__prices"><span>买<b>${face.buySilver}</b></span><span>卖<b>${face.sellSilver}</b></span></span>`
     : `<span class="yousei-card__cost">${escape(faceCost)}</span>`;
+  const effect = !goods && face.compactText ? `<span class="yousei-card__effect">${escape(face.compactText)}</span>` : '';
   const state = [selected ? '已选中' : '', tapped ? '已横置' : '', disabled ? '暂不可用' : ''].filter(Boolean).join(' · ');
   // Face IDs identify public definitions. Never serialize a private entity ID, owner, or deck order.
-  return `<${tag} ${semantics} class="yousei-card${selected ? ' is-selected' : ''}${disabled ? ' is-unavailable' : ''}${tapped ? ' is-tapped' : ''}" data-card-id="${escape(face.id)}" data-card-category="${face.category}" data-art-version="${ART_VERSION}" aria-label="${escape(label)}"><span class="yousei-card__heading"><span class="yousei-card__category">${watched ? '◉ ' : ''}${escape(category.name)}</span><span class="yousei-card__code">${face.sourceCode}</span></span><span class="yousei-card__name">${goods ? '货物交易' : escape(face.name)}</span>${body}${footer}${state ? `<span class="yousei-card__state" aria-hidden="true">${escape(state)}</span>` : ''}</${tag}>`;
+  return `<${tag} ${semantics} class="yousei-card${selected ? ' is-selected' : ''}${disabled ? ' is-unavailable' : ''}${tapped ? ' is-tapped' : ''}" data-card-id="${escape(face.id)}" data-card-category="${face.category}" data-art-version="${ART_VERSION}" aria-label="${escape(label)}"><span class="yousei-card__heading"><span class="yousei-card__category">${watched ? '◉ ' : ''}${escape(category.name)}</span><span class="yousei-card__code">${face.sourceCode}</span></span><span class="yousei-card__name">${goods ? '货物交易' : escape(face.name)}</span>${body}${effect}${footer}${state ? `<span class="yousei-card__state" aria-hidden="true">${escape(state)}</span>` : ''}</${tag}>`;
 }
 
 /** No card input is read: every hidden face produces exactly the same markup and asset URL. */

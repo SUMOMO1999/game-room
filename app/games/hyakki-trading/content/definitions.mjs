@@ -1,5 +1,8 @@
 /** Public digital content only. Original photographs and source paths are never imported. */
 export const DIGITAL_RULE_VERSION = 'yousei-digital-v1';
+// Saved matches retain their rule version; new matches use the explicit multiplayer contract.
+export const MULTIPLAYER_RULE_VERSION = 'yousei-digital-v2';
+export const RULE_VERSIONS = Object.freeze([DIGITAL_RULE_VERSION, MULTIPLAYER_RULE_VERSION]);
 export const CONTENT_VERSION = 'yousei-content-v1';
 
 function deepFreeze(value) {
@@ -1342,6 +1345,6 @@ export function assertContentVersion(version) {
 }
 
 export function assertRuleVersion(version) {
-  if (version !== DIGITAL_RULE_VERSION) throw new RangeError('不支持的幽街商人规则版本');
+  if (!RULE_VERSIONS.includes(version)) throw new RangeError('不支持的幽街商人规则版本');
   return true;
 }

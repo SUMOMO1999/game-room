@@ -45,7 +45,7 @@ function run(game, now) {
   if (clock.deadlineAt === null) clock.deadlineAt = deadline(now, clock.remainingMs);
 }
 export function createHyakkiTiming(playerIds, turnPlayerId, now, presence) {
-  if (!Array.isArray(playerIds) || playerIds.length !== 2 || new Set(playerIds).size !== 2 || !playerIds.includes(turnPlayerId)) {
+  if (!Array.isArray(playerIds) || playerIds.length < 2 || playerIds.length > 6 || new Set(playerIds).size !== playerIds.length || !playerIds.includes(turnPlayerId)) {
     throw new TypeError('计时席位无效。');
   }
   const seats = evidence(presence, playerIds, now);
@@ -59,13 +59,14 @@ export function createHyakkiTiming(playerIds, turnPlayerId, now, presence) {
 }
 
 /** Opening another player's decision freezes the active clock exactly once. */
-export function openHyakkiDecision(game, { id, actorId, label, now }) {
+export function openHyakkiDecision(game, { id, actorId, label, now, remainingMs = RESPONSE_MS }) {
   if (phase(game) !== 'playing' || game.timing.decision || !game.players.some(player => player.id === actorId)
-      || actorId === game.turnPlayerId || typeof id !== 'string' || !id || typeof label !== 'string' || !label || label.length > 40) {
+      || actorId === game.turnPlayerId || typeof id !== 'string' || !id || typeof label !== 'string' || !label || label.length > 40
+      || !stamp(remainingMs) || remainingMs > RESPONSE_MS) {
     return fail('当前不能开启对方选择。');
   }
   const state = clone(game); freeze(state, now);
-  state.timing.decision = { id, actorId, label, remainingMs: RESPONSE_MS, deadlineAt: deadline(now, RESPONSE_MS) };
+  state.timing.decision = { id, actorId, label, remainingMs, deadlineAt: deadline(now, remainingMs) };
   return { ok: true, state };
 }
 export function closeHyakkiDecision(game, now) {
@@ -97,7 +98,8 @@ export function transitionHyakkiLifecycle(game, { reason, playerId, now, presenc
   if (expiry) { finish(state, expiry, now); return result(game, state); }
   if (reason === 'voluntary-leave') {
     if (!state.players.some(player => player.id === playerId)) return fail('你不是本局参赛者。');
-    finish(state, reason, now, state.players.find(player => player.id !== playerId).id);
+    if (state.players.length === 2) finish(state, reason, now, state.players.find(player => player.id !== playerId).id);
+    else finish(state, 'cancelled', now);
     return result(game, state);
   }
   if (reason === 'room-expired') { finish(state, reason, now); return result(game, state); }
@@ -139,7 +141,7 @@ export function transitionHyakkiLifecycle(game, { reason, playerId, now, presenc
 export function hyakkiCommonActionProblem(game, action, { now, presence } = {}) {
   if (!game || !['pause', 'resume'].includes(action.type)) return null;
   if (expired(game, now)) return '本局保留时间已到。';
-  if (!allOnline(game, presence, now)) return '双方回到房间后才能暂停或继续。';
+  if (!allOnline(game, presence, now)) return '所有参赛者回到房间后才能暂停或继续。';
   if (game.lifecycle.absence || game.lifecycle.capacity) return '系统挂起尚未解除，请等待恢复。';
   return null;
 }
@@ -171,9 +173,9 @@ export function hyakkiTimingProblem(game) {
   const exact = (value, keys) => value && typeof value === 'object' && !Array.isArray(value)
     && Object.keys(value).length === keys.length && keys.every(key => Object.hasOwn(value, key));
   const ids = game?.players?.map(player => player.id) ?? [], life = game?.lifecycle, timing = game?.timing;
-  if (ids.length !== 2 || new Set(ids).size !== 2 || !ids.includes(game.turnPlayerId)
+  if (ids.length < 2 || ids.length > 6 || new Set(ids).size !== ids.length || !ids.includes(game.turnPlayerId)
       || !exact(life, ['startedAt', 'checkpoints', 'absence', 'manual', 'capacity']) || !stamp(life.startedAt)
-      || typeof life.capacity !== 'boolean' || !Array.isArray(life.checkpoints) || life.checkpoints.length !== 2
+      || typeof life.capacity !== 'boolean' || !Array.isArray(life.checkpoints) || life.checkpoints.length !== ids.length
       || life.checkpoints.some((checkpoint, index) => !exact(checkpoint, ['playerId', 'lastSeenAt', 'leaseExpiresAt'])
         || checkpoint.playerId !== ids[index] || !stamp(checkpoint.lastSeenAt) || !stamp(checkpoint.leaseExpiresAt)
         || checkpoint.leaseExpiresAt < checkpoint.lastSeenAt)

@@ -7,9 +7,11 @@ import { armySideLabel, armyAssignmentText, armyBoardGeometry, armyPoint, armyCe
   armyTransition, armyResultText, armyLastActionText, armyUsesFlagTransport, armyFlagMarks, armyPickups, armyRulePages, armyRuleModeLabel } from './presentation.mjs';
 import { createGameAudio } from '../../game-audio.mjs';
 import { gameViewport } from '../../game-viewport.mjs';
+import { mountArmyMotion } from './motion-ui.mjs';
 
 const $ = id => document.getElementById(id);
 const audio = createGameAudio();
+const objectMotion = mountArmyMotion();
 const cellMap = new Map(BOARD_CELLS.map(cell => [cell.cellId, cell]));
 let view = null, selected = null, boardGeometry = armyBoardGeometry(), boardSignature = '', rulePage = 0;
 let leaving = false, resultDismissed = false, actionGesture = false, toastTimer;
@@ -52,12 +54,15 @@ function toast(message) {
 function applySnapshot(snapshot) {
   closePickupChoice();
   const previous = view;
-  view = { roomId: 'army-local-practice', matchId: snapshot.matchId, selfId: PRACTICE_SELF,
+  const next = { roomId: 'army-local-practice', matchId: snapshot.matchId, selfId: PRACTICE_SELF,
     selfRole: 'player', phase: snapshot.game.status === 'finished' ? 'finished' : 'playing',
     revision: snapshot.game.revision, game: snapshot.game, players: snapshot.game.players };
+  const motionPlan = objectMotion.prepare(previous, next, { baseline: snapshot.baseline || document.hidden });
+  view = next;
   if (previous?.matchId !== view.matchId) resultDismissed = false;
   selected = null;
   render();
+  objectMotion.play(motionPlan);
   $('practice-save-note').textContent = snapshot.storageAvailable
     ? '与自动对手练习 · 不计战绩 · 进度只保存在这个浏览器'
     : '与自动对手练习 · 不计战绩 · 当前无法保存，离开后进度可能丢失';
@@ -114,6 +119,7 @@ function renderBoard() {
     button.addEventListener('click', () => clickCell(item.cellId));
     return button;
   }));
+  objectMotion.sync();
   $('army-cancel').disabled = !selected;
   requestAnimationFrame(fitBoard);
 }

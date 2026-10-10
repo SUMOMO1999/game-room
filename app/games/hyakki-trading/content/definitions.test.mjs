@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { CARDS, GOODS, CATEGORIES, INITIAL_STOCK, getCard, getGood, getCategory, createDeck, DIGITAL_RULE_VERSION, CONTENT_VERSION, assertContentVersion, assertRuleVersion } from './definitions.mjs';
+import { CARDS, GOODS, CATEGORIES, INITIAL_STOCK, getCard, getGood, getCategory, createDeck, DIGITAL_RULE_VERSION, MULTIPLAYER_RULE_VERSION, CONTENT_VERSION, assertContentVersion, assertRuleVersion } from './definitions.mjs';
 import { ASSETS, CARD_FACES, assetPath, getAsset } from './manifest.mjs';
 
 const reference = JSON.parse(readFileSync(new URL('../../../../docs/proposals/hyakki-trading/physical-card-catalog.json', import.meta.url), 'utf8'));
@@ -38,15 +38,17 @@ test('all 19 goods recipes and printed prices map exactly, including six goods G
   assert.deepEqual([six.copies, six.buySilver, six.sellSilver], [4, 10, 18]);
 });
 
-test('initial stock is six of each named good and frozen with the digital rule version', () => {
+test('legacy initial stock remains six of each named good while v1/v2 rule versions are explicitly supported', () => {
   assert.equal(DIGITAL_RULE_VERSION, reference.digitalRuleVersion);
   assert.equal(DIGITAL_RULE_VERSION, reference.digitalInitialStock.ruleVersion);
   assert.deepEqual(Object.fromEntries(GOODS.map(good => [good.name, good.initialStock])), reference.digitalInitialStock.byType);
   assert.deepEqual(Object.keys(INITIAL_STOCK), GOODS.map(good => good.id));
   assert.equal(Object.values(INITIAL_STOCK).reduce((sum, count) => sum + count, 0), 36);
   assert.equal(assertRuleVersion(DIGITAL_RULE_VERSION), true);
+  assert.equal(MULTIPLAYER_RULE_VERSION, 'yousei-digital-v2');
+  assert.equal(assertRuleVersion(MULTIPLAYER_RULE_VERSION), true);
   assert.equal(assertContentVersion(CONTENT_VERSION), true);
-  for (const unknown of [null, '', 'yousei-digital-v2', 'hyakki-content-v1']) assert.throws(() => assertRuleVersion(unknown));
+  for (const unknown of [undefined, null, '', 'yousei-digital-v3', 'unknown-version', 'hyakki-content-v1']) assert.throws(() => assertRuleVersion(unknown), RangeError);
 });
 
 test('content and material instances are deeply immutable and cannot share mutable runtime state', () => {
