@@ -1,5 +1,7 @@
+import { mountHandDrag } from './hand-drag-ui.mjs';
 import { mountDigitalPage } from './digital-page-ui.mjs';
-import { renderCard, renderCardDetails, renderGoodsIcon } from './digital-card-ui.mjs';
+import { renderCardDetails, renderGoodsIcon } from './digital-card-ui.mjs';
+import { dialogPage, renderDialogPager, renderCompactCard, renderCompactCards, renderDialogBody } from './game-dialog-ui.mjs';
 import { GOODS, getCard } from './content/definitions.mjs';
 import { choiceModel, buildChoiceSelection, defaultChoiceInput, knownCards, actionDraft, cardKey, goodsTotal, tableProjection } from './game-ui-model.mjs';
 const esc = value => String(value ?? '').replace(/[&<>"']/gu, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[char]);
@@ -20,16 +22,20 @@ function choiceLabel(option, kind, cards) {
   if (option.fromGoodsId) return `${goodName(option.fromGoodsId)}全部换成${goodName(option.toGoodsId)}`;
   return '选择此项';
 }
-export function renderChoiceForm(pending, game, draft = defaultChoiceInput(pending)) {
+export function renderChoiceForm(pending, game, draft = defaultChoiceInput(pending), pageNumber = 0) {
   const model = choiceModel(pending), cards = knownCards(game); if (!model) return '';
-  const cardOption = (id, input) => {const card = cards.get(id);return `<label class="hy-choice-card">${input}${card ? renderCard(card, {interactive:false}) : '<span>当前候选牌</span>'}${card ? `<button type="button" data-hy-detail="${esc(id)}">完整牌文</button>` : ''}</label>`;};
+  const cardOption = (id, input) => {const card = cards.get(id);return `<label class="hy-choice-card">${input}${card ? renderCompactCard(card, {readButton:false}) : '<span>当前候选牌</span>'}${card ? `<button type="button" data-hy-detail="${esc(id)}">完整牌文</button>` : ''}</label>`;};
   if (model.type === 'goods') return `<p>选择${model.minimum === model.maximum ? model.minimum : `${model.minimum}～${model.maximum}`}件。${model.raw ? `普通格${model.ordinaryCapacity}，新占临时格另付${model.temporaryFee}两；其余退回公库。` : ''}</p><div class="hy-goods-choice">${GOODS.map(good=>`<label>${renderGoodsIcon(good.id)}<span>${good.name} · 共${model.stock[good.id]}</span><input type="number" inputmode="numeric" name="good-${good.id}" min="0" max="${model.stock[good.id]}" step="1" value="${draft.goods?.[good.id]??0}" aria-label="保留或选择${good.name}数量"></label>`).join('')}</div>`;
-  if (model.type === 'cards') return `<p>请选择${model.minimum === model.maximum ? model.minimum : `${model.minimum}～${model.maximum}`}张；可滚动查看全部${model.cardIds.length}张。</p><div class="hy-choice-cards">${model.cardIds.map(id=>cardOption(id,`<input type="checkbox" name="cardIds" value="${esc(id)}" ${(draft.cardIds??[]).includes(id)?'checked':''}>`)).join('')}</div>`;
+  if (model.type === 'cards') {
+    const page=dialogPage(model.cardIds,pageNumber);
+    return `<p>请选择${model.minimum === model.maximum ? model.minimum : `${model.minimum}～${model.maximum}`}张 · 已选${draft.cardIds?.length??0}张</p><div class="hy-choice-cards" style="--hy-card-count:${page.items.length}">${page.items.map(id=>cardOption(id,`<input type="checkbox" name="cardIds" value="${esc(id)}" ${(draft.cardIds??[]).includes(id)?'checked':''}>`)).join('')}</div>${renderDialogPager(page)}`;
+  }
   const select = (name, label, options, value) => `<label>${label}<select name="${name}">${options.map(option=>`<option value="${esc(option.value)}" ${String(option.value)===String(value)?'selected':''}>${esc(option.label)}</option>`).join('')}</select></label>`;
   const goodsOptions = values => values.map(id=>({value:id,label:goodName(id)}));
   if (model.type === 'exchange') return `<div class="hy-field-grid">${select('ownGoodId','交出我的货物',goodsOptions(model.own),draft.ownGoodId)}${select('otherGoodId','换取对方货物',goodsOptions(model.other),draft.otherGoodId)}</div>`;
   if (model.type === 'payment-good') return `<div class="hy-field-grid">${select('goodId','取得公库货物',goodsOptions(model.goods),draft.goodId)}${select('paymentIndex','弃掉自己的牌',model.payments.map((payment,index)=>({value:index,label:choiceLabel({payment},pending.choice.kind,cards)})),draft.paymentIndex)}</div>`;
-  return `<p>共${model.options.length}个选项，可滚动查看。</p><div class="hy-choice-cards">${model.options.map((option,index)=>{const radio=`<input type="radio" name="optionIndex" value="${index}" ${draft.optionIndex===index?'checked':''}>`;return option.cardId ? cardOption(option.cardId,radio) : `<label class="hy-choice-text">${radio}<span>${esc(choiceLabel(option,pending.choice.kind,cards))}</span></label>`;}).join('')}</div>`;
+  const page=dialogPage(model.options,pageNumber);
+  return `${pending.privatePool?'':`<p>选择一项 · 共${model.options.length}项</p>`}<div class="hy-choice-cards" style="--hy-card-count:${page.items.length}">${page.items.map((option,offset)=>{const index=page.start+offset,radio=`<input type="radio" name="optionIndex" value="${index}" ${draft.optionIndex===index?'checked':''}>`;return option.cardId ? cardOption(option.cardId,radio) : `<label class="hy-choice-text">${radio}<span>${esc(choiceLabel(option,pending.choice.kind,cards))}</span></label>`;}).join('')}</div>${renderDialogPager(page)}`;
 }
 export function publicEventText(event, players = []) {
   const actor = players.find(player=>player.id===event.actorSeatId)?.name ?? '玩家';
@@ -42,7 +48,7 @@ export function publicEventText(event, players = []) {
 export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=>{},onRefresh=()=>{},onRetry=()=>{},onRecover=()=>{},onHistory=async()=>null}={}) {
   const document=root.ownerDocument,window=document.defaultView,$=id=>document.getElementById(id);
   let room=null,state={connection:'online',pending:false,canAct:true},destroyed=false,concealed=false,generation=0,scope=null,decisionId=null,presentedDecisionId=null;
-  let detail=null,choiceDraft=null,history=null,historyBusy=false,practiceActions={},leaveWorking=false,destination='lobby';
+  let detail=null,choiceDraft=null,choicePage=0,cardsPage=0,history=null,historyBusy=false,practiceActions={},leaveWorking=false,destination='lobby';
   let receivedAt=0,serverTime=0;
   const base=mountDigitalPage({root,scenes:[],externalDecisions:true,onAction:()=>{},onLeave:()=>leave()});
   root.classList.add('hy-real');
@@ -52,14 +58,16 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
     if(modal){let note=modal.querySelector('[data-hy-error]');if(!note){note=document.createElement('p');note.dataset.hyError='true';note.setAttribute('role','alert');modal.querySelector('.dialog-heading').after(note);}note.textContent=text;}
   };
   function listen(type,handler){root.addEventListener(type,handler,true);return()=>root.removeEventListener(type,handler,true);}
+  const selectionScope = value => [value?.roomId,value?.game?.matchId,value?.selfId,value?.selfRole,value?.phase,value?.game?.turnId,value?.game?.stage,value?.game?.actionsUsed,value?.game?.pending?.decisionId].join(':');
   const sameScope = value => [value?.roomId,value?.matchId??value?.game?.matchId,value?.selfId,value?.selfRole].join(':');
   const available = () => !!room&&!concealed&&!destroyed&&!state.pending&&state.canAct!==false&&state.connection==='online';
   const mine = () => room?.selfRole==='player'&&room.game?.pending?.actorId===room.selfId;
   const active = () => available()&&room.phase==='playing'&&room.selfRole==='player'&&room.game?.turnPlayerId===room.selfId&&!room.game.pending;
   const name = id => [...(room?.players??[]),...(room?.matchPlayers??[])].find(player=>player.id===id)?.name ?? '伙伴';
-  const cardList = cards => `<div class="hy-public-cards">${cards.map(card=>`<article>${renderCard(card,{interactive:false})}<button type="button" data-hy-detail="${esc(cardKey(card))}">完整牌文</button></article>`).join('')}</div>`;
+  const cardList = cards => renderCompactCards(cards,cardsPage);
   function closeDialogs(){root.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());}
-  function inspect(title,content){closeDialogs();$('yg-inspector-title').textContent=title;$('yg-inspector-body').innerHTML=content;$('yg-inspector').showModal();}
+  function inspect(title,content){closeDialogs();$('yg-inspector-title').textContent=title;$('yg-inspector-body').innerHTML=renderDialogBody(content);$('yg-inspector').showModal();}
+  function readCard(card){if(!card)return;const face=getCard(card.definitionId??card.id);$('hy-reader-title').textContent=face.name+' · 完整牌文';$('hy-reader-body').innerHTML=renderDialogBody(renderCardDetails(face));if(!$('hy-card-reader').open)$('hy-card-reader').showModal();}
   function dispatch(type,fields={},onCommitted=null) {
     if(!available())return;
     const stamp=generation,current=scope;
@@ -68,44 +76,55 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
   }
   async function leave(){if(leaveWorking||destroyed)return;leaveWorking=true;$('yg-leave-confirm').disabled=true;const stamp=generation;try{await onLeave({destination});}catch(error){if(stamp===generation&&!destroyed)leaveFailure(error.message||'退出未确认，请重试。');}finally{if(stamp===generation&&!destroyed){leaveWorking=false;$('yg-leave-confirm').disabled=false;}}}
   function leaveFailure(message){leaveWorking=false;$('yg-leave-confirm').disabled=false;feedback(message);$('hy-leave-note').textContent=message;}
-  function cardDetail(card,tool=false){
-    if(!card)return;detail={card,tool};const face=getCard(card.definitionId),self=room.game?.players.find(player=>player.id===room.selfId),peer=room.game?.players.find(player=>player.id!==room.selfId);
+  function selectedCardContent(card,tool=false){
+    const face=getCard(card.definitionId),self=room.game?.players.find(player=>player.id===room.selfId),peer=room.game?.players.find(player=>player.id!==room.selfId);
     let operations='';
     if(active()&&(tool||self?.hand?.some(item=>cardKey(item)===cardKey(card)))){
       if(tool){if(!card.exhausted&&(face.sourceCode==='T07'?room.game.stage==='draw'&&!room.game.drawStarted:room.game.stage==='use'))operations=button('confirm-card','使用道具 · 1行动',{type:'activate-tool'});else operations='<p>已横置或不在使用时机。</p>';}
-      else if(room.game.stage==='draw')operations='<p>先完成看牌，进入用牌阶段。</p>';
+      else if(['C04','C07'].includes(face.sourceCode))operations='<p>只可在对应的回应窗口使用。</p>';
+      else if(room.game.stage==='draw')operations=button('begin-play','进入用牌',{cardId:cardKey(card)});
       else if(face.category==='goods')operations=button('confirm-card',`整组买入 · ${Math.max(0,face.buySilver-2*room.game.bookLayers)}两`,{type:'buy'})+button('confirm-card',`整组出售 · ${face.sellSilver+2*room.game.bookLayers}两`,{type:'sell'});
       else if(face.category==='stall_permit')operations=button('confirm-card',`扩摊3格 · ${room.game.purchasedStalls?3:6}两`,{type:'buy-stall'});
       else if(face.category==='tool')operations=(self.tools.length===3?`<label>道具区已满，弃掉一张已装道具<select id="hy-replace">${self.tools.map(tool=>`<option value="${esc(cardKey(tool))}">${esc(getCard(tool.definitionId).name)}${tool.exhausted?' · 已横置':''}</option>`).join('')}</select></label>`:'')+button('confirm-card','安装道具 · 1行动',{type:'install-tool'});
-      else if(['C04','C07'].includes(face.sourceCode))operations='<p>只可在对应的回应窗口使用。</p>';
       else {
-        if(face.sourceCode==='M01')operations=`<label>取得对方一件货物<select id="hy-target-good">${GOODS.filter(good=>peer.goods[good.id]>0).map(good=>`<option value="${good.id}">${good.name}</option>`).join('')}</select></label>`;
-        if(face.sourceCode==='M08')operations=`<label>弃掉对方的一件道具<select id="hy-target-tool">${peer.tools.map(tool=>`<option value="${esc(cardKey(tool))}">${esc(getCard(tool.definitionId).name)}</option>`).join('')}</select></label>`;
-        operations+=button('confirm-card','使用人物 · 1行动',{type:'play-character'});
+        let targetMissing=false;
+        if(face.sourceCode==='M01'){const goods=GOODS.filter(good=>peer.goods[good.id]>0);targetMissing=goods.length===0;operations=targetMissing?'<p>对方没有可取得的货物。</p>':`<label>取得对方一件货物<select id="hy-target-good">${goods.map(good=>`<option value="${good.id}">${good.name}</option>`).join('')}</select></label>`;}
+        if(face.sourceCode==='M08'){targetMissing=peer.tools.length===0;operations=targetMissing?'<p>对方没有可弃掉的道具。</p>':`<label>弃掉对方的一件道具<select id="hy-target-tool">${peer.tools.map(tool=>`<option value="${esc(cardKey(tool))}">${esc(getCard(tool.definitionId).name)}</option>`).join('')}</select></label>`;}
+        operations+=button('confirm-card','使用人物 · 1行动',{type:'play-character'},targetMissing);
       }
     }
-    inspect(face.name,renderCardDetails(card)+`<div class="hy-card-actions">${operations}</div><p>确认前可关闭；已经发动的操作需完成当前选择，关闭详情不退款或取消。</p>`);
+    return `<section class="hy-card-play" aria-label="选中的牌与操作"><div class="hy-inline-card">${renderCompactCard(card,{readButton:false,inline:true})}</div><div class="hy-inline-copy"><p>${esc(face.summary)}</p><small>${esc(face.costText)}</small><div class="hy-inline-actions">${operations}</div><div class="hy-inline-secondary"><button type="button" data-hy-detail="${esc(cardKey(card))}">完整牌文</button>${button('cancel-card','取消选中')}</div></div></section>`;
+  }
+  function selectHandCard(card,tool=false){
+    if(!card||!room?.game)return;const self=room.game.players.find(player=>player.id===room.selfId);
+    const current=(tool?self?.tools:self?.hand)?.find(item=>cardKey(item)===cardKey(card));if(!current)return;
+    detail={card:current,tool};render();
   }
   function decision(){
     const pending=room?.game?.pending;if(!pending)return;detail=null;
+    $('yg-decision').dataset.kind=pending.auction?'auction':pending.kind==='peek'?'peek':pending.choice?'choice':'response';
     const kind=pending.choice?.kind;presentedDecisionId=pending.decisionId;
     $('yg-decision-title').textContent=titleByKind[kind]??(pending.kind==='peek'?'这张留下吗？':pending.response?pending.response.kind==='counter'?'锦衣卫回应':'番商回应':pending.kind==='auction'?'整组拍品竞价':`${pending.code} · 当前步骤`);
-    let body=`<p>${mine()?'请你决定':'等待'+esc(name(pending.actorId))}。关闭窗口保留已付费用和当前步骤。</p>`;
-    if(pending.sourceCards.length)body+=`<details><summary>发动的牌</summary>${cardList(pending.sourceCards)}</details>`;
+    if(pending.privatePool&&pending.choice)$('yg-decision-title').textContent+=' · 私选';
+    let sources=$('hy-decision-sources');if(!sources){sources=document.createElement('span');sources.id='hy-decision-sources';$('yg-decision-title').after(sources);}
+    sources.innerHTML=pending.sourceCards.map(card=>`<button type="button" data-hy-detail="${esc(cardKey(card))}">${esc(getCard(card.definitionId).name)} · 牌文</button>`).join('');
+    let body=pending.auction?`<p class="hy-auction-price">最高 ${pending.auction.highestBid}两${pending.auction.highestBidderId?' · '+esc(name(pending.auction.highestBidderId)):''} · 整组拍下</p>`:pending.privatePool&&!pending.choice?'<p>仅你可见 · 完整牌文可随时阅读</p>':!mine()?`<p>等待${esc(name(pending.actorId))}</p>`:'';
+    if(pending.response&&pending.sourceCards[0])body+=`<p>${esc(getCard(pending.sourceCards[0].definitionId).summary)}</p>`;
     const selectableCards=mine()&&pending.choice&&['cards','option'].includes(choiceModel(pending)?.type)&&pending.choice.options?.some(option=>option.cardId||option.cardIds);
-    if(!selectableCards&&(pending.pool?.length||pending.privatePool?.length))body+=`<p>${pending.privatePool?'仅你可见的候选':'完整公开拍品／候选'} · 共${(pending.privatePool??pending.pool).length}张，滚动可看全部。</p>${cardList(pending.privatePool??pending.pool)}`;
+    if(!selectableCards&&(pending.pool?.length||pending.privatePool?.length))body+=cardList(pending.privatePool??pending.pool);
     if(goodsTotal(pending.goods))body+=`<div class="hy-goods-line">${GOODS.filter(good=>pending.goods[good.id]).map(good=>`<span>${renderGoodsIcon(good.id)}${good.name} ×${pending.goods[good.id]}</span>`).join('')}</div>`;
-    if(pending.auction)body+=`<p>最高报价 ${pending.auction.highestBid}两${pending.auction.highestBidderId?' · '+esc(name(pending.auction.highestBidderId)):''}。整组购买，不能拆拍。</p>`;
+    let actions='',formId=null;
     if(mine()&&available()&&room.phase==='playing'){
-      if(pending.kind==='peek')body+=`<div class="yg-dialog-actions">${button('keep-peek','留下，进入用牌')}${button('discard-peek','弃掉，可继续看牌')}</div>`;
-      else if(pending.response)body+=`<div class="yg-dialog-actions">${(pending.response.cards??[]).map(card=>button('respond',`使用${getCard(card.definitionId).name}`,{cardId:card.cardId})).join('')}${button('decline-response','不回应')}</div>`;
+      if(pending.kind==='peek')actions=button('keep-peek','留下，进入用牌')+button('discard-peek','弃掉，继续看牌');
+      else if(pending.response)actions=(pending.response.cards??[]).map(card=>button('respond',`使用${getCard(card.definitionId).name}`,{cardId:card.cardId})).join('')+button('decline-response','不回应');
       else if(pending.auction&&pending.stage==='bidding'){
-        const bid=pending.decision.options.find(option=>option.type==='bid');body+=`<form id="hy-bid-form">${bid?`<label>报价（${bid.minimum}～${bid.maximum}两）<input name="amount" inputmode="numeric" type="number" min="${bid.minimum}" max="${bid.maximum}" step="1" value="${choiceDraft?.amount??bid.minimum}" required></label><button type="submit">确认报价</button>`:''}${button('pass-bid','放弃竞价')}</form>`;
-      }else if(pending.choice)body+=`<form id="hy-choice-form">${renderChoiceForm(pending,room.game,choiceDraft??defaultChoiceInput(pending))}<div class="yg-dialog-actions"><button type="submit">确认选择</button></div></form>`;
+        const bid=pending.decision.options.find(option=>option.type==='bid');formId='hy-bid-form';
+        actions=`${bid?`<label>报价 <input aria-label="我的报价" name="amount" inputmode="numeric" type="number" min="${bid.minimum}" max="${bid.maximum}" step="1" value="${choiceDraft?.amount??bid.minimum}" required> 两 <small>（${bid.minimum}～${bid.maximum}）</small></label><button type="submit">确认报价</button>`:''}${button('pass-bid','放弃竞价')}`;
+      }else if(pending.choice){formId='hy-choice-form';body+=renderChoiceForm(pending,room.game,choiceDraft??defaultChoiceInput(pending),choicePage);actions='<button type="submit">确认选择</button>';}
     }
-    $('yg-decision-body').innerHTML=body;closeDialogs();$('yg-decision').showModal();
+    $('yg-decision-body').innerHTML=renderDialogBody(body,actions,{formId});closeDialogs();$('yg-decision').showModal();
   }
-  function readChoice(){const form=$('hy-choice-form');if(!form)return choiceDraft;const data=new window.FormData(form);return{goods:Object.fromEntries(GOODS.map(good=>[good.id,Number(data.get('good-'+good.id)??0)])),cardIds:data.getAll('cardIds'),optionIndex:data.has('optionIndex')?Number(data.get('optionIndex')):-1,ownGoodId:data.get('ownGoodId'),otherGoodId:data.get('otherGoodId'),goodId:data.get('goodId'),paymentIndex:data.has('paymentIndex')?Number(data.get('paymentIndex')):-1};}
+  function readChoice(){const form=$('hy-choice-form');if(!form)return choiceDraft;const data=new window.FormData(form);return{goods:Object.fromEntries(GOODS.map(good=>[good.id,Number(data.get('good-'+good.id)??0)])),cardIds:[...(choiceDraft?.cardIds??defaultChoiceInput(room.game.pending).cardIds??[]).filter(id=>![...form.querySelectorAll('[name=cardIds]')].some(node=>node.value===id)),...data.getAll('cardIds')],optionIndex:data.has('optionIndex')?Number(data.get('optionIndex')):(choiceDraft?.optionIndex??defaultChoiceInput(room.game.pending).optionIndex??-1),ownGoodId:data.get('ownGoodId'),otherGoodId:data.get('otherGoodId'),goodId:data.get('goodId'),paymentIndex:data.has('paymentIndex')?Number(data.get('paymentIndex')):-1};}
   async function showHistory(after=0){if(historyBusy||!room?.game)return;historyBusy=true;const stamp=generation,match=room.game.matchId;try{const page=await onHistory({after,limit:30});if(stamp!==generation||match!==room?.game?.matchId||destroyed)return;if(page){history=page;inspect('本局公开记录',`<ol class="hy-event-list">${page.groups.flatMap(group=>group.events.map(event=>`<li>${esc(publicEventText(event,room.players))}</li>`)).join('')}</ol>${page.hasMore?button('history','下一页',{after:page.nextAfter}):'<p>已到当前最后一条。</p>'}`);}else inspect('近期公开记录',`<ol>${room.game.lastPublicEvents.map(event=>`<li>${esc(publicEventText(event,room.players))}</li>`).join('')}</ol>`);}catch(error){if(stamp===generation)feedback(error.message||'记录暂时不可用。');}finally{historyBusy=false;}}
   function updateClock(){if(!room||concealed)return;const clock=room.game?.clock??room.turnClock;
     const advance=practice&&state.practiceSnapshot?.active===false?0:Math.max(0,(window.performance?.now()??Date.now())-receivedAt);
@@ -144,13 +163,16 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
       note=game.pending.response?'回应期间主动操作冻结；到时按当前默认选项处理。':game.pending.auction?'整组拍品，完整付款；关闭窗口不会放弃竞价。':'材料与费用已保存，请完成当前步骤。';
       controls=button('decision',mine()?'处理当前选择':'查看公开步骤',{},false);
     }else if(active()){
-      note=game.stage==='draw'?'每看一张消耗1行动；留下即进入用牌，也可以直接进入用牌。':'点开手牌阅读并使用；点击自己的道具可发动。';
+      note=game.stage==='draw'?'先看牌，或直接进入用牌。每看一张花1行动，留下即进入用牌。':'把手牌拖到桌面，或点牌选中使用。';
       if(game.stage==='draw')controls+=button('peek','看一张 · 1行动',{},game.deckCount+game.discard.length===0)+button('finish-draw','进入用牌');
       controls+=button('end-turn',game.remainingActions>=2?'结束回合 · 得1两':'结束回合');
     }else note=isPlayer?`等待${name(game?.turnPlayerId)}，可查看卡牌与公开记录。`:'正在观战；不会显示私牌和私看候选。';
     if(room.pause)note+=` ${name(room.pause.requestedBy)}申请暂停（${room.pause.agreedIds.length}/2同意）。`;
     if(room.pause&&isPlayer)controls+=button('pause',room.pause.agreedIds.includes(room.selfId)?'撤回暂停同意':'同意暂停',{agree:!room.pause.agreedIds.includes(room.selfId)},!available());
-    $('yg-scene-content').innerHTML=`<p class="yg-scene-note">${esc(note)}</p><div class="yg-table-actions">${controls}</div>`;
+    if(detail){const current=knownCards(game).get(cardKey(detail.card));if(!current||game?.pending||!isPlayer)detail=null;else detail.card=current;}
+    root.classList.toggle('hy-card-selected',!!detail);
+    $('yg-scene-content').innerHTML=detail?selectedCardContent(detail.card,detail.tool):`<p class="yg-scene-note">${esc(note)}</p><div class="yg-table-actions">${controls}</div>`;
+    root.querySelectorAll('#yg-hand [data-entity-id]').forEach(node=>{const selected=!!detail&&!detail.tool&&node.dataset.entityId===cardKey(detail.card);node.classList.toggle('is-selected',selected);node.querySelector('button')?.setAttribute('aria-pressed',String(selected));});
     $('yg-portrait-decision').innerHTML=game?.pending?`<strong>${esc(mine()?'轮到你选择':'对方正在选择')}</strong>${button('decision','查看当前步骤')}`:'';
     $('yg-rotation').querySelector('small').textContent=practice?'本机练习 · 退出保留进度':'牌局已保存在房间，转向不会重新开始。';
     $('hy-pause').hidden=practice||!isPlayer||room.phase!=='playing';
@@ -160,27 +182,30 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
     $('hy-connection').hidden=state.connection==='online'&&!state.pending&&state.canAct!==false;
     $('hy-connection-text').textContent=state.pending?'操作结果正在核对，请勿重复提交。':state.canAct===false?'当前不能保存操作，请恢复存储或读取进度。':'正在恢复连接，原席位和已保存步骤会保留。';
     const shortActions=$('hy-short-actions');shortActions.innerHTML=practice?button('practice-hint','提示'):button('invite','邀请')+button('history','记录');
-    if(detail&&$('yg-inspector').open&&!knownCards(game).has(cardKey(detail.card))){$('yg-inspector').close();detail=null;}
+
     updateClock();
   }
   function applyView(next,options={}){
     if(destroyed)return;
     const nextScope=sameScope(next),changed=scope!==nextScope,newDecision=next.game?.pending?.decisionId??null;
+    if(selectionScope(room)!==selectionScope(next))detail=null;
     if(changed){generation++;closeDialogs();detail=null;choiceDraft=null;history=null;}
-    if(decisionId!==newDecision){choiceDraft=null;presentedDecisionId=null;if($('yg-decision').open)$('yg-decision').close();}
+    if(decisionId!==newDecision){choiceDraft=null;choicePage=0;cardsPage=0;presentedDecisionId=null;if($('hy-card-reader').open)$('hy-card-reader').close();if($('yg-decision').open)$('yg-decision').close();}
     room=next;scope=nextScope;state={connection:'online',pending:false,canAct:true,...options};concealed=false;
     root.classList.remove('hy-concealed');receivedAt=window.performance?.now()??Date.now();serverTime=room.serverTime??Date.now();
-    base.applyView(tableProjection(next));render();
+    const inlineFields=detail?[...root.querySelectorAll('.hy-card-play select')].map(node=>({id:node.id,value:node.value,focused:document.activeElement===node})):[];
+    base.applyView(tableProjection(next));render();handDrag.sync();
+    for(const field of inlineFields){const node=$(field.id);if(node&&[...node.options].some(option=>option.value===field.value)){node.value=field.value;if(field.focused)node.focus({preventScroll:true});}}
     root.querySelectorAll('[data-hy-action="confirm-card"]').forEach(node=>{node.disabled=!active();});
     const newOwnedDecision=!!newDecision&&newDecision!==presentedDecisionId&&mine();decisionId=newDecision;
     if(newOwnedDecision&&available()&&room.phase==='playing')decision();
     // Existing choice DOM stays alive on presence/clock updates, retaining focus and text input.
-    if($('yg-decision').open){$('yg-decision-body').querySelectorAll('button,input,select').forEach(node=>{if(!node.dataset.hyDetail)node.disabled=!available()||room.phase!=='playing';});}
+    if($('yg-decision').open){$('yg-decision-body').querySelectorAll('button,input,select').forEach(node=>{if(!node.dataset.hyDetail&&!['choice-page','cards-page'].includes(node.dataset.hyAction))node.disabled=!available()||room.phase!=='playing';});}
   }
   function conceal({message='正在恢复房间…',loginHref=null,reauthHref=null}={}){
-    generation++;concealed=true;closeDialogs();detail=null;choiceDraft=null;history=null;decisionId=null;presentedDecisionId=null;scope=null;
+    handDrag.cancel();generation++;concealed=true;closeDialogs();detail=null;choiceDraft=null;history=null;decisionId=null;presentedDecisionId=null;scope=null;
     if(room)base.applyView(tableProjection({...room,game:null,phase:'waiting',selfRole:'spectator',selfId:null}));
-    room=null;root.querySelectorAll('#yg-inspector-body,#yg-decision-body,#yg-portrait-decision,#yg-chat-decision-label').forEach(node=>node.replaceChildren());
+    room=null;$('hy-reader-title').textContent='完整牌文';root.querySelectorAll('#yg-inspector-body,#yg-decision-body,#hy-reader-body,#hy-decision-sources,#yg-portrait-decision,#yg-chat-decision-label').forEach(node=>node.replaceChildren());
     root.classList.add('hy-concealed');$('hy-connection').hidden=false;$('hy-connection-text').textContent=message;
     for(const[id,href]of[['hy-login',loginHref],['hy-reauth',reauthHref]]){const link=$(id);link.hidden=!href;if(href)link.href=href;else link.removeAttribute('href');}
   }
@@ -203,7 +228,12 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
   $('yg-feedback').textContent=practice?'本机练习，真实规则；电脑只使用自己的手牌和公牌。':'先看牌，再经营。';
   $('yg-hand-title').insertAdjacentHTML('afterend','<span id="hy-short-actions"></span>');
   root.insertAdjacentHTML('beforeend',`<section id="hy-connection" class="hy-connection" role="status" hidden><p id="hy-connection-text"></p><div>${button('recover','恢复连接')}${button('retry','核对原操作')}<a id="hy-login" hidden>重新登录</a><a id="hy-reauth" hidden>近期认证</a>${button('keep-seat','返回大厅')}</div></section>`);
+  root.insertAdjacentHTML('beforeend','<dialog id="hy-card-reader" class="yg-dialog hy-card-reader" aria-labelledby="hy-reader-title"><div class="dialog-heading"><h2 id="hy-reader-title"></h2><button type="button" id="hy-reader-close" class="close-button" aria-label="返回上一层">×</button></div><div id="hy-reader-body"></div></dialog>');
   function handleAction(type,fields){
+    if(type==='cancel-card'){detail=null;render();return;}
+    if(type==='begin-play'){if(!active()||room.game.stage!=='draw')return;return dispatch('finish-draw',{},()=>{if(active()&&room.game.stage==='use')selectHandCard(room.game.players.find(player=>player.id===room.selfId)?.hand.find(card=>cardKey(card)===fields.cardId));});}
+    if(type==='choice-page'){choiceDraft=readChoice();choicePage=fields.page;return decision();}
+    if(type==='cards-page'){cardsPage=fields.page;if($('yg-decision').open)return decision();return inspect('公开弃牌',cardList(room.game.discard));}
     if(type==='decision')return decision();if(type==='history')return void showHistory(fields.after??0);if(type==='invite')return void invite();
     if(type==='leave'||type==='logout'||type==='agora')return leaveDialog(type==='leave'?'lobby':type);
     if(type==='keep-seat'){const stamp=generation;Promise.resolve().then(()=>onLeave({keepSeat:true,destination:'lobby'})).catch(error=>{if(!destroyed&&stamp===generation)feedback(error.message||'返回大厅未完成。');});return;}
@@ -216,31 +246,35 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
     if(type==='members'){return inspect('成员与公开商铺',`<div class="hy-member-list">${(room?.game?.players??room?.players??[]).map(player=>`<article><h3>${esc(name(player.id))}${player.id===room.hostId?' · 房主':''}</h3><p>${player.silver??20}两 · 手牌${player.handCount??0}张</p>${player.goods?`<p>${GOODS.map(good=>`${good.name} ${player.goods[good.id]}`).join(' · ')}</p>`:''}${player.tools?cardList(player.tools):''}</article>`).join('')}</div><p>观众：${esc(room?.spectators?.map(player=>player.name).join('、')||'暂无')}</p>`);}
     if(type==='host')return inspect('房主管理',room.hostId===room.selfId?`<label>将房主交给<select id="hy-host-target">${room.players.filter(player=>player.id!==room.selfId).map(player=>`<option value="${esc(player.id)}">${esc(player.name)}</option>`).join('')}</select></label>${button('host-transfer','确认转交')}`:button('transferHost','接任房主',{playerId:room.selfId}));
     if(type==='host-transfer')return dispatch('transferHost',{playerId:$('hy-host-target').value});
-    if(type==='confirm-card'){try{const values={replaceCardId:$('hy-replace')?.value,goodsId:$('hy-target-good')?.value,toolCardId:$('hy-target-tool')?.value};const gameForAction=practice&&room.phase==='playing'?{...room.game,clock:{...room.game.clock,paused:false}}:room.game;const command=actionDraft(gameForAction,room.selfId,detail.card,fields.type,values);dispatch(fields.type,command,()=>{if($('yg-inspector').open){$('yg-inspector').close();detail=null;}});}catch(error){feedback(error.message);}return;}
+    if(type==='confirm-card'){try{const values={replaceCardId:$('hy-replace')?.value,goodsId:$('hy-target-good')?.value,toolCardId:$('hy-target-tool')?.value};const gameForAction=practice&&room.phase==='playing'?{...room.game,clock:{...room.game.clock,paused:false}}:room.game;const command=actionDraft(gameForAction,room.selfId,detail.card,fields.type,values);dispatch(fields.type,command,()=>{detail=null;render();});}catch(error){feedback(error.message);}return;}
     return dispatch(type,fields);
   }
   const removeClick=listen('click',event=>{
     const node=event.target.closest('button');if(!node||node.disabled||destroyed)return;
     const stop=()=>{event.preventDefault();event.stopImmediatePropagation();};
     if(node.dataset.hyAction){stop();handleAction(node.dataset.hyAction,JSON.parse(node.dataset.hyFields??'{}'));return;}
-    if(node.dataset.detailId){stop();detail=null;inspect(getCard(node.dataset.detailId).name,renderCardDetails(getCard(node.dataset.detailId)));return;}
-    if(node.dataset.hyDetail){stop();const card=knownCards(room?.game).get(node.dataset.hyDetail);if(card)cardDetail(card);return;}
+    if(node.dataset.detailId){stop();readCard(getCard(node.dataset.detailId));return;}
+    if(node.dataset.hyDetail){stop();const card=knownCards(room?.game).get(node.dataset.hyDetail);if(card)readCard(card);return;}
     if(['yg-exit','yg-settings-exit'].includes(node.id)){stop();leaveDialog();return;}
     if(['yg-copy-invite','yg-waiting-invite'].includes(node.id)){stop();void invite();return;}
     if(node.id==='yg-draw-pile'){stop();if(active()&&room.game.stage==='draw')dispatch('peek');return;}
-    if(node.id==='yg-discard-pile'){stop();if(room?.game)inspect('公开弃牌',cardList(room.game.discard));return;}
+    if(node.id==='yg-discard-pile'){stop();cardsPage=0;if(room?.game)inspect('公开弃牌',cardList(room.game.discard));return;}
     if(node.id==='yg-decision-close'){stop();choiceDraft=$('hy-bid-form')?{amount:Number($('hy-bid-form').elements.amount.value)}:readChoice();$('yg-decision').close();return;}
+    if(node.id==='hy-reader-close'){stop();$('hy-card-reader').close();return;}
     if(node.id==='yg-inspector-close'){stop();$('yg-inspector').close();detail=null;return;}
     if(node.id==='yg-rules'){stop();inspect('幽街商人规则','<p>每人20两、5张手牌、5个普通货位＋1个临时位。普通扩摊每块增加3格，首次6两，以后3两。新占临时位另付2两。</p><p>看牌每张1行动；留下后进入用牌，也可以直接进入用牌。货物牌整组交易；人物用1行动；道具安装和使用各1行动，每件每回合限用一次。具体效果以卡牌全文为准。</p><p>尚余2行动主动结束回合可得1两。回合结束达到60两收市；先手触发时后手再完成一回合。银两多者胜，平手由最后行动者胜。</p><p>主动回合30分钟，对方选择60秒并冻结主动钟。暂停保留7天，离线保席30分钟；主动退出认输。每局财富独立。</p>');return;}
-    if(node.dataset.cardId){const id=node.closest('[data-entity-id]')?.dataset.entityId;if(id){stop();cardDetail(knownCards(room?.game).get(id));}return;}
-    if(node.dataset.toolId){stop();const card=knownCards(room?.game).get(node.dataset.toolId);if(card)cardDetail(card,true);return;}
+    if(node.dataset.cardId){const id=node.closest('[data-entity-id]')?.dataset.entityId;if(id){stop();selectHandCard(knownCards(room?.game).get(id));}return;}
+    if(node.dataset.toolId){stop();const card=knownCards(room?.game).get(node.dataset.toolId);if(card)selectHandCard(card,true);return;}
     if(node.dataset.player||node.id==='yg-shop-detail'){stop();handleAction('members',{});return;}
-    if(node.id==='yg-expand'){stop();const permit=room?.game?.players.find(player=>player.id===room.selfId)?.hand?.find(card=>getCard(card.definitionId).category==='stall_permit');if(permit)cardDetail(permit);else feedback('扩摊需要手持许可，点开许可即可购买。');}
+    if(node.id==='yg-expand'){stop();const permit=room?.game?.players.find(player=>player.id===room.selfId)?.hand?.find(card=>getCard(card.definitionId).category==='stall_permit');if(permit)selectHandCard(permit);else feedback('扩摊需要手持许可，点开许可即可购买。');}
   });
   const removeSubmit=listen('submit',event=>{if(!['hy-choice-form','hy-bid-form'].includes(event.target.id))return;event.preventDefault();event.stopImmediatePropagation();if(!mine()||!available())return;try{if(event.target.id==='hy-choice-form'){choiceDraft=readChoice();dispatch('choose-effect',{selection:buildChoiceSelection(room.game.pending,choiceDraft)});}else{const amount=Number(event.target.elements.amount.value),bid=room.game.pending.decision.options.find(option=>option.type==='bid');if(!Number.isSafeInteger(amount)||!bid||amount<bid.minimum||amount>bid.maximum)throw new RangeError('请输入报价范围内的整数。');choiceDraft={amount};dispatch('bid',{amount});}}catch(error){feedback(error.message);}});
   const removeInput=listen('input',event=>{if(event.target.closest('#hy-choice-form'))choiceDraft=readChoice();if(event.target.closest('#hy-bid-form'))choiceDraft={amount:Number(event.target.value)};});
   const removeChange=listen('change',event=>{if(['hy-action-limit','hy-goods-limit'].includes(event.target.id))dispatch('configure',{hyakkiConfig:{actionLimit:Number($('hy-action-limit').value),goodsPerType:Number($('hy-goods-limit').value)}});});
+  const handDrag=mountHandDrag({root,getContext:()=>({scope:selectionScope(room),enabled:active(),cardIds:room?.game?.players.find(player=>player.id===room.selfId)?.hand?.map(cardKey)??[],blockedReason:room?.game?.stage==='draw'?'先看牌，或点击进入用牌。':'请先完成当前步骤，轮到你时再用牌。'}),onDrop:id=>selectHandCard(room?.game?.players.find(player=>player.id===room.selfId)?.hand?.find(card=>cardKey(card)===id)),onBlocked:feedback});
+  const clearSelection=()=>{if(detail){detail=null;if(room&&!destroyed)render();}};
+  window.addEventListener('blur',clearSelection);
   const clock=window.setInterval(updateClock,500);
-  return {applyView,conceal,feedback,leaveFailure,audio:base.audio,settings:base.settings,openPracticeRestart,
-    configurePractice(callbacks){practiceActions={...callbacks};},destroy(){if(destroyed)return;destroyed=true;generation++;room=null;detail=null;choiceDraft=null;history=null;removeClick();removeSubmit();removeInput();removeChange();window.clearInterval(clock);base.destroy();}};
+  return {applyView,conceal,feedback,leaveFailure,selectHandCard,readCard,audio:base.audio,settings:base.settings,openPracticeRestart,
+    configurePractice(callbacks){practiceActions={...callbacks};},destroy(){if(destroyed)return;destroyed=true;generation++;room=null;detail=null;choiceDraft=null;history=null;removeClick();removeSubmit();removeInput();removeChange();handDrag.destroy();window.removeEventListener('blur',clearSelection);window.clearInterval(clock);base.destroy();}};
 }
