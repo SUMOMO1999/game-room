@@ -2,7 +2,7 @@
 
 和朋友随时约一局的 Web 棋牌室。通过房间号或邀请链接加入，可以玩拉密、双人翻棋军棋、飞行棋、经典你画我猜、两副牌414、幽街商人及PARKS国家公园。七款均提供本机练习。手机可添加到主屏幕，在独立窗口中使用；牌桌以横屏为主，军棋同时支持竖屏，绘画画布按可用空间适配。
 
-[正式入口](https://game.sumomoli.com/) · [Agora 入口](https://agora.sumomoli.com/game/) · [设计文档](docs/design/README.md) · [参与设计](CONTRIBUTING.md)
+[正式入口](https://game.sumomoli.com/) · [练习大厅](https://game.sumomoli.com/practice-hub.html) · [Agora 入口](https://agora.sumomoli.com/game/) · [设计文档](docs/design/README.md) · [参与设计](CONTRIBUTING.md)
 
 这是持续开发的项目。仓库供朋友共同设计、维护者开发使用。公开内容包含应用代码、测试和产品设计，不包含线上用户数据、密钥或运维记录。`main` 是开发主线，线上部署独立验收；提交到 GitHub 不会自动更新正式服务。正式发布使用独立冻结的运行包，账号接入改动须另行联合验收。
 
@@ -19,7 +19,7 @@
 - [分类模板入口](docs/design/game-design-template.md)：朋友写玩法和例子，维护者补技术设计。
 - [固定牌类模板](docs/design/templates/fixed-deck-game.md)：414、扑克、麻将、拉密，重点是牌组与规则。
 - [幽街商人／百鬼商会](docs/proposals/hyakki-trading/README.md)：2～6人经营桌游，51种110张卡牌；完整规则、朋友房、观战、1～5名电脑练习与全卡图鉴已上线，旧双人存档保留原规则。
-- [PARKS 国家公园设计](docs/proposals/parks/README.md)与[技术实施计划](docs/plans/parks-v1.md)：第二版官方1.1基础、露营、双人Teddy、官方单人及志愿项目全部实现，245项定义、76幅原创主体、朋友房、电脑／官方单人练习与12课教学齐备；最终Linux3,424项通过，主机发布及两个公网入口核验完成。当前完成范围及来源／设备边界由计划维护。
+- [PARKS 国家公园设计](docs/proposals/parks/README.md)与[技术实施计划](docs/plans/parks-v1.md)：第二版官方1.1基础、露营、双人Teddy、官方单人及志愿项目全部实现，245项定义、76幅原创主体、朋友房、电脑／官方单人练习与12课教学齐备；原盒发布Linux3,424项通过；教学引导与分组入口另完成92项定向回归及12课实际流程，两正式入口核验完成。当前完成范围及来源／设备边界由计划维护。
 - [桌游类模板](docs/design/templates/tabletop-game.md)与[逐卡定义](docs/design/templates/card-definition.md)：不同角色、牌或地块各有行为；飞行棋可用轻版。
 - [Step 0 资源阶段](docs/design/resource-stage.md)：先做代表性资源和操作小样，完整接入前补齐本轮内容与资源。
 - [技术计划模板](docs/plans/game-implementation-plan-template.md)：维护者根据实际代码写清模块、接口、并发、存储、资源、共通接入、验收和回退，再开始实现；朋友只需参与玩法设计。
