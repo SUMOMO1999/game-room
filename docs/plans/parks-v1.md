@@ -1,6 +1,6 @@
 # PARKS 全原盒技术实施计划
 
-2026-10-11，计划v1.3；规则范围沿设计v0.4与[独立资料复核](../proposals/parks/independent-review.md)。依据[完整首发范围](../proposals/parks/release-scope.md)、[功能合同](../proposals/parks/functions.md)与[模式规则](../proposals/parks/modes.md)。本页唯一维护实施进度。全部原盒规则、245项定义、76幅原创主体、正式房间、练习与12课教学已实现；固定包`10676b490f3d7cbfa60a`／339文件通过最终隔离Linux和本地产品门，主机发布及两个公网入口核验均已完成。Step 0与早期失败保留为历史，最新完成范围及来源／设备限制见第10节，不把本地浏览器和合成账号当真人真机验收。
+2026-10-11，计划v1.3；规则范围沿设计v0.4与[独立资料复核](../proposals/parks/independent-review.md)。依据[完整首发范围](../proposals/parks/release-scope.md)、[功能合同](../proposals/parks/functions.md)与[模式规则](../proposals/parks/modes.md)。本页唯一维护实施进度。全部原盒规则、245项定义、76幅原创主体、正式房间、练习与12课教学已实现；原盒首发`10676b490f3d7cbfa60a`／339文件通过最终隔离Linux和产品门；当前`b54e62fb141599e4621a`／342文件已发布教学指导与分组练习大厅，92项本批定向回归、12课实际流程及两个公网入口核验通过。Step 0与早期失败保留为历史，最新完成范围及来源／设备限制见第10节，不把本地浏览器和合成账号当真人真机验收。
 
 ## 1. 交付目标与规则基线
 
