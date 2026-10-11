@@ -1189,8 +1189,25 @@ dialog.tile-inspector[open] {
 .game-screen.in-game .shell:not(.lobby-shell) .player-seat.next { box-shadow:inset 2px 0 #b9d896; }
 @media(max-width:620px) { .turn-clock { font-size:9px;gap:2px; }.turn-clock-action { display:none; }.game-screen .round-summary { gap:5px!important; }.game-screen #round-label { display:none; } }
 .game-screen.rummi-own-turn .game-table { border-color:#ffda86;box-shadow:inset 0 0 0 2px #f3d27966; }
-.game-screen.rummi-own-turn .rack { border-color:#ffe5ab;box-shadow:inset 0 0 0 2px #ffe4a866,0 0 0 1px #f2d29b; }
-.game-screen.rummi-own-turn .player-seat.self { border:2px solid #ffe193;background:#e1d19326; }
+.game-screen { --rummi-rack-active:var(--theme-base,#173a31); }
+html[data-theme-tone=light] .game-screen { --rummi-rack-active:var(--theme-accent,#715b3d); }
+/* These game-owned states intentionally outrank the generic theme surfaces.
+   Tiles retain their cream faces and semantic number colors in every theme. */
+.game-screen.rummi-own-turn .shell:not(.lobby-shell) .rack {
+  background-color:var(--rummi-rack-active)!important;
+  background-image:linear-gradient(180deg,#ffffff0c,transparent 65%),repeating-linear-gradient(0deg,var(--theme-grain,#edf4dd06) 0 1px,transparent 1px 5px)!important;
+  border-color:var(--theme-accent,#e4ce9b)!important;
+  box-shadow:inset 0 0 0 2px var(--theme-accent,#e4ce9b),inset 0 -3px 0 var(--theme-rack-edge,#ad8957),0 2px 6px var(--theme-shadow,#051d1659)!important;
+}
+.game-screen .rack-heading h2 #rack-owner-label { margin:0;padding:1px 5px;font:inherit;white-space:nowrap;color:var(--theme-ink,#f7f4e8)!important;border-radius:4px; }
+.game-screen.rummi-own-turn .rack-heading h2 #rack-owner-label { background:var(--theme-accent,#e4ce9b);color:var(--theme-base,#173a31)!important;font-weight:750; }
+.game-screen[data-mode=room].in-game .shell:not(.lobby-shell) #room-players .player-seat.current {
+  background-color:var(--theme-accent,#e4ce9b)!important;background-image:none!important;
+  color:var(--theme-base,#173a31)!important;border-color:var(--theme-accent,#e4ce9b)!important;
+}
+.game-screen[data-mode=room].in-game .shell:not(.lobby-shell) .player-seat.current :is(strong,span) { color:var(--theme-base,#173a31)!important; }
+.game-screen[data-mode=room].in-game .shell:not(.lobby-shell) .player-seat.current :is(.player-avatar,.player-turn-order) { background:var(--theme-base,#173a31)!important;color:var(--theme-accent,#e4ce9b)!important; }
+.game-screen[data-mode=room].in-game .shell:not(.lobby-shell) .player-seat.current::after { background:var(--theme-base,#173a31)!important; }
 .game-screen.rummi-own-turn #commit:not(:disabled) { background:#ffda86;box-shadow:0 0 0 2px #ffe5a55e; }
 @media(max-height:420px) { .game-screen #turn-banner { min-height:21px;font-size:10px;padding:2px 8px; } }
 .player-seat.turn-notice .player-avatar { animation: turn-arrival .6s ease-out; }
