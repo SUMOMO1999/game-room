@@ -1,5 +1,8 @@
 :root { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; color: #26362f; background: #f5f3ec; font-synthesis: none; --green: #315b50; --muted: #7b8278; --line: #dcded2; --ivory: #fffaf0; }
 * { box-sizing: border-box; }
+/* Fast repeated taps must not zoom the page; keep native panning and pinch zoom.
+   Tiles, drawing canvases and card strips retain their narrower touch-action rules. */
+html, body { touch-action: manipulation; }
 body { margin: 0; }
 button, a { -webkit-tap-highlight-color: transparent; }
 button { font: inherit; cursor: pointer; color: inherit; }
