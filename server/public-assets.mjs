@@ -1,6 +1,7 @@
 import { gamePresentations } from '../app/games/catalog.mjs';
 
 const platformAssets = Object.freeze(['index.html', 'lobby.mjs', 'lobby-model.mjs', 'lobby.css',
+  'practice-hub.html', 'practice-hub.mjs', 'practice-hub.css',
   'account-client.mjs', 'room-client.mjs', 'room-chat.mjs', 'entry-path.mjs', 'game-routing.mjs',
   'game-viewport.mjs', 'game-audio.mjs', 'game-presentation.mjs', 'board-layout.mjs', 'styles.css',
   'favicon.svg', 'app-shell.mjs', 'app-shell.css', 'practice-entry.css', 'manifest.webmanifest',

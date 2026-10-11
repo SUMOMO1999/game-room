@@ -2,6 +2,7 @@ import { createParksPractice, parksPracticeView, practiceProblem, PRACTICE_SELF,
 import { applyGameAction, nextSystemStep, applySystemStep } from './rules/index.mjs';
 import { privateView } from './view.mjs';
 import { chooseParksPracticeAction } from './practice-bot.mjs';
+import { getDefinition } from './content/catalog.mjs';
 
 const clone = structuredClone;
 const freeze = value => { if (value && typeof value === 'object') { Object.values(value).forEach(freeze); Object.freeze(value); } return value; };
@@ -12,7 +13,7 @@ const lesson = (id, title, goal, instruction, options = {}) => ({ id, title, goa
 
 export const LESSONS = freeze([
   lesson('movement-weather', '1 · 前进与天气', '移动到有天气的位置，并领取该位置的天气。', '选一名徒步者，再选前方带天气的位置；到达后领取“天气”，地点行动也要处理。'),
-  lesson('occupied-campfire', '2 · 占位与营火', '用点燃的营火进入已有棋子的位置。', '选前方已有棋子的位置。合法行动会说明本次消耗营火；熄灭后不能再次借它进入占位位置。',
+  lesson('occupied-campfire', '2 · 占位与营火', '用点燃的营火进入已有棋子的位置。', '选前方已有棋子的位置。合法行动会说明本次消耗营火；熄灭后暂时不能用于占位，卡牌效果可重新点燃。',
     { configuration: { ...standard, passionChoice: 'random' }, playerCount: 4, normalDifference: `${prelude} 本课使用四人局：开局营火已点燃。二、三人局开局营火熄灭。` }),
   lesson('fill-canteen', '3 · 新水与水壶', '把刚得到的新水填进一行未填过的水壶。', '在“分配新水”中选一行未填过的水壶，再领取水壶收益；只有新得到的水可以填壶。'),
   lesson('buy-gear', '4 · 购买装备', '按实际费用购买一件公开装备。', '选择“购买装备”的一项合法报价，检查付款后确认。已购买的装备会出现在自己的装备区。'),
@@ -32,6 +33,20 @@ export const LESSONS = freeze([
 ]);
 
 const byId = new Map(LESSONS.map(value => [value.id, value]));
+const learned = {
+  'movement-weather': '徒步者只能向前走。到站先领取天气，再处理地点行动。',
+  'occupied-campfire': '进入占位地点会熄灭营火。通常新季复原；卡牌效果也可重新点燃。',
+  'fill-canteen': '只有新得到的水可以填壶；同一行每季只能填一次。',
+  'buy-gear': '装备付款后留在装备区；满足卡面触发条件时，才产生额外收益。',
+  'reserve-park': '预订把公园留给自己；只有之后付费游览，才获得公园分数。',
+  'visit-park': '付清实际报价后，公园进入已游览区并计分；即时收益仍要结清。',
+  'passion-branch': '热忱达标后，在能力与终局计分中选一条；本局不能改选。',
+  'season-score': '三季结束后，把公园、照片、热忱与季节奖励合计为总分。',
+  camping: '露营放弃天气与正常地点行动，改为执行所选营位的行动。',
+  'teddy-order': '两个颜色组分别使用不同的Teddy牌；你决定哪组先走。',
+  'solo-rating': '单人看总分评级，不计照片排名分；志愿项目只增加难度。',
+  'volunteer-projects': '志愿项目改变可选行动和费用；实际报价已计入本次额外成本。',
+};
 const reference = new Map();
 const own = view => view?.players?.find(value => value.id === view.selfId);
 const allowed = view => (view?.legalActions ?? []).filter(value => !value.disabledReason);
@@ -103,7 +118,8 @@ function completed(view, id, initial) {
     case 'occupied-campfire': return !owner.campfire && owner.hikers.some(value => value.position !== before.hikers.find(old => old.id === value.id)?.position);
     case 'fill-canteen': return owner.canteenRows.some((row, index) => row.filled && !before.canteenRows[index].filled);
     case 'buy-gear': return owner.gearPurchases > before.gearPurchases;
-    case 'reserve-park': return owner.reserved.some(id => !before.reserved.includes(id)) || owner.visited.some(id => !before.visited.includes(id));
+    case 'reserve-park': return owner.reserved.some(id => !before.reserved.includes(id))
+      || events.some(value => value.type === 'park-reserved' && value.targetId && !before.reserved.includes(value.targetId));
     case 'visit-park': case 'volunteer-projects': return owner.visited.length > before.visited.length;
     case 'passion-branch': return ['ability', 'scoring'].includes(owner.passionBranch);
     case 'camping': return view.camping.tents.some(tent => tent.slotId && !initial.view.camping.tents.some(old => old.id === tent.id && old.slotId === tent.slotId));
@@ -119,17 +135,105 @@ function nextChoice(view, id) {
   }
   return chooseParksPracticeAction(view);
 }
-export function tutorialProgress(view, id) {
+
+const resourceNames = { mountain: '山脉', forest: '森林', sun: '阳光', water: '水', wildlife: '野生动物' };
+const resourceText = resources => Object.entries(resources || {}).filter(([id, count]) => resourceNames[id] && count > 0).map(([id, count]) => `${resourceNames[id]}${count}`).join('、');
+const cardName = id => { try { return getDefinition(id).nameZh; } catch { return ''; } };
+function completionOutcome(view, id, initial) {
+  const owner = own(view), before = own(initial.view);
+  const acquired = key => owner[key].filter(value => !before[key].includes(value));
+  switch (id) {
+    case 'movement-weather': {
+      const events = (view.lastPublicEvents || []).filter(value => value.actorId === view.selfId && value.type === 'resources-gained' && value.sourceId?.startsWith('weather.'));
+      const resources = Object.fromEntries(Object.keys(resourceNames).map(key => [key, events.reduce((total, event) => total + (event.resources?.[key] || 0), 0)]));
+      return { text: resourceText(resources) ? `天气已领取：${resourceText(resources)}。` : '已领取到达位置的天气。', resources };
+    }
+    case 'occupied-campfire': return { text: '徒步者已进入占位地点，你的营火已熄灭。' };
+    case 'fill-canteen': {
+      const index = owner.canteenRows.findIndex((row, index) => row.filled && !before.canteenRows[index].filled);
+      return { text: index >= 0 ? `新水已填入第${index + 1}行水壶。` : '本课已完成新水填壶。' };
+    }
+    case 'buy-gear': return { text: `${acquired('gear').map(cardName).join('、') || '新装备'}已进入你的装备区。` };
+    case 'reserve-park': return { text: `${acquired('reserved').map(cardName).join('、') || '公园'}已预订，暂不获得游览分数。` };
+    case 'visit-park': case 'volunteer-projects': return { text: `${acquired('visited').map(cardName).join('、') || '公园'}已游览，卡面分数已计入。` };
+    case 'passion-branch': return { text: owner.passionBranch === 'ability' ? '已选择热忱能力，本局持续生效。' : '已选择热忱终局计分，本局不再改选。' };
+    case 'camping': return { text: '帐篷已放入所选营位，接下来执行该营位的收益。' };
+    case 'teddy-order': return { text: '橙色与蓝色Teddy都已按各自的牌移动。' };
+    case 'season-score': case 'solo-rating': {
+      const score = view.result?.scores?.find(value => value.playerId === view.selfId);
+      return { text: score ? `三季已结清，你得到${score.score}分${id === 'solo-rating' ? ` · ${score.soloRank || '尚未达评级'}` : '。'}` : '本课已完成三季计分。', score: score?.score ?? null };
+    }
+    default: return { text: '本课目标已完成。' };
+  }
+}
+
+// Teaching owns guidance only. Every suggested target comes from the current
+// participant projection; selecting it never submits a domain command.
+function lessonGuidance(view, info, initial, action, complete) {
+  const index = LESSONS.indexOf(info), title = info.title.replace(/^\d+ · |^专题 · /, '');
+  if (complete) {
+    const unfinished = !view.result && (view.opportunities || []).some(value => value.status === 'open' && value.ownerSeatId === view.selfId && value.mandatory);
+    return { lessonId: info.id, title, number: index + 1, total: LESSONS.length, goal: info.goal, complete: true,
+      heading: '本课完成', instruction: learned[info.id], outcome: completionOutcome(view, info.id, initial),
+      continuation: unfinished ? '本课只练这一项；后续地点行动仍待处理，教学已停在这里。' : '教学已停在完成的位置。下一课会进入另一段独立练习。',
+      nextLabel: index === 7 || index === LESSONS.length - 1 ? '完整练习 →' : '下一课 →', suggestedAction: null };
+  }
+  const opportunity = view.opportunities?.find(value => value.id === action?.opportunityId);
+  let heading = action?.label || '等待同行者', instruction = opportunity?.reason || info.instruction;
+  if (view.window?.paused) { heading = '教学已暂停'; instruction = '打开设置恢复旅程，然后继续当前步骤。'; }
+  else if (view.window?.responsibleSeatId !== PRACTICE_SELF) { heading = '看同行者完成这一步'; instruction = '电脑和系统正在处理真实行动；轮到你时，可选物件会重新亮起。'; }
+  else if (action?.type === 'move-hiker') {
+    heading = `点步道第${action.fields.position}站${action.result.campfireUsed ? ' · 消耗营火' : ''}`;
+    instruction = action.fields.arrivalMode === 'camping' ? '点亮起的目的地，再选露营方式。露营替代天气和地点行动。'
+      : `下方已选好一名徒步者。点亮起的地点，看清收益后确认${action.result.weather ? `；到站可领${resourceNames[action.result.weather]}天气` : ''}。`;
+  } else if (opportunity?.kind === 'weather') {
+    heading = '领取刚到站的天气'; instruction = `已到达第${action.sourceId.split('.')[1]}站。点“领取天气”，再确认；这份${resourceText(action.result?.resources)}来自地点上的天气标记。`;
+  } else if (action?.type === 'allocate-water') {
+    heading = action.fields.rowIndex === null ? '安排这一枚新水' : `把新水填进第${action.fields.rowIndex + 1}行`;
+    instruction = '点亮起的水壶选项，再确认。填壶换取该行效果；放入背包则保留这枚水。';
+  } else if (action?.fields.action === 'buy-gear') {
+    instruction = '点亮起的装备报价，查看实际付款与效果，再确认购买。';
+  } else if (action?.fields.action === 'reserve') {
+    instruction = '点公园报价，再确认预订；现在不付款，也不计游览分数。';
+  } else if (action?.fields.action === 'visit') {
+    instruction = info.id === 'volunteer-projects' ? '点已预订的公园报价；核对项目加收与付款后，再确认游览。'
+      : '点公园报价；核对实际付款和分数后，再确认游览。';
+  } else if (action?.type === 'choose-passion') {
+    instruction = '目标已达成。直接点“启用能力”或“选择终局计分”，阅读后果后确认。';
+  } else if (action?.type === 'choose-teddy') {
+    instruction = '直接点橙色或蓝色组，再确认谁先走；系统随后分别为两组翻牌移动。';
+  } else if (action?.type === 'finish-window') {
+    instruction = view.stage === 'season-reward' ? '本轮没有待选奖励。点“完成季节奖励”并确认，继续到真实计分。'
+      : '当前收益已处理。点结束这一步并确认，再继续本课目标。';
+  }
+  return { lessonId: info.id, title, number: index + 1, total: LESSONS.length, goal: info.goal, complete: false,
+    heading, instruction, outcome: null, continuation: null, nextLabel: null, suggestedAction: action ? clone(action.fields) : null };
+}
+
+export function tutorialActionGuidance(view, id, fields) {
+  const info = definition(id);
+  const action = allowed(view).find(value => JSON.stringify(value.fields) === JSON.stringify(fields));
+  if (!action) return null;
+  const guidance = lessonGuidance(view, info, basis(id), action, false), target = gateAction(view, id);
+  if (target?.opportunityId && action.opportunityId !== target.opportunityId) {
+    const current = view.opportunities.find(value => value.id === action.opportunityId), goal = view.opportunities.find(value => value.id === target.opportunityId);
+    guidance.instruction = `当前查看${current?.label || action.label}；本课目标在“${goal?.label || target.label}”中，可点上方切回。`;
+  }
+  return guidance;
+}
+export function tutorialProgress(view, id, { completedPreviously = false } = {}) {
   const info = definition(id), initial = basis(id), owner = own(view);
   if (!owner || view.gameType !== 'parks' || JSON.stringify(view.configuration) !== JSON.stringify(info.configuration)) {
     return { complete: false, instruction: '这是另一种局面，请重做当前课程。', nextLessonId: null, suggestedAction: null, detail: null };
   }
-  const complete = completed(view, id, initial), index = LESSONS.findIndex(value => value.id === id);
+  const complete = completedPreviously || completed(view, id, initial), index = LESSONS.findIndex(value => value.id === id);
   const suggestedAction = complete ? null : nextChoice(view, id);
   const score = view.result?.scores?.find(value => value.playerId === view.selfId);
   const detail = score ? { score: score.score, breakdown: clone(score.breakdown), soloRank: score.soloRank ?? null, rankThreshold: score.rankThreshold ?? null,
     ratingThresholds: view.configuration.mode === 'solo' ? [30, 35, 40, 45, 50] : [], difficulty: score.difficulty ?? null } : null;
   const instruction = complete ? '本课目标已完成。可以继续处理当前收益，或进入下一课。' : view.window?.responsibleSeatId !== PRACTICE_SELF
     ? '等待系统或电脑完成它的行动；当前课程状态会保留。' : allowed(view).find(value => JSON.stringify(value.fields) === JSON.stringify(suggestedAction))?.label ?? info.instruction;
-  return { complete, instruction, nextLessonId: index + 1 < LESSONS.length ? LESSONS[index + 1].id : null, suggestedAction: clone(suggestedAction), detail };
+  const action = allowed(view).find(value => JSON.stringify(value.fields) === JSON.stringify(suggestedAction));
+  return { complete, instruction, nextLessonId: index + 1 < LESSONS.length ? LESSONS[index + 1].id : null, suggestedAction: clone(suggestedAction), detail,
+    guidance: lessonGuidance(view, info, initial, action, complete) };
 }

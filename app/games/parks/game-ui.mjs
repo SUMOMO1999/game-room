@@ -27,9 +27,12 @@ export function actionOutcome(action) {
   if (result.photos) parts.push(`拍摄${result.photos}张照片`);
   if (result.resources) parts.push(`获得${resourceText(result.resources)}`);
   if (result.rowIndex !== undefined && result.rowIndex !== null) parts.push(`放入第${result.rowIndex + 1}行`);
-  if (result.canteenIds?.length) parts.push(`获得${result.canteenIds.length}枚水壶`);
+  if (result.canteenIds?.length) parts.push(action.type === 'allocate-water'
+    ? result.canteenIds.map(id => `${name(id)}：${definition(id)?.shortText || '执行该壶效果'}`).join('，')
+    : `获得${result.canteenIds.length}枚水壶`);
   if (result.instant?.length) parts.push(result.instant.map(step => step.resources ? `立即获得${resourceText(step.resources)}` : ({ die: '掷步道骰', badge: '取得摄影徽章', canteen: '取得水壶', 'free-photo': '免费拍照' }[step.kind] || '')).filter(Boolean).join('，'));
-  if (result.effectText) parts.push(result.effectText);
+  if (result.triggerText) parts.push(`触发条件：${result.triggerText}${result.effectText ? `；触发后：${result.effectText}` : ''}`);
+  else if (result.effectText) parts.push(result.effectText);
   if (result.forgoOptionalCount) parts.push(`放弃${result.forgoOptionalCount}项未用额外收益`);
   if (action?.type === 'move-hiker') parts.push(action.fields.arrivalMode === 'camping' ? name(action.fields.campingSlotId) : action.fields.position === 10 ? `终点 · ${{parks:'预订或游览公园',photo:'拍照',gear:'购买装备'}[action.fields.endSlot] || '抵达步道终点'}` : `向前移动到第${action.fields.position}站`);
   if (action?.type === 'move-hiker') { parts.push(result.campfireUsed ? '消耗营火' : '不消耗营火'); if (result.weather) parts.push(`领取天气：${RESOURCE_NAMES[result.weather]}`); if (result.arrivalMode === 'camping') parts.push('露营，不领取地点天气'); if (result.siteId && result.arrivalMode !== 'camping') parts.push(definition(result.siteId)?.shortText); }
@@ -51,10 +54,10 @@ export function quoteCost(action) {
 }
 
 export function mountParksPage({ root, practice = false, tutorial = false, onAction = async () => {}, onLeave = async () => {},
-  onRefresh = () => {}, onRetry = () => {}, onRecover = () => {}, onHistory = async () => null, onRestart = () => {}, onHint = () => {} } = {}) {
+  onRefresh = () => {}, onRetry = () => {}, onRecover = () => {}, onHistory = async () => null, onRestart = () => {}, onHint = () => {}, onTutorialControl = () => {}, onTutorialDescription = () => null } = {}) {
   const doc = root.ownerDocument, win = doc.defaultView, draft = createParksDraft(), displayClock = createParksDisplayClock(), listeners = [];
   let room = null, gate = { pending: false, canAct: false, connection: 'offline' }, hikerId = null, source = null,
-    market = 'parks', personal = 'canteens', localBusy = false, closed = false, scope = null, inspectedId = null, generation = 0, activeRequest = 0, selectedTarget = null, recoveryFeedback = null;
+    market = 'parks', personal = 'canteens', localBusy = false, closed = false, scope = null, inspectedId = null, generation = 0, activeRequest = 0, selectedTarget = null, recoveryFeedback = null, tutorialGuide = null;
   root.innerHTML = `<div class="pg-host" id="pg-host"><div class="pg-stage" id="pg-stage">
     <header class="pg-header"><div class="pg-brand"><strong>PARKS</strong><span>国家公园 <small>${tutorial ? '跟着走一趟' : practice ? '本机练习' : '朋友同行'}</small></span></div><button id="pg-room" type="button" hidden></button><span id="pg-connection"></span><div class="pg-public-controls"><button type="button" id="pg-season" class="pg-eyebrow" aria-label="查看当前季节目标与奖励"></button><button type="button" id="pg-die" hidden></button></div><nav>${button('聊天 <span id="chat-unread" class="chat-unread" hidden></span>', 'id="chat-toggle" hidden')}${button('设置', 'id="pg-settings"')}${button('×', 'id="pg-exit" aria-label="退出"')}</nav></header>
     <div id="pg-content" class="pg-content"><section class="pg-table"><div class="pg-topline"><div><h1 id="pg-title">正在展开旅程…</h1></div><div class="pg-public-info"><div id="pg-clock"></div></div></div>
@@ -84,15 +87,17 @@ export function mountParksPage({ root, practice = false, tutorial = false, onAct
     if (!action || !draft.select(action, room)) return false; hikerId = action.fields.hikerId || hikerId; source = action.opportunityId; selectedTarget = action.fields.targetId || null; renderTask(room.game); renderTrail(room.game); feedback('这是一个合法建议。看清费用与结果后，由你确认或取消。'); return true; }
   function open(id) { for (const node of root.querySelectorAll('dialog[open]')) node.close(); $(id).showModal(); }
   function read(title, html) { $('pg-reading').querySelector('h2').textContent = title; $('pg-reading-content').innerHTML = html; open('pg-reading'); }
-  const locked = () => closed || !room?.game || gate.pending || !gate.canAct || localBusy || room.game.window?.paused;
+  const locked = () => closed || !room?.game || gate.pending || !gate.canAct || localBusy || room.game.window?.paused || tutorialGuide?.complete;
   const legal = () => room?.game?.legalActions || [];
   const memberName = id => room?.members?.find(value => (value.id || value.playerId) === id)?.name || room?.matchPlayers?.find(value => value.id === id)?.name || (id === room?.selfId ? '你' : room?.game?.players?.findIndex(value => value.id === id) >= 0 ? `同行者 ${room.game.players.findIndex(value => value.id === id) + 1}` : 'Teddy');
   const color = id => Math.max(0, room?.game?.controllers?.findIndex(value => value.id === id) ?? 0) % 7;
   function piece(hiker) { const index = color(hiker.controllerId); return `<span class="pg-piece pg-color-${index}" data-piece="${esc(hiker.id)}" aria-label="${esc(memberName(hiker.controllerId))}的徒步者" title="${esc(memberName(hiker.controllerId))}">${symbol(hiker.controllerKind === 'teddy' ? 'teddy' : 'hiker', 24)}<small class="pg-piece-mark" aria-hidden="true">${['●','▲','■','◆','★','✚','⬟'][index]}</small></span>`; }
   function actionButton(action, index) {
-    const target = action.fields.targetId && definition(action.fields.targetId), selected = draft.current();
+    const target = action.fields.targetId && definition(action.fields.targetId);
     const active = draft.isSelected(action);
-    return button(`${target ? `<span class="pg-choice-art">${renderCard(target.id, { interactive: false, thumbnail: true })}</span>` : ''}<span>${esc(action.label || '选择')}${action.result?.resources ? `<span class="pg-choice-resource">${resourceLine(action.result.resources)}</span>` : actionOutcome(action) ? `<small>${esc(actionOutcome(action))}</small>` : ''}</span>`, `data-action-index="${index}" class="pg-choice${target ? ' pg-choice-card' : ''}${active ? ' is-selected' : ''}" aria-pressed="${Boolean(active)}" ${locked() ? 'disabled' : ''}`);
+    const guided = tutorialGuide?.suggestedAction && JSON.stringify(action.fields) === JSON.stringify(tutorialGuide.suggestedAction);
+    const branchEffect = tutorialGuide && action.type === 'choose-passion' ? action.result?.text : null;
+    return button(`${target ? `<span class="pg-choice-art">${renderCard(target.id, { interactive: false, thumbnail: true })}</span>` : ''}<span>${esc(action.label || '选择')}${branchEffect ? `<span class="pg-branch-effect">${esc(branchEffect)}</span>` : action.result?.resources ? `<span class="pg-choice-resource">${resourceLine(action.result.resources)}</span>` : actionOutcome(action) ? `<small>${esc(actionOutcome(action))}</small>` : ''}</span>`, `data-action-index="${index}" ${guided ? 'data-tutorial-target="true"' : ''} class="pg-choice${target ? ' pg-choice-card' : ''}${active ? ' is-selected' : ''}" aria-pressed="${Boolean(active)}" ${locked() ? 'disabled' : ''}`);
   }
   function renderTrail(game) {
     const starts = game.hikers.filter(value => value.position === 0);
@@ -101,7 +106,8 @@ export function mountParksPage({ root, practice = false, tutorial = false, onAct
       const site = definition(slot.siteId), selected = draft.current()?.fields.position === slot.position;
       const available = hikerId && legal().some(value => value.type === 'move-hiker' && value.fields.hikerId === hikerId && value.fields.position === slot.position);
       const hikers = slot.start ? starts : game.hikers.filter(value => value.position === slot.position);
-      return `<button type="button" data-position="${slot.position}" class="pg-site${available ? ' can-move' : ''}${selected ? ' is-selected' : ''}" aria-label="${esc(slot.start ? '起点' : slot.end ? '终点：公园、摄影或装备' : `第${slot.position}站，${site?.nameZh}，${site?.shortText}`)}" ${locked() && available ? 'disabled' : ''}><span class="pg-site-label">${slot.start ? '出发' : slot.end ? '终点' : `${slot.position} · ${esc(site?.nameZh)}`}</span><span class="pg-site-icon">${symbol(slot.start ? 'trail' : slot.end ? 'trail-end' : slot.siteId.slice(5), 38)}</span><span class="pg-weather">${slot.weather ? `<span data-weather="${slot.position}">${resourceIcon(slot.weather)}</span>` : ''}${slot.shutterbug ? symbol('photo', 20) : ''}${slot.end ? ['parks','photo','gear'].map(id => `<span class="pg-end-reward${game.endRewards[id] ? ' is-taken' : ''}" aria-label="${{parks:'起始标记',photo:'野生动物1',gear:'阳光1'}[id]}：${game.endRewards[id] ? '已领取' : '首到可领'}" title="${{parks:'起始标记',photo:'野生动物1',gear:'阳光1'}[id]}：${game.endRewards[id] ? '已领取' : '首到可领'}">${symbol({parks:'first-player',photo:'wildlife',gear:'sun'}[id],14)}</span>`).join('') : ''}</span><span class="pg-site-pieces">${hikers.map(piece).join('')}</span></button>`;
+      const guided = available && !tutorialGuide?.complete && tutorialGuide?.suggestedAction?.type === 'move-hiker' && tutorialGuide.suggestedAction.position === slot.position;
+      return `<button type="button" data-position="${slot.position}" ${guided ? 'data-tutorial-target="true"' : ''} class="pg-site${available ? ' can-move' : ''}${selected ? ' is-selected' : ''}" aria-label="${esc(slot.start ? '起点' : slot.end ? '终点：公园、摄影或装备' : `第${slot.position}站，${site?.nameZh}，${site?.shortText}`)}${guided ? '，本课建议目的地' : ''}" ${locked() && available ? 'disabled' : ''}><span class="pg-site-label">${slot.start ? '出发' : slot.end ? '终点' : `${slot.position} · ${esc(site?.nameZh)}`}</span><span class="pg-site-icon">${symbol(slot.start ? 'trail' : slot.end ? 'trail-end' : slot.siteId.slice(5), 38)}</span><span class="pg-weather">${slot.weather ? `<span data-weather="${slot.position}">${resourceIcon(slot.weather)}</span>` : ''}${slot.shutterbug ? symbol('photo', 20) : ''}${slot.end ? ['parks','photo','gear'].map(id => `<span class="pg-end-reward${game.endRewards[id] ? ' is-taken' : ''}" aria-label="${{parks:'起始标记',photo:'野生动物1',gear:'阳光1'}[id]}：${game.endRewards[id] ? '已领取' : '首到可领'}" title="${{parks:'起始标记',photo:'野生动物1',gear:'阳光1'}[id]}：${game.endRewards[id] ? '已领取' : '首到可领'}">${symbol({parks:'first-player',photo:'wildlife',gear:'sun'}[id],14)}</span>`).join('') : ''}</span><span class="pg-site-pieces">${hikers.map(piece).join('')}</span></button>`;
     }).join('');
   }
   function renderRoster(game) {
@@ -126,6 +132,7 @@ export function mountParksPage({ root, practice = false, tutorial = false, onAct
     else { const passion = definition(owner.passionId); $('pg-items').innerHTML = passion ? `<div class="pg-passion"><b>${esc(cardName(passion))}</b><span>${esc(passion.goalText)}</span><span>进度 ${esc(typeof owner.passionProgress === 'object' ? Object.values(owner.passionProgress).join(' / ') : owner.passionProgress)}</span><p>${esc(owner.passionBranch === 'ability' ? passion.abilityText : owner.passionBranch === 'scoring' ? passion.scoringText : '达成目标后，选择能力或终局计分。')}</p>${button('完整说明', `data-card-id="${esc(passion.id)}"`)}</div>` : '<p>先从两张热忱中选择一张。</p>'; }
   }
   function renderTask(game) {
+    if (tutorialGuide?.complete) { renderTutorialCompletion(game); return; }
     const actions = legal(), current = draft.current(), own = game.window?.responsibleSeatId === room.selfId;
     $('pg-stage').dataset.hasDraft = String(Boolean(current));
     let candidates = actions;
@@ -145,10 +152,32 @@ export function mountParksPage({ root, practice = false, tutorial = false, onAct
       if (selectedTarget && candidates.some(value => value.fields.targetId === selectedTarget)) candidates = candidates.filter(value => value.fields.targetId === selectedTarget);
     }
     if (game.window?.paused) { $('pg-task-heading').innerHTML = `<h2>${game.window.pauseCause === 'timeout' ? '本步超时，旅程已暂停' : '旅程已暂停'}</h2><p>${game.window.pauseCause === 'timeout' ? `${esc(memberName(game.window.responsibleSeatId))}可在设置中恢复这一步，重新获得30分钟。` : '任一玩家可在设置中恢复，继续使用暂停前的剩余时间。'}</p>`; candidates = []; }
+    if (tutorialGuide) {
+      // Keep every real choice, but make this lesson's suggested object visible
+      // first. Selecting a source still follows that source's own legal action.
+      if (!current && tutorialGuide.suggestedAction) candidates = [...candidates].sort((a, b) => Number(JSON.stringify(b.fields) === JSON.stringify(tutorialGuide.suggestedAction)) - Number(JSON.stringify(a.fields) === JSON.stringify(tutorialGuide.suggestedAction)));
+      const description = !current && candidates[0] ? onTutorialDescription(candidates[0].fields) || tutorialGuide : tutorialGuide;
+      const block = gate.tutorialBlock;
+      $('pg-task-heading').innerHTML = `<span class="pg-lesson-caption">第${tutorialGuide.number}/${tutorialGuide.total}课 · ${esc(tutorialGuide.title)}</span><h2>${esc(block?.heading || (current ? '看清结果，再确认' : description.heading))}</h2><p class="pg-lesson-goal">目标：${esc(tutorialGuide.goal)}</p><p class="pg-lesson-instruction">${esc(block?.message || (current ? '这只是选择预览，尚未移动或付款。确认才执行；取消可重新选择。' : description.instruction))}</p>`;
+    }
     $('pg-choices').innerHTML = game.stage === 'move' && candidates.length === 1 ? '' : candidates.map(action => actionButton(action, actions.indexOf(action))).join('');
     $('pg-quote').innerHTML = current ? `<div><strong>${esc(current.label)}</strong><p>${esc(actionOutcome(current))}</p>${quoteCost(current)}</div>${current.cost?.paymentOptions?.length > 1 ? `<div class="pg-payments" aria-label="选择付款组合">${current.cost.paymentOptions.map((payment, index) => button(resourceLine(payment) || '免费', `data-payment="${index}" aria-label="支付${esc(resourceText(payment) || '零资源')}" aria-pressed="${JSON.stringify(payment) === JSON.stringify(current.fields.payment || current.fields.resources)}"`)).join('')}</div>` : ''}` : '';
     $('pg-commit').innerHTML = current ? `${button('取消选择', 'data-cancel="true"')}${button('确认 · ' + esc(current.label), `data-confirm="true" class="pg-primary" ${locked() ? 'disabled' : ''}`)}` : '';
+    if (tutorialGuide && gate.tutorialBlock) $('pg-commit').innerHTML = tutorialRecoveryControls();
     if (game.result) renderResult(game);
+  }
+  function tutorialRecoveryControls() {
+    return `${button('刷新核对原进度', 'data-tutorial-refresh="true"')}${gate.tutorialBlock?.retryStorage ? button('重试存档核对', 'data-tutorial-storage-retry="true"') : ''}`;
+  }
+  function renderTutorialCompletion(game) {
+    const guide = tutorialGuide;
+    const unavailable = localBusy || gate.pending ? ' disabled' : '';
+    $('pg-stage').dataset.hasDraft = 'false';
+    $('pg-task-heading').innerHTML = `<span class="pg-lesson-caption">第${guide.number}/${guide.total}课 · ${esc(guide.title)}</span><h2><span class="pg-lesson-check" aria-hidden="true">✓</span> 本课完成</h2><p class="pg-lesson-result">${esc(guide.outcome?.text || '本课目标已完成。')}</p>`;
+    $('pg-task-sources').innerHTML = '';
+    $('pg-choices').innerHTML = `<div class="pg-lesson-learned"><strong>记住这一条</strong><p>${esc(guide.instruction)}</p>${guide.outcome?.resources && resourceText(guide.outcome.resources) ? `<span class="pg-lesson-gain">${resourceLine(guide.outcome.resources)}</span>` : ''}${game.result ? button('查看计分明细', `data-score="${esc(room.selfId)}"`) : ''}</div>`;
+    $('pg-quote').innerHTML = gate.tutorialBlock ? `<p class="pg-lesson-continuation"><strong>${esc(gate.tutorialBlock.heading)}</strong> · ${esc(gate.tutorialBlock.message)}</p>${tutorialRecoveryControls()}` : `<p class="pg-lesson-continuation">${esc(guide.continuation)}</p>`;
+    $('pg-commit').innerHTML = `${button(esc(guide.nextLabel), `data-tutorial-control="next" class="pg-primary"${unavailable}`)}${button('重练本课', `data-tutorial-control="retry"${unavailable || !gate.canAct ? ' disabled' : ''}`)}${guide.nextLabel !== '完整练习 →' ? button('完整练习', `data-tutorial-control="practice"${unavailable}`) : ''}`;
   }
   function renderResult(game) {
     const result = game.result;
@@ -182,6 +211,13 @@ export function mountParksPage({ root, practice = false, tutorial = false, onAct
     const oldMarkets = new Map(Object.values(previous?.markets || {}).flat().filter(Boolean).map(id => [id, motion.capture(`[data-market-target="${id}"] .pk-card`)]));
     if (!same) { motion.cancel(); hikerId = null; source = null; inspectedId = null; selectedTarget = null; localBusy = false; ++activeRequest; ++generation; }
     scope = nextScope; room = { ...value, members: value.members || [...(value.players || []).map(owner => ({ ...owner, role: 'player' })), ...(value.spectators || []).map(owner => ({ ...owner, role: 'spectator' }))] }; gate = { ...gate, ...options }; draft.sync(room);
+    if (tutorial && options.tutorialGuide !== undefined) tutorialGuide = options.tutorialGuide;
+    $('pg-stage').dataset.tutorial = String(tutorial);
+    $('pg-stage').dataset.lessonComplete = String(Boolean(tutorialGuide?.complete));
+    if (tutorialGuide?.complete) draft.cancel();
+    else if (tutorialGuide?.suggestedAction && !draft.current() && (!same || previous?.window?.id !== value.game?.window?.id || source === null)) {
+      hikerId = tutorialGuide.suggestedAction.hikerId || hikerId; source = tutorialGuide.suggestedAction.opportunityId;
+    }
     // The first authorized projection may precede the online connection event.
     // Clear only the recovery message we own, preserving any intervening error.
     if (gate.connection === 'online' && recoveryFeedback !== null) {
@@ -195,7 +231,7 @@ export function mountParksPage({ root, practice = false, tutorial = false, onAct
     $('pg-stage').dataset.selfRole = room.selfRole; $('pg-stage').dataset.roomPhase = room.phase;
     $('pg-arrangement').hidden = practice || room.phase !== 'waiting' || room.hostId !== room.selfId;
     if (!$('pg-arrangement').hidden) { const form = $('pg-config'); for (const key of ['mode','camping','volunteerCount','passionChoice']) form.elements[key].value = String(room.parksConfig[key]); $('pg-config-save').disabled = gate.pending || !gate.canAct || localBusy; }
-    $('pg-pause').disabled = !room.game || !['playing','paused'].includes(room.phase) || room.selfRole !== 'player' || gate.pending || !gate.canAct || localBusy || room.game.window.pauseCause === 'timeout' && room.game.window.responsibleSeatId !== room.selfId; $('pg-pause').textContent = room.game?.window?.paused ? '恢复旅程' : room.pause?.agreedIds?.includes(room.selfId) ? '撤回同意' : room.pause ? '同意暂停' : '请求暂停';
+    $('pg-pause').disabled = !room.game || !['playing','paused'].includes(room.phase) || room.selfRole !== 'player' || gate.pending || !gate.canAct || localBusy || tutorialGuide?.complete || room.game.window.pauseCause === 'timeout' && room.game.window.responsibleSeatId !== room.selfId; $('pg-pause').textContent = room.game?.window?.paused ? '恢复旅程' : room.pause?.agreedIds?.includes(room.selfId) ? '撤回同意' : room.pause ? '同意暂停' : '请求暂停';
     if (!room.game) { displayClock.clear(); $('pg-clock').textContent = ''; $('pg-die').hidden = true; renderWaiting(); return; }
     const game = room.game; $('pg-stage').dataset.gameStage = game.stage; $('pg-stage').dataset.ownTurn = String(game.window?.responsibleSeatId === room.selfId);
     if (game.stage === 'move' && !legal().some(value => value.fields.hikerId === hikerId)) hikerId = legal()[0]?.fields.hikerId || null;
@@ -236,6 +272,9 @@ export function mountParksPage({ root, practice = false, tutorial = false, onAct
   }
   listen(root, 'click', async event => {
     const node = event.target.closest('button'); if (!node || node.disabled || closed) return;
+    if (node.dataset.tutorialRefresh) { onRefresh(); return; }
+    if (node.dataset.tutorialStorageRetry) { onRetry(); return; }
+    if (node.dataset.tutorialControl && tutorialGuide?.complete) { onTutorialControl(node.dataset.tutorialControl); return; }
     if (node.dataset.close) { $(node.dataset.close).close(); return; }
     if (node.dataset.hiker) { hikerId = node.dataset.hiker; draft.cancel(); audio.play('select'); renderTrail(room.game); renderTask(room.game); renderPersonal(room.game); return; }
     if (node.dataset.position !== undefined) {

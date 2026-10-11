@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f5f3ec">
+  <meta name="description" content="选一个喜欢的游戏，练习、学习规则，再约朋友一起玩。练习无需登录。">
+  <title>练习大厅 · 棋牌室</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="棋牌室">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./app-shell.css">
+  <link rel="stylesheet" href="./practice-hub.css">
+  <script type="module" src="./app-shell.mjs"></script>
+  <script type="module" src="./practice-hub.mjs"></script>
+</head>
+<body>
+  <div class="shell lobby-shell practice-hub-shell">
+    <header class="site-header">
+      <a class="brand" href="./" aria-label="棋牌室首页"><span class="brand-mark" aria-hidden="true"><i>3</i><i>3</i></span><span><strong>棋牌室</strong><small>GOOD COMPANY, GOOD GAMES.</small></span></a>
+      <a class="hub-return" href="./">返回大厅 <span aria-hidden="true">↗</span></a>
+    </header>
+    <main>
+      <section class="hub-intro" aria-labelledby="hub-title">
+        <p class="eyebrow">TAKE YOUR TIME, LEARN TO PLAY</p>
+        <h1 id="hub-title"><span>先练一局，</span><span>再约朋友。</span></h1>
+        <p>选一个喜欢的游戏。练习无需登录，随时开始。</p>
+      </section>
+      <div class="hub-toolbar">
+        <h2>练习大厅 <span id="hub-count" aria-live="polite"></span></h2>
+        <label class="hub-search"><span>找个游戏</span><input id="hub-search" type="search" autocomplete="off" placeholder="搜索游戏名称" aria-controls="hub-games"></label>
+      </div>
+      <section id="hub-games" class="hub-games" aria-label="选择练习游戏"></section>
+      <p id="hub-empty" class="hub-empty" role="status" hidden>没有找到这个游戏，换个名称试试。</p>
+      <noscript><p class="hub-empty">请启用 JavaScript，查看各款游戏的练习入口。</p></noscript>
+      <footer class="page-footer"><span>熟悉玩法后，回大厅和朋友约一局。</span><a class="hub-return" href="./">去约朋友 <span aria-hidden="true">↗</span></a></footer>
+    </main>
+  </div>
+</body>
+</html>
