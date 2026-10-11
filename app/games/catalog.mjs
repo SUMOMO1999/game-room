@@ -2,7 +2,7 @@
 const entries = [
   { gameType: 'rummikub', name: '拉密', page: 'room.html', minPlayers: 2, maxPlayers: 7,
     createHint: '每人回合 30 分钟', availabilityFlag: null,
-    practicePage: 'practice.html', scoreKind: 'points',
+    practicePage: 'practice.html', practiceSummary: '摆牌、整理组合，练会基础与特殊鬼牌。', scoreKind: 'points',
     timeout: { action: '超时摸牌', hint: '时间到后自动摸一张牌；牌池空时按过牌规则处理' },
     assets: ['practice.html', 'room.html', 'app.mjs', 'rules.mjs', 'twist-rules.mjs',
       'table-layout.mjs', 'rack-layout.mjs', 'rummikub-feedback.mjs', 'rummikub-assist.mjs',
@@ -16,7 +16,7 @@ const entries = [
       'games/rummikub/motion-ui.mjs', 'games/rummikub/motion.css'] },
   { gameType: 'army-flip', name: '翻棋军棋', page: 'army.html', minPlayers: 2, maxPlayers: 2,
     createHint: '每人回合 30 分钟', availabilityFlag: null,
-    practicePage: 'army-practice.html', scoreKind: 'outcome',
+    practicePage: 'army-practice.html', practiceSummary: '翻开棋子，练习移动、吃子与攻守。', scoreKind: 'outcome',
     timeout: { action: '超时跳过', hint: '时间到后自动跳过当前回合' },
     assets: ['army.html', 'army-room.mjs', 'army-presentation.mjs', 'army.css', 'army-board.mjs',
       'army-practice.html', 'army-practice.mjs', 'army-practice-engine.mjs',
@@ -25,7 +25,7 @@ const entries = [
       'games/army-flip/practice-engine.mjs', 'games/army-flip/ui.css', 'games/army-flip/motion-ui.mjs'] },
   { gameType: 'flying-chess', name: '飞行棋', page: 'flying.html', minPlayers: 2, maxPlayers: 4,
     createHint: '每人回合 30 分钟', availabilityFlag: null,
-    practicePage: 'flying-practice.html', scoreKind: 'outcome',
+    practicePage: 'flying-practice.html', practiceSummary: '掷骰、选飞机；从六个教学场景起飞。', scoreKind: 'outcome',
     timeout: { action: '超时换人', hint: '时间到弃未使用骰子并换人，已经确认的飞机位置保留' },
     assets: ['flying.html', 'flying-practice.html', 'games/flying-chess/board.mjs',
       'games/flying-chess/routes.mjs', 'games/flying-chess/rules.mjs', 'games/flying-chess/art.mjs',
@@ -34,7 +34,7 @@ const entries = [
       'games/flying-chess/practice-engine.mjs', 'games/flying-chess/practice-page.mjs'] },
   { gameType: 'draw-and-guess', name: '你画我猜', page: 'drawing.html', minPlayers: 2, maxPlayers: 8,
     createHint: '一人画，大家同时猜', availabilityFlag: 'drawingEnabled',
-    practicePage: 'drawing-practice.html', scoreKind: 'score',
+    practicePage: 'drawing-practice.html', practiceSummary: '拿起画笔，试试笔刷、颜色与撤销。', scoreKind: 'score',
     timeout: { action: '阶段自动继续', hint: '选词、绘画和揭晓按各自倒计时自动推进' },
     assets: ['drawing.html', 'drawing-practice.html', 'words.html', 'games/draw-and-guess/game-page.mjs',
       'games/draw-and-guess/canvas-view.mjs', 'games/draw-and-guess/experience-ui.mjs', 'games/draw-and-guess/styles.css',
@@ -43,7 +43,7 @@ const entries = [
       'games/draw-and-guess/request-intent.mjs'] },
   { gameType: 'poker414-2', name: '414 · 两副牌', page: 'poker414.html', minPlayers: 3, maxPlayers: 8,
     createHint: '普通出牌不限时 · 勾叉机会 5 秒', availabilityFlag: 'poker414Enabled',
-    practicePage: 'poker414-practice.html', scoreKind: 'score',
+    practicePage: 'poker414-practice.html', practiceSummary: '和电脑打一局，熟悉出牌、勾叉与火箭。', scoreKind: 'score',
     timeout: { action: '阶段自动继续', hint: '发牌及勾叉机会按阶段倒计时，普通出牌不限时' },
     assets: ['poker414.html', 'poker414-practice.html', 'games/poker414-2/practice-page.mjs',
       'games/poker414-2/practice-engine.mjs', 'games/poker414-2/practice-bot.mjs', 'games/poker414-2/rules.mjs', 'games/poker414-2/art.mjs', 'games/poker414-2/cards.mjs', 'games/poker414-2/patterns.mjs',
@@ -51,7 +51,7 @@ const entries = [
       'games/poker414-2/styles.css', 'games/poker414-2/game-page.mjs', 'games/poker414-2/room-controller.mjs', 'games/poker414-2/motion-ui.mjs'] },
   { gameType: 'hyakki-trading', name: '幽街商人', page: 'hyakki.html', minPlayers: 2, maxPlayers: 6,
     createHint: '2～6人经营 · 每回合行动可调', availabilityFlag: 'hyakkiEnabled',
-    practicePage: 'hyakki-practice.html', scoreKind: 'outcome',
+    practicePage: 'hyakki-practice.html', practiceSummary: '和电脑经营夜市，买卖货物、使用人物与道具。', scoreKind: 'outcome',
     timeout: { action: '按当前步骤默认选择', hint: '主动回合30分钟，对方回应60秒；掉线保留当前材料并挂起' },
     assets: ['hyakki.html', 'hyakki-practice.html', 'hyakki-catalog.html',
       ...['game-page.mjs', 'room-controller.mjs', 'presentation.mjs', 'game-ui.mjs', 'game-ui-model.mjs', 'game-ui.css', 'game-dialog-ui.mjs', 'hand-drag-ui.mjs', 'table-motion-ui.mjs',
@@ -65,7 +65,8 @@ const entries = [
         .map(id => `assets/hyakki/v2/${id}.webp`)] },
   { gameType:'parks',name:'国家公园',page:'parks.html',minPlayers:1,maxPlayers:5,
     createHint:'朋友徒步、Teddy同行与单人挑战',availabilityFlag:'parksEnabled',
-    practicePage:'parks-practice.html',scoreKind:'score',
+    practicePage:'parks-practice.html',practiceSummary:'沿步道徒步，收集资源、参观公园。初次来玩可以先上教学。',
+    practiceLinks:[{label:'从教学开始',page:'parks-tutorial.html'},{label:'官方单人',page:'parks-practice.html?mode=solo'},{label:'规则与图鉴',page:'parks-catalog.html'}],scoreKind:'score',
     timeout:{action:'暂停等待本人选择',hint:'决策时间到后保留材料并暂停，由当前责任人继续选择'},
     assets:['parks.html','parks-practice.html','parks-tutorial.html','parks-catalog.html',
       ...['configuration.mjs','game-ui.mjs','game-ui.css','game-ui-model.mjs','presentation.mjs','room-controller.mjs','game-page.mjs','practice-page.mjs',
@@ -80,19 +81,27 @@ const entries = [
 ];
 
 function safePage(page) { return typeof page === 'string' && /^[a-z][a-z0-9-]*\.html$/.test(page); }
+function safePracticeLink(page) { return typeof page === 'string' && /^[a-z][a-z0-9-]*\.html(?:\?[a-z][a-z0-9-]*=[a-z0-9-]+(?:&[a-z][a-z0-9-]*=[a-z0-9-]+)*)?$/.test(page); }
 
 /** One presentation registration per game. Execution and private state are server-owned. */
 export function createPresentationCatalog(definitions) {
   if (!Array.isArray(definitions) || !definitions.length) throw new TypeError('游戏目录不能为空。');
   const catalog = new Map();
-  const fields = new Set(['gameType', 'name', 'page', 'minPlayers', 'maxPlayers', 'practicePage', 'scoreKind', 'timeout', 'assets', 'createHint', 'availabilityFlag']);
+  const fields = new Set(['gameType', 'name', 'page', 'minPlayers', 'maxPlayers', 'practicePage', 'practiceSummary', 'practiceLinks', 'scoreKind', 'timeout', 'assets', 'createHint', 'availabilityFlag']);
   for (const item of definitions) {
+    const practiceSummary = item?.practiceSummary ?? '熟悉玩法与操作，再约朋友一起玩。';
+    const practiceLinks = item?.practiceLinks ?? [];
     if (!item || Object.keys(item).some(field => !fields.has(field))
       || !/^[a-z][a-z0-9-]*$/.test(item.gameType) || catalog.has(item.gameType)
       || typeof item.name !== 'string' || !item.name.trim() || !safePage(item.page)
       || !Number.isSafeInteger(item.minPlayers) || !Number.isSafeInteger(item.maxPlayers)
       || item.minPlayers < 1 || item.maxPlayers < item.minPlayers
       || item.practicePage !== null && !safePage(item.practicePage)
+      || typeof practiceSummary !== 'string' || !practiceSummary.trim() || practiceSummary.length > 120
+      || !Array.isArray(practiceLinks) || practiceLinks.length > 5
+      || practiceLinks.some(link => !link || Object.keys(link).some(field => !['label', 'page'].includes(field))
+        || typeof link.label !== 'string' || !link.label.trim() || link.label.length > 30 || !safePracticeLink(link.page))
+      || new Set(practiceLinks.map(link => link.page)).size !== practiceLinks.length
       || !['points', 'outcome', 'score'].includes(item.scoreKind)
       || typeof item.createHint !== 'string' || !item.createHint.trim()
       || ![null, 'drawingEnabled', 'poker414Enabled', 'hyakkiEnabled','parksEnabled'].includes(item.availabilityFlag)
@@ -104,7 +113,8 @@ export function createPresentationCatalog(definitions) {
     }
     const route = Object.freeze({ name: item.name, page: item.page,
       minPlayers: item.minPlayers, maxPlayers: item.maxPlayers });
-    catalog.set(item.gameType, Object.freeze({ ...item, route,
+    catalog.set(item.gameType, Object.freeze({ ...item, route, practiceSummary,
+      practiceLinks: Object.freeze(practiceLinks.map(link => Object.freeze({ ...link }))),
       timeout: Object.freeze({ ...item.timeout }), assets: Object.freeze([...item.assets]) }));
   }
   return Object.freeze({

@@ -40,11 +40,13 @@ function metadataOnly(value) {
 test('browser game catalog contains only immutable presentation metadata matching server types, routes and capacities', () => {
   const source = readFileSync(join(projectRoot, 'app/games/catalog.mjs'), 'utf8').replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
   assert.equal(/\bimport\b\s*(?:\(|[{*'"\w])/.test(source), false, 'catalog must not import an executable game module');
-  const allowed = ['gameType', 'name', 'page', 'minPlayers', 'maxPlayers', 'practicePage', 'scoreKind', 'timeout', 'assets', 'route', 'createHint', 'availabilityFlag'].sort();
+  const allowed = ['gameType', 'name', 'page', 'minPlayers', 'maxPlayers', 'practicePage', 'practiceSummary', 'practiceLinks', 'scoreKind', 'timeout', 'assets', 'route', 'createHint', 'availabilityFlag'].sort();
   for (const game of gamePresentations()) {
     assert.deepEqual(Object.keys(game).sort(), allowed); assert.equal(metadataOnly(game), true);
     assert.equal(Object.isFrozen(game), true); assert.equal(Object.isFrozen(game.assets), true);
     assert.equal(Object.isFrozen(game.timeout), true); assert.equal(Object.isFrozen(game.route), true);
+    assert.equal(Object.isFrozen(game.practiceLinks), true);
+    for (const link of game.practiceLinks) assert.equal(Object.isFrozen(link), true);
     assert.deepEqual(gameInfo(game.gameType), { gameType: game.gameType, minPlayers: game.minPlayers, maxPlayers: game.maxPlayers });
     assert.equal(gameAdapter(game.gameType).gameType, game.gameType);
     assert.deepEqual(gameDetails(game.gameType), game.route);
@@ -69,7 +71,7 @@ test('unknown game directory entries and routes reject instead of selecting a Ru
 test('all declared public paths exist; old aliases and canonical modules are public while full engines and fixtures are denied', () => {
   const assets = publicAssetPaths();
   for (const path of assets) assert.equal(statSync(join(projectRoot, 'app', path)).isFile(), true, path);
-  for (const game of gamePresentations()) for (const path of [game.page, game.practicePage, ...game.assets].filter(Boolean)) assert.ok(assets.includes(path), path);
+  for (const game of gamePresentations()) for (const path of [game.page, game.practicePage, ...game.practiceLinks.map(link => link.page.split('?')[0]), ...game.assets].filter(Boolean)) assert.ok(assets.includes(path), path);
   for (const path of ['rules.mjs', 'games/rummikub/rules.mjs', 'table-layout.mjs', 'games/rummikub/table-layout.mjs',
     'army-board.mjs', 'games/army-flip/board.mjs', 'army-presentation.mjs', 'games/army-flip/presentation.mjs',
     'games/poker414-2/rules.mjs']) assert.ok(assets.includes(path), path);

@@ -5,7 +5,7 @@ import { PRACTICE_SELF, PRACTICE_STORAGE_KEY } from './practice-engine.mjs';
 import { entryStorageKey } from '../../entry-path.mjs';
 import { replacePracticeWithLobby } from '../../platform/practice-navigation.mjs';
 import { escapeHtml as esc } from './card-ui.mjs';
-import { LESSONS, createTutorialLesson, tutorialProgress } from './tutorial-model.mjs';
+import { LESSONS, createTutorialLesson, tutorialProgress, tutorialActionGuidance } from './tutorial-model.mjs';
 import { chooseParksPracticeAction } from './practice-bot.mjs';
 
 export function mountParksPractice({ tutorial = false } = {}) {
@@ -22,7 +22,12 @@ export function mountParksPractice({ tutorial = false } = {}) {
       const result = session.act(type, intent); if (!result.ok) throw new Error(result.error);
       return result;
     }, onRestart: () => tutorial ? openCourses() : setup(false), onHint: () => ui.hint(tutorial ? tutorialProgress(game, lesson.id).suggestedAction : chooseParksPracticeAction(game)), onLeave() { dispose(); replacePracticeWithLobby(location); },
-    onRefresh: () => location.reload(), onRetry: () => session.retryStorage(), onHistory: async () => {
+    onTutorialDescription: fields => tutorial ? tutorialActionGuidance(game, lesson.id, fields) : null,
+    onTutorialControl(action) {
+      if (action === 'next') nextCourse();
+      else if (action === 'practice') { dispose(); location.assign('./parks-practice.html'); }
+      else if (action === 'retry') retryLesson();
+    }, onRefresh: () => location.reload(), onRetry: () => session.retryStorage(), onHistory: async () => {
       const result = session.snapshot().saved?.game.result;
       return { items: result ? [{ game: 'parks', self: { outcome: 'completed', score: result.scores.find(value => value.playerId === PRACTICE_SELF)?.score }, result }] : [] };
     } });
@@ -30,9 +35,9 @@ export function mountParksPractice({ tutorial = false } = {}) {
   setupPanel.innerHTML = `<header><h2>${tutorial ? '跟着走一趟' : '展开新的旅程'}</h2><button type="button" id="pg-setup-close" aria-label="取消重新开始">×</button></header><form id="pg-setup-form"><div class="pg-config-grid"><label>玩法<select name="mode"><option value="standard">基础版 · 2～5人</option><option value="teddy">双人 + 巡护员 Teddy</option><option value="solo">官方单人</option></select></label><label>同行人数<select name="players"><option value="2">2人（你 + 1名电脑）</option><option value="3">3人</option><option value="4">4人</option><option value="5">5人</option></select></label><label>露营<select name="camping"><option value="true">加入露营</option><option value="false">不含露营</option></select></label><label>志愿项目<select name="volunteers">${[0,1,2,3,4].map(n => `<option value="${n}">${n}个</option>`).join('')}</select></label><label>热忱<select name="passion"><option value="choose">开局二选一</option><option value="random">随机分配</option></select></label></div><p id="pg-setup-note">${tutorial ? '从真实的基础玩法开始。每一步都会说明现在为什么要选、选完会发生什么；你亲手操作，电脑正常同行。' : '电脑只使用自己的手牌和公开信息。旅程自动保存在本机，下次可以接着玩。'}</p><div class="pg-dialog-actions"><button type="button" id="pg-setup-cancel">取消</button><button type="submit" class="pg-primary">确认 · 开始旅程</button></div><p id="pg-setup-error" role="status"></p></form>`;
   root.append(setupPanel);
   if (tutorial) {
-    courseControl = document.createElement('button'); courseControl.type = 'button'; courseControl.id = 'pg-course'; courseControl.className = 'pg-tutorial-control'; courseControl.textContent = lesson.title.split(' · ')[0] + ' · 教学';
+    courseControl = document.createElement('button'); courseControl.type = 'button'; courseControl.id = 'pg-course'; courseControl.className = 'pg-tutorial-control'; courseControl.textContent = `课程 ${LESSONS.indexOf(lesson) + 1}/${LESSONS.length}`;
     root.querySelector('.pg-header').insertBefore(courseControl, root.querySelector('.pg-header nav'));
-    courseControl.addEventListener('click', () => lessonComplete ? nextCourse() : openCourses());
+    courseControl.addEventListener('click', openCourses);
     const courses = document.createElement('dialog'); courses.id = 'pg-courses'; courses.className = 'pg-dialog';
     courses.innerHTML = `<header><h2>亲手走一趟</h2><button type="button" data-course-close aria-label="继续当前课程">×</button></header><label>选择课程<select id="pg-course-select">${LESSONS.map(value => `<option value="${esc(value.id)}">${esc(value.title)}</option>`).join('')}</select></label><p id="pg-course-goal"></p><p id="pg-course-difference"></p><p>重做会替换本课进度；其他课程与完整练习会保留。</p><div class="pg-dialog-actions"><a href="./parks-practice.html">完整练习</a><button type="button" id="pg-course-retry">确认重做本课</button><button type="button" id="pg-course-go" class="pg-primary">进入课程</button></div><p id="pg-course-error" role="status"></p>`;
     root.append(courses);
@@ -44,14 +49,17 @@ export function mountParksPractice({ tutorial = false } = {}) {
       if (select.value === lesson.id) courses.close(); else changeCourse(select.value);
     });
     courses.querySelector('#pg-course-retry').addEventListener('click', () => {
-      if (!lockHeld) { courses.querySelector('#pg-course-error').textContent = '请回到持有本课的窗口重做。'; return; }
-      const result = session.start(); if (!result.ok) { courses.querySelector('#pg-course-error').textContent = result.error; return; }
-      courses.close(); ui.audio.play('start'); clock = performance.now();
+      if (retryLesson()) courses.close();
     });
     courses.addEventListener('cancel', () => { courses.dataset.confirmRetry = ''; });
   }
   function changeCourse(id) { const url = new URL(location.href); url.searchParams.set('lesson', id); dispose(); location.replace(url.href); }
   function nextCourse() { const index = LESSONS.findIndex(value => value.id === lesson.id); if (index === 7 || index === LESSONS.length - 1) { dispose(); location.assign('./parks-practice.html'); } else changeCourse(LESSONS[index + 1].id); }
+  function retryLesson() {
+    if (!lockHeld) { ui.feedback('请回到持有本课的窗口重练。'); return false; }
+    const result = session.start(); if (!result.ok) { ui.feedback(result.error); root.querySelector('#pg-course-error').textContent = result.error; return false; }
+    ui.audio.play('start'); clock = performance.now(); return true;
+  }
   function openCourses() { const panel = root.querySelector('#pg-courses'); for (const node of root.querySelectorAll('dialog[open]')) node.close(); panel.querySelector('select').value = lesson.id; panel.querySelector('select').dispatchEvent(new Event('change')); panel.dataset.confirmRetry = ''; panel.querySelector('#pg-course-error').textContent = ''; panel.showModal(); }
   const form = setupPanel.querySelector('form'); let empty = true;
   if (soloEntry) form.elements.mode.value = 'solo';
@@ -81,17 +89,26 @@ export function mountParksPractice({ tutorial = false } = {}) {
   session = createParksPracticeSession({ storage: { getItem: key => window.localStorage.getItem(key), setItem: (key, value) => window.localStorage.setItem(key, value) }, key, ...(tutorial ? { create: () => createTutorialLesson(lesson.id) } : {}), canWrite: () => lockHeld,
     onView(value, { saved, blocked }) { if (closed) return; game = value; last = saved;
       for (const cue of parksCues(previous, value, PRACTICE_SELF, 'player')) ui.audio.play(cue);
-      previous = value; ui.applyView(wrap(value, saved), { pending: false, canAct: !blocked && lockHeld, connection: 'online' });
+      previous = value;
+      let tutorialGuide = null;
       if (tutorial) {
-        const progress = tutorialProgress(value, lesson.id); let stored = null;
+        let stored = null;
         try { stored = JSON.parse(localStorage.getItem(progressKey)); } catch { /* Completion metadata never substitutes a game save. */ }
-        lessonComplete = progress.complete || stored?.matchId === saved.matchId && stored.complete === true;
+        const progress = tutorialProgress(value, lesson.id, { completedPreviously: stored?.matchId === saved.matchId && stored.complete === true });
+        lessonComplete = progress.complete; tutorialGuide = progress.guidance;
         if (progress.complete && lockHeld) try { localStorage.setItem(progressKey, JSON.stringify({ matchId: saved.matchId, complete: true })); } catch { /* The verified game remains playable when optional progress storage fails. */ }
-        courseControl.textContent = lessonComplete ? LESSONS.indexOf(lesson) === 7 || LESSONS.indexOf(lesson) === 11 ? '完整练习 →' : '下一课 →' : lesson.title.split(' · ')[0] + ' · 教学';
-        courseControl.setAttribute('aria-label', lessonComplete ? '本课完成，继续旅程' : `课程菜单：${lesson.title}`);
-        ui.feedback(lessonComplete ? `${lesson.title} · 已完成，点右上角继续。` : `${lesson.title} · ${lesson.goal}`);
+        courseControl.textContent = `课程 ${LESSONS.indexOf(lesson) + 1}/${LESSONS.length}`;
+        courseControl.setAttribute('aria-label', `课程菜单：${lesson.title}${lessonComplete ? '，本课已完成' : ''}`);
       }
-    }, onFailure(message) { ui.feedback(message); if (game && last) ui.applyView(wrap(game, last), { canAct: false, connection: 'offline' }); } });
+      ui.applyView(wrap(value, saved), { pending: false, canAct: !blocked && lockHeld, connection: 'online', tutorialGuide,
+        tutorialBlock: blocked ? { heading: '先恢复存档，再继续', message: '保存结果尚未确认。先刷新核对原进度，当前窗口不会继续执行。', retryStorage: true }
+          : !lockHeld ? { heading: '这个窗口仅供查看', message: '另一窗口持有本课。请回原窗口继续，或关闭原窗口后刷新接续。', retryStorage: false } : null });
+    }, onFailure(message) { blockPractice(message, { retryStorage: true }); } });
+  function blockPractice(message, { retryStorage = false } = {}) {
+    ui.feedback(message);
+    if (game && last) ui.applyView(wrap(game, last), { canAct: false, connection: 'offline',
+      tutorialBlock: { heading: retryStorage ? '先恢复存档，再继续' : '这个窗口仅供查看', message, retryStorage } });
+  }
   function restore() { const restored = session.read(); if (lockHeld && (restored.empty || !restored.ok)) {
     if (tutorial && restored.empty) { const started = session.start(); if (!started.ok) ui.feedback(started.error); }
     else if (tutorial) { openCourses(); root.querySelector('#pg-course-error').textContent = restored.error + ' 选择“确认重做本课”后才会替换。'; }
@@ -99,10 +116,10 @@ export function mountParksPractice({ tutorial = false } = {}) {
   } }
   if (navigator.locks?.request) void navigator.locks.request(key, { mode: 'exclusive', ifAvailable: true }, async lock => {
     if (closed) return;
-    if (!lock) { restore(); ui.feedback('另一窗口正在运行这局练习。这里仅供查看，关闭原窗口后刷新即可继续。'); return; }
+    if (!lock) { restore(); blockPractice('另一窗口正在运行这局练习。请回原窗口继续，或关闭原窗口后刷新接续。'); return; }
     lockHeld = true; restore(); await new Promise(resolve => { releaseLock = resolve; }); lockHeld = false;
-  }).catch(() => { restore(); ui.feedback('无法取得本机存档锁。请关闭其他练习窗口后刷新。'); });
-  else { restore(); ui.feedback('此浏览器无法安全协调本机练习窗口。请使用新版 Chrome、Safari 或 Firefox。'); }
+  }).catch(() => { restore(); blockPractice('无法取得本机存档锁。请关闭其他练习窗口后刷新。'); });
+  else { restore(); blockPractice('此浏览器无法安全协调本机练习窗口。请使用新版 Chrome、Safari 或 Firefox。'); }
   const storageChanged = event => { if (event.key === key) session.externalChange(event.newValue); };
   window.addEventListener('storage', storageChanged);
   timer = setInterval(() => { if (closed) return; const now = performance.now(), elapsed = Math.min(2000, Math.max(0, now - clock)); clock = now;
