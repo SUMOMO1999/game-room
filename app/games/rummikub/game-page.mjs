@@ -36,7 +36,7 @@ const turnClock = createRoomClock({
   onExpire: () => {
     clearDrag(); previewPublisher.reset();
     for (const id of ['commit','draw','restore','undo','return-rack']) $(id).disabled = true;
-    document.body.classList.remove('rummi-own-turn'); $('feedback-text').textContent = '本回合时间已到，正在换人。';
+    renderRoomMeta(); $('feedback-text').textContent = '本回合时间已到，正在换人。';
   },
   setInterval: window.setInterval.bind(window), clearInterval: window.clearInterval.bind(window),
 });
@@ -577,9 +577,9 @@ function render() {
   $('feedback').querySelector('.feedback-icon').textContent = icon;
   $('table-note').textContent = draft.opened ? '桌面可以重组；已提交的牌不能收回手牌。' : '首次出牌先用自己的牌，开局后再重组桌面。';
   renderOpeningProgress(evaluation, deckOptions);
+  renderTurnEmphasis();
   if (ROOM_MODE) {
     const myTurn = canAct();
-    document.body.classList.toggle('rummi-own-turn',myTurn);
     if($('turn-banner')) {
       $('turn-banner').textContent=turnFeedbackMessage(roomView,newSinceOwnTurn.size,{recovered:turnFeedbackState?.recovered});
       $('turn-banner').classList.toggle('your-turn',myTurn);
@@ -617,17 +617,33 @@ function render() {
 
 function canAct() { return !ROOM_MODE || (!spectating() && accountState().verification==='verified' && !document.hidden && roomView?.phase === 'playing' && roomView.game?.status === 'playing' && roomView.game?.turnPlayerId === roomView.selfId && !clockDisplay().expired && !busy && !leavingRoom && connection === 'online'); }
 
+// The room owns turn authority; practice has one active learner until its rack
+// is empty. Keep the cue in the existing rack title, without adding a new row.
+function renderTurnEmphasis() {
+  const ownTurn = ROOM_MODE ? canAct() : committed.rack.length > 0;
+  document.body.classList.toggle('rummi-own-turn', ownTurn);
+  let label = $('rack-owner-label');
+  if (!label) {
+    const count = $('rack-count'), heading = count.parentNode;
+    label = document.createElement('span'); label.id = 'rack-owner-label';
+    heading.textContent = ''; heading.append(label, count);
+  }
+  label.textContent = ownTurn ? '▶ 你的回合' : '我的手牌';
+  $('rack').setAttribute('aria-label', ownTurn ? '我的手牌，现在轮到你出牌' : '手牌区');
+}
+
 function safeText(value) { return String(value).replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[char]); }
 
 function renderRoomMeta() {
   if (!roomView) return;
+  renderTurnEmphasis();
   renderRuleText();
   document.body.classList.toggle('in-game',Boolean(roomView.game));
   document.body.classList.toggle('rummi-spectator',spectating());
   $('room-code').textContent = roomView.roomCode;
   const gamePlayers = roomView.game?.players || [];
   $('room-players').innerHTML = orderedRoomPlayers(roomView).map(player => {
-    const active = roomView.game?.turnPlayerId === player.id && roomView.phase === 'playing';
+    const active = roomView.game?.turnPlayerId === player.id && roomView.phase === 'playing' && roomView.game.status === 'playing' && !clockDisplay().expired;
     const details = gamePlayers.find(item => item.id === player.id);
     const count = details?.rackCount ?? player.rackCount ?? 0;
     const status = roomView.phase === 'waiting' ? player.ready ? '已准备' : '还没准备' : `${count}张${active ? ' · 出牌中' : ''}`;
@@ -1211,6 +1227,7 @@ function clearRoomPrivate(error = {}, {preserveDraft=error.status===503} = {}) {
   tablePositions={};committedTablePositions={};tableLayout=null;splitKey=null;rackOrder=[];rackPositions={};rackBasis=null;rackLayout=null;playableRackGroups=[];playableRackSignature='';
   leavingRoom=false;roomExit.reset();needsRoomBaseline=true;publicPlacementSound=null;needsPublicPlacementBaseline=true;arrivedTileIds.clear();turnNoticeUntil=0;turnFeedbackState=null;newSinceOwnTurn.clear();
   document.body.classList.remove('in-game','rummi-own-turn','rummi-spectator');
+  renderTurnEmphasis();
   if($('turn-banner')) {$('turn-banner').hidden=true;$('turn-banner').textContent='';}
   for(const id of ['board','rack','room-players','result-scores']) $(id).replaceChildren();
   if($('spectator-list')) {$('spectator-list').textContent='';$('spectator-list').hidden=true;}
