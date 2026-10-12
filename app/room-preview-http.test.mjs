@@ -88,7 +88,7 @@ test('HTTP rejects another hand and a non-turn seat before any public preview is
 test('HTTP budget rejects before online checks and allows no unbounded cross-room preview flood',async t=>{
   const f=await fixture(t);assert.equal((await f.post()).response.status,200);const count=f.provider.checks.length;
   const limited=await f.post({...f.body,sequence:2});assert.equal(limited.response.status,429);assert.equal(limited.body.code,'PREVIEW_RATE_LIMIT');
-  assert.ok(limited.body.minIntervalMs>=1112);assert.ok(Number.isFinite(limited.body.nextAllowedAt));assert.equal(f.provider.checks.length,count);
+  assert.ok(limited.body.minIntervalMs>=556);assert.ok(Number.isFinite(limited.body.nextAllowedAt));assert.equal(f.provider.checks.length,count);
   const otherRoom=await f.request('/api/rooms/654321/preview',f.owner);assert.equal(otherRoom.response.status,429);assert.equal(f.provider.checks.length,count);
 });
 
@@ -120,7 +120,7 @@ test('turn transition while an E3 check waits discards the prepared preview',asy
 
 test('preview SSE carries safely projected tiles, excludes owner echoes, and fresh-checks each observer',async t=>{
   const f=await fixture(t),observer=await openStream(f,f.other),author=await openStream(f,f.owner);t.after(()=>{observer.close();author.close();});
-  const count=f.provider.checks.length,result=await f.post();assert.equal(result.response.status,200);assert.equal(result.body.observerCount,1);assert.equal(result.body.minIntervalMs,1667);
+  const count=f.provider.checks.length,result=await f.post();assert.equal(result.response.status,200);assert.equal(result.body.observerCount,1);assert.equal(result.body.minIntervalMs,834);
   const text=await observer.until(text=>text.includes('event: preview') && text.includes(f.body.previewId));
   assert.ok(text.includes(f.ownerView.game.rack[0].id));assert.equal(f.provider.checks.length-count,3);
   const ownPackets=author.text().split('event: preview\ndata: ').slice(1).map(packet=>JSON.parse(packet.split('\n\n')[0]));

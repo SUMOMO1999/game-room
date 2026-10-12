@@ -135,7 +135,7 @@ export class RoomClient {
   constructor(code, membership, { onView, onConnection, onError, onChat = () => {}, onPreview = null, onCanvas = null }) {
     this.code = normalizeCode(code); this.membership = membership;
     this.onView = onView; this.onConnection = onConnection; this.onError = onError; this.onChat = onChat;
-    this.onPreview = typeof onPreview==='function'?onPreview:null;this.previewPacket=null;this.previewTimer=null;this.previewSequences=new Map();
+    this.onPreview = typeof onPreview==='function'?onPreview:null;this.previewPacket=null;this.previewTimer=null;this.previewSequences=new Map();this.previewGeneration=0;
     this.onCanvas = typeof onCanvas === 'function' ? onCanvas : null;
     this.view = null; this.stopped = false; this.controller = null; this.retryTimer = null;
     this.generation = 0; this.streamGeneration = 0; this.accountEpoch = accountGeneration();
@@ -169,7 +169,8 @@ export class RoomClient {
     if (!this.live(epoch) || !view || view.roomCode !== this.code || view.selfId !== this.membership.playerId) return;
     if (this.view && view.revision < this.view.revision) return;
     const previewFence=value=>JSON.stringify([value?.roomId,value?.matchId,value?.phase,value?.game?.revision,value?.game?.turnPlayerId]);
-    if(previewFence(view)!==previewFence(this.view)) {this.resetPreview();this.previewSequences.clear();}
+    const previewChanged=previewFence(view)!==previewFence(this.view);
+    if(previewChanged) {this.resetPreview({notify:false});this.previewSequences.clear();}
     if (Array.isArray(view.actionReceipts) && !this.actionIntent) {
       const owner = accountState().userKey || this.membership.playerId;
       let storage; try { storage = globalThis.sessionStorage; } catch { /* Memory fencing remains available. */ }
@@ -178,9 +179,13 @@ export class RoomClient {
     }
     this.actionIntent?.reconcile(view);
     this.view = view; this.onView(view);
+    // Clear only after the new authority has rendered. Publishing null first
+    // briefly restores the previous committed table underneath a live draft.
+    if(previewChanged) this.onPreview?.(null);
   }
-  resetPreview() {
-    clearTimeout(this.previewTimer);this.previewTimer=null;this.previewPacket=null;this.onPreview?.(null);
+  resetPreview({notify=true}={}) {
+    this.previewGeneration++;
+    clearTimeout(this.previewTimer);this.previewTimer=null;this.previewPacket=null;if(notify)this.onPreview?.(null);
   }
   receivePreview(packet,epoch=this.epoch()) {
     if(!this.onPreview || !this.live(epoch) || !packet || packet.version!==1 || packet.roomCode!==this.code
@@ -194,12 +199,15 @@ export class RoomClient {
       this.previewSequences.set(packet.previewId,packet.sequence);
       if(this.previewSequences.size>16) this.previewSequences.delete(this.previewSequences.keys().next().value);
     }
-    this.resetPreview();this.previewPacket=packet;this.onPreview(packet);
+    this.resetPreview({notify:false});this.previewPacket=packet;this.onPreview(packet);
     if(packet.preview) this.previewTimer=setTimeout(()=>this.resetPreview(),Math.min(30000,packet.expiresAt-Date.now()));
   }
   async readPreview() {
-    const epoch=this.epoch(),packet=await this.request(`/api/rooms/${this.code}/preview`,{token:this.membership.token},epoch);
-    this.receivePreview(packet,epoch);return packet;
+    const epoch=this.epoch(),generation=this.previewGeneration;
+    const packet=await this.request(`/api/rooms/${this.code}/preview`,{token:this.membership.token},epoch);
+    // A delayed GET (including an old empty snapshot) cannot replace an SSE
+    // preview or authority change received while that read was in flight.
+    if(generation===this.previewGeneration)this.receivePreview(packet,epoch);return packet;
   }
   async sendPreview(body) {
     if(!this.onPreview) throw new Error('本连接未启用桌面整理预览。');

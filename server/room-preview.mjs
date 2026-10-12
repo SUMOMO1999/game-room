@@ -17,7 +17,7 @@ function validatePublicDraft(game,board) {
 }
 
 /** Short-lived, public-only arrangement. Nothing here is written to storage. */
-export function createRoomPreview({now=Date.now,ttlMs=30000,checksPerSecond=1.8,minIntervalMs=1000,maxChannels=100,sweepMs=1000}={}) {
+export function createRoomPreview({now=Date.now,ttlMs=30000,checksPerSecond=3.6,minIntervalMs=250,maxChannels=100,sweepMs=1000}={}) {
   const channels=new Map();let globalNext=0,closed=false;
   function channel(code) {
     let entry=channels.get(code);

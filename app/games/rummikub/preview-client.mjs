@@ -28,12 +28,16 @@ export function createPreviewPublisher({send,onError=()=>{},now=Date.now,setTime
     try {
       const ack=await send(body);
       if(generation!==epoch)return;
-      nextAt=Math.max(now()+Math.max(1000,ack.minIntervalMs || 1000),ack.nextAllowedAt || 0);
+      // The server already reserves the publication's absolute next deadline.
+      // Adding the interval again after a slow response doubles that wait.
+      nextAt=Number.isFinite(ack.nextAllowedAt)?Math.max(now(),ack.nextAllowedAt)
+        :now()+Math.max(250,ack.minIntervalMs || 250);
       if(body.clear){source=null;sequence=0;}
     } catch(error) {
       if(generation!==epoch)return;
       if(error.status===429){
-        nextAt=Math.max(now()+Math.max(1000,error.minIntervalMs || (error.retryAfter || 1)*1000),error.nextAllowedAt || 0);
+        nextAt=Number.isFinite(error.nextAllowedAt)?Math.max(now()+250,error.nextAllowedAt)
+          :now()+Math.max(250,error.minIntervalMs || (error.retryAfter || 1)*1000);
         // A known rejected optional update can be replaced by the newest draft.
         pending ||=entry;
       }else {

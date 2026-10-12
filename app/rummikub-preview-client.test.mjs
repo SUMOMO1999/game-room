@@ -15,6 +15,14 @@ test('coalesces continuous changes and respects the acknowledged shared capacity
   await f.tick(1);assert.deepEqual(f.calls[1].boardIds,[['3']]);assert.equal(f.calls[1].sequence,2);
   f.update(3);await f.tick(5000);assert.equal(f.calls.length,2);
 });
+test('absolute server deadline avoids adding another full interval after a slow acknowledgement',async()=>{
+  const ack=deferred(),f=fixture(()=>ack.promise);
+  f.update(1);await f.tick(0);f.update(2);
+  await f.tick(700);ack.resolve({minIntervalMs:1000,nextAllowedAt:1000});await settle();
+  await f.tick(299);assert.equal(f.calls.length,1);
+  await f.tick(1);assert.equal(f.calls.length,2);
+});
+
 test('unknown write is not replayed, but a distinct later player edit can publish',async()=>{
   let attempts=0;const f=fixture(()=>{if(!attempts++)throw new Error('unknown');return {minIntervalMs:1000};});
   f.update(1);await f.tick(0);f.update(1);await f.tick(10000);assert.equal(f.calls.length,1);
