@@ -28,6 +28,28 @@ test('committed turn or phase changes clear read-only preview without mutating t
   assert.deepEqual(original,view());client.receivePreview(preview());assert.equal(client.previewPacket,null);
 });
 
+test('a replacement preview renders once without restoring the older committed board in between',t=>{
+  const {client,packets}=fixture(t);client.receivePreview(preview());packets.length=0;
+  client.receivePreview(preview({sequence:2}));
+  assert.equal(packets.length,1);assert.equal(packets[0].sequence,2);
+});
+
+test('formal turn change renders new authority before announcing preview removal',t=>{
+  const {client}=fixture(t),order=[];client.receivePreview(preview());
+  client.onView=v=>order.push(['view',v.game.revision]);
+  client.onPreview=p=>order.push(['preview',p,client.view.game.revision]);
+  client.receive(view({revision:11,game:{revision:5,turnPlayerId:'b'}}));
+  assert.deepEqual(order,[['view',5],['preview',null,5]]);
+});
+
+test('a delayed empty HTTP preview cannot erase a newer SSE arrangement',async t=>{
+  const {client,packets}=fixture(t);client.receivePreview(preview());
+  let reply;t.mock.method(globalThis,'fetch',()=>new Promise(resolve=>{reply=resolve;}));
+  const read=client.readPreview();client.receivePreview(preview({sequence:2}));
+  const count=packets.length;reply(response(preview({preview:null,previewId:null,sequence:0})));
+  await read;assert.equal(client.previewPacket.sequence,2);assert.equal(packets.length,count);
+});
+
 test('a lost preview POST response reconciles by GET and never replays the write',async t=>{
   const {client}=fixture(t),calls=[];
   t.mock.method(globalThis,'fetch',async(url,options)=>{calls.push({url,options});if(calls.length===1) throw new TypeError('response lost');return response(preview());});

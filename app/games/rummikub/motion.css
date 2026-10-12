@@ -3,5 +3,6 @@
 .rummi-motion .tile.selected:not(.dragging) { box-shadow:0 0 0 2px var(--theme-accent,#e8d58c),0 3px 7px #0004; }
 .rummi-motion .meld.draft-meld { border-color:var(--theme-accent,#e8d58c); }
 .rummi-motion .meld.draft-meld .meld-header small { color:var(--theme-accent,#e8d58c); }
+.rummi-motion .meld.rummi-group-moving { outline:2px solid var(--theme-accent,#e8d58c); outline-offset:2px; }
 .rummi-motion .rummi-motion-back { display:grid; place-items:center; min-width:0; min-height:0; padding:0; border:1px solid #dccb9b; border-radius:5px; background:repeating-linear-gradient(45deg,#234b3e 0 4px,#315e4d 4px 8px); color:#e8d58c; font-size:24px; box-shadow:0 3px 9px #0004; }
 @media (prefers-reduced-motion:reduce) { .rummi-motion .tile { transition:none; } }

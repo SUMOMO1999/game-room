@@ -146,11 +146,13 @@ function receiveRemotePreview(packet) {
   if(document.hidden || !roomView?.game || packet?.ownerId===roomView.selfId || packet?.gameRevision!==roomView.game.revision || canAct()) packet=null;
   const next=packet?.preview?packet:null;
   if(next===remotePreview)return;
+  const motionChanged=objectMotion.begin({publicOnly:true});
   remotePreview=next;
   if(roomView?.game) {
     // A preview changes only the public table, never the private rack's DOM
     // or a pointer capture used to arrange that rack during another's turn.
     renderBoard({allowRackDrag:true});
+    objectMotion.end(motionChanged);
     if(spectating()) {
       const current=roomView.players.find(player=>player.id===roomView.game.turnPlayerId);
       $('feedback-text').textContent=remotePreview?`${remotePreview.ownerName}正在整理桌面，确认后才正式保存。`:`正在观战 · ${current?.name || '朋友'}的回合。只能查看公共桌面。`;

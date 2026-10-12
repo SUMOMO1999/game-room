@@ -18,7 +18,7 @@ function fixture({observers=1,...options}={}) {
 
 test('preview exposes only tiles placed on the public table and never mutates a private view or revisions',()=>{
   const f=fixture(),original=structuredClone(f.view),ack=f.post();
-  assert.equal(ack.accepted,true);assert.equal(ack.observerCount,1);assert.equal(ack.minIntervalMs,1667);
+  assert.equal(ack.accepted,true);assert.equal(ack.observerCount,1);assert.equal(ack.minIntervalMs,834);
   const packet=f.service.packet({...f.view,selfId:'b'});
   assert.equal(packet.preview.valid,true);assert.equal(packet.ownerName,'服务器昵称');
   assert.deepEqual(packet.preview.board.flat().map(tile=>tile.id),['red-6-a','red-7-a','red-8-a','red-9-a']);
@@ -92,9 +92,9 @@ test('a disconnected author cannot publish after its second identity check waits
 
 test('observer capacity counts actual other-player connections, not player count or author echoes',()=>{
   const f=fixture({observers:6});f.service.subscribe(f.view,'owner-session',()=>{});f.service.subscribe(f.view,'owner-other-device',()=>{});
-  const ack=f.post();assert.equal(ack.observerCount,6);assert.equal(ack.minIntervalMs,4445);
-  assert.ok((2+ack.observerCount)/(ack.minIntervalMs/1000)<=1.8);
-  assert.throws(()=>f.post({...f.body,sequence:2}),error=>error.status===429 && error.nextAllowedAt>=f.time()+4445);
+  const ack=f.post();assert.equal(ack.observerCount,6);assert.equal(ack.minIntervalMs,2223);
+  assert.ok((2+ack.observerCount)/(ack.minIntervalMs/1000)<=3.6);
+  assert.throws(()=>f.post({...f.body,sequence:2}),error=>error.status===429 && error.nextAllowedAt>=f.time()+2223);
 });
 
 test('cross-room preview checks have one global conservative budget, reads included',()=>{
