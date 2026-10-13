@@ -1782,9 +1782,9 @@ test('actual orientation reflow explicit group merge keeps physical group order 
   const retained=store.exportSnapshot(CODE);assert.equal(new Set([...retained.game.board.flat(),...retained.game.pool,...retained.game.players.flatMap(p=>p.rack)].map(t=>t.id)).size,deck.length);
 });
 
-test('actual orientation reflow explicit organize captures a fixed shared layout through resize for submit and layout-only draw',async t=>{
+test('actual straightening retains the player arrangement through orientation reflow, submit and layout-only draw',async t=>{
   const original=orientationView(),f=await fixture(t,{initialView:original,geometry:true}),board=sizedProjectionBoard(f);board.size(701,128);
-  f.get('board-arrange').dispatchEvent(new Event('click'));f.frame();const arranged=plain(f.pageAPI.captureBoardPositions()),points=plain(f.pageAPI.tablePoints());assert.notDeepEqual(arranged,original.game.boardPositions);
+  f.get('board-arrange').dispatchEvent(new Event('click'));f.frame();const arranged=plain(f.pageAPI.captureBoardPositions()),points=plain(f.pageAPI.tablePoints());assert.deepEqual(arranged,original.game.boardPositions);
   for(const [width,height]of [[358,600],[1280,500],[701,128],[358,600]]) {
     board.size(width,height);assertFreeTableSpacing(f);assert.deepEqual(plain(f.pageAPI.captureBoardPositions()),arranged);assert.deepEqual(plain(f.pageAPI.captureCommittedBoardPositions()),arranged);assert.deepEqual(plain(f.pageAPI.tablePoints()),points);
   }
