@@ -297,7 +297,7 @@ function queueBoardFit({allowRackDrag=false}={}) {
     const width=board.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight);
     const height=board.clientHeight-parseFloat(style.paddingTop)-parseFloat(style.paddingBottom);
     const shown=displayedBoard(),shownPositions=remotePreview?decodeBoardPositions(shown,remotePreview.preview.positions):tablePositions;
-    const fit=fitGroupsToViewport(shown.map(meld=>({id:groupKey(meld),length:meld.length})),{width,height},shownPositions);
+    const fit=fitGroupsToViewport(shown.map(meld=>({id:groupKey(meld),length:meld.length})),{width,height,previous:tableLayout},shownPositions);
     tableLayout=fit;
     board.style.setProperty('--board-scale',fit.baseScale);
     board.classList.toggle('board-overview',fit.baseScale<0.7);

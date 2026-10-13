@@ -293,7 +293,7 @@ function projectedSavedOrigin(groups, width, height, savedPositions, previous) {
 }
 
 /** Shared coordinates for persistence; display coordinates for an actual edit.
- * Resizing alone may reflow the local view, but cannot rearrange another player's
+ * Resizing scales the existing arrangement, but cannot rearrange another player's
  * table or serialize that temporary projection as a new public layout.
  */
 export function boardLayoutPositions(layout, { display = false } = {}) {
@@ -301,6 +301,33 @@ export function boardLayoutPositions(layout, { display = false } = {}) {
     x: display ? point.logicalX : point.sharedLogicalX ?? point.logicalX,
     y: display ? point.logicalY : point.sharedLogicalY ?? point.logicalY,
   }]));
+}
+
+/** A legal drop must keep the view used to aim it. Refit only when the
+ * viewport changes or the updated table no longer fits that transform. */
+function retainViewportTransform(base, width, height, previous) {
+  if (!previous || previous.viewportWidth !== width || previous.viewportHeight !== height
+    || previous.baseScale !== 1 || !finite(previous.scale) || previous.scale <= 0 || previous.scale > 1
+    || previous.displayOffsetX !== undefined && !finite(previous.displayOffsetX)
+    || previous.displayOffsetY !== undefined && !finite(previous.displayOffsetY)) return null;
+  const factor = previous.scale;
+  const offsetX = previous.displayOffsetX || 0, offsetY = previous.displayOffsetY || 0;
+  const positions = base.positions.map(rect => ({ ...rect,
+    x: rect.logicalX * factor + offsetX, y: rect.logicalY * factor + offsetY,
+    width: rect.width * factor, height: rect.height * factor }));
+  const inside = rect => rect.x >= -EPSILON && rect.y >= -EPSILON
+    && rect.x + rect.width <= width + EPSILON && rect.y + rect.height <= height + EPSILON;
+  if (!positions.every(inside)) return null;
+  const target = placeGroup({ width: base.newTarget.width * factor, height: base.newTarget.height * factor },
+    previous.newTarget, positions, { width, height, gap: 38 * factor });
+  if (!inside(target)) return null;
+  const rects = [...positions, target];
+  return { ...base, baseScale: 1, canvasScale: factor, scale: factor,
+    viewportWidth: width, viewportHeight: height, displayOffsetX: offsetX, displayOffsetY: offsetY,
+    positions, newTarget: { ...target, logicalX: (target.x - offsetX) / factor, logicalY: (target.y - offsetY) / factor },
+    contentWidth: Math.max(...rects.map(rect => rect.x + rect.width)),
+    contentHeight: Math.max(...rects.map(rect => rect.y + rect.height)),
+    overflow: false, readable: factor >= 0.65 };
 }
 
 /** Fixed-screen game overview. Keep every group visible, including very dense
@@ -344,45 +371,28 @@ export function fitGroupsToViewport(input, options = {}, savedPositions = {}) {
     // an already safe saved gap into new logical positions on every rotation.
     base = positionedLayout(groups, width, height, 1, savedPositions, hasSaved);
   }
+  if (hasSaved) {
+    const retained = retainViewportTransform(base, width, height, options.previous);
+    if (retained) return retained;
+  }
   const rects = [...base.positions, base.newTarget];
   const contentWidth = Math.max(1, ...rects.map(rect => rect.x + rect.width));
   const contentHeight = Math.max(1, ...rects.map(rect => rect.y + rect.height));
   const canvasScale = Math.min(1, width / contentWidth, height / contentHeight);
   const factor = Math.max(0, canvasScale);
   const scaled = rect => ({ ...rect, x: rect.x * factor, y: rect.y * factor, width: rect.width * factor, height: rect.height * factor });
-  const result={ ...base, baseScale: base.scale, canvasScale: factor, scale: base.scale * factor,
+  const result={ ...base, viewportWidth: width, viewportHeight: height,
+    baseScale: base.scale, canvasScale: factor, scale: base.scale * factor,
     positions: base.positions.map(scaled), newTarget: scaled(base.newTarget),
     contentWidth: contentWidth * factor, contentHeight: contentHeight * factor,
     overflow: false, readable: base.scale * factor >= 0.65 };
   if (hasSaved) {
     const projection = projectedSavedOrigin(groups, width, height, savedPositions, result);
-    const preserved = projection || result;
-    // A tall portrait arrangement must not become a tiny portrait thumbnail
-    // inside a wide, shallow landscape table (or vice versa). Prefer the saved
-    // shape whenever readable; reflow intact groups only for a material gain.
-    // This is a view projection: capture retains the corrected shared points.
-    if (width && height && groups.length >= 4 && preserved.scale < 0.65) {
-      const shared = new Map(base.positions.map(point => [point.id, point]));
-      const readingOrder = groups.map((group, index) => ({ ...group, index }))
-        .sort((a, b) => shared.get(a.id).logicalY - shared.get(b.id).logicalY
-          || shared.get(a.id).logicalX - shared.get(b.id).logicalX || a.index - b.index);
-      const reflow = fitGroupsToViewport(readingOrder, options);
-      if (reflow.scale >= preserved.scale * 1.35) {
-        const offset = width >= 900 && options.focused !== false ? 0
-          : Math.max(0, (width - reflow.contentWidth) / 2);
-        const shift = point => ({ ...point, x: point.x + offset,
-          logicalX: point.logicalX + offset / reflow.scale });
-        const byId = new Map(reflow.positions.map(point => {
-          const source = shared.get(point.id);
-          return [point.id, { ...shift(point), sharedLogicalX: source.logicalX,
-            sharedLogicalY: source.logicalY }];
-        }));
-        return { ...reflow, positions: groups.map(group => byId.get(group.id)),
-          newTarget: shift(reflow.newTarget), contentWidth: reflow.contentWidth + offset,
-          adaptiveReflow: true };
-      }
-    }
-    return preserved;
+    // A small window may scale or translate the whole table, never turn the
+    // players' free placement into a reading-order grid. Otherwise a subsequent
+    // drag writes that temporary grid back as everyone else's actual layout.
+    // Only the explicit straighten button aligns existing groups.
+    return projection ? { ...projection, viewportWidth: width, viewportHeight: height } : result;
   }
   if(!hasSaved && width>=900 && options.focused!==false && result.scale>0) {
     const offset=Math.max(0,(width-result.contentWidth)/2);
