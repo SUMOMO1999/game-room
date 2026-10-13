@@ -1811,3 +1811,23 @@ test('actual straightening retains the player arrangement through uniform orient
   let sent;f.setAction(options=>{sent=JSON.parse(options.body);return json({view:endedTurnView(original,sent)});});f.get('draw').dispatchEvent(new Event('click'));await settle();f.frame();
   assert.equal(sent.type,'draw');assert.deepEqual(sent.boardPositions,arranged);assert.deepEqual(plain(f.pageAPI.captureBoardPositions()),arranged);assert.deepEqual(plain(f.pageAPI.draft().board),original.game.board);
 });
+
+
+test('actual short-screen drop and undo keep the screen transform including its saved origin', async t => {
+  const original = tableView({ board: [['red-1-a','red-2-a','red-3-a'],['red-4-a','red-5-a','red-6-a'],['red-7-a','red-8-a','red-9-a']] });
+  original.game.boardPositions = [{x:.10127,y:.03293},{x:.05262,y:.015207},{x:.01648,y:.003232}];
+  const f = await fixture(t, { initialView: original, geometry: true }), board = sizedProjectionBoard(f);
+  board.size(754,77);
+  const before = plain(f.pageAPI.tableFit()), saved = plain(f.pageAPI.captureBoardPositions()), target = { x: 460, y: 38 };
+  actualFreeGroupDrag(f,0,target);
+  const after = plain(f.pageAPI.tableFit());
+  assert.ok(Math.abs(after.positions[0].x-target.x)<1e-7); assert.ok(Math.abs(after.positions[0].y-target.y)<1e-7);
+  assert.equal(after.scale,before.scale); assert.equal(after.displayOffsetX,before.displayOffsetX); assert.equal(after.displayOffsetY,before.displayOffsetY);
+  assert.deepEqual(after.positions.slice(1),before.positions.slice(1)); assertFreeTableSpacing(f);
+  f.get('undo').dispatchEvent(new Event('click')); f.frame();
+  for (const [index, rect] of plain(f.pageAPI.tableFit()).positions.entries()) {
+    assert.ok(Math.abs(rect.x-before.positions[index].x)<1e-7); assert.ok(Math.abs(rect.y-before.positions[index].y)<1e-7);
+  }
+  assert.deepEqual(plain(f.pageAPI.captureBoardPositions()),saved);
+  assert.equal(f.calls.filter(call=>call.url.endsWith('/actions')).length,0);
+});

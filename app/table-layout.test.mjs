@@ -490,3 +490,47 @@ test('orientation leaves zero or one group and temporarily zero viewports finite
   const groups=Array.from({length:11},(_,i)=>({id:`hidden-${i}`,length:3})),saved=Object.fromEntries(groups.map((g,i)=>[g.id,{x:0,y:i*110}]));
   const layout=fitGroupsToViewport(groups,{width:0,height:0},saved);assert.equal(layout.scale,0);assert.equal(layout.adaptiveReflow,undefined);assert.deepEqual(boardLayoutPositions(layout),saved);
 });
+
+
+test('a short-screen safe drop keeps its aiming transform instead of zooming the whole table', () => {
+  const groups = ['a','b','c'].map(id => ({ id, length: 3 }));
+  const saved = { a: { x: 1012.7, y: 329.3 }, b: { x: 526.2, y: 152.07 }, c: { x: 164.8, y: 32.32 } };
+  const options = { width: 754, height: 77 }, before = fitGroupsToViewport(groups, options, saved);
+  const target = { x: 467.96, y: 48.69 };
+  const moved = { ...saved, a: { x: (target.x-before.displayOffsetX)/before.scale, y: (target.y-before.displayOffsetY)/before.scale } };
+  const fresh = fitGroupsToViewport(groups, options, moved);
+  assert.ok(fresh.scale > before.scale, 'the old maximum-fit behavior would jump and enlarge the table');
+  const after = fitGroupsToViewport(groups, { ...options, previous: before }, moved);
+  near(after.scale, before.scale); near(after.displayOffsetX, before.displayOffsetX); near(after.displayOffsetY, before.displayOffsetY);
+  near(after.positions[0].x, target.x); near(after.positions[0].y, target.y);
+  assert.deepEqual(after.positions.slice(1), before.positions.slice(1)); assertFullyVisible(after, options.width, options.height);
+  const undone = fitGroupsToViewport(groups, { ...options, previous: after }, saved);
+  for (const [index, rect] of undone.positions.entries()) { near(rect.x, before.positions[index].x); near(rect.y, before.positions[index].y); }
+  assert.deepEqual(boardLayoutPositions(undone), saved);
+});
+
+test('moving the saved-origin group keeps other screen points while resizing refits without writing the arrangement', () => {
+  const groups = ['a','b','c'].map(id => ({ id, length: 3 }));
+  const saved = { a: { x: 1012.7, y: 329.3 }, b: { x: 526.2, y: 152.07 }, c: { x: 164.8, y: 32.32 } };
+  const options = { width: 754, height: 77 }, before = fitGroupsToViewport(groups, options, saved);
+  const target = { x: 600, y: 5 };
+  const moved = { ...saved, c: { x: (target.x-before.displayOffsetX)/before.scale, y: (target.y-before.displayOffsetY)/before.scale } };
+  const input = structuredClone(moved), after = fitGroupsToViewport(groups, { ...options, previous: before }, moved);
+  near(after.positions[2].x, target.x); near(after.positions[2].y, target.y);
+  for (let index=0;index<2;index++) { near(after.positions[index].x,before.positions[index].x); near(after.positions[index].y,before.positions[index].y); }
+  assertFullyVisible(after, options.width, options.height);
+  const resized = fitGroupsToViewport(groups, { width: 400, height: 260, previous: after }, moved);
+  assert.notEqual(resized.scale, after.scale); assertFullyVisible(resized, 400, 260);
+  assert.deepEqual(boardLayoutPositions(resized), moved); assert.deepEqual(moved, input);
+});
+
+test('an out-of-view edit or invalid previous transform falls back to a fully visible uniform fit', () => {
+  const groups = ['a','b'].map(id => ({ id, length: 3 }));
+  const options = { width: 600, height: 200 }, saved = { a: { x: 0, y: 0 }, b: { x: 400, y: 100 } };
+  const before = fitGroupsToViewport(groups, options, saved), moved = { ...saved, b: { x: 2500, y: 1000 } };
+  const after = fitGroupsToViewport(groups, { ...options, previous: before }, moved);
+  assert.ok(after.scale < before.scale); assertFullyVisible(after, 600, 200);
+  for (const invalid of [{ ...before, scale: NaN }, { ...before, displayOffsetX: Infinity }, { ...before, viewportWidth: 0 }]) {
+    assert.deepEqual(fitGroupsToViewport(groups, { ...options, previous: invalid }, moved), fitGroupsToViewport(groups, options, moved));
+  }
+});

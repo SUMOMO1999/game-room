@@ -303,6 +303,33 @@ export function boardLayoutPositions(layout, { display = false } = {}) {
   }]));
 }
 
+/** A legal drop must keep the view used to aim it. Refit only when the
+ * viewport changes or the updated table no longer fits that transform. */
+function retainViewportTransform(base, width, height, previous) {
+  if (!previous || previous.viewportWidth !== width || previous.viewportHeight !== height
+    || previous.baseScale !== 1 || !finite(previous.scale) || previous.scale <= 0 || previous.scale > 1
+    || previous.displayOffsetX !== undefined && !finite(previous.displayOffsetX)
+    || previous.displayOffsetY !== undefined && !finite(previous.displayOffsetY)) return null;
+  const factor = previous.scale;
+  const offsetX = previous.displayOffsetX || 0, offsetY = previous.displayOffsetY || 0;
+  const positions = base.positions.map(rect => ({ ...rect,
+    x: rect.logicalX * factor + offsetX, y: rect.logicalY * factor + offsetY,
+    width: rect.width * factor, height: rect.height * factor }));
+  const inside = rect => rect.x >= -EPSILON && rect.y >= -EPSILON
+    && rect.x + rect.width <= width + EPSILON && rect.y + rect.height <= height + EPSILON;
+  if (!positions.every(inside)) return null;
+  const target = placeGroup({ width: base.newTarget.width * factor, height: base.newTarget.height * factor },
+    previous.newTarget, positions, { width, height, gap: 38 * factor });
+  if (!inside(target)) return null;
+  const rects = [...positions, target];
+  return { ...base, baseScale: 1, canvasScale: factor, scale: factor,
+    viewportWidth: width, viewportHeight: height, displayOffsetX: offsetX, displayOffsetY: offsetY,
+    positions, newTarget: { ...target, logicalX: (target.x - offsetX) / factor, logicalY: (target.y - offsetY) / factor },
+    contentWidth: Math.max(...rects.map(rect => rect.x + rect.width)),
+    contentHeight: Math.max(...rects.map(rect => rect.y + rect.height)),
+    overflow: false, readable: factor >= 0.65 };
+}
+
 /** Fixed-screen game overview. Keep every group visible, including very dense
  * tables or far-apart user positions; inspection supplies readable larger cards.
  * canvasScale is applied to the whole canvas, so headers scale with the tiles.
@@ -344,13 +371,18 @@ export function fitGroupsToViewport(input, options = {}, savedPositions = {}) {
     // an already safe saved gap into new logical positions on every rotation.
     base = positionedLayout(groups, width, height, 1, savedPositions, hasSaved);
   }
+  if (hasSaved) {
+    const retained = retainViewportTransform(base, width, height, options.previous);
+    if (retained) return retained;
+  }
   const rects = [...base.positions, base.newTarget];
   const contentWidth = Math.max(1, ...rects.map(rect => rect.x + rect.width));
   const contentHeight = Math.max(1, ...rects.map(rect => rect.y + rect.height));
   const canvasScale = Math.min(1, width / contentWidth, height / contentHeight);
   const factor = Math.max(0, canvasScale);
   const scaled = rect => ({ ...rect, x: rect.x * factor, y: rect.y * factor, width: rect.width * factor, height: rect.height * factor });
-  const result={ ...base, baseScale: base.scale, canvasScale: factor, scale: base.scale * factor,
+  const result={ ...base, viewportWidth: width, viewportHeight: height,
+    baseScale: base.scale, canvasScale: factor, scale: base.scale * factor,
     positions: base.positions.map(scaled), newTarget: scaled(base.newTarget),
     contentWidth: contentWidth * factor, contentHeight: contentHeight * factor,
     overflow: false, readable: base.scale * factor >= 0.65 };
@@ -360,7 +392,7 @@ export function fitGroupsToViewport(input, options = {}, savedPositions = {}) {
     // players' free placement into a reading-order grid. Otherwise a subsequent
     // drag writes that temporary grid back as everyone else's actual layout.
     // Only the explicit straighten button aligns existing groups.
-    return projection || result;
+    return projection ? { ...projection, viewportWidth: width, viewportHeight: height } : result;
   }
   if(!hasSaved && width>=900 && options.focused!==false && result.scale>0) {
     const offset=Math.max(0,(width-result.contentWidth)/2);
