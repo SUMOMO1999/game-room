@@ -293,7 +293,7 @@ function projectedSavedOrigin(groups, width, height, savedPositions, previous) {
 }
 
 /** Shared coordinates for persistence; display coordinates for an actual edit.
- * Resizing alone may reflow the local view, but cannot rearrange another player's
+ * Resizing scales the existing arrangement, but cannot rearrange another player's
  * table or serialize that temporary projection as a new public layout.
  */
 export function boardLayoutPositions(layout, { display = false } = {}) {
@@ -356,33 +356,11 @@ export function fitGroupsToViewport(input, options = {}, savedPositions = {}) {
     overflow: false, readable: base.scale * factor >= 0.65 };
   if (hasSaved) {
     const projection = projectedSavedOrigin(groups, width, height, savedPositions, result);
-    const preserved = projection || result;
-    // A tall portrait arrangement must not become a tiny portrait thumbnail
-    // inside a wide, shallow landscape table (or vice versa). Prefer the saved
-    // shape whenever readable; reflow intact groups only for a material gain.
-    // This is a view projection: capture retains the corrected shared points.
-    if (width && height && groups.length >= 4 && preserved.scale < 0.65) {
-      const shared = new Map(base.positions.map(point => [point.id, point]));
-      const readingOrder = groups.map((group, index) => ({ ...group, index }))
-        .sort((a, b) => shared.get(a.id).logicalY - shared.get(b.id).logicalY
-          || shared.get(a.id).logicalX - shared.get(b.id).logicalX || a.index - b.index);
-      const reflow = fitGroupsToViewport(readingOrder, options);
-      if (reflow.scale >= preserved.scale * 1.35) {
-        const offset = width >= 900 && options.focused !== false ? 0
-          : Math.max(0, (width - reflow.contentWidth) / 2);
-        const shift = point => ({ ...point, x: point.x + offset,
-          logicalX: point.logicalX + offset / reflow.scale });
-        const byId = new Map(reflow.positions.map(point => {
-          const source = shared.get(point.id);
-          return [point.id, { ...shift(point), sharedLogicalX: source.logicalX,
-            sharedLogicalY: source.logicalY }];
-        }));
-        return { ...reflow, positions: groups.map(group => byId.get(group.id)),
-          newTarget: shift(reflow.newTarget), contentWidth: reflow.contentWidth + offset,
-          adaptiveReflow: true };
-      }
-    }
-    return preserved;
+    // A small window may scale or translate the whole table, never turn the
+    // players' free placement into a reading-order grid. Otherwise a subsequent
+    // drag writes that temporary grid back as everyone else's actual layout.
+    // Only the explicit straighten button aligns existing groups.
+    return projection || result;
   }
   if(!hasSaved && width>=900 && options.focused!==false && result.scale>0) {
     const offset=Math.max(0,(width-result.contentWidth)/2);

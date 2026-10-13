@@ -387,7 +387,7 @@ test('a saved centered wide table projects out origin margins on a narrow view w
   const desktop=fitGroupsToViewport(groups,{width:1266,height:500});
   const saved=Object.fromEntries(desktop.positions.map(p=>[p.id,{x:p.logicalX,y:p.logicalY}]));
   const before=JSON.stringify(saved),narrow=fitGroupsToViewport(groups,{width:358,height:600},saved);
-  assert.ok(narrow.adaptiveReflow || narrow.displayOffsetX<0);assert.ok(narrow.scale>.57, 'centering margins must not shrink a feasible 22px card to 14px');
+  assert.equal(narrow.adaptiveReflow,undefined);assert.ok(narrow.displayOffsetX<0);assert.ok(narrow.scale>.57, 'centering margins must not shrink a feasible 22px card to 14px');
   assertFullyVisible(narrow,358,600);
   assert.deepEqual(boardLayoutPositions(narrow),saved);
   assert.deepEqual(narrow.positions.map(p=>p.id),groups.map(g=>g.id));
@@ -430,35 +430,57 @@ test('fitting saved views retain deliberate position while zero-origin dense vie
   assert.equal(small.displayOffsetX,undefined);assert.equal(small.displayOffsetY,undefined);assertFullyVisible(small,320,60);
 });
 
-test('orientation reflow makes an eleven-group forty-one-tile portrait table readable in landscape and back without changing shared points',()=>{
+test('orientation uniformly scales the eleven-group forty-one-tile free arrangement without forming a new queue',()=>{
   const groups=[3,3,3,4,4,4,4,4,4,4,4].map((length,i)=>({id:`rotation-${i}`,length}));
   const first=fitGroupsToViewport(groups,{width:358,height:600});
   const saved=Object.fromEntries(first.positions.map(p=>[p.id,{x:p.logicalX,y:p.logicalY}])),before=structuredClone(saved);
   assert.equal(groups.reduce((n,g)=>n+g.length,0),41);
-  const shapeHeight=Math.max(...groups.map(g=>saved[g.id].y+72));
   for(const [width,height]of [[358,600],[701,128],[358,600],[701,128],[358,600]]) {
     const layout=fitGroupsToViewport(groups,{width,height},saved);
-    assert.equal(layout.adaptiveReflow,true);assertFullyVisible(layout,width,height);
-    assert.ok(layout.scale>=(width===358?.85:.6),'the original tiny tall-thumbnail scale cannot pass this readability check');
-    if(width===701)assert.ok(layout.scale>=Math.min(1,height/shapeHeight)*1.35,'landscape improves at least35% over uniformly shrinking the original tall group shape');
+    assert.equal(layout.adaptiveReflow,undefined);assertFullyVisible(layout,width,height);
     assert.deepEqual(boardLayoutPositions(layout),saved);assert.deepEqual(layout.positions.map(p=>p.id),groups.map(g=>g.id));
-    assert.notDeepEqual(boardLayoutPositions(layout,{display:true}),saved);
-    for(const [i,rect]of layout.positions.entries())for(const other of layout.positions.slice(i+1))assert.equal(rectanglesIntersect(rect,other,38*layout.scale),false);
+    assert.deepEqual(boardLayoutPositions(layout,{display:true}),saved);
+    for(const [i,rect]of layout.positions.entries())for(const other of layout.positions.slice(i+1)) {
+      assert.equal(rectanglesIntersect(rect,other,38*layout.scale),false);
+      near((rect.x-other.x)/layout.scale,saved[rect.id].x-saved[other.id].x);
+      near((rect.y-other.y)/layout.scale,saved[rect.id].y-saved[other.id].y);
+    }
   }
   assert.deepEqual(saved,before);
 });
 
-test('orientation reflow preserves input order and corrected shared coordinates while display reading order follows their saved locations',()=>{
+test('orientation retains the original vertical arrangement even when input groups are in reverse order',()=>{
   const groups=[{id:'bottom',length:4},{id:'middle',length:4},{id:'top',length:3},{id:'last',length:3}];
   const saved={top:{x:100,y:0},middle:{x:100,y:110},bottom:{x:100,y:220},last:{x:100,y:330}},before=structuredClone(saved);
   const layout=fitGroupsToViewport(groups,{width:701,height:100},saved);
-  assert.equal(layout.adaptiveReflow,true);assertFullyVisible(layout,701,100);
+  assert.equal(layout.adaptiveReflow,undefined);assertFullyVisible(layout,701,100);
   assert.deepEqual(layout.positions.map(p=>p.id),groups.map(g=>g.id));assert.deepEqual(boardLayoutPositions(layout),saved);
-  const display=boardLayoutPositions(layout,{display:true});assert.ok(display.top.x<display.middle.x && display.middle.x<display.bottom.x && display.bottom.x<display.last.x);
+  const display=boardLayoutPositions(layout,{display:true});assert.deepEqual(display,saved);
+  near(display.top.x,display.middle.x);near(display.middle.x,display.bottom.x);near(display.bottom.x,display.last.x);
+  assert.ok(display.top.y<display.middle.y && display.middle.y<display.bottom.y && display.bottom.y<display.last.y);
   assert.deepEqual(saved,before);
 });
 
-test('orientation reflow leaves zero or one group and temporarily zero viewports finite without inventing display edits',()=>{
+test('a safe off-grid group drop stays at its point and never queues untouched groups',()=>{
+  const groups=['a','b','c','d'].map(id=>({id,length:3}));
+  const saved={a:{x:0,y:0},b:{x:200,y:140},c:{x:420,y:45},d:{x:610,y:300}};
+  const before=fitGroupsToViewport(groups,{width:900,height:500},saved);
+  const point=placeGroup({width:122,height:72},{x:650,y:110},
+    before.positions.filter(p=>p.id!=='c').map(p=>({x:p.logicalX,y:p.logicalY,width:122,height:72})),{width:900,height:500,gap:38});
+  near(point.x,650);near(point.y,110);
+  const dropped={...saved,c:{x:point.x,y:point.y}};
+  for(const [width,height]of [[900,500],[701,128],[358,600],[900,500]]) {
+    const fit=fitGroupsToViewport(groups,{width,height},dropped);
+    assert.equal(fit.adaptiveReflow,undefined);assertFullyVisible(fit,width,height);
+    assert.deepEqual(boardLayoutPositions(fit),dropped);
+    for(const id of ['a','b','d'])assert.deepEqual(boardLayoutPositions(fit)[id],saved[id]);
+    const c=fit.positions.find(p=>p.id==='c'),a=fit.positions.find(p=>p.id==='a');
+    near((c.x-a.x)/fit.scale,650);near((c.y-a.y)/fit.scale,110);
+  }
+  assert.notEqual(dropped.c.y,saved.a.y);assert.notEqual(dropped.c.y,saved.b.y);
+});
+
+test('orientation leaves zero or one group and temporarily zero viewports finite without inventing display edits',()=>{
   for(const groups of [[],[{id:'solo',length:3}]])for(const [width,height]of [[0,0],[358,600],[701,128]]) {
     const saved=groups.length?{solo:{x:120,y:40}}:{},before=structuredClone(saved);
     const layout=fitGroupsToViewport(groups,{width,height},saved);assert.equal(layout.adaptiveReflow,undefined);
