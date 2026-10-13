@@ -117,7 +117,7 @@ export function straightenGroupPositions(layout) {
     for (const item of ordered) {
       const last = groups.at(-1);
       // Bound the entire cluster, rather than chaining nearby rows together.
-      if (last && item[axis] - last[0][axis] <= tolerance) last.push(item);
+      if (last && item[axis] - last[0][axis] <= tolerance + EPSILON) last.push(item);
       else groups.push([item]);
     }
     return groups;

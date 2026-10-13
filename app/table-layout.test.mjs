@@ -18,6 +18,15 @@ test('straightening follows player placement, never board-array numbering', () =
   assert.deepEqual(reversed, aligned); assert.deepEqual(saved, before);
 });
 
+test('a row exactly at the alignment threshold stays the same across scaled viewports', () => {
+  const groups = [{ id: 'a', length: 3 }, { id: 'b', length: 3 }];
+  const saved = { a: { x: 0, y: 0 }, b: { x: 400, y: 24 } };
+  for (const [width, height] of [[1000,700],[800,360],[393,852],[481,89],[481,200]]) {
+    const aligned = straightenGroupPositions(fitGroupsToViewport(groups, { width, height }, saved));
+    near(aligned.a.y, 12); near(aligned.b.y, 12); near(aligned.a.x, 0); near(aligned.b.x, 400);
+  }
+});
+
 test('nearby rows and columns straighten while intentional gaps and separate rows remain', () => {
   const saved = { bottomRight: { x: 256, y: 158 }, topLeft: { x: 36, y: 7 },
     bottomLeft: { x: 30, y: 150 }, topRight: { x: 250, y: 18 } };
