@@ -425,3 +425,21 @@ test('orientation reflow leaves zero or one group and temporarily zero viewports
   const groups=Array.from({length:11},(_,i)=>({id:`hidden-${i}`,length:3})),saved=Object.fromEntries(groups.map((g,i)=>[g.id,{x:0,y:i*110}]));
   const layout=fitGroupsToViewport(groups,{width:0,height:0},saved);assert.equal(layout.scale,0);assert.equal(layout.adaptiveReflow,undefined);assert.deepEqual(boardLayoutPositions(layout),saved);
 });
+
+const { spatialGroupOrder } = await import(tableSource ? new URL('table-layout.mjs',pathToFileURL(tableSource.replace(/\/$/,'')+'/')) : new URL('./table-layout.mjs',import.meta.url));
+const numberedPoint = (id, x, y, height = 72) => ({ id, x, y, height });
+
+test('spatial numbers read slightly uneven rows left to right, then top to bottom without editing positions', () => {
+  const positions = [numberedPoint('right',400,0),numberedPoint('left',20,2),numberedPoint('bottom',0,120)];
+  const before = structuredClone(positions);
+  assert.deepEqual(spatialGroupOrder(positions),['left','right','bottom']);
+  assert.deepEqual(positions,before);
+  for (const scale of [.2,1,2]) assert.deepEqual(spatialGroupOrder(positions.map(p=>({...p,x:p.x*scale+100,y:p.y*scale+80,height:p.height*scale}))),['left','right','bottom']);
+});
+
+test('overlapping diagonal chains keep a fixed row anchor and equal points keep their relative order', () => {
+  const positions = [numberedPoint('a',300,100),numberedPoint('b',0,120),numberedPoint('c',100,140)];
+  assert.deepEqual(spatialGroupOrder(positions),['b','a','c']);
+  assert.deepEqual(spatialGroupOrder([numberedPoint('r',104,22),numberedPoint('l',100,20),numberedPoint('same-x',100,21),numberedPoint('same-point',100,20)]),['l','same-point','same-x','r']);
+  assert.deepEqual(spatialGroupOrder([]),[]);
+});
