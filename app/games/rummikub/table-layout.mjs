@@ -344,3 +344,23 @@ export function fitGroupsToViewport(input, options = {}, savedPositions = {}) {
   }
   return result;
 }
+
+
+/** Reading order only: it never moves groups or changes their saved identities.
+ * Anchor each row to its first top edge, so overlapping diagonal chains cannot
+ * merge separate rows. Small vertical offsets within that row yield to x order.
+ */
+export function spatialGroupOrder(positions) {
+  const remaining = positions.map((point, index) => ({ ...point, index }))
+    .sort((a, b) => a.y - b.y || a.x - b.x || a.index - b.index);
+  const result = [];
+  while (remaining.length) {
+    const anchor = remaining.shift();
+    const row = [anchor];
+    const tolerance = Math.max(0, anchor.height) / 3;
+    while (remaining.length && remaining[0].y - anchor.y <= tolerance) row.push(remaining.shift());
+    row.sort((a, b) => a.x - b.x || a.y - b.y || a.index - b.index);
+    result.push(...row.map(point => point.id));
+  }
+  return result;
+}

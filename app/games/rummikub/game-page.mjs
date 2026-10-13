@@ -6,7 +6,7 @@ import { entryStorageKey, gamePath } from '../../entry-path.mjs';
 import { createPracticeState, createJokerPracticeState, createDeck, validateMeld, normalizeMeld, evaluateDraft, commitDraft, drawTile, sortRack, stateProblem, ruleVersionOf, canRearrangeJokers } from './rules.mjs';
 import { RoomClient, api, loadMembership, normalizeCode, forgetMembership } from '../../room-client.mjs';
 import { loadAccount, accountState, accountGeneration, onAccountChange, logoutAccount, watchAccountLifecycle, loginHref, reauthenticationHref } from '../../account-client.mjs';
-import { fitGroupsToViewport, placeGroup, boardLayoutPositions } from './table-layout.mjs';
+import { fitGroupsToViewport, placeGroup, boardLayoutPositions, spatialGroupOrder } from './table-layout.mjs';
 import { mountRoomChat } from '../../room-chat.mjs';
 import { fitFreeRack, normalizeRackPositions, normalizeRackBasis, rebaseFreeRack, placeRackTiles, moveRackTiles } from './rack-layout.mjs';
 import { createGameAudio } from '../../game-audio.mjs';
@@ -114,6 +114,14 @@ function fittedBoard(tiles, positions) {
   const board=$('board'),style=getComputedStyle(board);
   return fitGroupsToViewport(tiles.map(meld=>({id:groupKey(meld),length:meld.length})),
     {width:board.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight),height:board.clientHeight-parseFloat(style.paddingTop)-parseFloat(style.paddingBottom)},positions);
+}
+function groupNumbers(layout) {
+  return new Map(spatialGroupOrder(layout.positions).map((id, index) => [id, index + 1]));
+}
+function displayedGroupNumbers() {
+  const shown = displayedBoard();
+  const positions = remotePreview ? decodeBoardPositions(shown, remotePreview.preview.positions) : tablePositions;
+  return groupNumbers(fittedBoard(shown, positions));
 }
 function captureBoardPositions() {
   return encodeBoardPositions(draft.board,boardLayoutPositions(fittedBoard(draft.board,tablePositions)));
@@ -226,12 +234,15 @@ inspector.id='tile-inspector';inspector.className='tile-inspector';inspector.set
 inspector.innerHTML='<div class="dialog-heading"><h2 id="inspector-title">看清这一组</h2><button type="button" class="close-button" id="inspector-close" aria-label="关闭看牌">×</button></div><p id="inspector-note"></p><div id="inspector-tiles" class="inspector-tiles"></div><div class="inspector-actions"><button id="inspector-prev" type="button" class="secondary-button">上一组</button><span id="inspector-page"></span><button id="inspector-next" type="button" class="secondary-button">下一组</button><button id="inspector-select" type="button" class="primary-button">选中这一组</button></div>';
 document.body.append(inspector);
 function inspectorPages() {
-  return paginateInspector(displayedBoard(), orderedRack(), inspectorMode);
+  const pages = paginateInspector(displayedBoard(), orderedRack(), inspectorMode);
+  if (inspectorMode !== 'board') return pages;
+  const board = displayedBoard(), numbers = displayedGroupNumbers();
+  return pages.map(page => ({ ...page, displayNumber: numbers.get(groupKey(board[page.groupIndex])) }));
 }
 function renderInspector() {
   const pages=inspectorPages();inspectorIndex=Math.max(0,Math.min(inspectorIndex,pages.length-1));
   const page=pages[inspectorIndex],tiles=page?.tiles || [];
-  $('inspector-title').textContent=inspectorMode==='board'?page?`组合 ${page.groupIndex+1}${page.parts>1?` · ${page.part+1}/${page.parts}`:''}`:'公共桌面还没有牌':'我的手牌';
+  $('inspector-title').textContent=inspectorMode==='board'?page?`组合 ${page.displayNumber}${page.parts>1?` · ${page.part+1}/${page.parts}`:''}`:'公共桌面还没有牌':'我的手牌';
   $('inspector-note').textContent=inspectorMode==='board'?'每页最多14张；选中这一组后回牌桌继续整理。':'每页14张；点选后回到手牌区，可以自由摆放。';
   $('inspector-tiles').innerHTML=tiles.map(tile=>tileHTML(tile).replace('data-tile=','data-inspect-tile=')).join('');
   $('inspector-page').textContent=pages.length?`${inspectorIndex+1} / ${pages.length}`:'没有牌';
@@ -299,6 +310,15 @@ function queueBoardFit({allowRackDrag=false}={}) {
     const shown=displayedBoard(),shownPositions=remotePreview?decodeBoardPositions(shown,remotePreview.preview.positions):tablePositions;
     const fit=fitGroupsToViewport(shown.map(meld=>({id:groupKey(meld),length:meld.length})),{width,height},shownPositions);
     tableLayout=fit;
+    const numbers = groupNumbers(fit);
+    for (const element of board.querySelectorAll('.meld')) {
+      const number = numbers.get(element.dataset.groupKey);
+      element.querySelector('[data-group-number]').textContent = String(number).padStart(2, '0');
+      element.querySelector('.meld-header').setAttribute('aria-label', `拖动组合 ${number}${selection.size?'；点击加入选中牌':''}`);
+      for (const gap of element.querySelectorAll('.split-gap')) gap.setAttribute('aria-label', `在组合 ${number} 的第 ${gap.dataset.cut} 张牌后拆开`);
+      element.querySelector('.split-group').setAttribute('aria-label', splitKey===element.dataset.groupKey ? '取消拆分' : `拆分组合 ${number}`);
+    }
+    if (inspector.open && inspectorMode === 'board') renderInspector();
     board.style.setProperty('--board-scale',fit.baseScale);
     board.classList.toggle('board-overview',fit.baseScale<0.7);
     const canvas=board.querySelector('.table-canvas');
@@ -496,7 +516,7 @@ function renderRuleText() {
 function renderBoard({allowRackDrag=false}={}) {
   const deckOptions = meldOptions();
   const publicIds = new Set(committed.board.flat().map((tile) => tile.id));
-  const shownBoard=displayedBoard();
+  const shownBoard=displayedBoard(), numbers=displayedGroupNumbers();
   if($('preview-status')) {
     $('preview-status').hidden=!remotePreview;
     $('preview-status').textContent=remotePreview?`${remotePreview.ownerName}正在整理 · 未确认${remotePreview.preview.valid?'':' · '+remotePreview.preview.validationMessage}`:'';
@@ -510,9 +530,9 @@ function renderBoard({allowRackDrag=false}={}) {
     const isNew = meld.every((tile) => !publicIds.has(tile.id));
     const status = remotePreview?'整理中 · 未确认':openingLocked ? '开局后可重组' : jokerLocked ? '本局鬼牌组锁定' : result.valid ? `${isNew?'待确认 · ':''}${result.type === 'run' ? '顺子' : '同数'} · ${result.points} 点` : '还差一点';
     const key=groupKey(meld);
-    const splitting=splitKey===key;
-    const tiles=meld.map((tile,tileIndex)=>(remotePreview?tileHTML(tile).replace('data-tile=','disabled data-preview-tile='):tileHTML(tile))+(splitting && !remotePreview && tileIndex<meld.length-1 ? `<button class="split-gap" style="left:calc((42px * ${tileIndex+1} - 2px) * var(--board-scale))" data-cut="${tileIndex+1}" data-meld="${index}" aria-label="在组合 ${index+1} 的第 ${tileIndex+1} 张牌后拆开" title="从这里拆开">✂</button>` : '')).join('');
-    return `<div class="meld${isNew&&!remotePreview?' draft-meld':''}${locked ? ' locked' : ''}${result.valid ? '' : ' invalid'}${splitting ? ' splitting' : ''}" data-zone="${index}" data-group-key="${key}" style="--meld-count:${meld.length}"><button class="meld-header" data-place="${index}" data-group="${index}" aria-label="拖动组合 ${index+1}${selection.size?'；点击加入选中牌':''}" title="拖动整组到空位整理，拖到另一组拼接"><span><span aria-hidden="true" class="group-grip">⠿</span> ${isNew ? '我的组合' : '组合'} ${String(index+1).padStart(2,'0')}</span><small>${status}</small></button><div class="meld-tiles" data-zone="${index}">${tiles}</div><button type="button" class="split-group" data-split="${index}" aria-label="${splitting?'取消拆分':'拆分组合 '+(index+1)}" aria-pressed="${splitting}" ${locked || meld.length<2 || !canAct()?'disabled':''} title="点这里，再选两张牌之间的分界">${splitting?'×':'✂'}</button></div>`;
+    const splitting=splitKey===key, number=numbers.get(key);
+    const tiles=meld.map((tile,tileIndex)=>(remotePreview?tileHTML(tile).replace('data-tile=','disabled data-preview-tile='):tileHTML(tile))+(splitting && !remotePreview && tileIndex<meld.length-1 ? `<button class="split-gap" style="left:calc((42px * ${tileIndex+1} - 2px) * var(--board-scale))" data-cut="${tileIndex+1}" data-meld="${index}" aria-label="在组合 ${number} 的第 ${tileIndex+1} 张牌后拆开" title="从这里拆开">✂</button>` : '')).join('');
+    return `<div class="meld${isNew&&!remotePreview?' draft-meld':''}${locked ? ' locked' : ''}${result.valid ? '' : ' invalid'}${splitting ? ' splitting' : ''}" data-zone="${index}" data-group-key="${key}" style="--meld-count:${meld.length}"><button class="meld-header" data-place="${index}" data-group="${index}" aria-label="拖动组合 ${number}${selection.size?'；点击加入选中牌':''}" title="拖动整组到空位整理，拖到另一组拼接"><span><span aria-hidden="true" class="group-grip">⠿</span> ${isNew ? '我的组合' : '组合'} <span data-group-number>${String(number).padStart(2,'0')}</span></span><small>${status}</small></button><div class="meld-tiles" data-zone="${index}">${tiles}</div><button type="button" class="split-group" data-split="${index}" aria-label="${splitting?'取消拆分':'拆分组合 '+number}" aria-pressed="${splitting}" ${locked || meld.length<2 || !canAct()?'disabled':''} title="点这里，再选两张牌之间的分界">${splitting?'×':'✂'}</button></div>`;
   }).join('') + '<button class="new-meld" data-zone="new" data-place="new" aria-label="把选中牌放进新组合"><b aria-hidden="true">+</b><span>新组合 <span aria-hidden="true">·</span> 把牌放到这里</span></button></div>';
   $('board-count').textContent = `${shownBoard.flat().length} 张牌`;
   queueBoardFit({allowRackDrag});
@@ -1166,7 +1186,9 @@ $('board-arrange').addEventListener('click',()=>{
   clearDrag();pushHistory();
   // An explicit arrange is an edit. Save this arrangement immediately so a
   // later local rotation cannot silently publish a different automatic layout.
-  tablePositions=boardLayoutPositions(fittedBoard(draft.board,{}),{display:true});
+  const byKey = new Map(draft.board.map(meld => [groupKey(meld), meld]));
+  const order = spatialGroupOrder(fittedBoard(draft.board, tablePositions).positions);
+  tablePositions=boardLayoutPositions(fittedBoard(order.map(key => byKey.get(key)),{}),{display:true});
   selection.clear();splitKey=null;render();
   audio.play('sort',{gesture:true});
 });
