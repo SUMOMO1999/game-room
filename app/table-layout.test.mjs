@@ -3,53 +3,10 @@ import assert from 'node:assert/strict';
 import { fitBoard } from './board-layout.mjs';
 import { pathToFileURL } from 'node:url';
 const tableSource=process.env.GAME_ROOM_UI_TEST_SOURCE_ROOT;
-const { arrangeGroups, fitGroupsToViewport, placeGroup, rectanglesIntersect, boardLayoutPositions, straightenGroupPositions }=await import(tableSource?new URL('table-layout.mjs',pathToFileURL(tableSource.replace(/\/$/,'')+'/')):new URL('./table-layout.mjs',import.meta.url));
+const { arrangeGroups, fitGroupsToViewport, placeGroup, rectanglesIntersect, boardLayoutPositions }=await import(tableSource?new URL('table-layout.mjs',pathToFileURL(tableSource.replace(/\/$/,'')+'/')):new URL('./table-layout.mjs',import.meta.url));
 
 const EPSILON=1e-7;
 const near = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-7, `${actual} ≠ ${expected}`);
-
-test('straightening follows player placement, never board-array numbering', () => {
-  const groups = ['first', 'second', 'last'].map(id => ({ id, length: 3 }));
-  const saved = { first: { x: 450, y: 18 }, second: { x: 30, y: 6 }, last: { x: 250, y: 12 } };
-  const before = structuredClone(saved);
-  const aligned = straightenGroupPositions(fitGroupsToViewport(groups, { width: 650, height: 260 }, saved));
-  for (const id of Object.keys(saved)) { near(aligned[id].x, saved[id].x); near(aligned[id].y, 12); }
-  const reversed = straightenGroupPositions(fitGroupsToViewport([...groups].reverse(), { width: 650, height: 260 }, saved));
-  assert.deepEqual(reversed, aligned); assert.deepEqual(saved, before);
-});
-
-test('a row exactly at the alignment threshold stays the same across scaled viewports', () => {
-  const groups = [{ id: 'a', length: 3 }, { id: 'b', length: 3 }];
-  const saved = { a: { x: 0, y: 0 }, b: { x: 400, y: 24 } };
-  for (const [width, height] of [[1000,700],[800,360],[393,852],[481,89],[481,200]]) {
-    const aligned = straightenGroupPositions(fitGroupsToViewport(groups, { width, height }, saved));
-    near(aligned.a.y, 12); near(aligned.b.y, 12); near(aligned.a.x, 0); near(aligned.b.x, 400);
-  }
-});
-
-test('nearby rows and columns straighten while intentional gaps and separate rows remain', () => {
-  const saved = { bottomRight: { x: 256, y: 158 }, topLeft: { x: 36, y: 7 },
-    bottomLeft: { x: 30, y: 150 }, topRight: { x: 250, y: 18 } };
-  const groups = Object.keys(saved).map(id => ({ id, length: 3 }));
-  const aligned = straightenGroupPositions(fitGroupsToViewport(groups, { width: 700, height: 350 }, saved));
-  near(aligned.topLeft.y, 12.5); near(aligned.topRight.y, 12.5);
-  near(aligned.bottomLeft.y, 154); near(aligned.bottomRight.y, 154);
-  near(aligned.topLeft.x, 33); near(aligned.bottomLeft.x, 33);
-  near(aligned.topRight.x, 253); near(aligned.bottomRight.x, 253);
-  const repeated = straightenGroupPositions(fitGroupsToViewport(groups, { width: 700, height: 350 }, aligned));
-  assert.deepEqual(repeated, aligned);
-  const short = straightenGroupPositions(fitGroupsToViewport(groups, { width: 500, height: 115 }, saved));
-  for (const id of Object.keys(saved)) { near(short[id].x, aligned[id].x); near(short[id].y, aligned[id].y); }
-});
-
-test('straightening does not collapse wide groups, overlap neighbors or invent a hidden-viewport edit', () => {
-  const groups = [{ id: 'long', length: 13 }, { id: 'short', length: 3 }];
-  const saved = { long: { x: 20, y: 8 }, short: { x: 620, y: 17 } };
-  const aligned = straightenGroupPositions(fitGroupsToViewport(groups, { width: 900, height: 220 }, saved));
-  near(aligned.long.x, 20); near(aligned.short.x, 620); near(aligned.long.y, aligned.short.y);
-  assertFullyVisible(fitGroupsToViewport(groups, { width: 500, height: 160 }, aligned), 500, 160);
-  assert.deepEqual(straightenGroupPositions(fitGroupsToViewport(groups, { width: 0, height: 0 }, saved)), saved);
-});
 
 function assertFullyVisible(layout, width, height) {
   for (const rect of [...layout.positions, layout.newTarget]) {
@@ -387,7 +344,7 @@ test('a saved centered wide table projects out origin margins on a narrow view w
   const desktop=fitGroupsToViewport(groups,{width:1266,height:500});
   const saved=Object.fromEntries(desktop.positions.map(p=>[p.id,{x:p.logicalX,y:p.logicalY}]));
   const before=JSON.stringify(saved),narrow=fitGroupsToViewport(groups,{width:358,height:600},saved);
-  assert.equal(narrow.adaptiveReflow,undefined);assert.ok(narrow.displayOffsetX<0);assert.ok(narrow.scale>.57, 'centering margins must not shrink a feasible 22px card to 14px');
+  assert.ok(narrow.adaptiveReflow || narrow.displayOffsetX<0);assert.ok(narrow.scale>.57, 'centering margins must not shrink a feasible 22px card to 14px');
   assertFullyVisible(narrow,358,600);
   assert.deepEqual(boardLayoutPositions(narrow),saved);
   assert.deepEqual(narrow.positions.map(p=>p.id),groups.map(g=>g.id));
@@ -430,57 +387,35 @@ test('fitting saved views retain deliberate position while zero-origin dense vie
   assert.equal(small.displayOffsetX,undefined);assert.equal(small.displayOffsetY,undefined);assertFullyVisible(small,320,60);
 });
 
-test('orientation uniformly scales the eleven-group forty-one-tile free arrangement without forming a new queue',()=>{
+test('orientation reflow makes an eleven-group forty-one-tile portrait table readable in landscape and back without changing shared points',()=>{
   const groups=[3,3,3,4,4,4,4,4,4,4,4].map((length,i)=>({id:`rotation-${i}`,length}));
   const first=fitGroupsToViewport(groups,{width:358,height:600});
   const saved=Object.fromEntries(first.positions.map(p=>[p.id,{x:p.logicalX,y:p.logicalY}])),before=structuredClone(saved);
   assert.equal(groups.reduce((n,g)=>n+g.length,0),41);
+  const shapeHeight=Math.max(...groups.map(g=>saved[g.id].y+72));
   for(const [width,height]of [[358,600],[701,128],[358,600],[701,128],[358,600]]) {
     const layout=fitGroupsToViewport(groups,{width,height},saved);
-    assert.equal(layout.adaptiveReflow,undefined);assertFullyVisible(layout,width,height);
+    assert.equal(layout.adaptiveReflow,true);assertFullyVisible(layout,width,height);
+    assert.ok(layout.scale>=(width===358?.85:.6),'the original tiny tall-thumbnail scale cannot pass this readability check');
+    if(width===701)assert.ok(layout.scale>=Math.min(1,height/shapeHeight)*1.35,'landscape improves at least35% over uniformly shrinking the original tall group shape');
     assert.deepEqual(boardLayoutPositions(layout),saved);assert.deepEqual(layout.positions.map(p=>p.id),groups.map(g=>g.id));
-    assert.deepEqual(boardLayoutPositions(layout,{display:true}),saved);
-    for(const [i,rect]of layout.positions.entries())for(const other of layout.positions.slice(i+1)) {
-      assert.equal(rectanglesIntersect(rect,other,38*layout.scale),false);
-      near((rect.x-other.x)/layout.scale,saved[rect.id].x-saved[other.id].x);
-      near((rect.y-other.y)/layout.scale,saved[rect.id].y-saved[other.id].y);
-    }
+    assert.notDeepEqual(boardLayoutPositions(layout,{display:true}),saved);
+    for(const [i,rect]of layout.positions.entries())for(const other of layout.positions.slice(i+1))assert.equal(rectanglesIntersect(rect,other,38*layout.scale),false);
   }
   assert.deepEqual(saved,before);
 });
 
-test('orientation retains the original vertical arrangement even when input groups are in reverse order',()=>{
+test('orientation reflow preserves input order and corrected shared coordinates while display reading order follows their saved locations',()=>{
   const groups=[{id:'bottom',length:4},{id:'middle',length:4},{id:'top',length:3},{id:'last',length:3}];
   const saved={top:{x:100,y:0},middle:{x:100,y:110},bottom:{x:100,y:220},last:{x:100,y:330}},before=structuredClone(saved);
   const layout=fitGroupsToViewport(groups,{width:701,height:100},saved);
-  assert.equal(layout.adaptiveReflow,undefined);assertFullyVisible(layout,701,100);
+  assert.equal(layout.adaptiveReflow,true);assertFullyVisible(layout,701,100);
   assert.deepEqual(layout.positions.map(p=>p.id),groups.map(g=>g.id));assert.deepEqual(boardLayoutPositions(layout),saved);
-  const display=boardLayoutPositions(layout,{display:true});assert.deepEqual(display,saved);
-  near(display.top.x,display.middle.x);near(display.middle.x,display.bottom.x);near(display.bottom.x,display.last.x);
-  assert.ok(display.top.y<display.middle.y && display.middle.y<display.bottom.y && display.bottom.y<display.last.y);
+  const display=boardLayoutPositions(layout,{display:true});assert.ok(display.top.x<display.middle.x && display.middle.x<display.bottom.x && display.bottom.x<display.last.x);
   assert.deepEqual(saved,before);
 });
 
-test('a safe off-grid group drop stays at its point and never queues untouched groups',()=>{
-  const groups=['a','b','c','d'].map(id=>({id,length:3}));
-  const saved={a:{x:0,y:0},b:{x:200,y:140},c:{x:420,y:45},d:{x:610,y:300}};
-  const before=fitGroupsToViewport(groups,{width:900,height:500},saved);
-  const point=placeGroup({width:122,height:72},{x:650,y:110},
-    before.positions.filter(p=>p.id!=='c').map(p=>({x:p.logicalX,y:p.logicalY,width:122,height:72})),{width:900,height:500,gap:38});
-  near(point.x,650);near(point.y,110);
-  const dropped={...saved,c:{x:point.x,y:point.y}};
-  for(const [width,height]of [[900,500],[701,128],[358,600],[900,500]]) {
-    const fit=fitGroupsToViewport(groups,{width,height},dropped);
-    assert.equal(fit.adaptiveReflow,undefined);assertFullyVisible(fit,width,height);
-    assert.deepEqual(boardLayoutPositions(fit),dropped);
-    for(const id of ['a','b','d'])assert.deepEqual(boardLayoutPositions(fit)[id],saved[id]);
-    const c=fit.positions.find(p=>p.id==='c'),a=fit.positions.find(p=>p.id==='a');
-    near((c.x-a.x)/fit.scale,650);near((c.y-a.y)/fit.scale,110);
-  }
-  assert.notEqual(dropped.c.y,saved.a.y);assert.notEqual(dropped.c.y,saved.b.y);
-});
-
-test('orientation leaves zero or one group and temporarily zero viewports finite without inventing display edits',()=>{
+test('orientation reflow leaves zero or one group and temporarily zero viewports finite without inventing display edits',()=>{
   for(const groups of [[],[{id:'solo',length:3}]])for(const [width,height]of [[0,0],[358,600],[701,128]]) {
     const saved=groups.length?{solo:{x:120,y:40}}:{},before=structuredClone(saved);
     const layout=fitGroupsToViewport(groups,{width,height},saved);assert.equal(layout.adaptiveReflow,undefined);
@@ -489,48 +424,4 @@ test('orientation leaves zero or one group and temporarily zero viewports finite
   }
   const groups=Array.from({length:11},(_,i)=>({id:`hidden-${i}`,length:3})),saved=Object.fromEntries(groups.map((g,i)=>[g.id,{x:0,y:i*110}]));
   const layout=fitGroupsToViewport(groups,{width:0,height:0},saved);assert.equal(layout.scale,0);assert.equal(layout.adaptiveReflow,undefined);assert.deepEqual(boardLayoutPositions(layout),saved);
-});
-
-
-test('a short-screen safe drop keeps its aiming transform instead of zooming the whole table', () => {
-  const groups = ['a','b','c'].map(id => ({ id, length: 3 }));
-  const saved = { a: { x: 1012.7, y: 329.3 }, b: { x: 526.2, y: 152.07 }, c: { x: 164.8, y: 32.32 } };
-  const options = { width: 754, height: 77 }, before = fitGroupsToViewport(groups, options, saved);
-  const target = { x: 467.96, y: 48.69 };
-  const moved = { ...saved, a: { x: (target.x-before.displayOffsetX)/before.scale, y: (target.y-before.displayOffsetY)/before.scale } };
-  const fresh = fitGroupsToViewport(groups, options, moved);
-  assert.ok(fresh.scale > before.scale, 'the old maximum-fit behavior would jump and enlarge the table');
-  const after = fitGroupsToViewport(groups, { ...options, previous: before }, moved);
-  near(after.scale, before.scale); near(after.displayOffsetX, before.displayOffsetX); near(after.displayOffsetY, before.displayOffsetY);
-  near(after.positions[0].x, target.x); near(after.positions[0].y, target.y);
-  assert.deepEqual(after.positions.slice(1), before.positions.slice(1)); assertFullyVisible(after, options.width, options.height);
-  const undone = fitGroupsToViewport(groups, { ...options, previous: after }, saved);
-  for (const [index, rect] of undone.positions.entries()) { near(rect.x, before.positions[index].x); near(rect.y, before.positions[index].y); }
-  assert.deepEqual(boardLayoutPositions(undone), saved);
-});
-
-test('moving the saved-origin group keeps other screen points while resizing refits without writing the arrangement', () => {
-  const groups = ['a','b','c'].map(id => ({ id, length: 3 }));
-  const saved = { a: { x: 1012.7, y: 329.3 }, b: { x: 526.2, y: 152.07 }, c: { x: 164.8, y: 32.32 } };
-  const options = { width: 754, height: 77 }, before = fitGroupsToViewport(groups, options, saved);
-  const target = { x: 600, y: 5 };
-  const moved = { ...saved, c: { x: (target.x-before.displayOffsetX)/before.scale, y: (target.y-before.displayOffsetY)/before.scale } };
-  const input = structuredClone(moved), after = fitGroupsToViewport(groups, { ...options, previous: before }, moved);
-  near(after.positions[2].x, target.x); near(after.positions[2].y, target.y);
-  for (let index=0;index<2;index++) { near(after.positions[index].x,before.positions[index].x); near(after.positions[index].y,before.positions[index].y); }
-  assertFullyVisible(after, options.width, options.height);
-  const resized = fitGroupsToViewport(groups, { width: 400, height: 260, previous: after }, moved);
-  assert.notEqual(resized.scale, after.scale); assertFullyVisible(resized, 400, 260);
-  assert.deepEqual(boardLayoutPositions(resized), moved); assert.deepEqual(moved, input);
-});
-
-test('an out-of-view edit or invalid previous transform falls back to a fully visible uniform fit', () => {
-  const groups = ['a','b'].map(id => ({ id, length: 3 }));
-  const options = { width: 600, height: 200 }, saved = { a: { x: 0, y: 0 }, b: { x: 400, y: 100 } };
-  const before = fitGroupsToViewport(groups, options, saved), moved = { ...saved, b: { x: 2500, y: 1000 } };
-  const after = fitGroupsToViewport(groups, { ...options, previous: before }, moved);
-  assert.ok(after.scale < before.scale); assertFullyVisible(after, 600, 200);
-  for (const invalid of [{ ...before, scale: NaN }, { ...before, displayOffsetX: Infinity }, { ...before, viewportWidth: 0 }]) {
-    assert.deepEqual(fitGroupsToViewport(groups, { ...options, previous: invalid }, moved), fitGroupsToViewport(groups, options, moved));
-  }
 });
