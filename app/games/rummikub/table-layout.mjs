@@ -97,6 +97,53 @@ function savedPoint(savedPositions, id) {
   return point && finite(point.x) && point.x >= 0 && finite(point.y) && point.y >= 0 ? point : null;
 }
 
+/** Straighten the layout players already made, without packing or ordering
+ * groups by their board-array index. Work in shared logical coordinates so
+ * the same arrangement survives smaller screens and view-only offsets. */
+export function straightenGroupPositions(layout) {
+  const points = boardLayoutPositions(layout);
+  if (!finite(layout?.scale) || layout.scale <= 0) return points;
+  const items = layout.positions.map(rect => ({ id: rect.id, ...points[rect.id],
+    width: rect.width / layout.scale, height: rect.height / layout.scale }));
+  if (!items.length) return points;
+  const median = values => {
+    const sorted = [...values].sort((a, b) => a - b), middle = Math.floor(sorted.length / 2);
+    return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+  };
+  const cluster = (values, axis, tolerance) => {
+    const ordered = [...values].sort((a, b) => a[axis] - b[axis]
+      || a[axis === 'x' ? 'y' : 'x'] - b[axis === 'x' ? 'y' : 'x'] || a.id.localeCompare(b.id));
+    const groups = [];
+    for (const item of ordered) {
+      const last = groups.at(-1);
+      // Bound the entire cluster, rather than chaining nearby rows together.
+      if (last && item[axis] - last[0][axis] <= tolerance) last.push(item);
+      else groups.push([item]);
+    }
+    return groups;
+  };
+  const gap = 38, placed = [];
+  const rowTolerance = Math.min(...items.map(item => item.height)) / 3;
+  for (const row of cluster(items, 'y', rowTolerance)) {
+    let y = median(row.map(item => item.y));
+    // Move a whole row only enough to preserve the existing tile clearance.
+    // Left/right placement and intentional spaces remain where players put them.
+    for (const item of row) for (const other of placed) {
+      if (item.x < other.x + other.width + gap - EPSILON
+        && other.x < item.x + item.width + gap - EPSILON) y = Math.max(y, other.y + other.height + gap);
+    }
+    placed.push(...row.map(item => ({ ...item, y })));
+  }
+  for (const column of cluster(placed, 'x', 21)) {
+    if (column.length < 2) continue;
+    const x = median(column.map(item => item.x)), ids = new Set(column.map(item => item.id));
+    const proposed = placed.map(item => ids.has(item.id) ? { ...item, x } : item);
+    if (proposed.some((item, index) => proposed.slice(index + 1).some(other => intersects(item, other, gap)))) continue;
+    for (const item of column) item.x = x;
+  }
+  return Object.fromEntries(placed.map(({ id, x, y }) => [id, { x, y }]));
+}
+
 function geometry(groups, scale) {
   const groupHeight = 54 * scale + (scale < 0.7 ? 10 : 14 * scale) + 4 * scale;
   return [...groups.map(({ id, length }) => ({ id,

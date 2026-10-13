@@ -3,10 +3,44 @@ import assert from 'node:assert/strict';
 import { fitBoard } from './board-layout.mjs';
 import { pathToFileURL } from 'node:url';
 const tableSource=process.env.GAME_ROOM_UI_TEST_SOURCE_ROOT;
-const { arrangeGroups, fitGroupsToViewport, placeGroup, rectanglesIntersect, boardLayoutPositions }=await import(tableSource?new URL('table-layout.mjs',pathToFileURL(tableSource.replace(/\/$/,'')+'/')):new URL('./table-layout.mjs',import.meta.url));
+const { arrangeGroups, fitGroupsToViewport, placeGroup, rectanglesIntersect, boardLayoutPositions, straightenGroupPositions }=await import(tableSource?new URL('table-layout.mjs',pathToFileURL(tableSource.replace(/\/$/,'')+'/')):new URL('./table-layout.mjs',import.meta.url));
 
 const EPSILON=1e-7;
 const near = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-7, `${actual} ≠ ${expected}`);
+
+test('straightening follows player placement, never board-array numbering', () => {
+  const groups = ['first', 'second', 'last'].map(id => ({ id, length: 3 }));
+  const saved = { first: { x: 450, y: 18 }, second: { x: 30, y: 6 }, last: { x: 250, y: 12 } };
+  const before = structuredClone(saved);
+  const aligned = straightenGroupPositions(fitGroupsToViewport(groups, { width: 650, height: 260 }, saved));
+  for (const id of Object.keys(saved)) { near(aligned[id].x, saved[id].x); near(aligned[id].y, 12); }
+  const reversed = straightenGroupPositions(fitGroupsToViewport([...groups].reverse(), { width: 650, height: 260 }, saved));
+  assert.deepEqual(reversed, aligned); assert.deepEqual(saved, before);
+});
+
+test('nearby rows and columns straighten while intentional gaps and separate rows remain', () => {
+  const saved = { bottomRight: { x: 256, y: 158 }, topLeft: { x: 36, y: 7 },
+    bottomLeft: { x: 30, y: 150 }, topRight: { x: 250, y: 18 } };
+  const groups = Object.keys(saved).map(id => ({ id, length: 3 }));
+  const aligned = straightenGroupPositions(fitGroupsToViewport(groups, { width: 700, height: 350 }, saved));
+  near(aligned.topLeft.y, 12.5); near(aligned.topRight.y, 12.5);
+  near(aligned.bottomLeft.y, 154); near(aligned.bottomRight.y, 154);
+  near(aligned.topLeft.x, 33); near(aligned.bottomLeft.x, 33);
+  near(aligned.topRight.x, 253); near(aligned.bottomRight.x, 253);
+  const repeated = straightenGroupPositions(fitGroupsToViewport(groups, { width: 700, height: 350 }, aligned));
+  assert.deepEqual(repeated, aligned);
+  const short = straightenGroupPositions(fitGroupsToViewport(groups, { width: 500, height: 115 }, saved));
+  for (const id of Object.keys(saved)) { near(short[id].x, aligned[id].x); near(short[id].y, aligned[id].y); }
+});
+
+test('straightening does not collapse wide groups, overlap neighbors or invent a hidden-viewport edit', () => {
+  const groups = [{ id: 'long', length: 13 }, { id: 'short', length: 3 }];
+  const saved = { long: { x: 20, y: 8 }, short: { x: 620, y: 17 } };
+  const aligned = straightenGroupPositions(fitGroupsToViewport(groups, { width: 900, height: 220 }, saved));
+  near(aligned.long.x, 20); near(aligned.short.x, 620); near(aligned.long.y, aligned.short.y);
+  assertFullyVisible(fitGroupsToViewport(groups, { width: 500, height: 160 }, aligned), 500, 160);
+  assert.deepEqual(straightenGroupPositions(fitGroupsToViewport(groups, { width: 0, height: 0 }, saved)), saved);
+});
 
 function assertFullyVisible(layout, width, height) {
   for (const rect of [...layout.positions, layout.newTarget]) {
