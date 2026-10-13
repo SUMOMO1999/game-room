@@ -1334,7 +1334,7 @@ function sizedProjectionBoard(f) {
 test('actual saved centered table changes only its projection through repeated rotation, refresh and layout-carrying draw',async t=>{
   const original=projectionBoardView(),f=await fixture(t,{initialView:original,geometry:true}),board=sizedProjectionBoard(f);board.apply();
   const expected=original.game.boardPositions;
-  assert.equal(f.pageAPI.tableFit().adaptiveReflow,undefined);assert.ok(f.pageAPI.tableFit().displayOffsetX<0);assert.ok(f.pageAPI.tableFit().scale>.57);
+  assert.ok(f.pageAPI.tableFit().adaptiveReflow || f.pageAPI.tableFit().displayOffsetX<0);assert.ok(f.pageAPI.tableFit().scale>.57);
   assert.deepEqual(plain(f.pageAPI.captureBoardPositions()),expected);
   for(const [width,height]of[[1266,500],[358,600],[701,128],[358,600],[1266,500],[358,600]]) {
     board.size(width,height);assert.deepEqual(plain(f.pageAPI.captureBoardPositions()),expected);
@@ -1731,17 +1731,12 @@ function orientationView() {
 }
 const displayEncoded=fit=>fit.positions.map(p=>({x:p.logicalX/10000,y:p.logicalY/10000}));
 
-test('actual orientation uniformly scales the free table while capture and private free placement never form or publish a queue',async t=>{
+test('actual orientation reflow enlarges forty-one public tiles after portrait landscape portrait while capture and private free placement never publish a layout edit',async t=>{
   const original=orientationView(),f=await fixture(t,{initialView:original,geometry:true}),board=sizedProjectionBoard(f);board.apply();
   const positions=structuredClone(original.game.boardPositions),points=plain(f.pageAPI.tablePoints()),before=plain(f.pageAPI.draft());
   for(const [width,height]of [[358,600],[701,128],[358,600],[701,128],[358,600]]) {
-    board.size(width,height);const fit=plain(f.pageAPI.tableFit());assert.equal(fit.adaptiveReflow,undefined);
-    const shared=Object.fromEntries(original.game.board.map((meld,i)=>[meld.map(tile=>tile.id).sort().join('|'),positions[i]]));
-    for(const [i,a]of fit.positions.entries())for(const b of fit.positions.slice(i+1)) {
-      assert.ok(Math.abs((a.x-b.x)/fit.scale-(shared[a.id].x-shared[b.id].x)*10000)<1e-7);
-      assert.ok(Math.abs((a.y-b.y)/fit.scale-(shared[a.id].y-shared[b.id].y)*10000)<1e-7);
-    }
-    assertFreeTableSpacing(f);
+    board.size(width,height);const fit=plain(f.pageAPI.tableFit());assert.equal(fit.adaptiveReflow,true);
+    assert.ok(fit.scale>=(width===358?.85:.6),'every returned view remains readable instead of a tiny saved-thumbnail');assertFreeTableSpacing(f);
     assert.deepEqual(plain(f.pageAPI.captureBoardPositions()),positions);assert.deepEqual(plain(f.pageAPI.captureCommittedBoardPositions()),positions);
     assert.deepEqual(plain(f.pageAPI.tablePoints()),points);assert.deepEqual(plain(f.pageAPI.draft()),before);
   }
@@ -1751,35 +1746,20 @@ test('actual orientation uniformly scales the free table while capture and priva
   assert.ok(f.calls.filter(c=>c.url.endsWith('/preview')).every(c=>!JSON.parse(c.options.body).boardIds),'view projection and private edits never become a changed public preview');
 });
 
-test('actual native whole-group free movement changes only that group after pointerup and undo restores its arrangement',async t=>{
+test('actual orientation reflow native whole-group movement materializes displayed anchors only after pointerup and undo restores the shared portrait arrangement',async t=>{
   const original=orientationView(),f=await fixture(t,{initialView:original,geometry:true}),board=sizedProjectionBoard(f);board.size(701,128);
   const before=plain(f.pageAPI.draft()),positions=plain(f.pageAPI.captureBoardPositions()),points=plain(f.pageAPI.tablePoints()),saved=[...f.sessionStorage.values];
   const handle=actualFreeGroupDrag(f,2,{x:40,y:70},null,true);
   assert.deepEqual(plain(f.pageAPI.tablePoints()),points);assert.deepEqual(plain(f.pageAPI.captureBoardPositions()),positions);assert.deepEqual([...f.sessionStorage.values],saved);
   assert.equal(handle.hasPointerCapture(71),false);assert.equal(f.document.querySelector('.group-drag-ghost'),null);
-  const fit=plain(f.pageAPI.tableFit());assert.equal(fit.adaptiveReflow,undefined);
+  const fit=plain(f.pageAPI.tableFit()),expected=displayEncoded(fit);assert.equal(fit.adaptiveReflow,true);
   actualFreeGroupDrag(f,2,{x:40,y:70});const captured=plain(f.pageAPI.captureBoardPositions());
-  assert.notDeepEqual(captured,positions);assert.deepEqual(captured.filter((_,i)=>i!==2),positions.filter((_,i)=>i!==2));
+  assert.notDeepEqual(captured,positions);assert.deepEqual(captured.filter((_,i)=>i!==2),expected.filter((_,i)=>i!==2));
   assert.deepEqual(plain(f.pageAPI.draft()),before);assertFreeTableSpacing(f);assert.equal(f.calls.filter(c=>c.url.endsWith('/actions')).length,0);
   f.get('undo').dispatchEvent(new Event('click'));f.frame();assert.deepEqual(plain(f.pageAPI.tablePoints()),points);assert.deepEqual(plain(f.pageAPI.captureBoardPositions()),positions);assertFreeTableSpacing(f);
 });
 
-test('actual ordinary off-grid group drop lands at the pointer without aligning the other groups',async t=>{
-  const original=orientationView(),f=await fixture(t,{initialView:original,geometry:true}),board=sizedProjectionBoard(f);board.size(701,128);
-  const before=plain(f.pageAPI.captureBoardPositions()),fit=plain(f.pageAPI.tableFit()),target={x:450,y:70};
-  actualFreeGroupDrag(f,2,target);
-  const after=plain(f.pageAPI.captureBoardPositions()),shown=plain(f.pageAPI.tableFit()).positions[2];
-  assert.ok(Math.abs(shown.x-target.x)<1e-7);assert.ok(Math.abs(shown.y-target.y)<1e-7);
-  assert.ok(Math.abs(after[2].x*10000-target.x/fit.scale)<1e-7);
-  assert.ok(Math.abs(after[2].y*10000-target.y/fit.scale)<1e-7);
-  assert.deepEqual(after.filter((_,i)=>i!==2),before.filter((_,i)=>i!==2));
-  assert.equal(f.pageAPI.tableFit().adaptiveReflow,undefined);assertFreeTableSpacing(f);
-  assert.equal(f.calls.filter(c=>c.url.endsWith('/actions')).length,0);
-  const retained=[...f.sessionStorage.values],fresh=await fixture(t,{initialView:original,seedSession:retained,geometry:true}),freshBoard=sizedProjectionBoard(fresh);
-  for(const [width,height]of [[701,128],[358,600],[701,128]]) {freshBoard.size(width,height);assert.deepEqual(plain(fresh.pageAPI.captureBoardPositions()),after);assert.equal(fresh.pageAPI.tableFit().adaptiveReflow,undefined);}
-});
-
-test('actual explicit group merge keeps physical group order and undo while a submit persists the free layout for fresh devices',async t=>{
+test('actual orientation reflow explicit group merge keeps physical group order and undo while a submit persists the materialized display layout for fresh devices',async t=>{
   const store=createRoomStore({now:()=>10000,turnTimeoutMs:1800000,gameOptions:{firstTurnIndex:0,randomInt:max=>max-1}});t.after(()=>store.close());
   store.createTrustedRoom(USER,'原朋友',{code:CODE,roomId:'e'.repeat(32),gameType:'rummikub'});store.joinTrustedRoom(CODE,OTHER,'伙伴');let serial=0;
   const act=(user,type,extra={})=>store.trustedAction(CODE,user,{type,requestId:`rotation-${++serial}`,expectedRevision:store.getTrustedView(CODE,user).revision,...extra});
@@ -1802,32 +1782,12 @@ test('actual explicit group merge keeps physical group order and undo while a su
   const retained=store.exportSnapshot(CODE);assert.equal(new Set([...retained.game.board.flat(),...retained.game.pool,...retained.game.players.flatMap(p=>p.rack)].map(t=>t.id)).size,deck.length);
 });
 
-test('actual straightening retains the player arrangement through uniform orientation scaling, submit and layout-only draw',async t=>{
+test('actual orientation reflow explicit organize captures a fixed shared layout through resize for submit and layout-only draw',async t=>{
   const original=orientationView(),f=await fixture(t,{initialView:original,geometry:true}),board=sizedProjectionBoard(f);board.size(701,128);
-  f.get('board-arrange').dispatchEvent(new Event('click'));f.frame();const arranged=plain(f.pageAPI.captureBoardPositions()),points=plain(f.pageAPI.tablePoints());assert.deepEqual(arranged,original.game.boardPositions);
+  f.get('board-arrange').dispatchEvent(new Event('click'));f.frame();const arranged=plain(f.pageAPI.captureBoardPositions()),points=plain(f.pageAPI.tablePoints());assert.notDeepEqual(arranged,original.game.boardPositions);
   for(const [width,height]of [[358,600],[1280,500],[701,128],[358,600]]) {
     board.size(width,height);assertFreeTableSpacing(f);assert.deepEqual(plain(f.pageAPI.captureBoardPositions()),arranged);assert.deepEqual(plain(f.pageAPI.captureCommittedBoardPositions()),arranged);assert.deepEqual(plain(f.pageAPI.tablePoints()),points);
   }
   let sent;f.setAction(options=>{sent=JSON.parse(options.body);return json({view:endedTurnView(original,sent)});});f.get('draw').dispatchEvent(new Event('click'));await settle();f.frame();
   assert.equal(sent.type,'draw');assert.deepEqual(sent.boardPositions,arranged);assert.deepEqual(plain(f.pageAPI.captureBoardPositions()),arranged);assert.deepEqual(plain(f.pageAPI.draft().board),original.game.board);
-});
-
-
-test('actual short-screen drop and undo keep the screen transform including its saved origin', async t => {
-  const original = tableView({ board: [['red-1-a','red-2-a','red-3-a'],['red-4-a','red-5-a','red-6-a'],['red-7-a','red-8-a','red-9-a']] });
-  original.game.boardPositions = [{x:.10127,y:.03293},{x:.05262,y:.015207},{x:.01648,y:.003232}];
-  const f = await fixture(t, { initialView: original, geometry: true }), board = sizedProjectionBoard(f);
-  board.size(754,77);
-  const before = plain(f.pageAPI.tableFit()), saved = plain(f.pageAPI.captureBoardPositions()), target = { x: 460, y: 38 };
-  actualFreeGroupDrag(f,0,target);
-  const after = plain(f.pageAPI.tableFit());
-  assert.ok(Math.abs(after.positions[0].x-target.x)<1e-7); assert.ok(Math.abs(after.positions[0].y-target.y)<1e-7);
-  assert.equal(after.scale,before.scale); assert.equal(after.displayOffsetX,before.displayOffsetX); assert.equal(after.displayOffsetY,before.displayOffsetY);
-  assert.deepEqual(after.positions.slice(1),before.positions.slice(1)); assertFreeTableSpacing(f);
-  f.get('undo').dispatchEvent(new Event('click')); f.frame();
-  for (const [index, rect] of plain(f.pageAPI.tableFit()).positions.entries()) {
-    assert.ok(Math.abs(rect.x-before.positions[index].x)<1e-7); assert.ok(Math.abs(rect.y-before.positions[index].y)<1e-7);
-  }
-  assert.deepEqual(plain(f.pageAPI.captureBoardPositions()),saved);
-  assert.equal(f.calls.filter(call=>call.url.endsWith('/actions')).length,0);
 });

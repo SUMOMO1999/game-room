@@ -6,7 +6,7 @@ import { entryStorageKey, gamePath } from '../../entry-path.mjs';
 import { createPracticeState, createJokerPracticeState, createDeck, validateMeld, normalizeMeld, evaluateDraft, commitDraft, drawTile, sortRack, stateProblem, ruleVersionOf, canRearrangeJokers } from './rules.mjs';
 import { RoomClient, api, loadMembership, normalizeCode, forgetMembership } from '../../room-client.mjs';
 import { loadAccount, accountState, accountGeneration, onAccountChange, logoutAccount, watchAccountLifecycle, loginHref, reauthenticationHref } from '../../account-client.mjs';
-import { fitGroupsToViewport, placeGroup, boardLayoutPositions, straightenGroupPositions } from './table-layout.mjs';
+import { fitGroupsToViewport, placeGroup, boardLayoutPositions } from './table-layout.mjs';
 import { mountRoomChat } from '../../room-chat.mjs';
 import { fitFreeRack, normalizeRackPositions, normalizeRackBasis, rebaseFreeRack, placeRackTiles, moveRackTiles } from './rack-layout.mjs';
 import { createGameAudio } from '../../game-audio.mjs';
@@ -231,7 +231,7 @@ function inspectorPages() {
 function renderInspector() {
   const pages=inspectorPages();inspectorIndex=Math.max(0,Math.min(inspectorIndex,pages.length-1));
   const page=pages[inspectorIndex],tiles=page?.tiles || [];
-  $('inspector-title').textContent=inspectorMode==='board'?page?`组合${page.parts>1?` · ${page.part+1}/${page.parts}`:''}`:'公共桌面还没有牌':'我的手牌';
+  $('inspector-title').textContent=inspectorMode==='board'?page?`组合 ${page.groupIndex+1}${page.parts>1?` · ${page.part+1}/${page.parts}`:''}`:'公共桌面还没有牌':'我的手牌';
   $('inspector-note').textContent=inspectorMode==='board'?'每页最多14张；选中这一组后回牌桌继续整理。':'每页14张；点选后回到手牌区，可以自由摆放。';
   $('inspector-tiles').innerHTML=tiles.map(tile=>tileHTML(tile).replace('data-tile=','data-inspect-tile=')).join('');
   $('inspector-page').textContent=pages.length?`${inspectorIndex+1} / ${pages.length}`:'没有牌';
@@ -297,7 +297,7 @@ function queueBoardFit({allowRackDrag=false}={}) {
     const width=board.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight);
     const height=board.clientHeight-parseFloat(style.paddingTop)-parseFloat(style.paddingBottom);
     const shown=displayedBoard(),shownPositions=remotePreview?decodeBoardPositions(shown,remotePreview.preview.positions):tablePositions;
-    const fit=fitGroupsToViewport(shown.map(meld=>({id:groupKey(meld),length:meld.length})),{width,height,previous:tableLayout},shownPositions);
+    const fit=fitGroupsToViewport(shown.map(meld=>({id:groupKey(meld),length:meld.length})),{width,height},shownPositions);
     tableLayout=fit;
     board.style.setProperty('--board-scale',fit.baseScale);
     board.classList.toggle('board-overview',fit.baseScale<0.7);
@@ -511,8 +511,8 @@ function renderBoard({allowRackDrag=false}={}) {
     const status = remotePreview?'整理中 · 未确认':openingLocked ? '开局后可重组' : jokerLocked ? '本局鬼牌组锁定' : result.valid ? `${isNew?'待确认 · ':''}${result.type === 'run' ? '顺子' : '同数'} · ${result.points} 点` : '还差一点';
     const key=groupKey(meld);
     const splitting=splitKey===key;
-    const tiles=meld.map((tile,tileIndex)=>(remotePreview?tileHTML(tile).replace('data-tile=','disabled data-preview-tile='):tileHTML(tile))+(splitting && !remotePreview && tileIndex<meld.length-1 ? `<button class="split-gap" style="left:calc((42px * ${tileIndex+1} - 2px) * var(--board-scale))" data-cut="${tileIndex+1}" data-meld="${index}" aria-label="在第 ${tileIndex+1} 张牌后拆开" title="从这里拆开">✂</button>` : '')).join('');
-    return `<div class="meld${isNew&&!remotePreview?' draft-meld':''}${locked ? ' locked' : ''}${result.valid ? '' : ' invalid'}${splitting ? ' splitting' : ''}" data-zone="${index}" data-group-key="${key}" style="--meld-count:${meld.length}"><button class="meld-header" data-place="${index}" data-group="${index}" aria-label="拖动整组${selection.size?'；点击加入选中牌':''}" title="拖动整组到空位整理，拖到另一组拼接"><span><span aria-hidden="true" class="group-grip">⠿</span> ${isNew ? '我的组合' : ''}</span><small>${status}</small></button><div class="meld-tiles" data-zone="${index}">${tiles}</div><button type="button" class="split-group" data-split="${index}" aria-label="${splitting?'取消拆分':'拆分组合'}" aria-pressed="${splitting}" ${locked || meld.length<2 || !canAct()?'disabled':''} title="点这里，再选两张牌之间的分界">${splitting?'×':'✂'}</button></div>`;
+    const tiles=meld.map((tile,tileIndex)=>(remotePreview?tileHTML(tile).replace('data-tile=','disabled data-preview-tile='):tileHTML(tile))+(splitting && !remotePreview && tileIndex<meld.length-1 ? `<button class="split-gap" style="left:calc((42px * ${tileIndex+1} - 2px) * var(--board-scale))" data-cut="${tileIndex+1}" data-meld="${index}" aria-label="在组合 ${index+1} 的第 ${tileIndex+1} 张牌后拆开" title="从这里拆开">✂</button>` : '')).join('');
+    return `<div class="meld${isNew&&!remotePreview?' draft-meld':''}${locked ? ' locked' : ''}${result.valid ? '' : ' invalid'}${splitting ? ' splitting' : ''}" data-zone="${index}" data-group-key="${key}" style="--meld-count:${meld.length}"><button class="meld-header" data-place="${index}" data-group="${index}" aria-label="拖动组合 ${index+1}${selection.size?'；点击加入选中牌':''}" title="拖动整组到空位整理，拖到另一组拼接"><span><span aria-hidden="true" class="group-grip">⠿</span> ${isNew ? '我的组合' : '组合'} ${String(index+1).padStart(2,'0')}</span><small>${status}</small></button><div class="meld-tiles" data-zone="${index}">${tiles}</div><button type="button" class="split-group" data-split="${index}" aria-label="${splitting?'取消拆分':'拆分组合 '+(index+1)}" aria-pressed="${splitting}" ${locked || meld.length<2 || !canAct()?'disabled':''} title="点这里，再选两张牌之间的分界">${splitting?'×':'✂'}</button></div>`;
   }).join('') + '<button class="new-meld" data-zone="new" data-place="new" aria-label="把选中牌放进新组合"><b aria-hidden="true">+</b><span>新组合 <span aria-hidden="true">·</span> 把牌放到这里</span></button></div>';
   $('board-count').textContent = `${shownBoard.flat().length} 张牌`;
   queueBoardFit({allowRackDrag});
@@ -1164,9 +1164,9 @@ $('restore').addEventListener('click', () => {
 $('board-arrange').addEventListener('click',()=>{
   if(!canAct()) return;
   clearDrag();pushHistory();
-  // Keep the players' spatial arrangement; only straighten nearby rows/columns.
-  // This remains an undoable draft edit and uses the normal preview/save path.
-  tablePositions=straightenGroupPositions(fittedBoard(draft.board,tablePositions));
+  // An explicit arrange is an edit. Save this arrangement immediately so a
+  // later local rotation cannot silently publish a different automatic layout.
+  tablePositions=boardLayoutPositions(fittedBoard(draft.board,{}),{display:true});
   selection.clear();splitKey=null;render();
   audio.play('sort',{gesture:true});
 });
