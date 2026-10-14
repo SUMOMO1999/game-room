@@ -17,7 +17,8 @@ test('digital catalog preserves all 51 verified definitions and every one of the
     assert.ok(card.summary && card.compactText && card.costText && card.timingLabel);
     assert.ok(card.details.length >= 2 && card.details.every(text => typeof text === 'string' && text.length > 8));
     for (const key of ['actionIncrement', 'placementActionIncrement', 'activationActionIncrement', 'timing', 'tapOnActivation', 'untapAt', 'cancelableByJinyiwei', 'firstGlobalPurchaseSilver', 'laterPurchaseSilver', 'slotsAdded', 'sharedBoards']) {
-      if (Object.hasOwn(source, key)) assert.deepEqual(card[key], source[key]);
+      // The 2026-10-15 digital installation ruling supersedes the physical scan's cost only.
+      if (Object.hasOwn(source, key)) assert.deepEqual(card[key], key === 'placementActionIncrement' ? 0 : source[key]);
     }
   }
   assert.deepEqual(Object.fromEntries(CATEGORIES.map(category => [category.id, sumCopies(CARDS.filter(card => card.category === category.id))])), reference.rulebookCategoryCopies);

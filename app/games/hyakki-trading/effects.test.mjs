@@ -85,7 +85,9 @@ for (const code of implementedCharacterCodes.filter(code => !['C04', 'C07'].incl
   test(`${code}: legal activation and all deterministic choices finish with conserved materials and one action`, () => {
     const f = fixture(code);
     assert.equal(gameProblem(f.state), null); assert.equal(characterProblem(f.state, f.owner.id, f.cardId, f.params), null);
-    const result = settle(start(f));
+    const started = start(f);
+    if (code.startsWith('M')) assert.equal(started.pending?.response ?? null, null, 'no held counter means no response window');
+    const result = settle(started);
     assert.equal(result.actionsUsed, 1); assert.equal(result.turnPlayerId, f.owner.id);
     assert.ok(result.discard.includes(f.cardId));
   });
@@ -223,9 +225,9 @@ test('C13: fixed proceeds ignore book layers and release a temporary slot withou
 });
 
 test('M02: the last action waits for counter and the entire alternating draft before ending the turn', () => {
-  const f = fixture('M02'); f.hand(f.owner, 'G03'); f.hand(f.peer, 'G04'); f.hand(f.peer, 'G05'); f.state.actionLimit = 1;
+  const f = fixture('M02'); f.hand(f.owner, 'G03'); f.hand(f.peer, 'G04'); f.hand(f.peer, 'C07'); f.state.actionLimit = 1;
   let state = start(f); assert.equal(state.turnPlayerId, ids[0]); assert.equal(state.pending.response.kind, 'counter');
-  state = accept(state, 'decline-response'); assert.equal(state.pending.poolCards.length, 5);
+  if (state.pending?.response) state = accept(state, 'decline-response'); assert.equal(state.pending.poolCards.length, 5);
   assert.equal(state.lastPublicEvents.some(event => event.type === 'cards-revealed'), true);
   state = accept(state, 'choose-effect', { selection: state.pending.choice.defaultSelection });
   state = JSON.parse(JSON.stringify(state)); assert.equal(state.pending.poolCards.length, 4);
@@ -235,7 +237,7 @@ test('M02: the last action waits for counter and the entire alternating draft be
 
 test('M03: each player keeps a tool independently with the old exhaustion flag', () => {
   const f = fixture('M03'); const second = f.tool(f.peer, 'T04', false);
-  let state = start(f); state = accept(state, 'decline-response');
+  let state = start(f); if (state.pending?.response) state = accept(state, 'decline-response');
   state = accept(state, 'choose-effect', { selection: { cardId: state.players[0].tools[0].cardId } });
   state = accept(state, 'choose-effect', { selection: { cardId: second } });
   assert.equal(state.players[0].tools[0].exhausted, true); assert.equal(state.players[1].tools[0].exhausted, false);
@@ -243,7 +245,7 @@ test('M03: each player keeps a tool independently with the old exhaustion flag',
 
 test('M04: the opponent cannot choose an unaffordable tribute and draws are private', () => {
   const f = fixture('M04'); f.peer.silver = 1;
-  let state = start(f); state = accept(state, 'decline-response');
+  let state = start(f); if (state.pending?.response) state = accept(state, 'decline-response');
   assert.deepEqual(state.pending.choice.options, [{ branch: 'draw' }]);
   rejected(state, 'choose-effect', { selection: { branch: 'pay' } });
   state = accept(state, 'choose-effect', { selection: { branch: 'draw' } });
@@ -254,7 +256,7 @@ test('M04: the opponent cannot choose an unaffordable tribute and draws are priv
 test('M05: paid temporary spaces remain paid across the full public redistribution', () => {
   const f = fixture('M05'); f.stock(f.owner, { firearms: 3 }); f.stock(f.peer, { imports: 4 });
   f.owner.silver = 0; f.peer.silver = 0;
-  let state = start(f); state = accept(state, 'decline-response');
+  let state = start(f); if (state.pending?.response) state = accept(state, 'decline-response');
   assert.equal(goodsCount(state.pending.goods), 12); assert.equal(state.players[0].temporaryOccupied, false);
   state = settle(JSON.parse(JSON.stringify(state)));
   assert.deepEqual(state.players.map(owner => goodsCount(owner.goods)), [6, 6]);
@@ -272,7 +274,7 @@ test('M06: identical tool copies remain distinct and all received tools stand up
 });
 
 test('M07: one blind draw is fixed before return choice and may be returned after serialization without rerolling', () => {
-  const f = fixture('M07'); f.hand(f.peer, 'G02'); const peerBefore = [...f.peer.hand];
+  const f = fixture('M07'); f.hand(f.peer, 'C07'); const peerBefore = [...f.peer.hand];
   let state = start(f), draws = 0;
   state = accept(state, 'decline-response', {}, undefined, { ...ctx, randomInt: limit => { draws++; return limit - 1; } });
   assert.equal(draws, 1); const taken = state.players[0].hand[0]; assert.equal(taken, peerBefore.at(-1));
@@ -286,7 +288,7 @@ test('M08: T07 is only removed; T08 cannot sacrifice the removed target or outer
   for (const toolCode of ['T07', 'T08']) {
     const f = fixture('M08'), old = f.peer.tools.pop().cardId; f.state.deck.push(old);
     const target = f.tool(f.peer, toolCode); f.params.toolCardId = target;
-    let state = start(f); state = accept(state, 'decline-response');
+    let state = start(f); if (state.pending?.response) state = accept(state, 'decline-response');
     assert.deepEqual(state.pending.choice.options, [{ borrow: false }]);
     rejected(state, 'choose-effect', { selection: { borrow: true } });
     state = accept(state, 'choose-effect', { selection: { borrow: false } });
@@ -297,7 +299,7 @@ test('M08: T07 is only removed; T08 cannot sacrifice the removed target or outer
 test('M08: borrowing T08 pays with an owned card, costs no second action and preserves the outer source', () => {
   const f = fixture('M08'), old = f.peer.tools.pop().cardId; f.state.deck.push(old);
   const target = f.tool(f.peer, 'T08'), payment = f.hand(f.owner, 'G01'); f.params.toolCardId = target;
-  let state = start(f); state = accept(state, 'decline-response');
+  let state = start(f); if (state.pending?.response) state = accept(state, 'decline-response');
   state = accept(state, 'choose-effect', { selection: { borrow: true } });
   assert.equal(state.pending.kind, 'tool'); assert.deepEqual(state.pending.sourceCards, [f.cardId]);
   rejected(state, 'choose-effect', { selection: { payment: { zone: 'tool', cardId: target } } });
@@ -310,7 +312,7 @@ test('M08 / T04: an already discarded borrowed target may be reshuffled into the
   const f = fixture('M08'), old = f.peer.tools.pop().cardId; f.state.deck.push(old);
   const target = f.tool(f.peer, 'T04'); f.params.toolCardId = target;
   f.peer.hand.push(...f.state.deck.splice(1));
-  let state = start(f); state = accept(state, 'decline-response');
+  let state = start(f); if (state.pending?.response) state = accept(state, 'decline-response');
   assert.equal(state.deck.length, 1); assert.deepEqual(state.discard, [target]);
   state = accept(state, 'choose-effect', { selection: { borrow: true } });
   assert.ok(state.pending.poolCards.includes(target)); assert.equal(state.discard.includes(target), false);
@@ -324,7 +326,7 @@ for (const toolCode of ['T01', 'T04']) test(`M08 / ${toolCode}: reshuffling may 
   const f = fixture('M08'), old = f.peer.tools.pop().cardId; f.state.deck.push(old);
   const target = f.tool(f.peer, toolCode); f.params.toolCardId = target;
   f.state.discard.push(f.take('G01'), f.take('G02')); f.peer.hand.push(...f.state.deck.splice(0));
-  let state = start(f); state = accept(state, 'decline-response');
+  let state = start(f); if (state.pending?.response) state = accept(state, 'decline-response');
   assert.equal(state.deck.length, 0); assert.equal(state.discard.at(-1), target);
   state = accept(state, 'choose-effect', { selection: { borrow: true } });
   assert.ok(state.deck.includes(target)); assert.equal(state.discard.includes(target), false);
@@ -339,7 +341,7 @@ for (const code of ['T01', 'T02', 'T03', 'T04', 'T05', 'T06', 'T08', 'T09', 'T10
     const target = f.tool(f.peer, code); f.params.toolCardId = target;
     f.hand(f.owner, 'G01'); f.hand(f.owner, 'G02');
     f.stock(f.owner, { firearms: 1 }); f.stock(f.peer, { imports: 1 });
-    let state = start(f); state = accept(state, 'decline-response');
+    let state = start(f); if (state.pending?.response) state = accept(state, 'decline-response');
     assert.deepEqual(state.pending.choice.options, [{ borrow: true }, { borrow: false }]);
     state = accept(state, 'choose-effect', { selection: { borrow: true } });
     if (state.pending) {
@@ -407,7 +409,7 @@ for (const [code, selections] of Object.entries(initialFixtures)) {
     assert.equal(initial.revision, before.revision + 1); assert.equal(initial.actionsUsed, 1);
     assert.deepEqual(f.state, before);
     assert.equal(JSON.stringify(initial).includes('initialChoices'), false);
-    if (code === 'C05') assert.equal(initial.pending.response.kind, 'merchant');
+    if (code === 'C05') assert.equal(initial.pending, null, 'no merchant card means the subtrade finishes immediately');
     if (code === 'C09') assert.equal(initial.pending.stage, 'bidding');
     assert.equal(settle(initial).actionsUsed, 1);
   });
@@ -513,7 +515,7 @@ function borrowFixture(code, options) {
     T03: { cardIds: [payment] }, T04: {}, T05: {}, T06: { goodId: 'firearms' },
     T08: { payment: { zone: 'hand', cardId: payment } }, T09: { goodId: 'imports' },
     T10: { goodId: 'imports', payment: { zone: 'hand', cardId: payment } } }[code];
-  const state = accept(start(f), 'decline-response');
+  let state = start(f); if (state.pending?.response) state = accept(state, 'decline-response');
   return { f, state, params };
 }
 for (const code of ['T01','T02','T03','T04','T05','T06','T08','T09','T10']) {

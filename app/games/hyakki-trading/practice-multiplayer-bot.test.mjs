@@ -29,7 +29,11 @@ for (const code of ['C01', 'C08', 'M01', 'M02', 'M03', 'M04', 'M05', 'M06', 'M07
   assert.ok(candidates.length); assert.ok(candidates.every(action => ids.slice(1).includes(action.params.targetId)));
   for (const action of candidates) {
     const result = applyGameAction(game, ids[0], action, ctx); assert.equal(result.ok, true, result.error);
-    assert.equal(result.state.pending?.data.targetId, action.params.targetId);
+    if (code === 'M01') {
+      assert.equal(result.state.pending, null);
+      assert.equal(result.state.players.find(peer => peer.id === action.params.targetId).goods.imports, 0);
+      assert.equal(result.state.players[0].goods.imports, 1);
+    } else assert.equal(result.state.pending?.data.targetId, action.params.targetId);
   }
   if (code === 'M08') assert.match(candidates[0].params.toolCardId, /^tool-5:/);
   const altered = structuredClone(game);

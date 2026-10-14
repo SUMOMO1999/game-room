@@ -145,6 +145,7 @@ test('actor-local choices have legal defaults and the opponent receives no respo
 test('adapter rejects extra network fields and resolves only current public targets', () => {
   let game = useStage(), owner = game.players.find(player => player.id === game.turnPlayerId), peer = game.players.find(player => player.id !== owner.id);
   const character = take(game, 'M08'), toolId = take(game, 'T08', peer.id);
+  take(game, 'C07', peer.id);
   peer.hand.splice(peer.hand.indexOf(toolId), 1); peer.tools.push({ cardId: toolId, exhausted: false });
   const index = game.players.indexOf(peer), ref = `tool-${index}:${game.revision}:0`;
   const action = { type: 'play-character', requestId: 'target', expectedRevision: 999, matchId, turnId: game.turnId, cardId: character, params: { toolCardId: ref } };

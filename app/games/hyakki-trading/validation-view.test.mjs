@@ -88,7 +88,7 @@ test('private character and two-card tool candidate sets never reach the other s
 });
 
 test('counter window precedes public hand pooling and public references expire per revision', () => {
-  let state = useStage(fresh()); const cardId = take(state, 'M02');
+  let state = useStage(fresh()); const cardId = take(state, 'M02'); take(state, 'C07', ids[1]);
   const originalHands = state.players.map(player => [...player.hand]);
   state = run(state, 'play-character', { cardId });
   assert.equal(state.pending.response.kind, 'counter'); assert.equal(state.pending.poolCards.length, 0);
@@ -128,7 +128,7 @@ test('numeric-leading seat identities remain valid in M05 temporary-payment book
   let state = createGame(numeric, { matchId, now: 1000, randomInt: max => max - 1, actionLimit: 10, goodsPerType: 6 });
   state = useStage(state);
   state.players[0].goods.firearms = 6; state.players[0].temporaryOccupied = true; state.bankGoods.firearms = 0;
-  const cardId = take(state, 'M05'); state = run(state, 'play-character', { cardId }); state = run(state, 'decline-response');
+  const cardId = take(state, 'M05'); state = run(state, 'play-character', { cardId }); assert.equal(state.pending.response, null);
   assert.equal(state.pending.data.tempPaid[numeric[0]], true); assert.equal(gameProblem(state), null);
   const corrupt = structuredClone(state); corrupt.pending.data.tempPaid.other = true;
   assert.notEqual(gameProblem(corrupt), null);

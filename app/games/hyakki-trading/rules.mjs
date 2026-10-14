@@ -3,7 +3,8 @@ import { createDeck, GOODS, CONTENT_VERSION, DIGITAL_RULE_VERSION, MULTIPLAYER_R
 import { RuleError, requireRule, definition, player, opponent, emptyGoods, goodsCount, goodsEntries, addSilver,
   moveGoods, removeCard, discardCards, drawCards, availableCards, shuffled, canReceive, ordinaryCapacity,
   refreshTemporary, createPending, completePending, resolveReceipt, resolveActionReferences, emit,
-  DEFAULT_ACTION_LIMIT, DEFAULT_GOODS_PER_TYPE, validActionLimit, validGoodsPerType, isMultiplayer, beginMerchantResponse, closeWinnerId } from './model.mjs';
+  DEFAULT_ACTION_LIMIT, DEFAULT_GOODS_PER_TYPE, validActionLimit, validGoodsPerType, isMultiplayer, beginMerchantResponse,
+  legalResponseCards, skipUnavailableMerchantResponses, closeWinnerId } from './model.mjs';
 import { characterProblem, startCharacter, continueCharacter, chooseCharacter } from './effects.mjs';
 import { toolProblem, startTool, continueTool, chooseTool } from './tools.mjs';
 import { bid, passBid, continueAuction } from './auction.mjs';
@@ -144,7 +145,7 @@ function response(state, actorId, cardId, now) {
   requireRule(window && window.actorId === actorId, '当前没有你的回应窗口。');
   if (cardId !== undefined) {
     const card = ownedCard(state, actorId, cardId);
-    requireRule(card.sourceCode === (window.kind === 'counter' ? 'C07' : 'C04'), '这张牌不能在此回应。');
+    requireRule(legalResponseCards(state).includes(cardId), '这张牌不能在此回应。');
     removeCard(player(state, actorId).hand, cardId);
     emit(state, { type: 'response-played', actorSeatId: actorId, cardId: card.id });
     if (window.kind === 'counter') {
@@ -158,7 +159,8 @@ function response(state, actorId, cardId, now) {
       const remainingMs = Math.max(0, Math.min(window.remainingMs, clock?.deadlineAt === null ? clock.remainingMs : (clock?.deadlineAt ?? now) - now));
       window.remainingIds.shift();
       if (remainingMs > 0 && window.remainingIds.length) {
-        window.actorId = window.remainingIds[0]; window.remainingMs = remainingMs; return;
+        window.actorId = window.remainingIds[0]; window.remainingMs = remainingMs;
+        skipUnavailableMerchantResponses(state); return;
       }
     }
   }
@@ -220,9 +222,10 @@ function dispatch(state, actorId, action, ctx) {
     }
     case 'install-tool': {
       requireUse(state); const card = ownedCard(state, actorId, action.cardId, 'tool');
+      requireRule(state.actionsUsed < state.actionLimit, '本回合行动已经用完。');
       const replacement = owner.tools.findIndex(tool => tool.cardId === action.replaceCardId);
       requireRule(owner.tools.length < 3 ? action.replaceCardId === undefined : replacement >= 0, '道具区有三格，请先选择要替换的道具。');
-      consumeAction(state); if (replacement >= 0) discardCards(state, [owner.tools.splice(replacement, 1)[0].cardId]);
+      if (replacement >= 0) discardCards(state, [owner.tools.splice(replacement, 1)[0].cardId]);
       removeCard(owner.hand, action.cardId); owner.tools.push({ cardId: action.cardId, exhausted: false });
       emit(state, { type: 'tool-installed', actorSeatId: actorId, cardId: card.id }); break;
     }

@@ -57,7 +57,7 @@ for (let number = 1; number <= 10; number++) {
       cardId = f.tool(f.owner, code); f.state.discard.push(f.take('G03'));
       f.state.stage = 'draw'; f.state.drawStarted = false; state = f.state; expectedActions = 1;
     } else {
-      cardId = f.hand(f.owner, code); state = command(f.state, 'install-tool', { cardId }); expectedActions = 2;
+      cardId = f.hand(f.owner, code); state = command(f.state, 'install-tool', { cardId }); expectedActions = 1;
     }
     const deadline = state.timing.active.deadlineAt;
     state = command(state, 'activate-tool', { cardId });
@@ -87,7 +87,7 @@ for (let number = 1; number <= 10; number++) {
 test('M02: alternating timeout decisions preserve the pool and finish after both clocks have expired once', () => {
   const f = fixture(), character = f.hand(f.owner, 'M02');
   for (const code of ['G01', 'G02']) f.hand(f.owner, code);
-  for (const code of ['G03', 'G04', 'G05']) f.hand(f.peer, code);
+  for (const code of ['G03', 'G04', 'C07']) f.hand(f.peer, code);
   let state = command(f.state, 'play-character', { cardId: character });
   assert.equal(state.timing.decision.actorId, ids[1]);
   state = timeout(state); // Counter defaults to decline; owner selects from the fixed pool.
@@ -112,7 +112,7 @@ test('C10: active timeout completes the paid goods choice and retention without 
 test('M08 / T08: active timeout accepts legal borrowing and pays its saved owner-card choice exactly once', () => {
   const f = fixture(), cardId = f.hand(f.owner, 'M08'), payment = f.hand(f.owner, 'G01'), target = f.tool(f.peer, 'T08');
   let state = command(f.state, 'play-character', { cardId, params: { toolCardId: target } });
-  state = command(state, 'decline-response'); state = timeout(state);
+  assert.equal(state.pending.response, null); state = timeout(state);
   assert.equal(state.pending, null); assert.equal(state.turnPlayerId, ids[1]); assert.equal(state.players[0].silver, 22);
   assert.deepEqual(state.discard.slice(-3), [target, payment, cardId]);
 });

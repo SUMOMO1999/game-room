@@ -36,6 +36,10 @@ function give(state, index, code) {
 }
 function trading() {
   const state = fresh(); state.stage = 'use'; state.drawStarted = true;
+  const merchants = [...state.deck, ...state.players.flatMap(owner => owner.hand)].filter(id => definition(id).sourceCode === 'C04');
+  state.deck = state.deck.filter(id => !merchants.includes(id));
+  state.players.forEach(owner => { owner.hand = owner.hand.filter(id => !merchants.includes(id)); });
+  [1, 3, 5].forEach((index, offset) => state.players[index].hand.push(merchants[offset]));
   return { state, cardId: give(state, 0, 'G01') };
 }
 test('every 2–6 player opening conserves one deck and rotates from every possible first seat', () => {
@@ -89,10 +93,10 @@ test('tie breaks inside the wealth leaders, including a rotated first seat', () 
     assert.deepEqual(state.result.winnerIds, [ids[(first + 1) % 6]]);
   }
 });
-test('merchant response visits every seat with one 60-second budget and stale commands fail', () => {
+test('merchant response visits only eligible seats with one 60-second budget and stale commands fail', () => {
   const f = trading(); let state = accept(f.state, 'buy', { cardId: f.cardId });
   const deadline = state.timing.decision.deadlineAt, originalDecision = currentDecision(state);
-  for (let index = 1; index < 6; index++) {
+  for (const index of [1, 3, 5]) {
     assert.equal(currentDecision(state).actorId, ids[index]); assert.equal(state.timing.decision.deadlineAt, deadline);
     if (index > 1) {
       const stale = applyGameAction(state, ids[1], { type: 'decline-response', matchId: state.matchId, turnId: state.turnId,
@@ -105,9 +109,10 @@ test('merchant response visits every seat with one 60-second budget and stale co
   assert.equal(state.discard.filter(id => id === f.cardId).length, 1);
 });
 test('first actual merchant claimant takes one card and closes later response seats', () => {
-  const f = trading(), merchant = give(f.state, 3, 'C04');
+  const f = trading(), merchant = f.state.players[3].hand.find(id => definition(id).sourceCode === 'C04');
   let state = accept(f.state, 'buy', { cardId: f.cardId });
-  state = accept(state, 'decline-response'); state = accept(state, 'decline-response');
+  state = accept(state, 'decline-response');
+  assert.equal(state.pending.response.actorId, ids[3]);
   state = accept(state, 'respond', { cardId: merchant });
   assert.equal(state.pending, null); assert.ok(state.players[3].hand.includes(f.cardId));
   assert.equal(state.discard.filter(id => id === merchant).length, 1);
@@ -116,7 +121,7 @@ test('first actual merchant claimant takes one card and closes later response se
 test('merchant expiry closes all remaining seats in one accepted timeout', () => {
   const f = trading(); let state = accept(f.state, 'buy', { cardId: f.cardId });
   state = accept(state, 'decline-response', {}, 11_000);
-  const result = applyTimeout(state, ids[2], { ...context, now: 61_000 });
+  const result = applyTimeout(state, ids[3], { ...context, now: 61_000 });
   assert.equal(result.ok, true, result.error); state = result.state; conserved(state);
   assert.equal(state.pending, null); assert.equal(state.timing.decision, null);
 });
@@ -129,7 +134,7 @@ test('merchant pause and restore conserve total response time instead of renewin
   state = changeHyakkiPause(state, 'playing', 100_000, { presence: presence(100_000) }).state;
   assert.equal(state.timing.decision.deadlineAt, 150_000);
   state = accept(state, 'decline-response', {}, 110_000);
-  assert.equal(state.timing.decision.actorId, ids[2]); assert.equal(state.timing.decision.deadlineAt, 150_000);
+  assert.equal(state.timing.decision.actorId, ids[3]); assert.equal(state.timing.decision.deadlineAt, 150_000);
 });
 test('six-seat projections expose one own hand and actual public tool references only', () => {
   const state = fresh(), tool = give(state, 5, 'T01');

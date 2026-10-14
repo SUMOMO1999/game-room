@@ -32,7 +32,7 @@ function borrowing(code, { legacy = false } = {}) {
   }
   state = accept(state, 'play-character', { cardId, params: { toolCardId: toolId,
     ...(!legacy ? { targetId: ids[sourceIndex] } : {}) } });
-  state = accept(state, 'decline-response');
+  assert.equal(state.pending.response, null, 'no held counter opens no response step');
   return { state, cardId, toolId, sourceIndex, thirdId: ids[1] };
 }
 function targetChoice(code) {

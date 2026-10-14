@@ -103,7 +103,7 @@ test('M03 cannot activate just because an unrelated seat has multiple tools', ()
 test('M05 pair distribution preserves paid temporary occupancy and leaves third-party stock out of its pool', () => {
   const f = fixture('M05'); f.stock(f.owner, { firearms: 3 }); f.owner.silver = 0;
   const before = unaffected(f.state);
-  let state = start(f); state = accept(state, 'decline-response');
+  let state = start(f); if (state.pending?.response) state = accept(state, 'decline-response');
   assert.deepEqual(Object.keys(state.pending.data.tempPaid).sort(), [ids[0], ids[targetIndex]].sort());
   assert.equal(Object.values(state.pending.goods).reduce((sum, n) => sum + n, 0), 9);
   state = settle(state); assert.equal(state.players[0].silver, 0); assert.deepEqual(unaffected(state), before);
@@ -114,7 +114,7 @@ test('M08 can dismantle one participant tool then borrow T04 with a different re
   const original = f.params.toolCardId;
   f.target.tools = []; f.state.deck.push(original); f.params.toolCardId = f.tool(f.target, 'T04');
   const before = structuredClone(f.state.players[1]);
-  let state = start(f); state = accept(state, 'decline-response');
+  let state = start(f); if (state.pending?.response) state = accept(state, 'decline-response');
   assert.equal(state.pending.data.targetId, ids[targetIndex]);
   state = accept(state, 'choose-effect', { selection: { borrow: true } });
   assert.equal(state.pending.choice.kind, 'borrowed-target'); assert.equal(state.pending.choice.visibility, 'public');
@@ -161,7 +161,7 @@ test('M08 borrowed T02 exchanges goods with a third participant without transfer
   const f = fixture('M08'), original = f.params.toolCardId;
   f.target.tools = []; f.state.deck.push(original); f.params.toolCardId = f.tool(f.target, 'T02');
   f.stock(f.owner, { imports: 1 }); f.stock(f.target, { firearms: 1 });
-  let state = start(f); state = accept(state, 'decline-response');
+  let state = start(f); if (state.pending?.response) state = accept(state, 'decline-response');
   state = accept(state, 'choose-effect', { selection: { borrow: true } });
   state = accept(state, 'choose-effect', { selection: { targetId: ids[1] } });
   assert.equal(state.pending.data.targetId, ids[targetIndex]); assert.equal(state.pending.data.borrowedTargetId, ids[1]);
@@ -174,7 +174,7 @@ test('borrowed T04 can be reshuffled into its own saved candidate pool and then 
   const f = fixture('M08'), original = f.params.toolCardId;
   f.target.tools = []; f.state.deck.push(original); f.params.toolCardId = f.tool(f.target, 'T04');
   f.state.players[2].hand.push(...f.state.deck.splice(0)); f.state.discard.push(f.state.players[2].hand.pop());
-  let state = start(f); state = accept(state, 'decline-response');
+  let state = start(f); if (state.pending?.response) state = accept(state, 'decline-response');
   state = accept(state, 'choose-effect', { selection: { borrow: true } });
   state = accept(state, 'choose-effect', { selection: { targetId: ids[1] } });
   assert(state.pending.poolCards.includes(f.params.toolCardId)); assert.equal(state.deck.length, 0); assert.equal(state.discard.length, 0);
@@ -183,14 +183,13 @@ test('borrowed T04 can be reshuffled into its own saved candidate pool and then 
   assert(state.players[0].hand.includes(f.params.toolCardId)); assert.equal(state.discard.at(-1), f.cardId); assert.equal(state.actionsUsed, 1);
 });
 
-test('C05 goods subtrade uses the full clockwise merchant queue and transfers only the goods source card', () => {
+test('C05 goods subtrade skips seats without a merchant and transfers only the goods source card', () => {
   const f = fixture('C05'); f.params = {}; const tradeCardId = f.hand(f.owner, 'G01'); f.stock(f.owner, { firearms: 3 });
   const merchant = f.hand(f.state.players[3], 'C04');
   let state = start(f); state = accept(state, 'choose-effect', { selection: { cardId: tradeCardId } });
   state = accept(state, 'choose-effect', { selection: { goods: { ...emptyGoods(), firearms: 3 } } });
-  assert.equal(state.players[0].silver, 30); assert.equal(state.pending.response.actorId, ids[1]);
-  assert.deepEqual(state.pending.response.remainingIds, ids.slice(1));
-  state = accept(state, 'decline-response'); state = accept(state, 'decline-response');
+  assert.equal(state.players[0].silver, 30); assert.equal(state.pending.response.actorId, ids[3]);
+  assert.deepEqual(state.pending.response.remainingIds, ids.slice(3));
   assert.equal(state.pending.response.actorId, ids[3]); state = accept(state, 'respond', { cardId: merchant });
   assert(state.players[3].hand.includes(tradeCardId)); assert(state.discard.includes(f.cardId)); assert(state.discard.includes(merchant));
   assert.equal(state.players[0].silver, 30); assert.equal(state.players[0].goods.firearms, 0); assert.equal(state.actionsUsed, 1);

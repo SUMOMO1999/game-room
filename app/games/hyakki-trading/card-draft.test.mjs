@@ -43,7 +43,7 @@ function borrowedFixture(code, ownCount = 0) {
   if (ownCount) f.stock(f.state.players[0], { firearms: ownCount });
   if (code === 'T02') f.stock(f.state.players[1], { imports: 1 });
   let state = accept(f.state, 'play-character', { cardId: f.cardId, params: { targetId: ids[1], toolCardId: toolId } });
-  state = accept(state, 'decline-response', {}, ids[1]);
+  if (state.pending?.response) state = accept(state, 'decline-response', {}, ids[1]);
   const game = privateView(state, ids[0]);
   assert.equal(game.pending.choice.kind, 'borrow-tool');
   return { ...f, state, toolId, paymentId, game, detail: { card: game.pending.target, tool: true, choiceInputs: [] } };
@@ -63,7 +63,8 @@ for (const [count, counter, expectedFee] of [[0, false, 0], [5, false, 2], [6, f
     const command = actionDraft(game, ids[0], detail.card, 'play-character', detail);
     assert.deepEqual(command.params, { targetId: ids[1], goodsId: 'imports' }); assert.deepEqual(f.state, before);
     let state = accept(f.state, 'play-character', command);
-    state = accept(state, counter ? 'respond' : 'decline-response', counter ? { cardId: counterId } : {}, ids[1]);
+    if (counter) state = accept(state, 'respond', { cardId: counterId }, ids[1]);
+    else assert.equal(state.pending?.response ?? null, null);
     if (state.pending?.receipt) state = accept(state, 'choose-effect', { selection: state.pending.choice.defaultSelection });
     assert.equal(state.players[0].silver, before.players[0].silver - expectedFee);
     assert.equal(state.actionsUsed, before.actionsUsed + 1);
@@ -76,7 +77,7 @@ test('M01 low silver creates a saved retention obligation without a fictitious i
   const { game, detail } = projectedDetail(f.state, f.cardId, false, { targetId: ids[1], goodsId: 'imports' });
   assert.match(cardDraftCost(game, ids[0], detail), /超容量再选保留/);
   let state = accept(f.state, 'play-character', actionDraft(game, ids[0], detail.card, 'play-character', detail));
-  state = accept(state, 'decline-response', {}, ids[1]); assert.equal(state.players[0].silver, 1);
+  if (state.pending?.response) state = accept(state, 'decline-response', {}, ids[1]); assert.equal(state.players[0].silver, 1);
   const next = privateView(state, ids[0]), pending = next.pending, draft = nativeChoiceDraft(pending);
   assert.equal(pending.choice.kind, 'retain-goods'); assert.equal(nativeChoiceReady(pending, draft), true);
   const markup = renderNativeWork({ pending, game: next, selfId: ids[0], draft, name: id => id, canChoose: true });
@@ -121,7 +122,7 @@ test('C05 and C13 projected selections form one command and preview real public-
   const selections = cardDraftSelections(game, ids[0], detail), proceeds = definition(tradeId).sellSilver + 4;
   assert.match(cardDraftCost(game, ids[0], detail, selections), new RegExp(`获得${proceeds}两`));
   const state = accept(f.state, 'play-character', actionDraft(game, ids[0], detail.card, 'play-character', { initialChoices: selections }));
-  assert.equal(state.players[0].silver, 20 + proceeds); assert.equal(state.pending.response.kind, 'merchant'); assert.equal(state.actionsUsed, 3);
+  assert.equal(state.players[0].silver, 20 + proceeds); assert.equal(state.pending, null); assert.equal(state.actionsUsed, 3);
   const f13 = fixture('C13'); f13.stock(f13.state.players[0], { imports: 3 });
   const d13 = projectedDetail(f13.state, f13.cardId); d13.detail.choiceInputs[0] = { goods: { ...emptyGoods(), imports: 2 } };
   const s13 = cardDraftSelections(d13.game, ids[0], d13.detail);

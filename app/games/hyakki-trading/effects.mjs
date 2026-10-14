@@ -1,5 +1,5 @@
 import { GOODS } from './content/definitions.mjs';
-import { RuleError, requireRule, definition, player, opponent, pairIds, isMultiplayer, beginMerchantResponse, emptyGoods, goodsCount, addSilver,
+import { RuleError, requireRule, definition, player, opponent, pairIds, isMultiplayer, beginMerchantResponse, legalResponseCards, emptyGoods, goodsCount, addSilver,
   moveGoods, removeCard, discardCards, drawCards, availableCards, ordinaryCapacity,
   refreshTemporary, createPending, setChoice, clearChoice, completePending, receiveGoods, emit } from './model.mjs';
 import { beginAuction } from './auction.mjs';
@@ -175,7 +175,8 @@ export function startCharacter(state, copyId, params = {}, ctx) {
       ...(isMultiplayer(state) && peer ? { targetId: peer.id } : {}) } });
   if (code.startsWith('M')) {
     state.pending.response = { kind: 'counter', actorId: peer.id, tradeCardId: null };
-    return;
+    if (legalResponseCards(state).length) return;
+    state.pending.response = null;
   }
   continueCharacter(state, ctx);
   // Only this card's bounded, already-known owner choices may join activation.
