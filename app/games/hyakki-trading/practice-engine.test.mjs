@@ -36,7 +36,7 @@ const fields = command => Object.fromEntries(Object.entries(command).filter(([ke
 function savedGame(game, logicalNow = 0) {
   return { version: 1, kind: 'hyakki-local-practice', matchId: game.matchId, logicalNow, rngState: 42, game };
 }
-function fixture(code, { ownerId = PRACTICE_SELF, full = false } = {}) {
+function fixture(code, { ownerId = PRACTICE_SELF, full = false, counter = false } = {}) {
   const state = createGame(ids, { ...ctx, ruleVersion: DIGITAL_RULE_VERSION, matchId: 'c'.repeat(32), firstPlayerId: ownerId });
   state.deck.push(...state.players.flatMap(owner => owner.hand)); state.deck.sort(); state.players.forEach(owner => { owner.hand = []; });
   state.stage = 'use'; state.drawStarted = true;
@@ -44,7 +44,7 @@ function fixture(code, { ownerId = PRACTICE_SELF, full = false } = {}) {
   const take = target => { const at = state.deck.findIndex(card => definition(card).sourceCode === target); assert.ok(at >= 0); return state.deck.splice(at, 1)[0]; };
   const cardId = take(code);
   if (code.startsWith('T')) owner.tools.push({ cardId, exhausted: false }); else owner.hand.push(cardId);
-  peer.hand.push(take('G02')); owner.hand.push(take('G01'));
+  peer.hand.push(take(counter ? 'C07' : 'G02')); owner.hand.push(take('G01'));
   if (full) { owner.goods.firearms = 5; state.bankGoods.firearms -= 5; owner.silver = 0; refreshTemporary(owner); }
   const result = applyGameAction(state, owner.id, { type: code.startsWith('T') ? 'activate-tool' : 'play-character', cardId,
     matchId: state.matchId, turnId: state.turnId }, ctx);
@@ -147,7 +147,7 @@ test('goods retention receipt survives reload and the projected default remains 
 });
 
 test('response pause freezes both active and decision clocks across a day and a reload', async () => {
-  const env = environment(), game = fixture('M07', { ownerId: PRACTICE_BOT });
+  const env = environment(), game = fixture('M07', { ownerId: PRACTICE_BOT, counter: true });
   env.values.set(PRACTICE_STORAGE_KEY, encodeHyakkiPractice(savedGame(game)));
   let session = await createHyakkiPracticeSession(env);
   await session.setActive(true); await env.step(1500); await session.setActive(false);
@@ -162,7 +162,7 @@ test('response pause freezes both active and decision clocks across a day and a 
 });
 
 test('active timeout uses the real default exactly once, then preserves the next decision window', async () => {
-  const env = environment(), game = fixture('M04', { ownerId: PRACTICE_BOT });
+  const env = environment(), game = fixture('M04', { ownerId: PRACTICE_BOT, counter: true });
   const saved = savedGame(game, 59900); env.values.set(PRACTICE_STORAGE_KEY, encodeHyakkiPractice(saved));
   const session = await createHyakkiPracticeSession(env); await session.setActive(true); await env.step(100);
   const current = savedAt(env).game; assert.equal(current.revision, game.revision + 1); assert.equal(current.pending.choice.kind, 'tribute-branch');

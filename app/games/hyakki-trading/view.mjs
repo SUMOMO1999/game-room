@@ -2,7 +2,7 @@
 import { gameProblem, cardDefinition, validCopy } from './validation.mjs';
 import { hyakkiGameClock } from './lifecycle.mjs';
 import { currentDecision } from './decision.mjs';
-import { goodsPerTypeOf } from './model.mjs';
+import { goodsPerTypeOf, legalResponseCards } from './model.mjs';
 const clone = value => structuredClone(value);
 const publicCard = (state, copyId, zone, index) => ({ ref: `${zone}:${state.revision}:${index}`, definitionId: cardDefinition(copyId).id });
 const privateCard = copyId => ({ cardId: copyId, definitionId: cardDefinition(copyId).id });
@@ -55,9 +55,7 @@ function pendingView(state, viewerId) {
     response: pending.response ? { kind: pending.response.kind, actorId: pending.response.actorId,
       ...(pending.response.remainingIds ? { remainingCount: pending.response.remainingIds.length } : {}) } : null };
   if (pending.response && mine) {
-    const code = pending.response.kind === 'counter' ? 'C07' : 'C04';
-    const player = state.players.find(player => player.id === viewerId);
-    view.response.cards = player.hand.filter(card => cardDefinition(card).sourceCode === code).map(privateCard);
+    view.response.cards = legalResponseCards(state).map(privateCard);
     view.response.defaultSelection = { type: 'decline-response' };
     view.decision.options = [...view.response.cards.map(card => ({ type: 'respond', cardId: card.cardId })), { type: 'decline-response' }];
     view.decision.defaultSelection = { type: 'decline-response' };

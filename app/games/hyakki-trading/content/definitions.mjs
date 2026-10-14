@@ -775,7 +775,7 @@ export const CARDS = deepFreeze([
     "compactText": "拾回1张道具",
     "details": [
       "从整个弃牌区选择1张道具牌加入自己的手牌，不限弃牌堆顶。",
-      "没有道具可选时不能发动；所得道具不会自动安装，之后安装仍计1步。",
+      "没有道具可选时不能发动；所得道具不会自动安装，之后安装不计行动。",
       "人物效果完成后弃置；效果中的选择、拍卖和分配不重复消耗行动。"
     ],
     "costText": "1步",
@@ -1044,11 +1044,11 @@ export const CARDS = deepFreeze([
       "逐张公开翻牌，找到第一张货物牌即停止；其余翻出的牌在搜索结束后弃置，每张候选本次最多查看一次。",
       "找到后须支付1两或弃自己的1张手牌，才将目标加入手牌；不能用尚未取得的目标牌支付。",
       "发动前须至少有1张可搜索牌，并具备一种支付方式。未找到货物牌则不支付取得费，但已耗行动和横置仍保留。",
-      "先花1步安装到自己的道具区（最多3张，可弃旧换新）；竖直时再花1步激活，随后横置。未被牺牲的道具留场，在自己回合结束时恢复竖直。"
+      "不耗行动安装到自己的道具区（最多3张，可弃旧换新）；竖直时再花1步激活，随后横置。未被牺牲的道具留场，在自己回合结束时恢复竖直。"
     ],
-    "costText": "安装1步 · 激活1步",
+    "costText": "安装0步 · 激活1步",
     "timingLabel": "自己的用牌阶段",
-    "placementActionIncrement": 1,
+    "placementActionIncrement": 0,
     "activationActionIncrement": 1,
     "timing": "own-use",
     "tapOnActivation": true,
@@ -1069,11 +1069,11 @@ export const CARDS = deepFreeze([
     "details": [
       "选择自己的1件货物与对手商铺或摊位中的1件货物，完整交换；允许交换同种货物。",
       "双方都须有库存，不能只给或只拿；按交换后的占位结算，临时位持续占用不重复收费。",
-      "先花1步安装到自己的道具区（最多3张，可弃旧换新）；竖直时再花1步激活，随后横置。未被牺牲的道具留场，在自己回合结束时恢复竖直。"
+      "不耗行动安装到自己的道具区（最多3张，可弃旧换新）；竖直时再花1步激活，随后横置。未被牺牲的道具留场，在自己回合结束时恢复竖直。"
     ],
-    "costText": "安装1步 · 激活1步",
+    "costText": "安装0步 · 激活1步",
     "timingLabel": "自己的用牌阶段",
-    "placementActionIncrement": 1,
+    "placementActionIncrement": 0,
     "activationActionIncrement": 1,
     "timing": "own-use",
     "tapOnActivation": true,
@@ -1094,11 +1094,11 @@ export const CARDS = deepFreeze([
     "details": [
       "先从自己手牌选择1张或2张弃置，再抽相同数量的牌；不能先抽再决定弃什么。",
       "牌堆空时可洗刚弃的牌，因此可能抽回原牌；整批只计1次激活行动，不进入普通留弃流程。",
-      "先花1步安装到自己的道具区（最多3张，可弃旧换新）；竖直时再花1步激活，随后横置。未被牺牲的道具留场，在自己回合结束时恢复竖直。"
+      "不耗行动安装到自己的道具区（最多3张，可弃旧换新）；竖直时再花1步激活，随后横置。未被牺牲的道具留场，在自己回合结束时恢复竖直。"
     ],
-    "costText": "安装1步 · 激活1步",
+    "costText": "安装0步 · 激活1步",
     "timingLabel": "自己的用牌阶段",
-    "placementActionIncrement": 1,
+    "placementActionIncrement": 0,
     "activationActionIncrement": 1,
     "timing": "own-use",
     "tapOnActivation": true,
@@ -1119,11 +1119,11 @@ export const CARDS = deepFreeze([
     "details": [
       "至少能抽齐2张才能发动。自己私看新抽的2张，选择1张加入手牌，另一张交给对手。",
       "只能在刚抽到的2张中选择；对手只看自己获得的一张，观众不看这批私牌。",
-      "先花1步安装到自己的道具区（最多3张，可弃旧换新）；竖直时再花1步激活，随后横置。未被牺牲的道具留场，在自己回合结束时恢复竖直。"
+      "不耗行动安装到自己的道具区（最多3张，可弃旧换新）；竖直时再花1步激活，随后横置。未被牺牲的道具留场，在自己回合结束时恢复竖直。"
     ],
-    "costText": "安装1步 · 激活1步",
+    "costText": "安装0步 · 激活1步",
     "timingLabel": "自己的用牌阶段",
-    "placementActionIncrement": 1,
+    "placementActionIncrement": 0,
     "activationActionIncrement": 1,
     "timing": "own-use",
     "tapOnActivation": true,
@@ -1144,11 +1144,11 @@ export const CARDS = deepFreeze([
     "details": [
       "激活时支付1两并抽1张牌；这是效果费用，安装本道具不花这1两。",
       "至少有1两和1张可抽牌才能激活，不进入普通留弃流程。",
-      "先花1步安装到自己的道具区（最多3张，可弃旧换新）；竖直时再花1步激活，随后横置。未被牺牲的道具留场，在自己回合结束时恢复竖直。"
+      "不耗行动安装到自己的道具区（最多3张，可弃旧换新）；竖直时再花1步激活，随后横置。未被牺牲的道具留场，在自己回合结束时恢复竖直。"
     ],
-    "costText": "安装1步 · 激活1步",
+    "costText": "安装0步 · 激活1步",
     "timingLabel": "自己的用牌阶段",
-    "placementActionIncrement": 1,
+    "placementActionIncrement": 0,
     "activationActionIncrement": 1,
     "timing": "own-use",
     "tapOnActivation": true,
@@ -1169,11 +1169,11 @@ export const CARDS = deepFreeze([
     "details": [
       "选择自己库存中的1件货物交回公库，再抽1张牌。",
       "须有实际库存和可抽牌；货物牌不能代替库存付费。腾空临时格不退原费用。",
-      "先花1步安装到自己的道具区（最多3张，可弃旧换新）；竖直时再花1步激活，随后横置。未被牺牲的道具留场，在自己回合结束时恢复竖直。"
+      "不耗行动安装到自己的道具区（最多3张，可弃旧换新）；竖直时再花1步激活，随后横置。未被牺牲的道具留场，在自己回合结束时恢复竖直。"
     ],
-    "costText": "安装1步 · 激活1步",
+    "costText": "安装0步 · 激活1步",
     "timingLabel": "自己的用牌阶段",
-    "placementActionIncrement": 1,
+    "placementActionIncrement": 0,
     "activationActionIncrement": 1,
     "timing": "own-use",
     "tapOnActivation": true,
@@ -1195,11 +1195,11 @@ export const CARDS = deepFreeze([
       "仅在本回合第一次普通看牌之前、且尚未关闭取牌阶段时激活；把自己的1张手牌与弃牌堆顶交换。",
       "自己的牌成为新的弃牌堆顶，原顶牌加入手牌；只可换顶牌，不能选择弃牌中间的牌。",
       "交换计1步并横置，其后仍可取牌或进入用牌；当回合进入用牌后新安装的纸上仙不能立即激活。",
-      "先花1步安装到自己的道具区（最多3张，可弃旧换新）；竖直时再花1步激活，随后横置。未被牺牲的道具留场，在自己回合结束时恢复竖直。"
+      "不耗行动安装到自己的道具区（最多3张，可弃旧换新）；竖直时再花1步激活，随后横置。未被牺牲的道具留场，在自己回合结束时恢复竖直。"
     ],
-    "costText": "安装1步 · 激活1步",
+    "costText": "安装0步 · 激活1步",
     "timingLabel": "本回合普通取牌前",
-    "placementActionIncrement": 1,
+    "placementActionIncrement": 0,
     "activationActionIncrement": 1,
     "timing": "before-draw",
     "tapOnActivation": true,
@@ -1220,11 +1220,11 @@ export const CARDS = deepFreeze([
     "details": [
       "从本道具、自己的1张手牌、自己道具区的1张道具中选择一张弃掉，获得2两。",
       "三选一支付，其他已横置道具也可支付；不能弃对手的牌。弃别的牌时本道具横置留场，弃自身则离场。",
-      "先花1步安装到自己的道具区（最多3张，可弃旧换新）；竖直时再花1步激活，随后横置。未被牺牲的道具留场，在自己回合结束时恢复竖直。"
+      "不耗行动安装到自己的道具区（最多3张，可弃旧换新）；竖直时再花1步激活，随后横置。未被牺牲的道具留场，在自己回合结束时恢复竖直。"
     ],
-    "costText": "安装1步 · 激活1步",
+    "costText": "安装0步 · 激活1步",
     "timingLabel": "自己的用牌阶段",
-    "placementActionIncrement": 1,
+    "placementActionIncrement": 0,
     "activationActionIncrement": 1,
     "timing": "own-use",
     "tapOnActivation": true,
@@ -1245,11 +1245,11 @@ export const CARDS = deepFreeze([
     "details": [
       "支付2两，选择公库有库存的一种货物，取得1件并放入合法空位。",
       "发动前须能支付效果费用和位置费用；普通位已满而临时位空时需共4两。不适用人物得货后任意换留库存的例外。",
-      "先花1步安装到自己的道具区（最多3张，可弃旧换新）；竖直时再花1步激活，随后横置。未被牺牲的道具留场，在自己回合结束时恢复竖直。"
+      "不耗行动安装到自己的道具区（最多3张，可弃旧换新）；竖直时再花1步激活，随后横置。未被牺牲的道具留场，在自己回合结束时恢复竖直。"
     ],
-    "costText": "安装1步 · 激活1步",
+    "costText": "安装0步 · 激活1步",
     "timingLabel": "自己的用牌阶段",
-    "placementActionIncrement": 1,
+    "placementActionIncrement": 0,
     "activationActionIncrement": 1,
     "timing": "own-use",
     "tapOnActivation": true,
@@ -1271,11 +1271,11 @@ export const CARDS = deepFreeze([
       "从本道具、自己的1张手牌、自己已安装的1张道具中选一张弃掉，取得公库中所选的1件货物。",
       "发动前须有货源与可负担的位置；普通位已满时临时位费另付。不适用人物换留库存的例外。",
       "弃其他牌时本道具横置留场，弃自身则离场；不能用对手的牌支付。",
-      "先花1步安装到自己的道具区（最多3张，可弃旧换新）；竖直时再花1步激活，随后横置。未被牺牲的道具留场，在自己回合结束时恢复竖直。"
+      "不耗行动安装到自己的道具区（最多3张，可弃旧换新）；竖直时再花1步激活，随后横置。未被牺牲的道具留场，在自己回合结束时恢复竖直。"
     ],
-    "costText": "安装1步 · 激活1步",
+    "costText": "安装0步 · 激活1步",
     "timingLabel": "自己的用牌阶段",
-    "placementActionIncrement": 1,
+    "placementActionIncrement": 0,
     "activationActionIncrement": 1,
     "timing": "own-use",
     "tapOnActivation": true,

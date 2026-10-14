@@ -102,7 +102,7 @@ for (const code of codes.filter(code => code.startsWith('T'))) test(`M08: projec
   const old = f.state.players[1].tools.pop(); f.state.deck.push(old.cardId);
   f.tool(f.state.players[1], code);
   let state = checked(f.state, commands(f.state).actions.find(action => action.cardId === f.cardId));
-  state = checked(state, commands(state).actions.find(action => action.type === 'decline-response'));
+  assert.equal(state.pending.response, null, 'no counter card requires no artificial decline');
   const view = privateView(state, ids[0]), selection = view.pending.choice.options.find(option => option.borrow === true);
   if (code === 'T07') assert.equal(selection, undefined);
   else if (selection) {

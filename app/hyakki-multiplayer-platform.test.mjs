@@ -74,7 +74,7 @@ function evidence(name, value) {
 test('six players and two observers use real HTTP/SSE with directed response, private hands and frozen cancellation', async t => {
   const directory = mkdtempSync(join(tmpdir(), 'hyakki-six-http-'));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
-  const f = await table(t, ['M02', 'M08', 'T04', 'C12', 'M07'], join(directory, 'source.sqlite'));
+  const f = await table(t, ['M02', 'M08', 'T04', 'C12', 'M07'], join(directory, 'source.sqlite'), [[10, 'C07']]);
   const { members, owner, streams } = f;
   const opening = await Promise.all(streams.map(stream => stream.wait(packet => packet.event === 'view' && packet.data.game?.status === 'playing')));
   for (let index = 0; index < 8; index++) {
@@ -234,7 +234,7 @@ test('six-player auction remains open after passes until every losing bidder has
 test('real six-seat M08 preserves its source and separate third-seat recipient through private T04 recovery', async t => {
   const directory = mkdtempSync(join(tmpdir(), 'hyakki-borrow-http-'));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
-  const f = await table(t, ['T04', 'C02', 'M07', 'C12', 'M02'], join(directory, 'source.sqlite'), [[0, 'M08']]);
+  const f = await table(t, ['T04', 'C02', 'M07', 'C12', 'C07'], join(directory, 'source.sqlite'), [[0, 'M08']]);
   await f.action(f.code, f.owner, 'peek'); await f.action(f.code, f.owner, 'keep-peek');
   const hand = await f.view(f.code, f.owner); await f.action(f.code, f.owner, 'install-tool', { cardId: cardCode(hand, 'T04') });
   await f.action(f.code, f.owner, 'end-turn');

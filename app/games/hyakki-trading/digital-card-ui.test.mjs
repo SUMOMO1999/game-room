@@ -112,7 +112,7 @@ test('six-kind goods use six image/quantity cells rather than a long name list',
   assert.equal((markup.match(/<b>×1<\/b>/gu)||[]).length,6);
   for(const good of GOODS)assert.ok(!textOnly(markup).includes(good.name));
   assert.match(markup,/yousei-card__goods--6/u);
-  assert.match(renderCard('yousei.t04'),/装1步 · 用1步/u);
+  assert.match(renderCard('yousei.t04'),/装0步 · 用1步/u);
   assert.match(renderCard('yousei.c07'),/回应 · 0步/u);
   assert.match(renderCard('yousei.m08'),/行动 · 1步/u);
 });

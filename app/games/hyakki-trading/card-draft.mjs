@@ -90,6 +90,7 @@ export function cardDraftCost(game, selfId, detail, selections = [], { short = f
     };
     return `术士的行动与拆除已发生；借用不计步；${costs[code] ?? '按道具效果结算。'}`;
   }
+  if (face.category === 'tool' && !detail.tool) return short ? '安装0行动；使用时另计费用。' : '确认安装不耗行动；使用时按牌面支付行动和费用，取消保留原状。';
   if (short) {
     if (detail.tool) {
       if (code === 'T01') return `1行动；搜到后${selection?.kind === 'card' ? '弃所选手牌' : '付1两'}。`;

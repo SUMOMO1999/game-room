@@ -193,7 +193,7 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
         summary=`交易耗1行动${trade.temporaryFee?` · 买入含临时格${trade.temporaryFee}两`:''}`;
         operations=button('confirm-card',`确认买入 · ${trade.buyTotal}两`,{type:'buy'},!trade.canBuy,'hy-primary-action')+button('confirm-card',`确认出售 · ${trade.sellPrice}两`,{type:'sell'},!trade.canSell);
       }else if(face.category==='stall_permit')operations=button('confirm-card',`确认扩摊 · ${room.game.purchasedStalls?3:6}两`,{type:'buy-stall'},!room.game.remainingActions,'hy-primary-action');
-      else if(face.category==='tool')operations=button('confirm-card','确认安装 · 1行动',{type:'install-tool'},!room.game.remainingActions||self.tools.length===3&&!detail.replaceCardId,'hy-primary-action');
+      else if(face.category==='tool')operations=button('confirm-card','确认安装 · 0行动',{type:'install-tool'},!room.game.remainingActions||self.tools.length===3&&!detail.replaceCardId,'hy-primary-action');
       else {
         let missing=needsTarget&&!peer;
         if(face.sourceCode==='M01'&&peer)missing=!peer.goods[detail.goodsId];
@@ -490,7 +490,7 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
   const arrangements=$('hy-pause').closest('section');
   arrangements.querySelector('.game-settings-controls').append($('yg-catalog'));
   $('yg-catalog').textContent='查看完整51种卡牌';
-  arrangements.querySelector('details').outerHTML=`<details><summary>① 回合顺序与行动例子</summary><p>每人20两、5张手牌。每回合必须先摸看一张；弃掉可继续摸，留下或主动结束摸牌后进入用牌。看1张牌用1步，留下或弃掉不重复计步。每回合行动额度由房主设定（默认5步）。</p><p>例：看第1张并弃掉，花1步；看第2张并留下，再花1步；买一组货物花1步；余2步主动结束，获得1两。耗尽行动或超时结束不赠银两。</p></details><details><summary>② 货物、摊位与临时格</summary><p>用货物牌整组买入或卖出，不能只交易其中一部分。起初5个普通货位＋1个临时位，新占临时格需付2两。人物、道具等带来货物时，按当前选择留下可容纳部分，其余退公库；最终以牌文和当前提示为准。</p><p>持摊位许可可花1步扩摊，每块加3格。全场第一块6两，后续3两；货物总量与扩摊数量有限，公库以右侧库存为准。</p></details><details><summary>③ 人物、道具与对方回应</summary><p>人物通常花1步使用。监视人物可能让对方用锦衣卫抵消；番商可在交易回应窗取走货物牌。回应者有60秒，主动玩家时钟冻结。牌、费用与选择一经提交就保存；关闭详情不会退款，也不会取消已经发动的效果。</p><p>安装道具花1步，使用另花1步，另付牌上要求的银两、货物或弃牌费用。每人最多3件，可弃旧装新；用过横置，自己回合结束复原。候选牌和拍卖整组拍品直接摆在桌面；点材料预览；确认前可取消，选好后一次确认。已摸出新牌或开始拍卖的步骤按画面提示继续。</p></details><details><summary>④ 收市、恢复与本机练习</summary><p>回合结束达到60两触发收市：若先手触发，后手再完成一回合；银两最多者胜，平手由最后行动者胜。财富仅属于本局，不计入账号积分。</p><p>正式房间可申请双方暂停；意外离线保留席位和待决步骤，主动退出则认输。本机练习只存在当前浏览器：打开面板、切到后台会暂停电脑，退出后可继续。遇到另一窗口已修改进度，先读取保存进度再操作。</p></details>`;
+  arrangements.querySelector('details').outerHTML=`<details><summary>① 回合顺序与行动例子</summary><p>每人20两、5张手牌。每回合必须先摸看一张；弃掉可继续摸，留下或主动结束摸牌后进入用牌。看1张牌用1步，留下或弃掉不重复计步。每回合行动额度由房主设定（默认5步）。</p><p>例：看第1张并弃掉，花1步；看第2张并留下，再花1步；买一组货物花1步；余2步主动结束，获得1两。耗尽行动或超时结束不赠银两。</p></details><details><summary>② 货物、摊位与临时格</summary><p>用货物牌整组买入或卖出，不能只交易其中一部分。起初5个普通货位＋1个临时位，新占临时格需付2两。人物、道具等带来货物时，按当前选择留下可容纳部分，其余退公库；最终以牌文和当前提示为准。</p><p>持摊位许可可花1步扩摊，每块加3格。全场第一块6两，后续3两；货物总量与扩摊数量有限，公库以右侧库存为准。</p></details><details><summary>③ 人物、道具与对方回应</summary><p>人物通常花1步使用。监视人物可能让对方用锦衣卫抵消；番商可在交易回应窗取走货物牌。回应者有60秒，主动玩家时钟冻结。牌、费用与选择一经提交就保存；关闭详情不会退款，也不会取消已经发动的效果。</p><p>安装道具不耗行动，使用花1步，另付牌上要求的银两、货物或弃牌费用。每人最多3件，可弃旧装新；用过横置，自己回合结束复原。候选牌和拍卖整组拍品直接摆在桌面；点材料预览；确认前可取消，选好后一次确认。已摸出新牌或开始拍卖的步骤按画面提示继续。</p></details><details><summary>④ 收市、恢复与本机练习</summary><p>回合结束达到60两触发收市：若先手触发，后手再完成一回合；银两最多者胜，平手由最后行动者胜。财富仅属于本局，不计入账号积分。</p><p>正式房间可申请双方暂停；意外离线保留席位和待决步骤，主动退出则认输。本机练习只存在当前浏览器：打开面板、切到后台会暂停电脑，退出后可继续。遇到另一窗口已修改进度，先读取保存进度再操作。</p></details>`;
   $('yg-stay').textContent='继续游戏';$('yg-leave-close').setAttribute('aria-label','继续游戏');
   $('yg-leave-confirm').textContent=practice?'返回大厅':'确认退出';
   $('chat-title').textContent='房间聊天';root.querySelector('.chat-heading p').textContent='和房间里的伙伴聊两句。';
@@ -540,7 +540,7 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
     if(type==='cancel-card'){detail=null;render();return;}
     if(['begin-play','finish-draw','end-turn'].includes(type)&&firstPeekRequired())return feedback('每回合必须先摸第一张牌，留下或弃掉后才能继续。');
     if(type==='begin-play'){if(!active()||room.game.stage!=='draw')return;return dispatch('finish-draw',{},()=>{if(active()&&room.game.stage==='use')selectHandCard(room.game.players.find(player=>player.id===room.selfId)?.hand.find(card=>cardKey(card)===fields.cardId));});}
-    if(type==='cards-page'){cardsPage=fields.page;if($('yg-decision').open)return decision();return inspect('公开弃牌',cardList(room.game.discard));}
+    if(type==='cards-page'){cardsPage=fields.page;if($('yg-decision').open)return decision();return inspect('公开弃牌',cardList([...room.game.discard].reverse()));}
     if(type==='decision')return decision();if(type==='history')return void showHistory(fields.after??0);if(type==='invite')return void invite();
     if(type==='leave'||type==='logout'||type==='agora')return leaveDialog(type==='leave'?'lobby':type);
     if(type==='keep-seat'){const stamp=generation;Promise.resolve().then(()=>onLeave({keepSeat:true,destination:'lobby'})).catch(error=>{if(!destroyed&&stamp===generation)feedback(error.message||'返回大厅未完成。');});return;}
@@ -582,10 +582,10 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
     if(['yg-exit','yg-settings-exit'].includes(node.id)){stop();leaveDialog();return;}
     if(['yg-copy-invite','yg-waiting-invite'].includes(node.id)){stop();void invite();return;}
     if(node.id==='yg-draw-pile'){stop();if(active()&&room.game.stage==='draw')dispatch('peek');return;}
-    if(node.id==='yg-discard-pile'){stop();cardsPage=0;if(room?.game)inspect('公开弃牌',cardList(room.game.discard));return;}
+    if(node.id==='yg-discard-pile'){stop();cardsPage=0;if(room?.game)inspect('公开弃牌',cardList([...room.game.discard].reverse()));return;}
     if(node.id==='hy-reader-close'){stop();$('hy-card-reader').close();return;}
     if(node.id==='yg-inspector-close'){stop();$('yg-inspector').close();detail=null;return;}
-    if(node.id==='yg-rules'){stop();inspect('幽街商人规则','<p>每人20两、5张手牌、5个普通货位＋1个临时位。普通扩摊每块增加3格，首次6两，以后3两。新占临时位另付2两。</p><p>每回合必须先摸看一张；弃掉可继续摸，留下或主动结束摸牌后进入用牌。看牌每张1行动。货物牌整组交易；人物用1行动；道具安装和使用各1行动，每件每回合限用一次。具体效果以卡牌全文为准。</p><p>尚余2行动主动结束回合可得1两。回合结束达到60两收市；先手触发时后手再完成一回合。银两多者胜，平手由最后行动者胜。</p><p>主动回合30分钟，对方选择60秒并冻结主动钟。暂停保留7天，离线保席30分钟；主动退出认输。每局财富独立。</p>');return;}
+    if(node.id==='yg-rules'){stop();inspect('幽街商人规则','<p>每人20两、5张手牌、5个普通货位＋1个临时位。普通扩摊每块增加3格，首次6两，以后3两。新占临时位另付2两。</p><p>每回合必须先摸看一张；弃掉可继续摸，留下或主动结束摸牌后进入用牌。看牌每张1行动。货物牌整组交易；人物用1行动；道具安装不耗行动，使用花1行动，每件每回合限用一次。具体效果以卡牌全文为准。</p><p>尚余2行动主动结束回合可得1两。回合结束达到60两收市；先手触发时后手再完成一回合。银两多者胜，平手由最后行动者胜。</p><p>主动回合30分钟，对方选择60秒并冻结主动钟。暂停保留7天，离线保席30分钟；主动退出认输。每局财富独立。</p>');return;}
     if(node.dataset.cardId){const id=node.closest('[data-entity-id]')?.dataset.entityId;if(id){stop();selectHandCard(knownCards(room?.game).get(id));}return;}
     if(node.dataset.toolId){stop();const card=knownCards(room?.game).get(node.dataset.toolId);if(card)selectHandCard(card,true);return;}
     if(node.dataset.player||node.id==='yg-shop-detail'){stop();handleAction('members',{});return;}

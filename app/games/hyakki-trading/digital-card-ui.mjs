@@ -36,7 +36,7 @@ export function renderCard(card, { selected = false, disabled = false, interacti
   const body = goods
     ? `<span class="yousei-card__goods yousei-card__goods--${Object.keys(face.goods).length}">${Object.entries(face.goods).map(([id, count]) => `<span class="yousei-card__good" aria-label="${escape(getGood(id).name)}×${count}" title="${escape(getGood(id).name)}×${count}">${renderGoodsIcon(id)}<b>×${count}</b></span>`).join('')}</span>`
     : picture(face.artId, face.name, 'yousei-card__portrait');
-  const faceCost = face.category === 'tool' ? '装1步 · 用1步' : face.category === 'stall_permit' ? '1步 · 扩摊3格' : ['ordinary_character','monitored_character'].includes(face.category) ? ['C04','C07'].includes(face.sourceCode) ? '回应 · 0步' : '行动 · 1步' : face.costText;
+  const faceCost = face.category === 'tool' ? '装0步 · 用1步' : face.category === 'stall_permit' ? '1步 · 扩摊3格' : ['ordinary_character','monitored_character'].includes(face.category) ? ['C04','C07'].includes(face.sourceCode) ? '回应 · 0步' : '行动 · 1步' : face.costText;
   const footer = goods
     ? `<span class="yousei-card__prices"><span>买<b>${face.buySilver}</b></span><span>卖<b>${face.sellSilver}</b></span></span>`
     : `<span class="yousei-card__cost">${escape(faceCost)}</span>`;

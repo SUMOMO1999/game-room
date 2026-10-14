@@ -46,6 +46,38 @@ export function beginMerchantResponse(state, tradeCardId) {
   const pending = state.pending, remainingIds = clockwiseIds(state, pending.ownerId);
   pending.response = { kind: 'merchant', actorId: remainingIds[0], tradeCardId,
     ...(isMultiplayer(state) ? { remainingIds, remainingMs: 60_000 } : {}) };
+  skipUnavailableMerchantResponses(state);
+}
+/** One authoritative eligibility check for opening, presenting and accepting a reply. */
+export function legalResponseCards(state, response = state.pending?.response) {
+  const pending = state.pending, actor = state.players.find(owner => owner.id === response?.actorId);
+  if (!pending || !response || !actor || actor.id === pending.ownerId) return [];
+  let code;
+  if (response.kind === 'counter') {
+    const targetId = isMultiplayer(state) ? pending.data.targetId : state.players.find(owner => owner.id !== pending.ownerId)?.id;
+    if (pending.kind !== 'character' || pending.stage !== 'start' || actor.id !== targetId
+        || response.tradeCardId !== null || !pending.sourceCards.some(id => {
+          const face = definition(id); return face.sourceCode === pending.code && face.cancelableByJinyiwei;
+        })) return [];
+    code = 'C07';
+  } else if (response.kind === 'merchant') {
+    if (pending.stage !== 'merchant' || !(pending.kind === 'trade' && ['buy', 'sell'].includes(pending.code)
+        || pending.kind === 'character' && pending.code === 'C05')
+        || !pending.sourceCards.includes(response.tradeCardId) || definition(response.tradeCardId).category !== 'goods') return [];
+    code = 'C04';
+  } else return [];
+  // Neither response costs silver, goods, capacity or an action. Only a held card
+  // at its actual response timing is legal; a matching card elsewhere is not.
+  return actor.hand.filter(id => definition(id).sourceCode === code);
+}
+/** Keep the existing clockwise suffix persistence shape and shared time budget. */
+export function skipUnavailableMerchantResponses(state) {
+  const response = state.pending?.response;
+  if (response?.kind !== 'merchant') return;
+  while (!legalResponseCards(state, response).length) {
+    if (!isMultiplayer(state) || response.remainingIds.length <= 1) { state.pending.response = null; return; }
+    response.remainingIds.shift(); response.actorId = response.remainingIds[0];
+  }
 }
 export function closeWinnerId(state) {
   const first = state.players.findIndex(owner => owner.id === state.firstPlayerId);

@@ -73,6 +73,32 @@ function readyCard(f,code='c03',extraRoom={}){
 }
 function actionControl(f,action){const n=f.root.querySelector(`[data-hy-action="${action}"]`);assert.ok(n);if(n.dataset.hyFields)n.setAttribute('data-hy-fields',n.dataset.hyFields.replace(/&quot;/gu,'"'));return n;}
 
+test('free installation is explicit and retains cancel then one-confirm interaction', t => {
+  const f=fixture(t), {game,card,cardId}=readyCard(f,'t02'), before=structuredClone(game);
+  assert.equal(actionControl(f,'confirm-card').textContent,'确认安装 · 0行动');
+  assert.match(f.byId('yg-scene-content').textContent,/装0步 · 用1步/);
+  f.click(actionControl(f,'cancel-card'));assert.equal(f.commands.length,0);
+  f.ui.selectHandCard(card);f.click(actionControl(f,'confirm-card'));
+  assert.deepEqual(f.commands,[{type:'install-tool',fields:{cardId}}]);assert.deepEqual(game,before);
+});
+
+test('public discard browsing starts with the latest cards and keeps original references across pages', t => {
+  const f=fixture(t), game=fresh();
+  for(let i=1;i<=9;i++) {
+    const id=give(game,`g${String(i).padStart(2,'0')}`);
+    game.players[0].hand=game.players[0].hand.filter(card=>card!==id);game.discard.push(id);
+  }
+  const before=structuredClone(game), projected=room(game), projectedBefore=structuredClone(projected.game.discard);
+  f.ui.applyView(projected);f.click(f.byId('yg-discard-pile'));
+  const body=f.byId('yg-inspector-body'), newest=[...projectedBefore].reverse();
+  assert.deepEqual(body.querySelectorAll('[data-definition-id]').map(node=>node.dataset.definitionId),newest.slice(0,6).map(card=>card.definitionId));
+  assert.deepEqual(body.querySelectorAll('[data-hy-detail]').map(node=>node.dataset.hyDetail),newest.slice(0,6).map(card=>card.ref));
+  const next=body.querySelectorAll('[data-hy-action="cards-page"]').find(node=>node.textContent==='下一页');
+  next.setAttribute('data-hy-fields',next.dataset.hyFields.replace(/&quot;/gu,'"'));f.click(next);
+  assert.deepEqual(body.querySelectorAll('[data-definition-id]').map(node=>node.dataset.definitionId),newest.slice(6).map(card=>card.definitionId));
+  assert.deepEqual(game,before);assert.deepEqual(projected.game.discard,projectedBefore);assert.equal(f.commands.length,0);
+});
+
 test('slow save locks repeated confirmation and cancellation until its single request completes',async t=>{
   const waiting=deferred(),f=fixture(t,{onAction:()=>waiting.promise});readyCard(f);
   const confirm=actionControl(f,'confirm-card'),cancel=actionControl(f,'cancel-card');

@@ -169,7 +169,7 @@ test('turn timeout keeps an already peeked card and awards no idle silver', () =
   assert.equal(gameProblem(state), null); assert.equal(applyTimeout(state, ids[0], { ...ctx, now: until }).ok, false);
 });
 test('opponent timeout declines once and resumes remaining active time instead of restarting thirty minutes', () => {
-  let state = arrangeHands(fresh(), [[copy('g01')], []]); state = enterUse(state);
+  let state = arrangeHands(fresh(), [[copy('g01')], [copy('c04')]]); state = enterUse(state);
   state = accept(state, 'buy', { cardId: copy('g01') }, undefined, { ...ctx, now: 5000 });
   const due = state.timing.decision.deadlineAt, remaining = state.timing.active.remainingMs;
   const result = applyTimeout(state, ids[1], { ...ctx, now: due }); assert.equal(result.ok, true, result.error); state = result.state;
@@ -202,7 +202,7 @@ test('crossing sixty during a card effect and spending back below it does not tr
   assert.equal(state.players[0].silver, 58); assert.equal(state.status, 'playing'); assert.equal(state.closing, null);
 });
 
-test('the sixteen-turn ledger includes the three formerly skipped first peeks, ending 63:58', () => {
+test('the sixteen-turn ledger preserves mandatory peeks and free installation, ending 64:58', () => {
   let state = arrangeHands(fresh({ goodsPerType: 6 }), [[copy('t05'), copy('stall-permit'), copy('g03'), copy('g03', 2), copy('g04')],
     [copy('g19', 3), copy('g19', 4), copy('g01'), copy('g01', 2), copy('stall-permit', 2)]]);
   const order = [copy('m08'), copy('g04', 2), copy('g09'), copy('c01'), copy('c02'), copy('c03'), copy('g09', 2), copy('g02'), copy('g17'), copy('g02', 2),
@@ -214,7 +214,7 @@ test('the sixteen-turn ledger includes the three formerly skipped first peeks, e
   const keep = () => { go('peek'); go('keep-peek'); };
   const trade = (buy, code, index = 1) => go(buy ? 'buy' : 'sell', { cardId: copy(code, index) });
   const tool = () => go('activate-tool', { cardId: copy('t05') });
-  const balances = [[19,20],[19,27],[20,27],[20,31],[28,31],[28,28],[36,28],[36,40],[44,40],[44,37],[50,37],[50,49],[56,49],[56,45],[63,45],[63,58]];
+  const balances = [[20,20],[20,27],[21,27],[21,31],[29,31],[29,28],[37,28],[37,40],[45,40],[45,37],[51,37],[51,49],[57,49],[57,45],[64,45],[64,58]];
   const turns = [
     () => { go('peek'); go('discard-peek'); keep(); go('install-tool', { cardId: copy('t05') }); tool(); },
     () => { keep(); trade(true,'g19',3); trade(false,'g19',4); },
@@ -237,5 +237,5 @@ test('the sixteen-turn ledger includes the three formerly skipped first peeks, e
   assert.equal(state.status,'finished'); assert.deepEqual(state.result.winnerIds,[ids[0]]);
   assert.equal(state.deck.length,79); assert.equal(state.discard.length,27); assert.equal(state.players[0].tools.length,1);
   assert.equal(state.players.flatMap(owner=>owner.hand).length,3); assert.equal(state.availableStalls,3);
-  assert.deepEqual(Object.values(state.bankGoods),[6,6,6,6,6,6]); assert.equal(accepted,105);
+  assert.deepEqual(Object.values(state.bankGoods),[6,6,6,6,6,6]); assert.equal(accepted,81); // 24 no-card merchant windows no longer require a decline.
 });
