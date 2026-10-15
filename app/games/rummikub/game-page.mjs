@@ -269,7 +269,6 @@ $('inspector-tiles').addEventListener('click',event=>{
   const id=tile.dataset.inspectTile;
   if(inspectorMode==='rack' || canAct()) {inspector.close();toggleTile(id);}
 });
-$('rack-inspect')?.addEventListener('click',()=>openInspector('rack'));
 let tablePositions = {};
 let committedTablePositions = {};
 let tableLayout = null;
@@ -332,14 +331,11 @@ function queueBoardFit({allowRackDrag=false}={}) {
     });
     const target=canvas.querySelector('.new-meld');
     target.style.left=`${fit.newTarget.x/fit.canvasScale}px`;target.style.top=`${fit.newTarget.y/fit.canvasScale}px`;
-    $('board-view').textContent='看牌';
-    $('board-view').title='放大查看组合，不改变桌面位置';
     $('board-count').textContent=`${shown.flat().length} 张牌${fit.scale<1?' · 紧凑显示':''}`;
     queueLocalPreview();
   });
 }
 $('board').classList.add('auto-fit');
-$('board-view').addEventListener('click',()=>openInspector('board'));
 window.addEventListener('resize',queueBoardFit);
 if(typeof ResizeObserver!=='undefined') new ResizeObserver(queueBoardFit).observe($('board'));
 
@@ -381,7 +377,6 @@ function queueRackFit() {
     rack.style.setProperty('--rack-tile-height',`${rackLayout.tileHeight}px`);
     rack.style.setProperty('--rack-rows',rackLayout.rows);
     rack.classList.toggle('rack-compact',!rackLayout.readable);
-    $('rack-inspect')?.classList.toggle('attention',!rackLayout.readable);
     [...rack.querySelectorAll('[data-tile]')].forEach((element,index)=>{
       const point=rackLayout.rects[index];
       Object.assign(element.style,{position:'absolute',left:`${left+point.x}px`,top:`${top+point.y}px`,width:`${point.width}px`,height:`${point.height}px`,fontSize:`${point.width*0.64}px`,zIndex:String(point.z+1)});

@@ -1493,22 +1493,11 @@ function jokerResourceView() {
   return view;
 }
 for(const mount of ['/','/game/']) {
-  test(`joker rendered asset loads at ${mount} for four types in rack, board, inspectors, live preview and real drag clones`,async t=>{
+  test(`joker rendered asset loads at ${mount} for four types in rack, board, live preview and real drag clones`,async t=>{
     const entry=await jokerAssetServer(t,mount),view=jokerResourceView();
     const f=await fixture(t,{initialView:view,mount,origin:entry.origin,geometry:true});f.frame();
     await loadedRenderedJokers(f.get('rack'),JOKER_TYPES,f,entry,'private rack');
     await loadedRenderedJokers(f.get('board'),JOKER_TYPES,f,entry,'committed public table');
-    f.get('rack-inspect').dispatchEvent(new Event('click'));
-    await settle();
-    assert.equal(f.get('tile-inspector').open,true);
-    await loadedRenderedJokers(f.get('inspector-tiles'),JOKER_TYPES,f,entry,'rack inspector');
-    f.get('inspector-close').dispatchEvent(new Event('click'));
-    f.get('board-view').dispatchEvent(new Event('click'));
-    for(const type of JOKER_TYPES) {
-      await loadedRenderedJokers(f.get('inspector-tiles'),[type],f,entry,`table inspector ${type}`);
-      if(type!==JOKER_TYPES.at(-1))f.get('inspector-next').dispatchEvent(new Event('click'));
-    }
-    f.get('inspector-close').dispatchEvent(new Event('click'));
     f.document.elementFromPoint=()=>f.get('rack');
     for(const type of JOKER_TYPES) {
       const tile=f.get('rack').querySelector(`[data-tile="joker-${type}-1"]`);
@@ -1811,10 +1800,6 @@ test('actual dynamic numbering and explicit arrange share spatial order while id
   assert.equal(f.get('board').querySelector('[data-meld="0"]').getAttribute('aria-label'),'在组合 2 的第 1 张牌后拆开');
   clickTarget(f,f.get('board').querySelectorAll('.meld')[0].querySelector('.split-group'));
   assert.deepEqual(plain(f.pageAPI.captureBoardPositions()),before);
-  f.get('board-view').dispatchEvent(new Event('click'));
-  assert.equal(f.get('inspector-title').textContent,'组合 2');
-  assert.equal(f.get('inspector-tiles').querySelector('[data-inspect-tile]').dataset.inspectTile,'red-1-a');
-  f.get('inspector-close').dispatchEvent(new Event('click'));
   f.get('board-arrange').dispatchEvent(new Event('click'));f.frame();
   const arranged=plain(f.pageAPI.captureBoardPositions());
   assert.ok(arranged[1].x<arranged[0].x && arranged[0].x<arranged[2].x,'arrange must use the visible group numbers, not the creation array');
@@ -1839,18 +1824,18 @@ test('actual whole-group free drag updates only the displayed number order and r
   assert.deepEqual(visibleGroupNumbers(f).map(p=>p.number),['02','01','03']);
 });
 
-test('actual orientation can update an open inspector number without switching the group being inspected',async t=>{
+test('removed view buttons leave dynamic numbering and orientation reflow usable without changing saved groups',async t=>{
   const original=tableView({board:[['red-1-a','red-2-a','red-3-a'],['blue-1-a','blue-2-a','blue-3-a'],['black-1-a','black-2-a','black-3-a'],['orange-1-a','orange-2-a','orange-3-a'],['red-4-a','red-5-a','red-6-a']]});
   original.game.boardPositions=[{x:.03,y:0},{x:0,y:.0002},{x:0,y:.022},{x:0,y:.044},{x:0,y:.066}];
   const f=await fixture(t,{initialView:original,geometry:true}),board=sizedProjectionBoard(f);board.size(700,900);
-  f.get('board-view').dispatchEvent(new Event('click'));
-  assert.equal(f.get('inspector-title').textContent,'组合 2');
-  const tiles=()=>[...f.get('inspector-tiles').querySelectorAll('[data-inspect-tile]')].map(n=>n.dataset.inspectTile);
-  const before=tiles(),saved=plain(f.pageAPI.captureBoardPositions());
+  assert.equal(f.document.getElementById('board-view'),null);
+  assert.equal(f.document.getElementById('rack-inspect'),null);
+  assert.equal(visibleGroupNumbers(f)[0].number,'02');
+  const groups=plain(f.pageAPI.draft().board),saved=plain(f.pageAPI.captureBoardPositions());
   board.size(1000,120);
   assert.equal(f.pageAPI.tableFit().adaptiveReflow,true);
-  assert.equal(f.get('inspector-title').textContent,'组合 1');
-  assert.deepEqual(tiles(),before);assert.deepEqual(plain(f.pageAPI.captureBoardPositions()),saved);
+  assert.equal(visibleGroupNumbers(f)[0].number,'01');
+  assert.deepEqual(plain(f.pageAPI.draft().board),groups);assert.deepEqual(plain(f.pageAPI.captureBoardPositions()),saved);
   board.size(700,900);
-  assert.deepEqual(tiles(),before);assert.equal(f.get('inspector-title').textContent,'组合 2');
+  assert.deepEqual(plain(f.pageAPI.draft().board),groups);assert.equal(visibleGroupNumbers(f)[0].number,'02');
 });
