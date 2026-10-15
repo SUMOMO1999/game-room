@@ -37,6 +37,19 @@ function setThemeTokens(element, theme) {
 
 const key = entryStorageKey('game-room.theme.v1');
 const installed = new WeakMap();
+function mountIOSHomeScreenTint(documentRef) {
+  if (documentRef.defaultView?.navigator?.standalone !== true) return;
+  const shell = documentRef.getElementById('board')?.closest('body.game-screen > .shell:not(.lobby-shell)');
+  const header = shell?.querySelector(':scope > .site-header');
+  if (!header) return;
+  // A small fixed color surface avoids WebKit's viewport-sized color cache.
+  // It lives behind the header content and is owned by this document's theme.
+  const edge = documentRef.createElement('div');
+  edge.className = 'game-theme-ios-edge';
+  edge.setAttribute('aria-hidden', 'true');
+  header.classList.add('game-theme-ios-header');
+  header.prepend(edge);
+}
 export function themeById(id) { return GAME_THEMES.find(theme => theme.id === id) || GAME_THEMES[0]; }
 export function initializeGameTheme(documentRef) {
   if (!documentRef?.documentElement?.style || !documentRef.createElement || !documentRef.head) return null;
@@ -59,6 +72,7 @@ export function initializeGameTheme(documentRef) {
   const link = documentRef.createElement('link'); link.rel = 'stylesheet'; link.href = gamePath('/platform/game-theme.css');
   link.dataset.gameThemeStyles = ''; documentRef.head.append(link);
   apply(current);
+  mountIOSHomeScreenTint(documentRef);
   const controller = { current: () => current, set: id => apply(id, true), subscribe(callback) {
     subscribers.add(callback); callback(current); return () => subscribers.delete(callback);
   } };
