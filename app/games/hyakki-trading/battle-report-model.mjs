@@ -1,3 +1,4 @@
+import {readableBattleGroup} from './battle-history4.mjs';
 const integer = value => Number.isSafeInteger(value) && value >= 0;
 const clone = value => structuredClone(value);
 const turnNumber = value => /^turn-[1-9]\d*$/.test(value ?? '') ? Number(value.slice(5)) : null;
@@ -7,10 +8,11 @@ const turnNumber = value => /^turn-[1-9]\d*$/.test(value ?? '') ? Number(value.s
  * complete coverage. This model never changes the game or invents an actor. */
 export function buildBattleReport(groups, { game = {}, players = [], coverage = null } = {}) {
   const people = players.map((player, index) => ({ id: player.id, name: player.name || `玩家${index + 1}`, turns: [] }));
-  const ids = people.map(player => player.id), issues = [], turns = [], unassigned = [], byId = new Map(), unique = new Map();
+  const ids = people.map(player => player.id), issues = [], turns = [], unassigned = [], opening=[], byId = new Map(), unique = new Map();
   const issue = reason => { if (!issues.includes(reason)) issues.push(reason); };
-  for (const group of groups ?? []) {
-    if (!integer(group?.sequence) || group.sequence < 1 || ![1, 2, 3].includes(group.schemaVersion)
+  for (const raw of groups ?? []) {
+    let group;try{group=readableBattleGroup(raw);}catch{issue('invalid-group');continue;}
+    if (!integer(group?.sequence) || group.sequence < 1 || ![1, 2, 3, 4].includes(group.schemaVersion)
       || !Array.isArray(group.events)) { issue('invalid-group'); continue; }
     const previous = unique.get(group.sequence);
     if (previous && JSON.stringify(previous) !== JSON.stringify(group)) issue('conflicting-sequence');
@@ -38,7 +40,8 @@ export function buildBattleReport(groups, { game = {}, players = [], coverage = 
     if (group.sequence > headSequence) continue;
     if (group.sequence !== expectedSequence) { issue('missing-sequence'); anchored = false; }
     expectedSequence = group.sequence + 1;
-    const explicit = [2, 3].includes(group.schemaVersion) && group.turn;
+    if(group.opening){opening.push(group);continue;}
+    const explicit = [2, 3, 4].includes(group.schemaVersion) && group.turn;
     if (explicit && ids.includes(explicit.ownerSeatId) && turnNumber(explicit.id) === explicit.number) {
       const matchesCursor = anchored && explicit.number === number && explicit.ownerSeatId === ownerId;
       number = explicit.number; ownerId = explicit.ownerSeatId; anchored = true;
@@ -79,7 +82,7 @@ export function buildBattleReport(groups, { game = {}, players = [], coverage = 
   turns.sort((a, b) => a.number - b.number);
   for (const player of people) player.turns.sort((a, b) => turnNumber(a) - turnNumber(b));
   return { players: people, turns, currentTurnId, currentPlayerId, partial: issues.length > 0 || turns.some(turn => turn.partial),
-    issues, headSequence, unassigned };
+    issues, headSequence, unassigned,opening };
 }
 
 /** Rebuild only explicit public discard position edits. A legacy group or an
@@ -87,10 +90,11 @@ export function buildBattleReport(groups, { game = {}, players = [], coverage = 
  * that break and never become a claim about an internal card copy. */
 export function discardProvenance(groups, currentDiscard) {
   let positions = null, previousSequence = null;
-  for (const group of [...(groups ?? [])].sort((a, b) => a.sequence - b.sequence)) {
+  for (const raw of [...(groups ?? [])].sort((a, b) => a.sequence - b.sequence)) {
+    let group;try{group=readableBattleGroup(raw);}catch{positions=null;continue;}
     if (previousSequence !== null && group.sequence !== previousSequence + 1) positions = null;
     previousSequence = group.sequence;
-    const delta = [2, 3].includes(group.schemaVersion) ? group.discard : null;
+    const delta = [2, 3, 4].includes(group.schemaVersion) ? group.discard : null;
     if (!delta) { positions = null; continue; }
     if (!positions || positions.length !== delta.beforeCount) positions = Array.from({ length: delta.beforeCount }, () => null);
     for (const item of [...delta.removed].sort((a, b) => b.index - a.index)) {

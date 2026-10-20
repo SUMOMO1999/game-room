@@ -14,6 +14,8 @@ import { transitionHyakkiLifecycle, hyakkiCommonActionProblem, changeHyakkiPause
 import { problem } from '../adapter-contract.mjs';
 import { createHyakkiEventStore } from './event-store.mjs';
 import { projectPublicBattleMetadata } from '../../../app/games/hyakki-trading/battle-public-metadata.mjs';
+import {isOpeningHistoryGame,projectOpeningHistory} from './opening-history.mjs';
+import {isConfiguredGame,projectConfiguredHistory,projectConfiguredDetachedEnd} from './configured-history.mjs';
 
 const gameType = 'hyakki-trading';
 const clone = value => structuredClone(value);
@@ -208,6 +210,9 @@ export function createHyakkiTransitionPreparers(storage, { now = Date.now, capac
   const store = createHyakkiEventStore({ storage, now, ...(capacityBytes === undefined ? {} : { capacityBytes }) });
   return new Map([[gameType, store.transitionPreparer(({ previous, next }) => {
     const room = next?.snapshot, before = previous?.snapshot;
+    if(isConfiguredGame(room?.game))return projectConfiguredHistory(before,room);
+    if(!room?.game&&isConfiguredGame(before?.game))return projectConfiguredDetachedEnd(before,next?.pendingRecords?.find(s=>s.matchId===before.matchId));
+    if(isOpeningHistoryGame(room?.game)||isOpeningHistoryGame(before?.game))return projectOpeningHistory(before,room);
     if (!room?.game) {
       const ended = next?.pendingRecords?.find(summary => summary.matchId === before?.matchId);
       if (!before?.game || before.game.status !== 'playing' || !ended) return null;

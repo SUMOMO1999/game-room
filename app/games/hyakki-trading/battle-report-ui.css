@@ -1,6 +1,7 @@
 /* Inspector reading surfaces only. The game table keeps its own fixed viewport. */
 .hy-real #yg-inspector.hy-battle-dialog { width:min(1000px,calc(100vw - 32px));height:min(720px,calc(100dvh - 32px));max-height:calc(100dvh - 32px); }
 .hy-real #yg-inspector.hy-battle-dialog #yg-inspector-body { display:flex;overflow:hidden;min-height:0; }
+.hy-battle-header { display:contents; }
 .hy-battle-report { display:flex;flex-direction:column;gap:8px;width:100%;min-width:0;min-height:0; }
 .hy-battle-tabs { display:flex;flex:none;gap:6px;overflow-x:auto;overscroll-behavior:contain; }
 .hy-battle-tabs button { flex:1 0 auto;min-width:64px;min-height:44px;padding:8px 12px; }

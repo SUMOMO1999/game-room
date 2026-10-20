@@ -1,4 +1,4 @@
-import { GOODS, getCard } from './content/definitions.mjs';
+import { GOODS, getCard } from './presentation-content.mjs';
 import { buildChoiceSelection, cardKey, goodsTotal } from './game-ui-model.mjs';
 
 const ids = GOODS.map(good => good.id).sort();

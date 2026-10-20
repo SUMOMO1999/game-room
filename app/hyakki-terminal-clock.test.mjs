@@ -1,3 +1,4 @@
+import { legacyHyakkiRegistry } from './test-support/hyakki-legacy-registry.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
@@ -36,7 +37,7 @@ async function fixture(t, { firstIndex = 0, characterOwner = 1 } = {}) {
   const now = () => advancing ? ++at : at, key = randomBytes(32), users = ['1'.repeat(64), '2'.repeat(64)];
   const storage = new EncryptedStore(new SQLiteAdapter(sourcePath, { now }), key, now);
   const runtime = createRuntime(readSettings({ GAME_ROOM_AUTH_MODE: 'mock', GAME_ROOM_HYAKKI_ENABLED: '1' }), {
-    storage, sessions: {}, now, roomOptions: { pollIntervalMs: 0, serverRandomInt: shuffle(firstIndex, characterOwner) },
+    storage, sessions: {}, now, gameRegistry: legacyHyakkiRegistry, roomOptions: { pollIntervalMs: 0, serverRandomInt: shuffle(firstIndex, characterOwner) },
     chatOptions: { pollIntervalMs: 0 },
   });
   runtime.rooms.setHistory(createMatchHistory({ storage, now, gameRegistry: runtime.gameRegistry }));
@@ -71,6 +72,10 @@ async function fixture(t, { firstIndex = 0, characterOwner = 1 } = {}) {
     for (let turn = 0; turn < 25; turn++) {
       const current = await saved();
       assert.equal(current.game.turnPlayerId, awaitedIds[0]);
+      // Installation is free in the accepted rules. One deliberate extra draw
+      // on the first 60-boundary turn avoids its idle reward; later legal
+      // +2 tool receipts and +1 idle rewards then reach exactly 60.
+      if (turn === 0 && target === 60) await drawOne(0, false);
       await drawOne(0);
       if (!current.game.players[0].tools.length) await action(0, 'install-tool', { cardId: toolId });
       await action(0, 'activate-tool', { cardId: toolId });

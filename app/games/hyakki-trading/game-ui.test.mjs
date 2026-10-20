@@ -399,7 +399,7 @@ test('public discard browsing starts with the latest cards and keeps original re
     const id=give(game,`g${String(i).padStart(2,'0')}`);
     game.players[0].hand=game.players[0].hand.filter(card=>card!==id);game.discard.push(id);
   }
-  const before=structuredClone(game), projected=room(game), projectedBefore=structuredClone(projected.game.discard);
+  const before=structuredClone(game), projected=room(game,{selfId:ids[1]}), projectedBefore=structuredClone(projected.game.discard);
   f.ui.applyView(projected);f.click(f.byId('yg-discard-pile'));
   const body=f.byId('yg-inspector-body'), newest=[...projectedBefore].reverse();
   assert.deepEqual(body.querySelectorAll('[data-definition-id]').map(node=>node.dataset.definitionId),newest.slice(0,6).map(card=>card.definitionId));
@@ -408,6 +408,19 @@ test('public discard browsing starts with the latest cards and keeps original re
   next.setAttribute('data-hy-fields',next.dataset.hyFields.replace(/&quot;/gu,'"'));f.click(next);
   assert.deepEqual(body.querySelectorAll('[data-definition-id]').map(node=>node.dataset.definitionId),newest.slice(6).map(card=>card.definitionId));
   assert.deepEqual(game,before);assert.deepEqual(projected.game.discard,projectedBefore);assert.equal(f.commands.length,0);
+  const reading=body.querySelector('.hy-dialog-content'),strip=body.querySelector('.hy-public-discard');
+  reading.scrollTop=35;strip.scrollLeft=120;
+  const peek=act(game,'peek');f.ui.applyView(room(peek,{selfId:ids[1]}));
+  assert.match(body.textContent,/第2\/2页/u,'another player entering a decision does not reset the discard page');
+  assert.equal(body.querySelector('.hy-public-discard'),strip);assert.equal(reading.scrollTop,35);assert.equal(strip.scrollLeft,120);
+  const discarded=act(peek,'discard-peek');f.ui.applyView(room(discarded,{selfId:ids[1]}));
+  assert.match(body.textContent,/第2\/2页/u,'new public discards keep the reading page');
+  assert.equal(body.querySelector('.hy-dialog-content'),reading);assert.equal(body.querySelector('.hy-public-discard'),strip);
+  assert.equal(reading.scrollTop,35);assert.equal(strip.scrollLeft,120);
+  const reduced=structuredClone(discarded);reduced.deck.push(...reduced.discard.splice(0,reduced.discard.length-3));
+  f.ui.applyView(room(reduced,{selfId:ids[1]}));
+  assert.equal(body.querySelectorAll('.hy-discard-card').length,3,'a removed last page clamps to the remaining pile');
+  assert.deepEqual(f.commands,[]);
 });
 
 test('discard copies use complete original faces and one whole-card reader without selecting or consuming materials',t=>{
@@ -511,7 +524,12 @@ test('battle report freezes its public upper bound then appends one confirmed ta
   let event=new Event('scroll');Object.defineProperty(event,'target',{value:scroll});f.root.dispatchEvent(event);
   scroll.scrollTop=120;event=new Event('scroll');Object.defineProperty(event,'target',{value:scroll});f.root.dispatchEvent(event);
   f.ui.applyView(room(setHistoryTurn(structuredClone(game),6)));await reportSettled(f);
-  scroll=f.byId('yg-inspector-body').querySelector('[data-hy-battle-scroll]');assert.equal(scroll.scrollTop,120);
+  assert.equal(f.byId('yg-inspector-body').querySelector('[data-hy-battle-scroll]'),scroll,'upward reading and an appended tail preserve the native gesture owner');
+  assert.equal(scroll.scrollTop,120);
+  scroll.scrollTop=40;event=new Event('scroll');Object.defineProperty(event,'target',{value:scroll});f.root.dispatchEvent(event);
+  scroll.scrollTop=180;event=new Event('scroll');Object.defineProperty(event,'target',{value:scroll});f.root.dispatchEvent(event);
+  assert.equal(f.byId('yg-inspector-body').querySelector('[data-hy-battle-scroll]'),scroll,'repeated up/down reading never detaches the container');
+  assert.equal(scroll.scrollTop,180);
   assert.equal(f.byId('yg-inspector-body').querySelectorAll('[data-history-sequence]').length,6);assert.deepEqual(requests,[0,5]);
   assert.ok(battleControl(f,'current'));assert.deepEqual(f.commands,[]);
 });
@@ -1072,4 +1090,45 @@ test('restored C01 branch choices belong to materials and preserve original sele
   assert.equal(f.commands.length,1);assert.equal(f.commands[0].type,'choose-effect');
   const expected=game.pending.choice.options[1].branch;assert.equal(f.commands[0].fields.selection.branch,expected);
   const next=act(game,f.commands[0].type,f.commands[0].fields);assert.equal(next.actionsUsed,used);
+});
+
+
+test('expansion R15 private candidate stays selected through render and submits exactly that candidate',async t=>{
+  const {fixture:configuredFixture,run:configuredAct,ids:configuredIds}=await import('./configured/test-support/fixture.mjs');
+  const {privateView:configuredView}=await import('./configured/view.mjs');
+  let game=configuredFixture(['R15','R12']);
+  game=configuredAct(game,'peek',{inspect:true});
+  const selfId=configuredIds[0],projected=configuredView(game,selfId),f=fixture(t);
+  const players=game.players.map((p,i)=>({id:p.id,name:i?'伙伴':'我',ready:true}));
+  f.ui.applyView({roomId:'room',roomCode:'123456',phase:'playing',selfId,selfRole:'player',hostId:selfId,serverTime:1001,
+    players,matchPlayers:players,spectators:[],game:projected,hyakkiConfig:{packId:'six-trades-v1',actionLimit:5,goodsPerType:6,goodsSupplyMode:'recommended',closingTarget:60}});
+  const confirm=()=>f.root.querySelector('[data-ex-command="pending-confirm"]');
+  assert.equal(confirm().disabled,true);
+  const option=f.root.querySelector('[data-ex-command="option"]');assert.ok(option);option.setAttribute('data-ex-fields',option.dataset.exFields.replace(/&quot;/gu,'"'));f.click(option);
+  assert.equal(confirm().disabled,false);
+  f.document.defaultView.innerWidth=568;f.document.defaultView.innerHeight=320;
+  f.document.defaultView.dispatchEvent(new Event('resize'));
+  assert.equal(confirm().disabled,false,'rotation and resize preserve the private selected candidate');
+  assert.deepEqual(f.commands,[],'resize cannot submit a choice or charge the player');
+  const expected=projected.pending.choice.options[0];f.click(confirm());
+  assert.deepEqual(f.commands,[{type:'choose-effect',fields:{selection:expected}}]);
+});
+
+test('expansion overflow receipt shows named goods and sends the actual retained vector through the real rule',async t=>{
+  const {fixture:make,run,move,use,ids}=await import('./configured/test-support/fixture.mjs');
+  const {privateView}=await import('./configured/view.mjs');
+  let game=use(make(['R10','R12']));
+  game.players[0].goods.timber=6;game.bankGoods.timber-=6;
+  game=run(game,'play-character',{cardId:move(game,'XC01'),params:{goods:{firearms:2}}});
+  assert.equal(game.pending.choice.kind,'retain-goods');
+  const f=fixture(t),players=game.players.map((p,i)=>({id:p.id,name:i?'伙伴':'我',ready:true}));
+  f.ui.applyView({roomId:'room',roomCode:'123456',phase:'playing',selfId:ids[0],selfRole:'player',hostId:ids[0],serverTime:1001,
+    players,matchPlayers:players,spectators:[],game:privateView(game,ids[0]),hyakkiConfig:{packId:'six-trades-v1',actionLimit:5,goodsPerType:6,goodsSupplyMode:'recommended',closingTarget:60}});
+  assert.match(f.root.textContent,/选择保留的货物/);assert.doesNotMatch(f.root.textContent,/\[object Object\]/);
+  const confirm=f.root.querySelector('[data-ex-command="pending-confirm"]');assert.equal(confirm.disabled,false);
+  f.click(confirm);assert.equal(f.commands.length,1);
+  const selection=f.commands[0].fields.selection;
+  assert.deepEqual(selection,game.pending.choice.defaultSelection);assert.equal(selection.combined,undefined);
+  const after=run(game,'choose-effect',{selection});assert.equal(after.pending,null);
+  assert.equal(Object.values(after.players[0].goods).reduce((a,b)=>a+b,0),7);
 });

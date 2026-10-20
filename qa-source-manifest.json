@@ -1,0 +1,2956 @@
+{
+  "files": [
+    {
+      "file": ".env.example",
+      "sha256": "6951cccde10448a4502f486d01eb7ab64e1da899923c56a6cab1d57bf82f04b8"
+    },
+    {
+      "file": ".gitignore",
+      "sha256": "21abf2a0a8c1048024157883edd193abe537481fdaa3e2ae0663669b9a6560d6"
+    },
+    {
+      "file": "app/account-client.mjs",
+      "sha256": "341c6def321f93d0a5dc5ae7ba37e674e11f3111b7ee4dee1492522c3f47ff9f"
+    },
+    {
+      "file": "app/account-lifecycle-ui.test.mjs",
+      "sha256": "4f35474a909fd639541ef06a3b13a9bb1692040a6dc419b6f56b30d9c8eefc27"
+    },
+    {
+      "file": "app/account-recovery.test.mjs",
+      "sha256": "6db72dae44df991b72fde216233f336af7e362d0926920c49286d737f1a72c76"
+    },
+    {
+      "file": "app/account-security-auth.test.mjs",
+      "sha256": "3f5741479ae72b263d3efb2704721120f1676723e82f169c2b8a19f35a05e9f4"
+    },
+    {
+      "file": "app/account-security-http.test.mjs",
+      "sha256": "97010a3632bd47044118fe2b896129b575ee8689533ee98aa205ae3497245bc9"
+    },
+    {
+      "file": "app/app-shell.css",
+      "sha256": "1ac1400d1e27225f1f56c99d2fe2fb46f9197085e9ddff3acb01a8b69ba13962"
+    },
+    {
+      "file": "app/app-shell.mjs",
+      "sha256": "41f1f77db8f46f01fcfb9072aaadcefa9f29c219156f5c31541cd8f99650b471"
+    },
+    {
+      "file": "app/app.mjs",
+      "sha256": "c4993204ee5492d845e20ff9c37ffe52b62c50d86abdd6e2d41c123452ae3fbb"
+    },
+    {
+      "file": "app/army-board.mjs",
+      "sha256": "009eb25f30065119b29193c82351766b198d20638d59532da5498b8d576fc5f3"
+    },
+    {
+      "file": "app/army-board.test.mjs",
+      "sha256": "181138c4b423c2cdb4cf5231e37bbeebc64c55d899dee4f8b082319d5bdb742f"
+    },
+    {
+      "file": "app/army-platform.test.mjs",
+      "sha256": "18b4c7c643535bd2bc2d9b344694e904788fdc08265aca8b66403bedfe893930"
+    },
+    {
+      "file": "app/army-practice-engine.mjs",
+      "sha256": "c64d9191f99ae4d53f0ed497fa1bed1f5b22c07b555bacfaf1977604bc91c464"
+    },
+    {
+      "file": "app/army-practice.html",
+      "sha256": "dda732b9cbfc7537292a5794d5dde2da594938264be90232cd5127ec08affde2"
+    },
+    {
+      "file": "app/army-practice.mjs",
+      "sha256": "1619cf660f2df67bc6387fcf3767eab87285204a0266dc4dc1e4e1090df32e00"
+    },
+    {
+      "file": "app/army-practice.test.mjs",
+      "sha256": "a7cd2c740c0606fc69945886d9c411f6a95e95a289a186b6abf4564bb7e4a39a"
+    },
+    {
+      "file": "app/army-presentation.mjs",
+      "sha256": "5d1f7964f073c91152f16098bbcf283178e0df5f4fbc61bde09f8b4b1ffb3cbe"
+    },
+    {
+      "file": "app/army-presentation.test.mjs",
+      "sha256": "006c907d95d996a39df2fd27c529c9feef026ebb36ac92c7a77e393b7a6f8bea"
+    },
+    {
+      "file": "app/army-room.mjs",
+      "sha256": "4977eee6d3a97670229259eafadb6cc77936430810de99c5de9bae1e6990d078"
+    },
+    {
+      "file": "app/army-rules.mjs",
+      "sha256": "d28e73a89da42caf861b404370c5880eff95e50bad38ecfae26c6a1d1e7ee63e"
+    },
+    {
+      "file": "app/army-rules.test.mjs",
+      "sha256": "498644c6e098971ecf817191ae0d8efb11d8336d6f8389036a41f002f821cb94"
+    },
+    {
+      "file": "app/army-ui.test.mjs",
+      "sha256": "75d37d2e8a5f76c1054e219edc77359df5af5b8e628d5ef3ea162802e039c255"
+    },
+    {
+      "file": "app/army-v2.test.mjs",
+      "sha256": "725aa747a43f7deb7fd344eb595169bbf76f984771386be1e9b675dc318eb17b"
+    },
+    {
+      "file": "app/army-v3.test.mjs",
+      "sha256": "73f40fc830da688a14a9cdf55a8deb9a2b7ba526045fbb3187b2339736833af7"
+    },
+    {
+      "file": "app/army.css",
+      "sha256": "7eae3421b60a6ff5e8490eb060cd7cd0ab8d73028180055aebcc323e6f32362d"
+    },
+    {
+      "file": "app/army.html",
+      "sha256": "5662dababf7a2918ec46faf8d49e015d37e55267ebe9dd9d6e003a78c78950bf"
+    },
+    {
+      "file": "app/assets/hyakki/v1/aburaage.svg",
+      "sha256": "211ca9ec096cf5b2391b18ff2080244b3e29a56bf8144a8ae63d8f80dbb047f1"
+    },
+    {
+      "file": "app/assets/hyakki/v1/auction.webp",
+      "sha256": "83e9063d28fe8de53710c714ba5305729ea6e79740a33cfbb8480ddba2adb891"
+    },
+    {
+      "file": "app/assets/hyakki/v1/card-back.webp",
+      "sha256": "f7ad9617952cec6d7e742d7394caee188ab0188864b9638fb8325db98b435eaf"
+    },
+    {
+      "file": "app/assets/hyakki/v1/cucumber.svg",
+      "sha256": "0c674408b055b85ab3d0e434ba19779986ef5247d5f849bdb498ce774937433f"
+    },
+    {
+      "file": "app/assets/hyakki/v1/festival.webp",
+      "sha256": "52a0dea7891d0323942277842ef5b0b678b602ad591ba1ab708df2eb82554837"
+    },
+    {
+      "file": "app/assets/hyakki/v1/fox-fur.svg",
+      "sha256": "4bf91ba25ef8b96c1240e3e7c4ee50bbdae57bec59d78956d28da82eec99cf2e"
+    },
+    {
+      "file": "app/assets/hyakki/v1/lantern.svg",
+      "sha256": "a07692c29db795aa0af0993c466e0b0b5cec92e1357cb54d396892e91954ffbd"
+    },
+    {
+      "file": "app/assets/hyakki/v1/manifest.json",
+      "sha256": "8e762b2728436a40ec45223decb2cb15cc4d90add13c79c7fd99b173891c5d98"
+    },
+    {
+      "file": "app/assets/hyakki/v1/spirit-stone.svg",
+      "sha256": "d224d395937759290c886159c5ec5fa4ffe05e113e2e21cc0c274b5afbf995c6"
+    },
+    {
+      "file": "app/assets/hyakki/v1/stall-permit.webp",
+      "sha256": "7b72819d41003c1722c3e656f975c1eb0751bc32c7043ce0096faa128128675e"
+    },
+    {
+      "file": "app/assets/hyakki/v1/talisman.webp",
+      "sha256": "bbc5e6a7836c984ddd8a8f2fa64186eb4f22f14f14b2f27544068573faad5465"
+    },
+    {
+      "file": "app/assets/hyakki/v1/tengu-feather.svg",
+      "sha256": "4368e3407167eaba835c0cf7cdc7aae544451920e88328459bb017f61a0f01b4"
+    },
+    {
+      "file": "app/assets/hyakki/v1/theft.webp",
+      "sha256": "ed5815a8f0f96fa94762245a710213431aaa102a938f25b259b1381400348087"
+    },
+    {
+      "file": "app/assets/hyakki/v2/antiques.svg",
+      "sha256": "8e39462f7b9d666252f07bde885df61f9bbeffd2cdcb1f8b679e8bddcaf69024"
+    },
+    {
+      "file": "app/assets/hyakki/v2/beasts.svg",
+      "sha256": "a87dc0042433a0f5e32095b790aac3b5d3a99efce6e46666e8732d7f81e1ef53"
+    },
+    {
+      "file": "app/assets/hyakki/v2/c01.webp",
+      "sha256": "6f9f242a086f7fab1902cae829daebd583a304364959f8112158ca2909667f82"
+    },
+    {
+      "file": "app/assets/hyakki/v2/c02.webp",
+      "sha256": "392f6648c65d921b9f297d2abeb56ce13cf9a4587e8f54e53ce7f0b87749a557"
+    },
+    {
+      "file": "app/assets/hyakki/v2/c03.webp",
+      "sha256": "0b34117f19fd3492eaa4f767642de24cf413fb960f2333f9b466ed1dea1d1887"
+    },
+    {
+      "file": "app/assets/hyakki/v2/c04.webp",
+      "sha256": "92d48788bbc98ca655a66c92b17476958dd3ed84e62004002d6396f55c5d2b1c"
+    },
+    {
+      "file": "app/assets/hyakki/v2/c05.webp",
+      "sha256": "bbdf8bf43748f285f09fecc3d5b5bf9502ae55f41ca43608ddbe25a8c6c41fd2"
+    },
+    {
+      "file": "app/assets/hyakki/v2/c06.webp",
+      "sha256": "fa8547b2ac8e79517c6bf30070fb3ddef3858fa72e5a0791e97b6f440d24609c"
+    },
+    {
+      "file": "app/assets/hyakki/v2/c07.webp",
+      "sha256": "dc6be7ca6ce3e8f86062f0d23be553e1451ff34f9ad7e6a888343ceede3c9d67"
+    },
+    {
+      "file": "app/assets/hyakki/v2/c08.webp",
+      "sha256": "97b2df9f17084e6f8743f3179394f2a00106a4dfa045501b5a8cd2c584d29ba3"
+    },
+    {
+      "file": "app/assets/hyakki/v2/c09.webp",
+      "sha256": "29643362dfd480d649a8afc69b72466b477c14afca91903539498dff6590e6b9"
+    },
+    {
+      "file": "app/assets/hyakki/v2/c10.webp",
+      "sha256": "c735e0c9c7436043411cc27c1c1a4d8b4abbd9b56a64d1bbcb11e106cd15219c"
+    },
+    {
+      "file": "app/assets/hyakki/v2/c11.webp",
+      "sha256": "f3b7e5cb89ed7ae3966a869be161e498ec8288745a65de777f0ae01215b9b314"
+    },
+    {
+      "file": "app/assets/hyakki/v2/c12.webp",
+      "sha256": "ebf6d9e717a18d008c3272d79294d4bff5f13031e5ccdde27a86ea038fe836a3"
+    },
+    {
+      "file": "app/assets/hyakki/v2/c13.webp",
+      "sha256": "3cb2f586437233dbd3b0224051d83f4f0b17ad714c22f2a5da719b1f8417f384"
+    },
+    {
+      "file": "app/assets/hyakki/v2/card-back.svg",
+      "sha256": "0dc84b0dd0780e19c96d2ac1192a062c1be1ec86630f5bdd4c7eef575d4e5288"
+    },
+    {
+      "file": "app/assets/hyakki/v2/curios.svg",
+      "sha256": "d3d220dfc007bd2c2eed5f935061ecae68422e7cbfc438852e3bbc1dc2070b0d"
+    },
+    {
+      "file": "app/assets/hyakki/v2/firearms.svg",
+      "sha256": "0f6b9246c7f8e9871194a32cbe36c6c2f1aa3c69a137b134cd4d923e65e7a76a"
+    },
+    {
+      "file": "app/assets/hyakki/v2/imports.svg",
+      "sha256": "4064a9f62b1cffb98ac58d92deccae9f39b0d3c429fa86f9e4c9447390b21c26"
+    },
+    {
+      "file": "app/assets/hyakki/v2/m01.webp",
+      "sha256": "fc5c80c743c229903c28728986302e18e4e22c12e537f7719ad8469d1886ad2f"
+    },
+    {
+      "file": "app/assets/hyakki/v2/m02.webp",
+      "sha256": "a3c45399e8944f3e59d7322d2e339b7df5b738fd18f5197f92af69b222f3b98a"
+    },
+    {
+      "file": "app/assets/hyakki/v2/m03.webp",
+      "sha256": "f5af2b4c12825a39c3fa824fd6a2c77479f345d16e18e895fae5ab4c5067634d"
+    },
+    {
+      "file": "app/assets/hyakki/v2/m04.webp",
+      "sha256": "b73071fe702e91f1f6ed53e66cec64b387228f600feb65302745b4b51f43f598"
+    },
+    {
+      "file": "app/assets/hyakki/v2/m05.webp",
+      "sha256": "93d0571e648e19417b780934c16a2babefb89d8a9c67819a66023208134c3218"
+    },
+    {
+      "file": "app/assets/hyakki/v2/m06.webp",
+      "sha256": "9eb11da027f06babd26063a271f9f792154bfba3e26e82a1dada714c373b0653"
+    },
+    {
+      "file": "app/assets/hyakki/v2/m07.webp",
+      "sha256": "34805faf2ed83af09d7057c5b23e117990e9fca6142867ea340172c9118ffa28"
+    },
+    {
+      "file": "app/assets/hyakki/v2/m08.webp",
+      "sha256": "65927cc8e55d88173f58ca30544a92c239be27023f8ed1d3a4cbffbeca8125f1"
+    },
+    {
+      "file": "app/assets/hyakki/v2/manifest.json",
+      "sha256": "ab01879bd3a0e5b3d3994dd54a9d0b783acbf85222f92d0f9068ac222c971950"
+    },
+    {
+      "file": "app/assets/hyakki/v2/salt-iron.svg",
+      "sha256": "c7fb68aca562cd9a257f9f1bbda6bd02393dcea01ac29e4f63e05cafe68dab73"
+    },
+    {
+      "file": "app/assets/hyakki/v2/stall-permit.webp",
+      "sha256": "73f116941ba088d4ceef95696368e23ff7b9cb930639bb9f254c70a77870aece"
+    },
+    {
+      "file": "app/assets/hyakki/v2/t01.webp",
+      "sha256": "38896a61630cfe5d0f62a8438d40bca96de359957a20344e2e1e8216600203cf"
+    },
+    {
+      "file": "app/assets/hyakki/v2/t02.webp",
+      "sha256": "f09c00de2518ce162e68c0d8c8134953e2c44a48b42ac1e4f05d03fd22e65252"
+    },
+    {
+      "file": "app/assets/hyakki/v2/t03.webp",
+      "sha256": "5cd80573fbc6ca15ea189b87fb9babc5193a9dee1cbb065e21142240a3bb762d"
+    },
+    {
+      "file": "app/assets/hyakki/v2/t04.webp",
+      "sha256": "d0e140ccae5459bce638b52c5f66295ecebc98b93e86653d50ac444c7021ce5a"
+    },
+    {
+      "file": "app/assets/hyakki/v2/t05.webp",
+      "sha256": "4fadbf2a2d4c3112e015991bda753540c7afa42275421035baf3eefc48a645cb"
+    },
+    {
+      "file": "app/assets/hyakki/v2/t06.webp",
+      "sha256": "6a56f2122f73fb9addf68fceacde7878dd338beade40ae8ef6e4bf3f6e893142"
+    },
+    {
+      "file": "app/assets/hyakki/v2/t07.webp",
+      "sha256": "71a5f19fb9e1e8baf71237a2e98a3acbce4f07547879e3dd488d955452bc367b"
+    },
+    {
+      "file": "app/assets/hyakki/v2/t08.webp",
+      "sha256": "d0a2bf480a5db4a3c507d4962ff4ae808f5e7b61af4feec679c81071f735e2f7"
+    },
+    {
+      "file": "app/assets/hyakki/v2/t09.webp",
+      "sha256": "a44adc73ee75ddaf5b5d2ebcbe577793366c393b441034ed17f10026b5a0ff36"
+    },
+    {
+      "file": "app/assets/hyakki/v2/t10.webp",
+      "sha256": "e5f58fd6008eeae1db509b8d4223edbc6c53931d2e3ad079a3a917be12c6ce1b"
+    },
+    {
+      "file": "app/assets/joker-color-change-v2.png",
+      "sha256": "55a2aa1684123b0ff4cdf492dcf33e1ae3875fa92286afae7c83d039bf9ec966"
+    },
+    {
+      "file": "app/assets/joker-double-v2.png",
+      "sha256": "d2f51c72341b082eab3520febaf18652ff7d1e3015b6ea6451b02c6666ce1cac"
+    },
+    {
+      "file": "app/assets/joker-mark.png",
+      "sha256": "4fb13b99c15c2a4675588e6c841c02ed098845e7d3619c86f907ef7a361626d5"
+    },
+    {
+      "file": "app/assets/joker-mirror-v2.png",
+      "sha256": "39869a4051ff84be072f5acba53bd6909d9b9bd8529ea9909c5f8ff0ce6d4f87"
+    },
+    {
+      "file": "app/assets/joker-normal-v2.png",
+      "sha256": "e771bc9b1de278f58b1bcdba0f694e262533193f9b0f1ecf4713857d2dcf76b2"
+    },
+    {
+      "file": "app/assets/parks/v1/gear-camp-mug.png",
+      "sha256": "2973a9adb9943946680f439eba5bc616363be75d709293445107e9564ee34580"
+    },
+    {
+      "file": "app/assets/parks/v1/gear-flint-and-tinder.png",
+      "sha256": "85059ac8f98533c3e9aa111bdd7b070f15c7cd6c8a210ea76c30079e0d49f3a6"
+    },
+    {
+      "file": "app/assets/parks/v1/park-acadia.png",
+      "sha256": "b65e7d36eae009b86b424b3892092b385b3b0a2d40f9652dd48839f9056f8c69"
+    },
+    {
+      "file": "app/assets/parks/v1/park-arches.png",
+      "sha256": "2155a3bc3684830f18004d7ce0d5da15f85697bfeb2cc5b5af4d259d11dd190c"
+    },
+    {
+      "file": "app/assets/parks/v1/park-black-canyon-of-the-gunnison.png",
+      "sha256": "e1ffe13d02d3720b7a3508dcf3544f6165ffc68d88f1f69003f01f0e23a4adf6"
+    },
+    {
+      "file": "app/assets/parks/v1/park-grand-teton.png",
+      "sha256": "52f8f04741ce7dad11e974783016983de46a66f22d32244cad473c678322ab93"
+    },
+    {
+      "file": "app/assets/parks/v2/gear-atlas-01-thumb.webp",
+      "sha256": "f72a0de98b667cc4c1b16842cea178cfd65797c958bee43ee9020b0fc6a1c114"
+    },
+    {
+      "file": "app/assets/parks/v2/gear-atlas-01.webp",
+      "sha256": "7b4cbbdc77aa0443fda5479295e845c552c4bb361a419c18ab49892d01dbcbed"
+    },
+    {
+      "file": "app/assets/parks/v2/gear-atlas-02-thumb.webp",
+      "sha256": "d81bfb4ba6423e8450b9222f97509abd3ed9e4f596efd202ca9ad95254de6cf5"
+    },
+    {
+      "file": "app/assets/parks/v2/gear-atlas-02.webp",
+      "sha256": "d22d8c65946e01c371ca9719b83f17030aa593054cb490fcc9e6b0b126820e0a"
+    },
+    {
+      "file": "app/assets/parks/v2/gear-camp-mug-thumb.webp",
+      "sha256": "1f33c29e0f5b64f05e6df3b75d0d0f5bdad546365c79bce730979c2a70898bd0"
+    },
+    {
+      "file": "app/assets/parks/v2/gear-camp-mug.webp",
+      "sha256": "4bb3d8771ac983b50900108aedc1e99c8a492d0e889e0abfcd88d5eb9833a7a8"
+    },
+    {
+      "file": "app/assets/parks/v2/gear-flint-and-tinder-thumb.webp",
+      "sha256": "770c230fbd84fe7a6bcf288406589d23629e45e103458bfac04a432979eaf2c3"
+    },
+    {
+      "file": "app/assets/parks/v2/gear-flint-and-tinder.webp",
+      "sha256": "0c24ff63e7df19dde7853463d71bd26246b358e3bc5696fd79137b311cc5cf46"
+    },
+    {
+      "file": "app/assets/parks/v2/park-acadia-thumb.webp",
+      "sha256": "bcc1bbd1bf04b80780a8be0b04983d5bafad1a234a1e4d477531f547a13e200c"
+    },
+    {
+      "file": "app/assets/parks/v2/park-acadia.webp",
+      "sha256": "1af7234fc24669a9e3b797a29189f212c237c880e58e320ed6a03cbd6857f06d"
+    },
+    {
+      "file": "app/assets/parks/v2/park-arches-thumb.webp",
+      "sha256": "ca2f1cd8ca370beab03f4df27d4c1f66f1d8ac2df60a60d18584ae51cd1304c2"
+    },
+    {
+      "file": "app/assets/parks/v2/park-arches.webp",
+      "sha256": "fe2b389e1edee6ebb6044799b8a0c27ca6b595a970d5fc693afd9d40db24c3a1"
+    },
+    {
+      "file": "app/assets/parks/v2/park-black-canyon-of-the-gunnison-thumb.webp",
+      "sha256": "566c27f2f21cb01a6eaee3453f34c2a7b7f9084794f3d6e9a34a7bcfd7c65afb"
+    },
+    {
+      "file": "app/assets/parks/v2/park-black-canyon-of-the-gunnison.webp",
+      "sha256": "8992c727c597aa83e4a812757ad564dc1190bc8d7edea39b6df9b798f5885d49"
+    },
+    {
+      "file": "app/assets/parks/v2/park-grand-teton-thumb.webp",
+      "sha256": "62132aef5f1f0f555b7d584aa7cbbacde3fd93278107695170fba048e8cee1bd"
+    },
+    {
+      "file": "app/assets/parks/v2/park-grand-teton.webp",
+      "sha256": "eb35316abc9120d79376d4416b30b98800427b672dd1a46af3c9326c4483a405"
+    },
+    {
+      "file": "app/assets/parks/v2/parks-atlas-01-thumb.webp",
+      "sha256": "c05e1b6de77db740615244ba7ca6cede874c726188d5896ae6d55bd31d391243"
+    },
+    {
+      "file": "app/assets/parks/v2/parks-atlas-01.webp",
+      "sha256": "c945900a12a20d26d03ff058201f682ee62e0fa38819bed552ae2c0b07840c2c"
+    },
+    {
+      "file": "app/assets/parks/v2/parks-atlas-02-thumb.webp",
+      "sha256": "8672db72b310dcb90a5ce5e0049835485a9e323f95ceb6519a5de603f8d83f19"
+    },
+    {
+      "file": "app/assets/parks/v2/parks-atlas-02.webp",
+      "sha256": "772b8236890535208e56bd3c3b9deaae1e28f28c97dd42a073fe429186c25f4a"
+    },
+    {
+      "file": "app/assets/parks/v2/parks-atlas-03-thumb.webp",
+      "sha256": "74279bccd18708588b23fb1de1ca69c2e4bd2c1d3552aba42530a49ed972cc4d"
+    },
+    {
+      "file": "app/assets/parks/v2/parks-atlas-03.webp",
+      "sha256": "9c316ce17a8d9ee970c283734e939fb9c2e8bd7c53bad591c9888476a5d65cf2"
+    },
+    {
+      "file": "app/assets/parks/v2/parks-atlas-04-thumb.webp",
+      "sha256": "11b02a8973466829986463a7fc03dafebefff2946b29a44d1580c0d141a033e2"
+    },
+    {
+      "file": "app/assets/parks/v2/parks-atlas-04.webp",
+      "sha256": "db9db525f9b374218a529b7e64d8d43305f642e68ed42692c1975238c1f4f749"
+    },
+    {
+      "file": "app/assets/parks/v2/parks-atlas-05-thumb.webp",
+      "sha256": "ee57013b48a1de2f080ed2511f273a4cc5f8ceb86a0af9bec4a62f11dfa39993"
+    },
+    {
+      "file": "app/assets/parks/v2/parks-atlas-05.webp",
+      "sha256": "1ad2fc57e8e9868deb3cd48e29d025d57ce83aa3d7ebd3240d5f89350bad1cce"
+    },
+    {
+      "file": "app/assets/parks/v2/parks-atlas-06-thumb.webp",
+      "sha256": "604422310215edb0659477122cf5c8025e871a080fb7c69e4220f493186a11c3"
+    },
+    {
+      "file": "app/assets/parks/v2/parks-atlas-06.webp",
+      "sha256": "41db13812cb551b7940453589b4e5423938e606e36fd9d86d92376cd6f90bd2f"
+    },
+    {
+      "file": "app/assets/parks/v2/parks-atlas-07-thumb.webp",
+      "sha256": "d20a49b819f53bf3c72bf76a9c667b00f115378df1287ebc43994303a6969556"
+    },
+    {
+      "file": "app/assets/parks/v2/parks-atlas-07.webp",
+      "sha256": "4e986f29b10125dcdfca7509391f016f17a464c35f27feb6921c3637130086c2"
+    },
+    {
+      "file": "app/auth-v1.test.mjs",
+      "sha256": "6249ebeb2bb3313f1c79b7611298d1b7684fb88281db5b36ee575800a79a845a"
+    },
+    {
+      "file": "app/board-layout.mjs",
+      "sha256": "f9f349375b20b6fb3eb7d93ec5fe46e89f8b7ed3798d1b0d6116a234001387b8"
+    },
+    {
+      "file": "app/board-layout.test.mjs",
+      "sha256": "2a99c310d132d39c46a92d2e26610ce8ae61ad280aa129cd80aa3920d8e5c468"
+    },
+    {
+      "file": "app/chat-backup.test.mjs",
+      "sha256": "f57e161c98dd218ae34704e0f1956668046412ca7be4bf34c21a1a3412c9759f"
+    },
+    {
+      "file": "app/chat-packet-authority.test.mjs",
+      "sha256": "781f5aa28f3d0c67594547e3d2b7609978efdf7cae03a7187d77ffe8e0290bc3"
+    },
+    {
+      "file": "app/chat-server.test.mjs",
+      "sha256": "da55022f5f0ad18a33aa9de9fc2e1f63573e05522ab84685943ab4880d9d8787"
+    },
+    {
+      "file": "app/draw-and-guess-backup.test.mjs",
+      "sha256": "a35520b3c5d60b219fb6b21abd17fa9c815437c861390eff8ca07f69e9fb4eac"
+    },
+    {
+      "file": "app/draw-and-guess-boot.test.mjs",
+      "sha256": "a215dc7b9d7ebacf660f2e21b444d55aa4f6b91856a5ded4eff41b9c2a63559b"
+    },
+    {
+      "file": "app/draw-and-guess-canvas-cadence.test.mjs",
+      "sha256": "43e25ca3bfa548076efb693dd39199363cda09d91a46137fed7f175212987b13"
+    },
+    {
+      "file": "app/draw-and-guess-canvas-http.test.mjs",
+      "sha256": "8818adaa5513d696869c56203ad7d5f44bc2408439bcb4f7f5d3e71adcfac5b9"
+    },
+    {
+      "file": "app/draw-and-guess-canvas-public-lease.test.mjs",
+      "sha256": "46ab5587bcdab51874ff563567647529d5ab267674ddb24fd38223f343700b26"
+    },
+    {
+      "file": "app/draw-and-guess-canvas-service.test.mjs",
+      "sha256": "3dd30e2de63a51449543cb89f4fd01cad54dde9f6d1b9460e6a7dd1f93cb2d95"
+    },
+    {
+      "file": "app/draw-and-guess-canvas-sse-budget.test.mjs",
+      "sha256": "944ef6f83be5208caafb70ddd4404c13701671efad0ffd43d8f03ba6cb47a18f"
+    },
+    {
+      "file": "app/draw-and-guess-page.test.mjs",
+      "sha256": "c7baca712a04ecc2e009d36f602ca4fb3bed9c0e33a68164011af3a3160f87df"
+    },
+    {
+      "file": "app/draw-and-guess-practice.mjs",
+      "sha256": "02bc9ae36d970c2f577d32030d8305233c34fbf7701f9c652c732beb69d9c1fe"
+    },
+    {
+      "file": "app/draw-and-guess-preview.test.mjs",
+      "sha256": "eb5128f92d269d4808c5e1d67a23eab416dfb92b6ea5c84fa454e07367d4f352"
+    },
+    {
+      "file": "app/draw-and-guess-public-imports.test.mjs",
+      "sha256": "86b57065401e18ad3aa432fd2426205f5fa984ed418bbe77a7270d099f020fa6"
+    },
+    {
+      "file": "app/draw-and-guess-reveal-compat.test.mjs",
+      "sha256": "bcdae79d2a542513f567ea52609c9f0ebab4e02e965b303cf949a11313d179db"
+    },
+    {
+      "file": "app/draw-and-guess-room-integration.test.mjs",
+      "sha256": "157bc799d861252ccf8cceee791d480557b653afb4c8228bf972ccc93243cf17"
+    },
+    {
+      "file": "app/draw-and-guess-rules.test.mjs",
+      "sha256": "1bc29dffc4fb3b0beef42948cc2d85f445e2192a7bc39191fbdd333e0d289ec8"
+    },
+    {
+      "file": "app/draw-and-guess-transport.test.mjs",
+      "sha256": "3a4fb01058c935ca7cc420f458955189116a96668bd79fdd9f4b382b9bbb3a93"
+    },
+    {
+      "file": "app/draw-and-guess-unified-http.test.mjs",
+      "sha256": "5cf36724c34597a12faa690d52636677ab54f498dd829fc227789428be644817"
+    },
+    {
+      "file": "app/draw-and-guess-wordbank-http.test.mjs",
+      "sha256": "81e7147de9a04e4e1e475bdfc476f055191f95b0aca85ef09561d1928a9a27a9"
+    },
+    {
+      "file": "app/draw-and-guess-wordbank-page.test.mjs",
+      "sha256": "57bc37cb89f7bb7b176498f4b22b684d1f2c01f7eb9762bd5c3b9b014d20835e"
+    },
+    {
+      "file": "app/draw-and-guess-wordbank-service.test.mjs",
+      "sha256": "565b02217eff414e850d83e8b4b35467cfc9b0466d4c3f4eb47e048617006c8a"
+    },
+    {
+      "file": "app/draw-and-guess-wordbank.test.mjs",
+      "sha256": "951d386d32aaa677c939ff7dba2b1ec30afbd6fe4a18aeed125ba98ff264a04d"
+    },
+    {
+      "file": "app/drawing-practice.html",
+      "sha256": "e59e90929b3407a6937c4d258cab847feed68e3244372cca5c88dd959a301531"
+    },
+    {
+      "file": "app/drawing-sfu-dual-entry.test.mjs",
+      "sha256": "ca1a19cb5500d80834051277505c58fd8a7d0c588935211203e55d470a4d33f2"
+    },
+    {
+      "file": "app/drawing-sfu-http.test.mjs",
+      "sha256": "b9b6dc52b44f7b08c664de654f02c0174b093ef9a4fff29794d4902d64803e0b"
+    },
+    {
+      "file": "app/drawing.html",
+      "sha256": "1aeb8e6a32077b6b131c1bb9ce2ddd893fcf9c8332b31469cea12e1deaa6e3e6"
+    },
+    {
+      "file": "app/dual-entry-backend.test.mjs",
+      "sha256": "2669878df7c69818975ef45e1541972f4dbab456abdaeadca960c81351d89aea"
+    },
+    {
+      "file": "app/dual-entry-production-config.test.mjs",
+      "sha256": "5eed0c2ebd188e41c5ef6c8b7a381a98997aa55decd3814ee888865fc4351b7f"
+    },
+    {
+      "file": "app/durable-room-publication.test.mjs",
+      "sha256": "f92ac025f5d665b092cc3bd63fc18fb42293657c95765e5db0f74871a2009dd0"
+    },
+    {
+      "file": "app/durable-rooms-lifecycle.test.mjs",
+      "sha256": "bfbc525e6f7192075d725924e8177267a1dbb53af54316b381fe818b27dff604"
+    },
+    {
+      "file": "app/durable-rooms.test.mjs",
+      "sha256": "2a49d273e51d76327ae957dd15f7e8e651d396645c1e5b9c261683696d6c9cf6"
+    },
+    {
+      "file": "app/entry-client.test.mjs",
+      "sha256": "0f38ccbb48445b2d84c54efac352f76f1cf2bdc39b76b512f1105538b7b3cc10"
+    },
+    {
+      "file": "app/entry-path.mjs",
+      "sha256": "421789422141d210421b07c39e615ba73274873679f6b77da9bf14353882ec0c"
+    },
+    {
+      "file": "app/entry-resume-http.test.mjs",
+      "sha256": "65ff7df22f0b20ec244ecb65cbf52da2be28c04f2cfb594015f6166d5654c356"
+    },
+    {
+      "file": "app/favicon.svg",
+      "sha256": "d31cef6a8db8ccbc2b8ee2438d8a9fa939bbfdf309c7bfb72fee1b14c1c0f1a8"
+    },
+    {
+      "file": "app/flying-backup.test.mjs",
+      "sha256": "dc402085ac0263954fde2de9eda41ba16b3b1e37c4d9866a1215481b8b7478e4"
+    },
+    {
+      "file": "app/flying-page-flow.test.mjs",
+      "sha256": "6afe081d90a614eea13054d39e59f373db306f3033b028751abbb86f5d3f9164"
+    },
+    {
+      "file": "app/flying-platform.test.mjs",
+      "sha256": "0b1009d31affbdd2b7139e6628e38db60eaa01d06d7f87fec0e0ec923b6971a1"
+    },
+    {
+      "file": "app/flying-practice.html",
+      "sha256": "c5ad46455a34cf2060a47bab207fe7a18a2ee634615a45caf288cb5563c07181"
+    },
+    {
+      "file": "app/flying-snapshot-compat.test.mjs",
+      "sha256": "9bf449f5ca2d815b5140e2accfc8bbfeeeafd58266d61a788f637bbae04072a0"
+    },
+    {
+      "file": "app/flying.html",
+      "sha256": "deb79fd2f1b78a07752775484af9fafde8dda1e6ccca675a4d355622d9fc8caa"
+    },
+    {
+      "file": "app/game-audio.mjs",
+      "sha256": "395988be8248f1bf8c10d8f0a4cf0082da18e753ca17d28b258dac14481b5e0c"
+    },
+    {
+      "file": "app/game-audio.test.mjs",
+      "sha256": "1402883275eefb83c103f3757ee7c1bef160e0116d9915f0ec47fdae7d7b2333"
+    },
+    {
+      "file": "app/game-platform-boundary.test.mjs",
+      "sha256": "d6f6b911c3d6dc18c9b4d6817fb256c4e736c9a33598cdd1003a2b4593a59c05"
+    },
+    {
+      "file": "app/game-presentation.mjs",
+      "sha256": "580de1f4590bdb95cf37491c23122f2026d42ff95dca4e08a80182b32bb72f10"
+    },
+    {
+      "file": "app/game-presentation.test.mjs",
+      "sha256": "fc2f6f5d3b18387d891f71a62fe7fc02569ef203732e7edca3eafaffe92eee8a"
+    },
+    {
+      "file": "app/game-registry.mjs",
+      "sha256": "0c2e3ae7d501ff39556a1c18588b8ef53cd96cb2777a38b5a9f980dc699111ef"
+    },
+    {
+      "file": "app/game-registry.test.mjs",
+      "sha256": "c5d9bf162d6f44b90c9c1fd2392ca11f8d82d17f57bc43ee47493a98e3347eeb"
+    },
+    {
+      "file": "app/game-routing.mjs",
+      "sha256": "6e7e0edd85f293561c5f18d04192ebd2b730778c59cacaf6dc6f7db443007cc6"
+    },
+    {
+      "file": "app/game-routing.test.mjs",
+      "sha256": "71c08f2dfc5f4228767bc880eeec070d7f73f5eceb70d4aaaaea7bd89afb8aaf"
+    },
+    {
+      "file": "app/game-scores.test.mjs",
+      "sha256": "36a4dc62a89a6cc1fdc150e68c78cfb0f628c24a4a40251f2be9a158b3272d4b"
+    },
+    {
+      "file": "app/game-theme.test.mjs",
+      "sha256": "3ff2530a1af718dcb93852553df9f0a528d1da037319eeccca717886f38af911"
+    },
+    {
+      "file": "app/game-viewport.mjs",
+      "sha256": "bbf3ea769317235b9d45c654d7ae37c4299c02ddf5f16b57e44b7e86930cc7f8"
+    },
+    {
+      "file": "app/game-viewport.test.mjs",
+      "sha256": "8087adad1eb226f0c0c6f21042f2b7efaa55c25dcb312bfc9978652572c420bd"
+    },
+    {
+      "file": "app/games/army-flip/board.mjs",
+      "sha256": "d91ad31c39da6ef852bdbe4d925191c8891308bc9296fae98948586504489262"
+    },
+    {
+      "file": "app/games/army-flip/game-page.mjs",
+      "sha256": "e5d18070a5fb115094558c4be150f2aa7de7ae5bf401c9662f22003483f1acc9"
+    },
+    {
+      "file": "app/games/army-flip/motion-ui.mjs",
+      "sha256": "7f106b6a5edac792f04a420c901f60a058f53ba0470174fd9742472109302a13"
+    },
+    {
+      "file": "app/games/army-flip/practice-engine.mjs",
+      "sha256": "9d92a7871fdad957c0116cb173b794d426395c36a2adaef4f4591eab39a46ae1"
+    },
+    {
+      "file": "app/games/army-flip/practice-page.mjs",
+      "sha256": "a3b26bff56c909a816d446c1a8573892e9a90bd1e0fc2b17017e51b7c79b985f"
+    },
+    {
+      "file": "app/games/army-flip/presentation.mjs",
+      "sha256": "c1acd71a0c26fa029a65fa2ee31824442171bc5f320e6fec30bdc2273b946657"
+    },
+    {
+      "file": "app/games/army-flip/rules.mjs",
+      "sha256": "9a820dead7aa6abb60fb84221f070f71fad88977634469f919416e6c460e3f65"
+    },
+    {
+      "file": "app/games/army-flip/ui.css",
+      "sha256": "40b364a7f16ec7d87c24e4e937a9b77d326d39018c8a242878dd1c107970e08c"
+    },
+    {
+      "file": "app/games/catalog-boundary.test.mjs",
+      "sha256": "4ec67a3ef6c81dba02b5ec0dbf97d472c400a190b2c488c2721cfe6622795755"
+    },
+    {
+      "file": "app/games/catalog.mjs",
+      "sha256": "fa4cf398b560ad433a282110be459c1799a0967085f730bb4353094169edfc77"
+    },
+    {
+      "file": "app/games/draw-and-guess/adapter.test.mjs",
+      "sha256": "a32044f2eb4c39fbf57aa8c180ec138fe40b5b45f0f925a6fa506905e9ee9de0"
+    },
+    {
+      "file": "app/games/draw-and-guess/canvas-view.mjs",
+      "sha256": "e08e25ef89e19a85531ec4386c65534f273c05b286c1608815815f99faad448b"
+    },
+    {
+      "file": "app/games/draw-and-guess/experience-ui.mjs",
+      "sha256": "2e6e4b8c776c5071ffa01b4b6b2e1bf28f7af6ab23f436f1a37d5c4fe58355b6"
+    },
+    {
+      "file": "app/games/draw-and-guess/experience-ui.test.mjs",
+      "sha256": "ada263a6121faa95c54af0ada478f9e91c6d15e8468060328232e5e77936df3d"
+    },
+    {
+      "file": "app/games/draw-and-guess/game-page.mjs",
+      "sha256": "6fe3719657bcca2351b7d6a0c3bed2d3bdfbba14d5e30c99c55f8ca619e105dc"
+    },
+    {
+      "file": "app/games/draw-and-guess/matcher.mjs",
+      "sha256": "48954b461cc23c2ee7ebea67e3f940f2b1f10517e6b56d001594386fa60a0fad"
+    },
+    {
+      "file": "app/games/draw-and-guess/practice-engine.mjs",
+      "sha256": "c7bdb2514bc69beb2a4f1f90ebc2d68dee3a4451ee628d9c9455d52d58a3af5e"
+    },
+    {
+      "file": "app/games/draw-and-guess/practice-page.mjs",
+      "sha256": "a8dd7b9f8c22c5847589fe424ec81db59fb25cb5293cf5696e12d6453bfacf82"
+    },
+    {
+      "file": "app/games/draw-and-guess/request-intent.mjs",
+      "sha256": "509fff1ee79d129c9a9077d4a9345da02415be302992ee5f5c21474ea6caa827"
+    },
+    {
+      "file": "app/games/draw-and-guess/rules.mjs",
+      "sha256": "2094a3029f5a62002dd5ebb7408e8f3dac9f3698a2668704ec39531a628e6afe"
+    },
+    {
+      "file": "app/games/draw-and-guess/styles.css",
+      "sha256": "5a88644acfada018e6ddab3f1822f567d330db432c448499a27ba3151e586f90"
+    },
+    {
+      "file": "app/games/draw-and-guess/wordbank-page.mjs",
+      "sha256": "f4e7dd4aecdb51fc91c5f877a51f8ea3f99fa997c109c393285d8c7bccf7cf31"
+    },
+    {
+      "file": "app/games/draw-and-guess/wordbank.css",
+      "sha256": "8da12a1475093dc24610a4b7bed584197f51adec1926c9e70372a294906b0e2b"
+    },
+    {
+      "file": "app/games/flying-chess/adapter.test.mjs",
+      "sha256": "a242c9f5de552c4946932dad39ea0c1031def14768fd10a78ca3db5429ea4659"
+    },
+    {
+      "file": "app/games/flying-chess/art.mjs",
+      "sha256": "23e83f0ae6827bdaf646e93382674629c23ddf3b26102b41b05ea8ad83ba4aae"
+    },
+    {
+      "file": "app/games/flying-chess/board.mjs",
+      "sha256": "cf9dc7229200c7eb7f707552f42b1da67869381b9379a3b7adfee38cea1fe24e"
+    },
+    {
+      "file": "app/games/flying-chess/board.test.mjs",
+      "sha256": "599f84c6ef7872e5837ae689e9b413e4efeba4c4ba34bbc49131262a6e068ed6"
+    },
+    {
+      "file": "app/games/flying-chess/fixtures/full-game.mjs",
+      "sha256": "4f118751511e8b9e58ab9c207e6348a8833a03cc386379206c99881289976d47"
+    },
+    {
+      "file": "app/games/flying-chess/fixtures/scenarios.mjs",
+      "sha256": "bf13ed84e299d6ca63266dfcde3d8364fda010599d5e3cf3112acc2d5dd25072"
+    },
+    {
+      "file": "app/games/flying-chess/game-page.mjs",
+      "sha256": "a9849cb635351eaec912eea89e00c6225d35b9eaff59bb81e9119d44f5b4fa90"
+    },
+    {
+      "file": "app/games/flying-chess/motion-ui.mjs",
+      "sha256": "a96a2eff409f1210372ff5f5e45d58b5a4c25711f22c5a4918c75a5d60dc3604"
+    },
+    {
+      "file": "app/games/flying-chess/motion-ui.test.mjs",
+      "sha256": "0d4460145f9bbbcd744d37fa06569306dc56d66977dcdcf36dcb7ecbfdf3ef04"
+    },
+    {
+      "file": "app/games/flying-chess/page-ui.mjs",
+      "sha256": "227eab51dfec383033ef84b5e44a1628f1a2b999f98da526212f82ce4d519515"
+    },
+    {
+      "file": "app/games/flying-chess/practice-engine.mjs",
+      "sha256": "f74a4b2048bd376f2f1574251449503b1b7c57b96a07ec18a7f50c6174c10baa"
+    },
+    {
+      "file": "app/games/flying-chess/practice-engine.test.mjs",
+      "sha256": "a00e1ff2a02ea64a37a120824657fdf2521a4de34266af94d39b69aba2854f9a"
+    },
+    {
+      "file": "app/games/flying-chess/practice-page.mjs",
+      "sha256": "dacd07f0f96c2e90a777628ae24e1257fd7acef51a804adb488fd3e71ce30bad"
+    },
+    {
+      "file": "app/games/flying-chess/presentation.mjs",
+      "sha256": "7f1a511afda01e453f5fed4e0d769af0cd4543aae239b219ee6a6d95c2774d0b"
+    },
+    {
+      "file": "app/games/flying-chess/presentation.test.mjs",
+      "sha256": "6a2a1197b7994cfa4c7b152cc3733ba543b2337fc27aa0cc523375ef23f48b45"
+    },
+    {
+      "file": "app/games/flying-chess/routes.mjs",
+      "sha256": "cb4ceae24efcb9f752ca21498ce7276708b5e7c1224943c742760630a4150739"
+    },
+    {
+      "file": "app/games/flying-chess/routes.test.mjs",
+      "sha256": "e64db3679366d2ba975ec122befefa17de13eaaebcc07da6103ee66807690c41"
+    },
+    {
+      "file": "app/games/flying-chess/rules.mjs",
+      "sha256": "7ceae2d6ecbaeacbb2e1d29d2988996a9f6b311bc5fa4f5029789e59d94ce123"
+    },
+    {
+      "file": "app/games/flying-chess/rules.test.mjs",
+      "sha256": "9c53248e4ccd7d55b3b2bdd0d6139d13005b811f4b9d3b362487803fe0019d77"
+    },
+    {
+      "file": "app/games/flying-chess/ui.css",
+      "sha256": "fa914bfb8ef7fcdb80d67ec56fa1aba6b4b82977ee4f101acf72cb5442c32c6f"
+    },
+    {
+      "file": "app/games/hyakki-trading/art.mjs",
+      "sha256": "aab8a9c8c1004cd53df9196bcdd91af7e9122569c6962a1750839c3fa8b2d90b"
+    },
+    {
+      "file": "app/games/hyakki-trading/auction.mjs",
+      "sha256": "e05535e5c527ecacacc3506f6e32f574e43914ba3730dadc753e053a85f2e407"
+    },
+    {
+      "file": "app/games/hyakki-trading/auction.test.mjs",
+      "sha256": "a5298b87c45fe6f9a61da9d0e243b41ca514f787ee00c5d379839d7ec56e9917"
+    },
+    {
+      "file": "app/games/hyakki-trading/borrowed-target-recovery.test.mjs",
+      "sha256": "c4c6cb009a9245a805fae58746e83aa76e410178d385edb766adccc440cdc414"
+    },
+    {
+      "file": "app/games/hyakki-trading/card-draft.mjs",
+      "sha256": "f84472e42bc99e373f4c507bf591dfca165a8277f49dac78c4eb1459db0ee5e7"
+    },
+    {
+      "file": "app/games/hyakki-trading/card-draft.test.mjs",
+      "sha256": "bef7afcfa80800acd655581996ab42a22d688861bfeb96874309e12a1b59017e"
+    },
+    {
+      "file": "app/games/hyakki-trading/card-ui.mjs",
+      "sha256": "333f02d71c56a521e5d28fd91ea707cfb3ff2bb971c82cdc0cdc0bc020790590"
+    },
+    {
+      "file": "app/games/hyakki-trading/card-ui.test.mjs",
+      "sha256": "90327904c4c5b618a7bdae71103f3f923f9c94eb0d0d87ff0a99dda80cd0e4f5"
+    },
+    {
+      "file": "app/games/hyakki-trading/card.css",
+      "sha256": "8fd97ec53c378b83cc79e83727526cd93870b148a84398f06b359a5335ced9fa"
+    },
+    {
+      "file": "app/games/hyakki-trading/catalog.css",
+      "sha256": "fe785e7c35dbb641bade13da12fb0d9cf38cea10834b6ccd9dfacb23297c42a3"
+    },
+    {
+      "file": "app/games/hyakki-trading/catalog.mjs",
+      "sha256": "72bf6369407a639a941662629c73bcb02932f07af78b31a3a1d7e33a8641c646"
+    },
+    {
+      "file": "app/games/hyakki-trading/configuration.test.mjs",
+      "sha256": "aa2d6a94cf1f08ce5ff87697bf1ee6c08ab935ea9259e1c23313ebafcc835128"
+    },
+    {
+      "file": "app/games/hyakki-trading/content.mjs",
+      "sha256": "4fffc7a0bd037947aa50a9611f43fda8da980bac187e330b84df08eb3b8d3646"
+    },
+    {
+      "file": "app/games/hyakki-trading/content.test.mjs",
+      "sha256": "a56cd0ce141f3e76455769444060ac47cd71a85808db641e4329c7d4749612f7"
+    },
+    {
+      "file": "app/games/hyakki-trading/content/definitions.mjs",
+      "sha256": "c66e803fee222f7f77eb42bdac039d0e797c520f9569b8c5d5f6db156abbd580"
+    },
+    {
+      "file": "app/games/hyakki-trading/content/definitions.test.mjs",
+      "sha256": "3ffb4e515a66644c251af93eac7c6bf9b9d63cdfe551fac477cf37dfb1232172"
+    },
+    {
+      "file": "app/games/hyakki-trading/content/manifest.mjs",
+      "sha256": "d18588d5ce302e9208722b46d0ecddb4f067a3bc3e4dcbe3675851aa9ddce1bd"
+    },
+    {
+      "file": "app/games/hyakki-trading/decision.mjs",
+      "sha256": "9b60a4d262099e70845df38c74693f406a358e5eb2f8ac64e4dd3405e727140d"
+    },
+    {
+      "file": "app/games/hyakki-trading/digital-card-ui.mjs",
+      "sha256": "7c68bab37088189397f54741517fc48b0d7c01af0dd7ece4dbe1be055b99082a"
+    },
+    {
+      "file": "app/games/hyakki-trading/digital-card-ui.test.mjs",
+      "sha256": "a49fb1513c89124cbef9c031b06f006aae907a1f5d9b8d0a8a5572ad0efbfd58"
+    },
+    {
+      "file": "app/games/hyakki-trading/digital-card.css",
+      "sha256": "1f8dd1d250d65d7ff8de743c1b8e8099796c92db4b1702715094263445ace660"
+    },
+    {
+      "file": "app/games/hyakki-trading/digital-catalog-page.mjs",
+      "sha256": "b70c0c6174672899f48840defa783c3a45ce97fc079cfc7a08c452853c2608fb"
+    },
+    {
+      "file": "app/games/hyakki-trading/digital-catalog.css",
+      "sha256": "06c398b7c9c1666b92acbeeb4e47150a376cc589affb5abf46238720bd0a47ff"
+    },
+    {
+      "file": "app/games/hyakki-trading/digital-catalog.mjs",
+      "sha256": "5e41f5c3883bfe5008df9625ace9c931827490191a862a8b9fb7170479170869"
+    },
+    {
+      "file": "app/games/hyakki-trading/digital-page-ui.mjs",
+      "sha256": "ad457f73df2ffa4c868ace974ff5f3520e3c011de2cfd082111d7903427a7820"
+    },
+    {
+      "file": "app/games/hyakki-trading/digital-page-ui.test.mjs",
+      "sha256": "ddbced339b3047dc8a8e8e40dfefb3a9e20784dd62e5d4e56a1fbc433fccae83"
+    },
+    {
+      "file": "app/games/hyakki-trading/digital-preview.mjs",
+      "sha256": "5abcb239cc60aac2bac5706ea24a3430afac09fe2590fda9453c6d14fea67105"
+    },
+    {
+      "file": "app/games/hyakki-trading/digital-preview.test.mjs",
+      "sha256": "d01a64f24ea7b54ee14245d3c19d8943257c235755262376afe09d29e969b6fc"
+    },
+    {
+      "file": "app/games/hyakki-trading/digital-styles.css",
+      "sha256": "f41bc98816e9954da06d70c5c89871ad6a9a6e56bb18f6aa9a12f4ab6de75c47"
+    },
+    {
+      "file": "app/games/hyakki-trading/effects.mjs",
+      "sha256": "a97c9c8d738d3581aded40f7e24c97348f8bb0f67f51f4d736377ca7b077112d"
+    },
+    {
+      "file": "app/games/hyakki-trading/effects.test.mjs",
+      "sha256": "f637a43735b4bb27991474921b512051e1bb843daed08fe8f0f2855a7b0c4b0f"
+    },
+    {
+      "file": "app/games/hyakki-trading/game-dialog-ui.mjs",
+      "sha256": "a8a354064cd5a3d9583f0f2a60fa682feaf0761e38cda85daa0c61628ce51b62"
+    },
+    {
+      "file": "app/games/hyakki-trading/game-dialog-ui.test.mjs",
+      "sha256": "b91b98c9b2ffdddeb6762ed79f8879bdc88556c50723c40df34dac03aed4493b"
+    },
+    {
+      "file": "app/games/hyakki-trading/game-page.mjs",
+      "sha256": "3bafd0a82ea56689c0ae7398a82d0f0937311296b22bd42dbd54a82477f36beb"
+    },
+    {
+      "file": "app/games/hyakki-trading/game-ui-model.mjs",
+      "sha256": "958266e69aa8993bed3f971ac26ecd052d5d90a3d7a0e71422a060455e8e2f3f"
+    },
+    {
+      "file": "app/games/hyakki-trading/game-ui-model.test.mjs",
+      "sha256": "b70a274f2284eccb0626f0daca1759209da112b4ee9d3d4d4cd677a6d34899c5"
+    },
+    {
+      "file": "app/games/hyakki-trading/game-ui.css",
+      "sha256": "f0e11fb2230aa4a8321d1a4d7ac78ae2a9f3d9e2a8aa8da85ff690e5072c214a"
+    },
+    {
+      "file": "app/games/hyakki-trading/game-ui.mjs",
+      "sha256": "48519118bca1d607cb6d4d02a685be6ea60058b6676ecaa57b21f5975c7a505e"
+    },
+    {
+      "file": "app/games/hyakki-trading/game-ui.test.mjs",
+      "sha256": "60e4cb73dcfa00b03e886ffc3a8b5671533cbcea5dd184ca51f6d044a335b57b"
+    },
+    {
+      "file": "app/games/hyakki-trading/hand-drag-ui.mjs",
+      "sha256": "73ee916db57f65312be1746684ac23e675b99c23d892508bb833e1c884684f02"
+    },
+    {
+      "file": "app/games/hyakki-trading/integration.test.mjs",
+      "sha256": "97cc6f95f6dfd35e3e0764455d88355cb635aea51e32366701792c737a2829ab"
+    },
+    {
+      "file": "app/games/hyakki-trading/lifecycle-evidence.test.mjs",
+      "sha256": "6651f157730eb06ef59afd0ed0ca0f814b494b9e7834ba31e794b67a7ec716c8"
+    },
+    {
+      "file": "app/games/hyakki-trading/lifecycle.mjs",
+      "sha256": "75eabdc0e7e924c0ad82a4f14cc45d3ab90c305dd753e5c22bef8fc54d8b8243"
+    },
+    {
+      "file": "app/games/hyakki-trading/lifecycle.test.mjs",
+      "sha256": "81d8a28c5c443bf274fa066b4edf94e5938ca36beab202a6d46f72a554073376"
+    },
+    {
+      "file": "app/games/hyakki-trading/model.mjs",
+      "sha256": "c134dbda6ae591f13fdaf49a86c7898b619cb23ccfb04107ba89dc0a6770b92b"
+    },
+    {
+      "file": "app/games/hyakki-trading/multiplayer-auction.test.mjs",
+      "sha256": "d786cd5e31f95799a54a985c1e5ad846a1b071a2121273cd24a7cc2229e283c6"
+    },
+    {
+      "file": "app/games/hyakki-trading/multiplayer-effects.test.mjs",
+      "sha256": "26f3cf58d369ab98828f5ddfc527d763254e7e89c153f43149dce210ee9a3476"
+    },
+    {
+      "file": "app/games/hyakki-trading/multiplayer-rules.test.mjs",
+      "sha256": "8087cd34e14e4e03cc02f768d979cfa44e1324b9ca77014c27928c0d9783ee34"
+    },
+    {
+      "file": "app/games/hyakki-trading/page-ui.mjs",
+      "sha256": "ad7f57259160b43925f5e0ebfe3c1f591e68ae69127f50bfbb913b1248aedde4"
+    },
+    {
+      "file": "app/games/hyakki-trading/practice-bot.mjs",
+      "sha256": "e9c452eb141d688ff714e97a7d17dbf7ce9e01f83490890bf7b663e5423e0c8d"
+    },
+    {
+      "file": "app/games/hyakki-trading/practice-bot.test.mjs",
+      "sha256": "17422725d4ab96382270fd3dc1e56187b3c003d130eb786cc9de0e8149316c4e"
+    },
+    {
+      "file": "app/games/hyakki-trading/practice-engine.mjs",
+      "sha256": "ecf1d66076c5ca3d9db835849be96bcf634f4526116b5cdc050af2bc108059e3"
+    },
+    {
+      "file": "app/games/hyakki-trading/practice-engine.test.mjs",
+      "sha256": "88eab804034a886df90cc24c0c07a408d7191247a896dda91593fd47e752ea36"
+    },
+    {
+      "file": "app/games/hyakki-trading/practice-multiplayer-bot.test.mjs",
+      "sha256": "9ba5d9f8e9588bdef038cc2746497ca16ac56f3a026718821f7c5423a0724e01"
+    },
+    {
+      "file": "app/games/hyakki-trading/practice-page.mjs",
+      "sha256": "3c67a80c62cc7d27152adcb1b8ba48d0a491c45b2c0441eedc3bbf3ab0550fd9"
+    },
+    {
+      "file": "app/games/hyakki-trading/presentation.mjs",
+      "sha256": "ff5d250e7dffef9b09152e570c7978a17f3a642163948ea936866cbc00d84525"
+    },
+    {
+      "file": "app/games/hyakki-trading/preview.mjs",
+      "sha256": "1dbd98d36b4345eae996217fe7f087f6b08ea4e18e16737f66e25e8fccd5c022"
+    },
+    {
+      "file": "app/games/hyakki-trading/reference-content.mjs",
+      "sha256": "bd4d6befbb4fa1417c678664337db6d2483ea2b9b8e0265d3ac15adbfd97b742"
+    },
+    {
+      "file": "app/games/hyakki-trading/response-install.test.mjs",
+      "sha256": "ed81c2a4de24d4ae812388de5417f183586244e5a1b025d0f81315b088596884"
+    },
+    {
+      "file": "app/games/hyakki-trading/room-controller.mjs",
+      "sha256": "4bbba358427aeacef04711b0133687e7edc4d19a80d71e352807b07ec968ece2"
+    },
+    {
+      "file": "app/games/hyakki-trading/rules.mjs",
+      "sha256": "721e41b22e2eada8c3c5778672748f9267b8fa5cdf9841aef7a727963cd3faf4"
+    },
+    {
+      "file": "app/games/hyakki-trading/rules.test.mjs",
+      "sha256": "1506f5bf7bfe5a5161f9f2c13a819492fddcce7d6c425b3a5864979a8ffa8d7e"
+    },
+    {
+      "file": "app/games/hyakki-trading/simulation.test.mjs",
+      "sha256": "f00ea0c29ba4850712d5f188398663ab7c2a7f203974c4acad71c7bf91461931"
+    },
+    {
+      "file": "app/games/hyakki-trading/styles.css",
+      "sha256": "a1096b6904e97bbcb00d1bc8a82b8cbb29c0e653ce10dae5786cd231e3484cfc"
+    },
+    {
+      "file": "app/games/hyakki-trading/table-decision-ui.mjs",
+      "sha256": "169ecd69f40a096949a75836aff6f7f25ec43972800b39acc0f5dd14d00a81cf"
+    },
+    {
+      "file": "app/games/hyakki-trading/table-motion-ui.mjs",
+      "sha256": "9b5b211098ca0094f630cb16e898c2c00e8ec7ea4639c3ae9b20869e5e492ed1"
+    },
+    {
+      "file": "app/games/hyakki-trading/table-motion-ui.test.mjs",
+      "sha256": "4ed92efd1310ca6e83eee2831538158ac49f092f5c8053392fe4c49cde3c9f0d"
+    },
+    {
+      "file": "app/games/hyakki-trading/test-support/contract-adapter.mjs",
+      "sha256": "31fb43cfa5d4bdeac2d31ac4cd66f6062f3f5fb08667c18c48b92a4ad492a2f1"
+    },
+    {
+      "file": "app/games/hyakki-trading/test-support/digital-preview-fixtures.mjs",
+      "sha256": "8cf830ad791ffe224f833d84ac851c4904bb18068f608a8c2f16c5bedaf57b95"
+    },
+    {
+      "file": "app/games/hyakki-trading/test-support/preview-fixtures.mjs",
+      "sha256": "773e47d5f25e73c621c2ebee25c5fd04128b00ea3ae2b34a2c27061c41b46f74"
+    },
+    {
+      "file": "app/games/hyakki-trading/tools.mjs",
+      "sha256": "28a033905f42348aa235dc5d778bed6805a0230570ab37464ab03d93615cdfd2"
+    },
+    {
+      "file": "app/games/hyakki-trading/tools.test.mjs",
+      "sha256": "b7925627a610d8debb0a45b0094ad73030e6b49581ff7ab36a5639b0c5c9ed08"
+    },
+    {
+      "file": "app/games/hyakki-trading/validation-view.test.mjs",
+      "sha256": "88394747792eada69406f2e5035a33e9ed541efd514995bd6e92647a896ee99d"
+    },
+    {
+      "file": "app/games/hyakki-trading/validation.mjs",
+      "sha256": "e51a81b306e9e2199f74821d100a3150164bc0c291d50c639b8757604f670409"
+    },
+    {
+      "file": "app/games/hyakki-trading/view.mjs",
+      "sha256": "49983cb8b88db05c1fd09339fe624c7806ab4e7e42cabf04dda1e996829f1dd2"
+    },
+    {
+      "file": "app/games/parks/card-ui.mjs",
+      "sha256": "99701295d611f824f800f49c59985d01831a422ba5fc9fb912bd760c411120f6"
+    },
+    {
+      "file": "app/games/parks/card-ui.test.mjs",
+      "sha256": "119c19c8924eaabb9c283e76553707ca3fa43146ff7d10e384cc3f43d4c8bb94"
+    },
+    {
+      "file": "app/games/parks/catalog-page.mjs",
+      "sha256": "efc1375b96abeb3532828ee49a1b7dce48f5b74e37fc9a0cd01a4dbf91e27118"
+    },
+    {
+      "file": "app/games/parks/configuration.mjs",
+      "sha256": "6d996b82524bd6727416e00ccd56f6e9a4e81071a0cdce65883726cf6b43347d"
+    },
+    {
+      "file": "app/games/parks/configuration.test.mjs",
+      "sha256": "f23dd5bb553ef5891e0825bc1455091666a959a106ce7aae592877b82bd123fc"
+    },
+    {
+      "file": "app/games/parks/content.test.mjs",
+      "sha256": "311e9922bcb6d53c85aeae0b093ccadc1b9f4c307de3af5fea93a94a5c83c97a"
+    },
+    {
+      "file": "app/games/parks/content/art-subjects.mjs",
+      "sha256": "1858263d9fe1e836a74a1a2033f90e351b51084206082fa58803017516ef0e60"
+    },
+    {
+      "file": "app/games/parks/content/asset-manifest.mjs",
+      "sha256": "130d633bf857bd82140b83276aa6e6c0af4f099b297d979fdc3daff399dc730e"
+    },
+    {
+      "file": "app/games/parks/content/behavior-data.mjs",
+      "sha256": "ac0ffc42200d06fdf7941534525e89e67642c47976909a5b90a629400d9b0a95"
+    },
+    {
+      "file": "app/games/parks/content/catalog.mjs",
+      "sha256": "c171a29c6a1b4a1e6b2f6bfd5342a68d4be4c7f292f1b02286bbbcf603c3e09f"
+    },
+    {
+      "file": "app/games/parks/content/component-data.mjs",
+      "sha256": "f5d4f37a5e0687a065734aa8615d741f2cfc02281dc3c1c177e544e2e80d0dea"
+    },
+    {
+      "file": "app/games/parks/content/immutable.mjs",
+      "sha256": "3decb3a40aa68c7a13a6826b9471c5391191761afd1917b88221421771cc7543"
+    },
+    {
+      "file": "app/games/parks/content/optional-data.mjs",
+      "sha256": "3eea11e10846a7468f0c275e30f8ce58007f67b2df7f4b11947e009cd4f3ad0f"
+    },
+    {
+      "file": "app/games/parks/content/original-art-assets.mjs",
+      "sha256": "6506f19e959f36cafb6fa0ca3ad9add1ed5b28773801a3b4111004c743a99f2c"
+    },
+    {
+      "file": "app/games/parks/content/park-data.mjs",
+      "sha256": "1a181caf7b2604c9b6e7b2baaf52f331109e05b7eec470c4e4688a406918f54c"
+    },
+    {
+      "file": "app/games/parks/content/passion-data.mjs",
+      "sha256": "cbba9a967b9dce2cb2e21c41c386bd635abe31df9161f4995b035ff3e96e07e9"
+    },
+    {
+      "file": "app/games/parks/content/provenance.mjs",
+      "sha256": "448f20f0780ea4388c4aa83c13bde407cefcf8ebe90a96518202324e1b888d5a"
+    },
+    {
+      "file": "app/games/parks/content/sample-assets.mjs",
+      "sha256": "e6e0e337d817641e734bde3b150a20cdbfcbabb212f5cbd58d2ac705aa7fd991"
+    },
+    {
+      "file": "app/games/parks/content/vector-art.mjs",
+      "sha256": "52c32640bb4701b775c63d6242b991308f07ea82c511a7a5db6ff5a04288f416"
+    },
+    {
+      "file": "app/games/parks/domain-boundaries.test.mjs",
+      "sha256": "a3aeac4ccf24b9500e1155023b6677732c7321eb4a8ff2fba82ce767af1450c5"
+    },
+    {
+      "file": "app/games/parks/domain-content.test.mjs",
+      "sha256": "813cb10983bdfad79dc695789e31b375dd2a9ffcb404c7e0ba397d56a8bbbdf9"
+    },
+    {
+      "file": "app/games/parks/domain-lifecycle.test.mjs",
+      "sha256": "f69da1a7677927aa4c658f61d61e7e552454622637a7aeb5af64166ab17b3279"
+    },
+    {
+      "file": "app/games/parks/domain-modes.test.mjs",
+      "sha256": "6bedb6b7377a13372c4e0521d9be3bf47e8ef6511669e2d79d834e90d35be701"
+    },
+    {
+      "file": "app/games/parks/domain-passions.test.mjs",
+      "sha256": "c85dc7be29e7c364efd0f008e3e656ce10b74a8978f44b73ffc5f606485eeebc"
+    },
+    {
+      "file": "app/games/parks/engine.mjs",
+      "sha256": "799cf085e49b3f588306f24863a9efca2d968522819291e52c758a194eb1af42"
+    },
+    {
+      "file": "app/games/parks/game-page.mjs",
+      "sha256": "83e3c3c93f3b33593e7b5ab21725072b2e962f6b98c545f1a8e115234b1024a7"
+    },
+    {
+      "file": "app/games/parks/game-ui-model.mjs",
+      "sha256": "fd101f5293120b6f3ab81c7cfe8fb3768a59c776824e212f833c16324eac57ea"
+    },
+    {
+      "file": "app/games/parks/game-ui-model.test.mjs",
+      "sha256": "9bacafb3fd8db296205c30da98ebe278d711516ed4dac88698cfc04f816874bc"
+    },
+    {
+      "file": "app/games/parks/game-ui.css",
+      "sha256": "a06bca6eb555366c7f342124485a225a4c279bed23dfa2ae8e64101ce56e3826"
+    },
+    {
+      "file": "app/games/parks/game-ui.mjs",
+      "sha256": "3cbc9fba6d24ac3531aa32e8d07d2c472f5f5ee8d10041e7d784b51b18cdfd6d"
+    },
+    {
+      "file": "app/games/parks/page-ui.mjs",
+      "sha256": "dbc748bb875e03c8ac932027ab664475173898b80366c5b3fa7abcc41cd71c4c"
+    },
+    {
+      "file": "app/games/parks/practice-bot.mjs",
+      "sha256": "f523b49aa3da7404020cb6f05827ed3d2ffc01ad89e717d47e34fb5b514b16f0"
+    },
+    {
+      "file": "app/games/parks/practice-engine.mjs",
+      "sha256": "054fa9cd5c3b05cd3dcbe5a6cfc785ecbdcd28b49bdb83d69197315e282f3fa4"
+    },
+    {
+      "file": "app/games/parks/practice-page.mjs",
+      "sha256": "b6c515d2da14616c3413dfe139f0c5b0acdbed66c563ceea27841125bb9ad2cd"
+    },
+    {
+      "file": "app/games/parks/practice-session.mjs",
+      "sha256": "298f9313754d735b5f233ad35be99a7d42220a1733f352e854dcab3805e1852a"
+    },
+    {
+      "file": "app/games/parks/practice-session.test.mjs",
+      "sha256": "bafff9b560f57c21ed35c58a606095104c6a26ddee17f046cf510092e84797b2"
+    },
+    {
+      "file": "app/games/parks/presentation.mjs",
+      "sha256": "9d14193f2cdcbbe18fc96464ae16f3967bd5ace0487232515d0f6ad02175c3c2"
+    },
+    {
+      "file": "app/games/parks/presentation.test.mjs",
+      "sha256": "b3018944749d43aadfada9f0c3b19314f8a55534f0ec723446cba021593d039e"
+    },
+    {
+      "file": "app/games/parks/preview-fixtures.mjs",
+      "sha256": "e4882a40cd468a596bea0abc6ee3c88d1a3b0171ea2b5b237c739f4c125e415b"
+    },
+    {
+      "file": "app/games/parks/preview.mjs",
+      "sha256": "72e572814c2cdd0dc9a1f2def2b064212df8dd775d95b5d56ba1c0cfd7a484a4"
+    },
+    {
+      "file": "app/games/parks/room-controller.mjs",
+      "sha256": "3cc25cf0b85a7b1c0e4361693ab93141c0665898e3b346375d055cd054a14f38"
+    },
+    {
+      "file": "app/games/parks/rules/actions.mjs",
+      "sha256": "c7a7be64902f3b7011560290b151956caf4bc671b488d7735dcdbbaf470a706a"
+    },
+    {
+      "file": "app/games/parks/rules/effects.mjs",
+      "sha256": "8fff1555a0dc87f0009fa0ead4c34924508ac8ad1aaf4d6d48cfbfbca9efe255"
+    },
+    {
+      "file": "app/games/parks/rules/flow.mjs",
+      "sha256": "21ac4d9ba7c59fae00de73757650b6ade20dcedcd9b5683b8d2346d37b177e84"
+    },
+    {
+      "file": "app/games/parks/rules/index.mjs",
+      "sha256": "21d7023fbe427925d68794fe54f0a1d47f1538262803aa5fd2f9d28fc45aa7fe"
+    },
+    {
+      "file": "app/games/parks/rules/legality.mjs",
+      "sha256": "c9a57c4b7732f638a34fa0c4d578f1e373e0ecc2e392904c161cf65fc3e3dc4e"
+    },
+    {
+      "file": "app/games/parks/rules/model.mjs",
+      "sha256": "f97083d4f07b932d796b7501258215da5b8c0c11cebce3a0364eceae7ed047cd"
+    },
+    {
+      "file": "app/games/parks/rules/resources.mjs",
+      "sha256": "36361b5916fe593e1f3dd9c3b54c848ffc76c791d25f695424075065c657bd7d"
+    },
+    {
+      "file": "app/games/parks/rules/scoring.mjs",
+      "sha256": "b23f6aaff4d1d3c393d037c9ab374742603a24d51767a5d74dc537dcc385b820"
+    },
+    {
+      "file": "app/games/parks/rules/validation.mjs",
+      "sha256": "22990727565a87fe840c6e4a35c794263783e54a0290cf2b2c6fbd064a04b528"
+    },
+    {
+      "file": "app/games/parks/styles.css",
+      "sha256": "900d26daf0c6fc292986148065c1751a2af19fd6c61a6689dd0d02bd226d27f0"
+    },
+    {
+      "file": "app/games/parks/test-support/fixtures.mjs",
+      "sha256": "72fe3edea9b071421044d6bc7c9ce95d415ac1b2ed77fb993dbbf2fd680cdcdf"
+    },
+    {
+      "file": "app/games/parks/test-support/park-oracle.json",
+      "sha256": "943bbe88aea21ffabc0a21e5ea667cbf6d1cddd789fc4aed387edb464509f6b1"
+    },
+    {
+      "file": "app/games/parks/tutorial-model.mjs",
+      "sha256": "3ce95f41b229ff842ebe7c0d6ed8baace483fc3b7cd05d88113669cad47376fb"
+    },
+    {
+      "file": "app/games/parks/tutorial-model.test.mjs",
+      "sha256": "007f5d65f8d8801faea08cf7c1cbc060433e69e1a04be5d4f71597a60a2fbaea"
+    },
+    {
+      "file": "app/games/parks/tutorial-page.mjs",
+      "sha256": "00cd25d07a14d8accd5167ce179bc4c9b756cc91cc21928563b75dbfc8e451a0"
+    },
+    {
+      "file": "app/games/parks/view.mjs",
+      "sha256": "af10499e08964b667ccc2156fd772c765615b7ef6585765825cc98aedfa59770"
+    },
+    {
+      "file": "app/games/poker414-2/art.mjs",
+      "sha256": "712026da3fb347db0f40e5dd9c4d5642cac696848039268bb692b9addfd7ef96"
+    },
+    {
+      "file": "app/games/poker414-2/cards.mjs",
+      "sha256": "9a73179886b25e492b8285c5a7f87cdebe6509d2d391994079365d0e747cf33e"
+    },
+    {
+      "file": "app/games/poker414-2/cards.test.mjs",
+      "sha256": "6d36c8c201c1475ed4b319e0385ec32eb5469556553ad84cac5fdccf18c4e94c"
+    },
+    {
+      "file": "app/games/poker414-2/game-page.mjs",
+      "sha256": "ea2002c5775250d37212569ceec3360cae69c333a9234201ada7c5b7c6adfd7e"
+    },
+    {
+      "file": "app/games/poker414-2/layout.mjs",
+      "sha256": "925dbd4cb31534999aa7a9a40c13fc7148222d0631c3226c62c5684330aaefff"
+    },
+    {
+      "file": "app/games/poker414-2/layout.test.mjs",
+      "sha256": "04cd22d3edabaa60d8f53474afdd36c26e3ee24560deff53e35483399f2aa175"
+    },
+    {
+      "file": "app/games/poker414-2/motion-ui.mjs",
+      "sha256": "e4c9c44fda6fc3345af29d710cb3364561b24689adfb22c43465e87b2dbb4f8b"
+    },
+    {
+      "file": "app/games/poker414-2/motion-ui.test.mjs",
+      "sha256": "e509e5af6ec95240e4dd99e1c496cbd60d807c76b148955a021d3039ea41eeb9"
+    },
+    {
+      "file": "app/games/poker414-2/page-ui.mjs",
+      "sha256": "f5ddb24a8f64cbbbbfeffc1775a1f2cf28c7918a7f02b26c303f1983321e0922"
+    },
+    {
+      "file": "app/games/poker414-2/patterns.mjs",
+      "sha256": "dba7053e044cd3c15a0331118264edea7d665f8c7452da40d60689fff82093f4"
+    },
+    {
+      "file": "app/games/poker414-2/patterns.test.mjs",
+      "sha256": "bee47088092fffc93612e56d51ae7fc0f0b204c80f0c5a9567e09b52c78ca1b0"
+    },
+    {
+      "file": "app/games/poker414-2/practice-bot.mjs",
+      "sha256": "915c1f0aed81f3f7cbd761748b8761e784e18a9ba323b596303548bb417af4dd"
+    },
+    {
+      "file": "app/games/poker414-2/practice-bot.test.mjs",
+      "sha256": "e73df38b80269508bc781ea4be50983bfc6d4209d38af8c468d2610f57896536"
+    },
+    {
+      "file": "app/games/poker414-2/practice-engine.mjs",
+      "sha256": "73493a6845e120674a1ae8c49ad1756b0884712b125b3ef75dd62d2d06db6e78"
+    },
+    {
+      "file": "app/games/poker414-2/practice-engine.test.mjs",
+      "sha256": "a8ffbd7b6e098f518cb668e0d4246df67815b5535b3dc90f0f5d0cd99aff349b"
+    },
+    {
+      "file": "app/games/poker414-2/practice-page.mjs",
+      "sha256": "a552237995699cdf356173176b58404f9b8acb359961b97c37299a5288951e8f"
+    },
+    {
+      "file": "app/games/poker414-2/presentation.mjs",
+      "sha256": "0b0f4f8812417bf52d2ab21049bb57a09a1968292a597a5b04cafa2e6497f808"
+    },
+    {
+      "file": "app/games/poker414-2/preview.mjs",
+      "sha256": "0ccd3b57eadf656697fb97baaa9f07b7f0c41a40f96502b53956893ef2ece34a"
+    },
+    {
+      "file": "app/games/poker414-2/room-controller.mjs",
+      "sha256": "6d29c6f1983f401df87b0642d112a1674076840acc6d8d015a6f064c4f37c69a"
+    },
+    {
+      "file": "app/games/poker414-2/rules.mjs",
+      "sha256": "876a870943951c514d50362373047dbc243232368b61372baa75e1c62b1f81f3"
+    },
+    {
+      "file": "app/games/poker414-2/rules.test.mjs",
+      "sha256": "c67fee018d59be17eb461b8e8fa1b8f1ed15a3f05a80ab5f55e85ad12da70a8b"
+    },
+    {
+      "file": "app/games/poker414-2/styles.css",
+      "sha256": "816f7b3c64ac730a6a7600c508581e4642fe3f3389cdd1da1bd942a9d768c15c"
+    },
+    {
+      "file": "app/games/poker414-2/test-support/preview-fixtures.mjs",
+      "sha256": "860fd41545b1f3d6f8a7a47e265bca26b61aa6d8f78a2d9f0a6598f79780c922"
+    },
+    {
+      "file": "app/games/rummikub/assist.mjs",
+      "sha256": "25e6651450bf3f3a2e6549f1b711d4e7d0e479c7bf133af0177489db93a09e92"
+    },
+    {
+      "file": "app/games/rummikub/feedback.mjs",
+      "sha256": "7c87af5377a127e100e38cf8d54df36f0e60ed06d7b71fa70c957b96c3b96c20"
+    },
+    {
+      "file": "app/games/rummikub/game-page.mjs",
+      "sha256": "6dd1ac1998f31c5ab9daa222c87a6e56b5f32880396b894079526c8669dc5d23"
+    },
+    {
+      "file": "app/games/rummikub/joker-assets.test.mjs",
+      "sha256": "43fc019ab2aa15c10193c4049bfe371c11c09ecde6aaaed225e4b01770d587d0"
+    },
+    {
+      "file": "app/games/rummikub/jokers.mjs",
+      "sha256": "ab3842c63afc3512c2214fdcb1d56764cd73ec1c0679f0bba028816341040e55"
+    },
+    {
+      "file": "app/games/rummikub/motion-ui.mjs",
+      "sha256": "8c6c060162f66188f63bebde3f04ed28361de698e25b11b4156a635b2271fe13"
+    },
+    {
+      "file": "app/games/rummikub/motion.css",
+      "sha256": "02489529f553d1e1b5b40c577fb200170ed99e8ce20f4dba3522e7ab9e023d02"
+    },
+    {
+      "file": "app/games/rummikub/multiplayer.mjs",
+      "sha256": "4f2422365a31d30cc1913579a78ceb28fd6ce0afb24f8929c0e1f9fa4cdd77bf"
+    },
+    {
+      "file": "app/games/rummikub/presentation.mjs",
+      "sha256": "7f3ba15110a2eae7183f48a1e2c8406a8c845237548e62999271ecf90a0650c7"
+    },
+    {
+      "file": "app/games/rummikub/preview-client.mjs",
+      "sha256": "10e764bf15846f3823e07a3278c68e1ef620de0ea7fd8afe91680bd65f036b79"
+    },
+    {
+      "file": "app/games/rummikub/rack-layout.mjs",
+      "sha256": "66b047cc91ff854bdf90b0d95c63d4eee1ad70bd9221d40b61d304938ab8a0de"
+    },
+    {
+      "file": "app/games/rummikub/rules.mjs",
+      "sha256": "fc0d2bc07a4d6adc1bf49da41cf135d4350222d8c71b4674be0d1ef0f57105ec"
+    },
+    {
+      "file": "app/games/rummikub/table-layout.mjs",
+      "sha256": "d282513bc5794e3c9ecbcef2c54e6b84a66c06306cdcf33288b7fc0f2182f3aa"
+    },
+    {
+      "file": "app/games/types.mjs",
+      "sha256": "8c9c47ff12fa1d0b3cf281cd0376707b253226c28305778c32a0945f55d42a6a"
+    },
+    {
+      "file": "app/hosting-template.test.mjs",
+      "sha256": "1cb33ae07e366b08da6843381409dc4e057f4cffe9691fbdd50153b45da0c4b3"
+    },
+    {
+      "file": "app/hyakki-adapter.test.mjs",
+      "sha256": "7d313aef7f7d9019296eb9ff1eaf23e1915c45a00f9848b1e01a0e7ba6105eb7"
+    },
+    {
+      "file": "app/hyakki-catalog.html",
+      "sha256": "fe0eeefa91c593654022588f08880f1487596b48a794678797d4273e4a71f7c0"
+    },
+    {
+      "file": "app/hyakki-durable-contract.test.mjs",
+      "sha256": "3a150bd172aaeb71f79ce5ad36ddfa2ada8720aa727ab15e7610dd297a2b4d69"
+    },
+    {
+      "file": "app/hyakki-event-store.test.mjs",
+      "sha256": "2490ef74ff1e2673b1be1c6e97ad6512a8aa885f7317b3fcc661f69ef5a440aa"
+    },
+    {
+      "file": "app/hyakki-http.test.mjs",
+      "sha256": "6bd63ccdb6da0a8d304a2b274eebc8c94f532f399344466f0efe24403a5518ea"
+    },
+    {
+      "file": "app/hyakki-multiplayer-platform.test.mjs",
+      "sha256": "30d41cf6732a931acf057c1f60729a0512799a0d3fc6c6270323e8ece5d6f90d"
+    },
+    {
+      "file": "app/hyakki-page-flow.test.mjs",
+      "sha256": "1277c39871370df71b6591efec1d819f590a56762e0fa90cb5fa1534d656e16c"
+    },
+    {
+      "file": "app/hyakki-practice.html",
+      "sha256": "9e9ca737e5596a84dfb52c5e595f00ab8099dbbcf11e5678681c52573c01c9e5"
+    },
+    {
+      "file": "app/hyakki-preview.html",
+      "sha256": "93182c3ccfce33f5e6aae65d7584b8ae777433bdd60cd53240ec096423ba8869"
+    },
+    {
+      "file": "app/hyakki-real-recovery.test.mjs",
+      "sha256": "d3e9fcdeda62b1571e1f6fce4c21c1a54ad7917b4f0dd8399434103fa1d6ce8e"
+    },
+    {
+      "file": "app/hyakki-recovery-compat.test.mjs",
+      "sha256": "c65d803fb64a057b35f0fce948158aec6c4dd866f097af605033d81ce3cc3849"
+    },
+    {
+      "file": "app/hyakki-server-assets.test.mjs",
+      "sha256": "7b478fd5fe65a7210b7b523fea4be18a2ae0e98be5deb9d20b4acff9d435ed9c"
+    },
+    {
+      "file": "app/hyakki-terminal-clock.test.mjs",
+      "sha256": "e79b9571bcbf6b0f303c26bd6a6624592fc1e0af2e079a9e14700f7cab362360"
+    },
+    {
+      "file": "app/hyakki.html",
+      "sha256": "50b1afb1383bdc2cb0c5c4194681a0f0365662e7e65269c05b9a2e895a6c4d48"
+    },
+    {
+      "file": "app/icons/apple-touch-icon.png",
+      "sha256": "aa88b191499d7e1380e85c2cc01e880ef76e99d529dca486035edffc4e59052c"
+    },
+    {
+      "file": "app/icons/icon-192.png",
+      "sha256": "db9932d6cce94c19c6eaaec5954090ed98e487b3c0d278ce27ab4dedccbf0046"
+    },
+    {
+      "file": "app/icons/icon-512.png",
+      "sha256": "b9f55c7c989b50ffbbbec1bd68b4f25dac7fae199c0e700d50063899e7f43fba"
+    },
+    {
+      "file": "app/identity-batch-client-parallel.test.mjs",
+      "sha256": "2baa08cf63a2cff2df8dd22d110f05dbcbd4938372ed900ff7abe8f856e2e7a8"
+    },
+    {
+      "file": "app/identity-batch-client.test.mjs",
+      "sha256": "84f1b2ad3dfe1fc636050ccb46163520e6ff66faafd9d532423c46249170595f"
+    },
+    {
+      "file": "app/identity-batch-runtime.test.mjs",
+      "sha256": "45c611f218734f95a20b92af40d022705a2150ab8248b042bbff8ce8b699516b"
+    },
+    {
+      "file": "app/identity-batch-settings.test.mjs",
+      "sha256": "3e17c6eaf5fe7ed27ca05c2fdb85c41aded3f1a2bbe09c500fa150e4e11d7959"
+    },
+    {
+      "file": "app/identity-batch-transport.test.mjs",
+      "sha256": "9019648beadff9c11859be50bb540f5df603edc7aef05bde1664ddd2af6cbc78"
+    },
+    {
+      "file": "app/identity-canvas-output-lane.test.mjs",
+      "sha256": "66743852a40cc9f5ef279b3418a54ab9c3cfc7cc67bd9a31d967170bfb2aa8f5"
+    },
+    {
+      "file": "app/identity-chat-authority-output.test.mjs",
+      "sha256": "08056bbd61aaf4a8e9d4d0ca81bfa3ad1ccf59c412c72f6ac29a688ff5773c20"
+    },
+    {
+      "file": "app/identity-check-context.test.mjs",
+      "sha256": "5a3816d5f6b1d713759ac1897438ecca226499a40b69de298265d6deaad1e555"
+    },
+    {
+      "file": "app/identity-policy-client.test.mjs",
+      "sha256": "58909fae65f96b489ec88e6327ff08e5afb4d13caa908bfd1c7c456e0084db56"
+    },
+    {
+      "file": "app/identity-policy-interval.test.mjs",
+      "sha256": "61ee9237ed48f1627b9f41f9fe738b85ebd13889d06099457c36f07b018b377b"
+    },
+    {
+      "file": "app/identity-private-output.test.mjs",
+      "sha256": "047ec6c9ee75e602ee61bf0fa7d6a4fe187bc3542b175ce44913d18cd6d07630"
+    },
+    {
+      "file": "app/identity-session-atomic-output.test.mjs",
+      "sha256": "644eeede4ca55cc205e0b1946780085019c33f3252cbbdec33cfa45893991767"
+    },
+    {
+      "file": "app/identity-session-renewal-output.test.mjs",
+      "sha256": "e7c47e1d9f95e90d03f5afe6dec8f7d9172b86c3fad1f909f81bade9029845e8"
+    },
+    {
+      "file": "app/identity-sse-parallel-preparation.test.mjs",
+      "sha256": "e2c97b2c182ad2a2743571d93288e61681f9307c0e4ec93988a3c1057dda9662"
+    },
+    {
+      "file": "app/index.html",
+      "sha256": "a6bfec350a4f025f315703bbeadc43f6cde08249febc66e56c8a0c276e23aaf1"
+    },
+    {
+      "file": "app/live-store-preflight.test.mjs",
+      "sha256": "c1f5033854457fa591a6db628cb544208b30de196e6a63f20e8784512e0e8a74"
+    },
+    {
+      "file": "app/lobby-model.mjs",
+      "sha256": "42f1dd6ee37e2acee9cc6cf50a55dedac82123d0a111d9faac08f6a9f77ed89b"
+    },
+    {
+      "file": "app/lobby-model.test.mjs",
+      "sha256": "722a7aea69dfcfd91dd96913d0b0a46b36e2289ca4d3d91903a07804fc3fc489"
+    },
+    {
+      "file": "app/lobby.css",
+      "sha256": "b177a7ec792abed6f97f8dfdafe97191b70b220ddd1ce37b57014a4b59a86858"
+    },
+    {
+      "file": "app/lobby.mjs",
+      "sha256": "b77583eb85cb4e7f7c0712b280a857d4791a80c7b6b094bc9da79c223b79dc47"
+    },
+    {
+      "file": "app/manifest.webmanifest",
+      "sha256": "5958bf59a2e4d61fe1c85f1a30819aac58909d17cc94cfdea912acba96aee988"
+    },
+    {
+      "file": "app/match-history-backup.test.mjs",
+      "sha256": "78918430e6ca3133487bd1d56fe07443c9f6f9db5c30497d87b6405b7bae474c"
+    },
+    {
+      "file": "app/match-history-durable.test.mjs",
+      "sha256": "bd3cfcac53a14f039be51153831da3067122cc77606af1fabbc85e3133951366"
+    },
+    {
+      "file": "app/match-history-http.test.mjs",
+      "sha256": "1992edbdfd007f08d3d0ed2e86cb86a3788f67776f287e9de4e4dc35f613cf1b"
+    },
+    {
+      "file": "app/match-history.test.mjs",
+      "sha256": "ba8a75a45e60e018d277fb879800a44745b3a35990bc0dbb3074633b295edce5"
+    },
+    {
+      "file": "app/mirror-score-v4.test.mjs",
+      "sha256": "b0715f79350d706092735768656e77785d856185a3a93842e8f6f268f2256f5b"
+    },
+    {
+      "file": "app/multiplayer-rules.mjs",
+      "sha256": "24c9dd810e4c5b9b77c1848a7fd80ef7bc78919f3c5dffa16230a50583bc6dd0"
+    },
+    {
+      "file": "app/multiplayer-rules.test.mjs",
+      "sha256": "e3653263dfe443bbe713cc817d6c08fdfdd9a3c692b83b840d9aa25a8921cdda"
+    },
+    {
+      "file": "app/offline.html",
+      "sha256": "5f67ba6907b114aa9f3332ed044e3f797ed4d040544d71d210521f78472faaa5"
+    },
+    {
+      "file": "app/parks-catalog.html",
+      "sha256": "c2b3cbd3707c37d22df681bbc08784dd9a600f08cf31795ed34de2496af4f083"
+    },
+    {
+      "file": "app/parks-platform.test.mjs",
+      "sha256": "e66d51ed288160dbb33278c0f8e5c2a94f9c0b26f8bebceba9c24ce59dcb7cf8"
+    },
+    {
+      "file": "app/parks-practice.html",
+      "sha256": "d0ec73087a53016a8b9731cfc648f2bfeb2072386b7a4fb6395e163a0ee53237"
+    },
+    {
+      "file": "app/parks-preview.html",
+      "sha256": "4c282f329b2d698af8959e02becf1a15457cf6cdf0c8b6fff18624cab30d1f29"
+    },
+    {
+      "file": "app/parks-public-assets.test.mjs",
+      "sha256": "4173bf78482b38d90ba6c90cb219838d511fbe01501180b58c56db734f2dda78"
+    },
+    {
+      "file": "app/parks-tutorial.html",
+      "sha256": "0df694437eb3e1cd794e536b8624ac25d5b0a86692f02102b622cab4a4c6f1b3"
+    },
+    {
+      "file": "app/parks.html",
+      "sha256": "793056ef4541d407709e0e717724edb58d82770b87aa1d3e402cd04a02079a31"
+    },
+    {
+      "file": "app/platform-controllers.test.mjs",
+      "sha256": "8a737883737509b43380a6c0dadffed6e67146207edfc753944f497d9ad9c79c"
+    },
+    {
+      "file": "app/platform-extension-contract.test.mjs",
+      "sha256": "2315ca01885d92aaa16eb2814ede05a0a55e3dea302446e3546322b9827efeb9"
+    },
+    {
+      "file": "app/platform/card-room-controller.mjs",
+      "sha256": "b86700c58b705419608fa154645331a5ea38f91f58e864f803808df61c44a22f"
+    },
+    {
+      "file": "app/platform/card-room-controller.test.mjs",
+      "sha256": "c0b72b49759a0fe1afae80919e7addb7787ef710c20f7c70f109d5ce355f7f8c"
+    },
+    {
+      "file": "app/platform/control-geometry.css",
+      "sha256": "94226f58c21c02905edad9b3f359de262eda0c7315bf6a1f80ffd704b40cecc5"
+    },
+    {
+      "file": "app/platform/game-stage-fit.mjs",
+      "sha256": "c90ea897cf0165c09ccaae67f6eb689c728f286f2d99e2bfecad817749e07703"
+    },
+    {
+      "file": "app/platform/game-stage-fit.test.mjs",
+      "sha256": "3036fb16dbc1618064b0cd39b62a2f16a4d4bd958c9142e7a6d2cb1e722d81b6"
+    },
+    {
+      "file": "app/platform/game-theme.css",
+      "sha256": "5e320b6ae24eff24d9fc7ae21dda7793d3bb92af61c1bdac4c8daa86d7568417"
+    },
+    {
+      "file": "app/platform/game-theme.mjs",
+      "sha256": "913c50c563450415dc0baddf15cc97a147c9c1a9bbb14ba3f7c89dd6ecb1da93"
+    },
+    {
+      "file": "app/platform/object-motion.mjs",
+      "sha256": "bf1d498469e6b3bff0feee70cbc60073ae783305dfbe586cd4ddf9f98043c9bb"
+    },
+    {
+      "file": "app/platform/object-motion.test.mjs",
+      "sha256": "3b1491a6f4f801846dd60b343a67931b4c221b29d57d3e59139179e4e142d38b"
+    },
+    {
+      "file": "app/platform/practice-navigation.mjs",
+      "sha256": "46b3af9d0d8a72c0e26dd8b6b657772e41ed94b963e77bc35eede0a859546422"
+    },
+    {
+      "file": "app/platform/room-action-intent.mjs",
+      "sha256": "7c940c561a5b7779cdf6e470e75fb3c590c9749164925d4cf30307eb39d63e0a"
+    },
+    {
+      "file": "app/platform/room-audio-controls.mjs",
+      "sha256": "47929985b0e0f0c39fc3937b4475eec1d915d4aaebd1a9ebd42887e340e5deee"
+    },
+    {
+      "file": "app/platform/room-clock.mjs",
+      "sha256": "9cfdb08bde3b881440ad760969c24d26b460642a86014d92d417c98449f2b0ef"
+    },
+    {
+      "file": "app/platform/room-presentation.mjs",
+      "sha256": "4ffc880d69dc27c81b66f31db76a0c10cb4f014b7594a61c945de6c4ef718791"
+    },
+    {
+      "file": "app/platform/room-session.mjs",
+      "sha256": "e641618f2125d635287c73fc9049ac6d2bb908f4b4b96f2ba81df603d0f1286c"
+    },
+    {
+      "file": "app/platform/room-settings.css",
+      "sha256": "d566cb502139819b6ab00a16c2498d941d34e8e9c6130cc1ae2f95fe3e68846f"
+    },
+    {
+      "file": "app/platform/room-settings.mjs",
+      "sha256": "28c370869a3ae73d2162cf95f4c1e503706a422c9fa44f88b3feb3e619003811"
+    },
+    {
+      "file": "app/platform/room-viewport.mjs",
+      "sha256": "6f7cdba124a18c44d9cb74a1c18ff8e95ff652ba9ddb9f81c8e800c53ed76dde"
+    },
+    {
+      "file": "app/platform/room-voice-controls.mjs",
+      "sha256": "37a6b8faed023a0c92be95269c8caa0c36f6bd50453bd769796fea63be2ee5d0"
+    },
+    {
+      "file": "app/platform/room-voice.css",
+      "sha256": "49e12436594f5f2e198ac0e7939f4777fbae778da6c89be9bb26054b78caabbe"
+    },
+    {
+      "file": "app/platform/room-voice.mjs",
+      "sha256": "88c3adfeb6388ef8f0e014763bf8c2245e402c5552dc82cb0f04b60f4dc9d87c"
+    },
+    {
+      "file": "app/poker414-backup.test.mjs",
+      "sha256": "137566719415cbefe56bda154795b68f7d0edee2de09e69db9f8f7ee26dc4f6f"
+    },
+    {
+      "file": "app/poker414-durable.test.mjs",
+      "sha256": "7f588e9ea093e0a8c18e37b0c707e2d93451912a4a0c2f4da7efd889dd687727"
+    },
+    {
+      "file": "app/poker414-history.test.mjs",
+      "sha256": "605d9d12be9d3af0c6d2660e1b2adba7afc3776229275016153c151fece459bd"
+    },
+    {
+      "file": "app/poker414-http.test.mjs",
+      "sha256": "44715c0afff8b250ed294274a6f817eb664b94bbba25843663d9c396860059d7"
+    },
+    {
+      "file": "app/poker414-network.test.mjs",
+      "sha256": "4cc9b1bb04ef93f4213e7b878fbbb2ab1596bd8c18e6d83a2b92c653e58d0b27"
+    },
+    {
+      "file": "app/poker414-page-flow.test.mjs",
+      "sha256": "138a45ac6cd5d263acd86478e747c4d812303bf51c58afd1e8a43f775e98b613"
+    },
+    {
+      "file": "app/poker414-page-ui.test.mjs",
+      "sha256": "bab0266b18987e19667c967731c745968d4150a75831b691baa40c4114226320"
+    },
+    {
+      "file": "app/poker414-practice-entry.test.mjs",
+      "sha256": "bcb28507bc8af91682526a3545fc4cd6a6bfa7fb5dcdeaffe632f22f5d57dc9a"
+    },
+    {
+      "file": "app/poker414-practice.html",
+      "sha256": "ae1b7af30bab7474430276271560bcf1e683aedd5d7aad7ceb3468a03cd9a19d"
+    },
+    {
+      "file": "app/poker414-presentation.test.mjs",
+      "sha256": "761f25f5d7aa3c3feb28fad835c4f06974e743cc3ef83252aa78b5cabaa5bbdf"
+    },
+    {
+      "file": "app/poker414-preview.html",
+      "sha256": "bd35fd4f3220748542113e2d644f409c5d81fdb9407d652958ef899e5286da70"
+    },
+    {
+      "file": "app/poker414-release-recovery.test.mjs",
+      "sha256": "8f31b16e4a0449b805df523f6d76462bd05d1c2826ff5cef3b83c8bc57a2fbca"
+    },
+    {
+      "file": "app/poker414-room.test.mjs",
+      "sha256": "e3e89c721dff0f13e122a80f861450db633d1d7e07e2b7406983dfcb96ef5957"
+    },
+    {
+      "file": "app/poker414-scores-http.test.mjs",
+      "sha256": "8f6e6f277d5dd19f526b9745c6c85c0916c676034d3e10572be2d683fd8d21f2"
+    },
+    {
+      "file": "app/poker414.html",
+      "sha256": "4c277e596ec50886d0d19c5fa945ee5a0311b0d15250ad23f191cb67a85bd268"
+    },
+    {
+      "file": "app/practice-entry.css",
+      "sha256": "d9712a4717c33d071d15e4b5cb1fbc6c6e30f81643f78ce1c9fb2f6d95146fdb"
+    },
+    {
+      "file": "app/practice-hub.css",
+      "sha256": "255fe5d1b51ccb753a5409b06976865c2ff0016f6d1ac3fdda551df632b486c0"
+    },
+    {
+      "file": "app/practice-hub.html",
+      "sha256": "d44779e0798cc8daccf90d61db37573d6bf3414cb3176332e7201785c761dfba"
+    },
+    {
+      "file": "app/practice-hub.mjs",
+      "sha256": "13c026de2111aca27dc2411e03b5e8e9fc5552c9b522b83e624571221dbdea56"
+    },
+    {
+      "file": "app/practice-hub.test.mjs",
+      "sha256": "20ffcb9323b159f019f5eb756b3ee0e8d3c4c7b68c1f66472c6d3355709941d7"
+    },
+    {
+      "file": "app/practice-navigation.test.mjs",
+      "sha256": "560db5b6fe23e25b408b5b5afc5c6c82801c40e685f48bf1acd5c53bde22d942"
+    },
+    {
+      "file": "app/practice.html",
+      "sha256": "2d7633547d75312f6ace03d0dd131fba3b804b63342d7dac019fbf4188e50456"
+    },
+    {
+      "file": "app/presence-lifecycle-contract.test.mjs",
+      "sha256": "8c5340f2bfa86bfe1c44005bc64ac5f73d722ac23cb286137d9dde37518ee370"
+    },
+    {
+      "file": "app/production-activation-order.test.mjs",
+      "sha256": "2123de3828d9102e13a47f4ff89a4fd423e97190196c639f9c4f067c52686753"
+    },
+    {
+      "file": "app/production-runtime.test.mjs",
+      "sha256": "854208006f45b0ac310faf7d696c815d2e000efc4f013eee5ce3a9da70cd1640"
+    },
+    {
+      "file": "app/proxy-smoke.test.mjs",
+      "sha256": "3d1d8d1830ed9cf949d2c71cfeccc4bdebe8320efbb0992239bc36d902f3e392"
+    },
+    {
+      "file": "app/pwa.test.mjs",
+      "sha256": "3489c4c06d175de22da2f51b1f8f1039b299c0e092cf097e7cdeb8f517b71d6f"
+    },
+    {
+      "file": "app/rack-layout.mjs",
+      "sha256": "95e6267f7cc974c7e48f16db1cd44563d47f69edd3694311d8739d4098917709"
+    },
+    {
+      "file": "app/rack-layout.test.mjs",
+      "sha256": "866efbb1f9619621ebddea759b070ed4d48df8740cf4686cc470912dc11ff876"
+    },
+    {
+      "file": "app/release-compatibility.test.mjs",
+      "sha256": "39a8244411b846466c50c01634929e63482fc182c68ea6240608ab55b75f66e1"
+    },
+    {
+      "file": "app/release-pack.test.mjs",
+      "sha256": "df09fd52a540fde6321a7bcdb9972afe0be537f5f6540db0e3834c03916414bd"
+    },
+    {
+      "file": "app/release-smoke.test.mjs",
+      "sha256": "9fc17e0c31a7161d1629b4f1b625dc5f63a5d4ee382e3b95748155b72914176b"
+    },
+    {
+      "file": "app/room-action-intent.test.mjs",
+      "sha256": "f7615dbe460eac3ca0fbc2a56694e532f3c765438ef3e44bbd16c007f4e54226"
+    },
+    {
+      "file": "app/room-authority-context.test.mjs",
+      "sha256": "38ae81a5d44fe8627ca6fca7a95e1ca06ecae06f6b8c2ba1f2f13adcf07bb52b"
+    },
+    {
+      "file": "app/room-chat-alerts-ui.test.mjs",
+      "sha256": "3c52e84815ae2d985e1f6e25712e461ae995b16e2f7420d5bec28f4d4db3a12b"
+    },
+    {
+      "file": "app/room-chat-authority.test.mjs",
+      "sha256": "51a370df3b3c9626f919033bcd7221f9102a85e0292946c45db0a8b8a883dcb4"
+    },
+    {
+      "file": "app/room-chat.mjs",
+      "sha256": "1659e862413f2fea5cfb6235f7644e749041697f3e738d8e1b4c8343b0e25c90"
+    },
+    {
+      "file": "app/room-chat.test.mjs",
+      "sha256": "5d7f9a53a6bb73ee2f71070bcda4215ff4fbc494e4d8cdde68422950cb1c8b2e"
+    },
+    {
+      "file": "app/room-client-deadline.test.mjs",
+      "sha256": "591e3b6b29de18bf0048e3f361fc7a73b85547626a2f4a63ca93ddae4eeb3e96"
+    },
+    {
+      "file": "app/room-client-stream.test.mjs",
+      "sha256": "ef631be3cddb8293136c50a99fb93e352d242000c775a2daa9f88de7e99ab2af"
+    },
+    {
+      "file": "app/room-client.mjs",
+      "sha256": "1340693cec781b6e3d68007b942240dbd11e79e4e0cbde8628291bc9b0aa8068"
+    },
+    {
+      "file": "app/room-client.test.mjs",
+      "sha256": "1ec63fa741ac8603b052350946adb598424e46521e0215f6fab7bf4371a10952"
+    },
+    {
+      "file": "app/room-invitation-output-fence.test.mjs",
+      "sha256": "cab65b8e648b48448619bb6bb9d0e6371dc12003f000d8190f9cbd1ed9846fb1"
+    },
+    {
+      "file": "app/room-output-fence.test.mjs",
+      "sha256": "c76b5551e04b32bad7fe630417dce47cf5e58a3d8506f3751ca4da1f0519652a"
+    },
+    {
+      "file": "app/room-preview-client.test.mjs",
+      "sha256": "6061cd6976c527e7a2da8202a4af3e225b0ee0e38f0405fae2db528620dfb8f2"
+    },
+    {
+      "file": "app/room-preview-http.test.mjs",
+      "sha256": "45bf313dc2e80ad1d3e154e4fc1c027e6b695f58d8b2b0a2135f5c02187af317"
+    },
+    {
+      "file": "app/room-preview.test.mjs",
+      "sha256": "5552d970299861d2d1f525177764574914a8868b08302cbad950f43e0820c379"
+    },
+    {
+      "file": "app/room-settings.test.mjs",
+      "sha256": "a66d99ef606bc840f39efdea4dec279b303e0cc543e2ed20549883eb34abaf22"
+    },
+    {
+      "file": "app/room.html",
+      "sha256": "cf7e5274b31e863482612a80b426ec746ab95e147f1de2361022b16101c1a9b6"
+    },
+    {
+      "file": "app/rooms-lifecycle.test.mjs",
+      "sha256": "5cb03c26d97ff09e01307b2887d31872c30e3ca4b661b661f2f5ccc26be00805"
+    },
+    {
+      "file": "app/rooms.mjs",
+      "sha256": "eb1a755c6fd4823581e50bc723fb3bacd99888a196bb4a9121051c87d29f83be"
+    },
+    {
+      "file": "app/rooms.test.mjs",
+      "sha256": "05d33271cf9ecebf42b62306a4b133b50e3cc42e21f2e8c3c52bf65c69054d36"
+    },
+    {
+      "file": "app/rules.mjs",
+      "sha256": "99d4e72c919dcb2432b7c848de6e47cf8da0462679938582c56d81bca0b4f502"
+    },
+    {
+      "file": "app/rules.test.mjs",
+      "sha256": "660dc7836cf277d852032a0cbfdeb9efc8a8eabb5ce9d6ef3c3c00e5ec525664"
+    },
+    {
+      "file": "app/rummikub-assist.mjs",
+      "sha256": "c9793eed50df089786fc489fcb71d3655ca949758921fad6194610edca891e27"
+    },
+    {
+      "file": "app/rummikub-assist.test.mjs",
+      "sha256": "5ec89fca43d17febaeb42380c556dc952a67be7a632292d39d5f394d6b9e3b97"
+    },
+    {
+      "file": "app/rummikub-experience-ui.test.mjs",
+      "sha256": "c74be65ed68a2cb4529d1ad37d82978b3fec3915ab6575082ad1dae444cd8b88"
+    },
+    {
+      "file": "app/rummikub-feedback.mjs",
+      "sha256": "08558ed9c8a819c1dbcc2d83033a6893d5ca075f6e21635966b5ac8ffd8ad95a"
+    },
+    {
+      "file": "app/rummikub-feedback.test.mjs",
+      "sha256": "6aee77cef247ca9421e47164969e48f46973e0964a87a0481e053cb82a2dd430"
+    },
+    {
+      "file": "app/rummikub-preview-client.mjs",
+      "sha256": "53955c76d84252cecfaf5f52b944cbf94da1dbccfb2bdf38e813f6b33d277923"
+    },
+    {
+      "file": "app/rummikub-preview-client.test.mjs",
+      "sha256": "ee5e24a64a0c101aa4fd728102784f7acbaaaeecb8f55563c78e51946413c03e"
+    },
+    {
+      "file": "app/scheduled-backup.test.mjs",
+      "sha256": "39637c93e233f9e4ab40abd187504f2720b2dc5093af2d90ff8ef442fb5bc4f8"
+    },
+    {
+      "file": "app/server.mjs",
+      "sha256": "21d00d36295f1bcd22329e3d7bbf10afe6d437d9627d5413cdb9608c16d6c8c4"
+    },
+    {
+      "file": "app/session-lifetime-audit.test.mjs",
+      "sha256": "96ad4676e54dda108ebbc3c676c70e8c92fa29875f3d7db7ce3e94e1cb063fa1"
+    },
+    {
+      "file": "app/session-output-atomic-classification.test.mjs",
+      "sha256": "be2cd02cd92bc8aaac8917dbe016d32c5af1855e25157a0b09396d42df6ad3b4"
+    },
+    {
+      "file": "app/session-output-version-conflict.test.mjs",
+      "sha256": "aa58af42b13a62df976d89d1b945aa40c9c36c0c5926bbfa080efb1c3f8a0807"
+    },
+    {
+      "file": "app/session-race-recovery.test.mjs",
+      "sha256": "c85d5ddf02b082220bcef095a91881070aec3c2a1865a60e075144909b113e7c"
+    },
+    {
+      "file": "app/session-retention-v2-http.test.mjs",
+      "sha256": "5979635d9f4c5513159cbf9e743cee96f73b934409bd2e5b7bb74b932d3366f4"
+    },
+    {
+      "file": "app/session-retention-v2-provider.test.mjs",
+      "sha256": "1598ff2cd71bb4b44df434e22b7383e7deff575b18eaf3a5ec0df7c0b8fd95e4"
+    },
+    {
+      "file": "app/session-retention-v2.test.mjs",
+      "sha256": "fdf6f5f695ca558c1f1b678a4cb22c866e21d7ea745b7b5f851afd818bf69594"
+    },
+    {
+      "file": "app/spectator-platform.test.mjs",
+      "sha256": "c08a19bcb467c5d048c48867973237e8e6a79b54dc43d17609f6629179501a17"
+    },
+    {
+      "file": "app/storage-many-transaction.test.mjs",
+      "sha256": "0becb24c8810249d7347cd6595a10e5fe5c35ce6f36b3b6f712bd322efd28443"
+    },
+    {
+      "file": "app/storage-output-guards.test.mjs",
+      "sha256": "96d7d035b844da7f0201e14f5e9ea19426fd23a79e5f1befd730c9c11e98ccc8"
+    },
+    {
+      "file": "app/storage-v1.test.mjs",
+      "sha256": "84622848cadf08a1c627e8c2a7bd59e85e1b70ee3339e4903092a6f265967915"
+    },
+    {
+      "file": "app/store-backup.test.mjs",
+      "sha256": "2576b0d45775d5cc017c1f6b9295f773d9653ec90ff78564b20039434842ba5e"
+    },
+    {
+      "file": "app/stream-backpressure.test.mjs",
+      "sha256": "a243b242fb91fff56024437d926dc749b3919fc3012424bb02ee63c8dcee80bf"
+    },
+    {
+      "file": "app/styles.css",
+      "sha256": "6f824f8078c5455cf6d8e066d8509b98feb861b94270d2bc69df9a5c3e0d8057"
+    },
+    {
+      "file": "app/sw.js",
+      "sha256": "53fb3e789144f8ba0a732169b1ac0b7532f8d1855ff6632ce0bf2842234bdfde"
+    },
+    {
+      "file": "app/table-layout.mjs",
+      "sha256": "120e96b247c5e6db1c10f69215cad924a472bbfd3c62cd3dd0df886ec1518f27"
+    },
+    {
+      "file": "app/table-layout.test.mjs",
+      "sha256": "d8b836b4e9b4ee9968bcfdaa61586640791994b5ea974022a503f3c9b75b49f8"
+    },
+    {
+      "file": "app/test-support/drawing-page-dom.mjs",
+      "sha256": "1161f5b4934423e597bb2d592e47d82c1e0fc2ea0ee0398e836f3f6fcf5bf6b7"
+    },
+    {
+      "file": "app/test-support/flying-platform-worker.mjs",
+      "sha256": "dcb2ab336512a3908206fc0b562785e4ac294b390201d305136fa2b3d2fd5c6d"
+    },
+    {
+      "file": "app/test-support/hyakki-http-fixture.mjs",
+      "sha256": "256a3b702018bd6619a0699115f1cf5a7c33aa9c0d4e2d3f3561efd82923ec71"
+    },
+    {
+      "file": "app/test-support/poker414-release-recovery-worker.mjs",
+      "sha256": "9f0ce799a595ce5b12265129b5d6e226c9a4683164e4564a2832aae3970568da"
+    },
+    {
+      "file": "app/test-support/runtime-source.mjs",
+      "sha256": "74259256c005591896d6eadc632f8470dda98068550354be1f2030e2a478ea03"
+    },
+    {
+      "file": "app/turn-clock.test.mjs",
+      "sha256": "b4fa78d8432b52a1bc27b7a78a8821f4308605acc96365244680846aead97585"
+    },
+    {
+      "file": "app/twist-independent.test.mjs",
+      "sha256": "d8227b7f6833e1c7101471b1255d045686b1a28c3f9e446b1c9dd9d1278d6c1d"
+    },
+    {
+      "file": "app/twist-rules.mjs",
+      "sha256": "cc4c3512e7d9fdc7c870bb6a3007b79a1eff95ddc5d54bf9e28785a5474d5789"
+    },
+    {
+      "file": "app/twist-rules.test.mjs",
+      "sha256": "63f34e4701ef16b03d2cc22647197d466006bd47c2feb6f204b6d5db779569bd"
+    },
+    {
+      "file": "app/unified-http.test.mjs",
+      "sha256": "ffbbe298244284fb5c5ca841510341ab70f2a8e619dec1bdd1dd1961fc47eb4a"
+    },
+    {
+      "file": "app/vendor/livekit-client-2.22.4.esm.mjs",
+      "sha256": "13dba7e174d59892a6cd8f0647fc132fe56da4e065c60d7bd7aaa3ce15009d54"
+    },
+    {
+      "file": "app/vendor/livekit-license.html",
+      "sha256": "6548ab9f0f0416b88b9c4b63e2617c42867a31091ff2551f0e8f832e5087ced7"
+    },
+    {
+      "file": "app/words.html",
+      "sha256": "2b980baf5bb448b5ca9717a61db7c4c418c6ba27398713dfac5b90ce8d02d912"
+    },
+    {
+      "file": "CONTRIBUTING.md",
+      "sha256": "3ddbbf03739615e9cc97d411eb7942d80f183bc896507754be7c33613b03d139"
+    },
+    {
+      "file": "dist/game-room-d82c55968aeca566dc99.tar.gz",
+      "sha256": "8dfda4525ad92975247dc6ac337342f04a336b1f508c15a4516ff1bb0738730b"
+    },
+    {
+      "file": "dist/game-room-d82c55968aeca566dc99.tar.gz.sha256",
+      "sha256": "e2180a5aac850daad70a67c274f8cdcb419f22dfd9ca53f28d6933730662b43a"
+    },
+    {
+      "file": "docs/architecture.md",
+      "sha256": "30f20ea185b24261a1717cd96159b5a04d1bdb931b9d50c282b76f1dca354061"
+    },
+    {
+      "file": "docs/assets/draw-and-guess-transport-experiment.md",
+      "sha256": "d2ecff1bbdb1c93748b9c6ce46829e9dd3ef210276633d47d2a118524ec36786"
+    },
+    {
+      "file": "docs/assets/draw-and-guess-wordbank.md",
+      "sha256": "05cfaf9d8efd3fd497ba98da459a9f017b6052ff3f8252b3c715add5b22c7a64"
+    },
+    {
+      "file": "docs/assets/flying-chess.md",
+      "sha256": "de950695b9c8f889e1b93aec4198e207d70957ff17c761bd765a5f124916db72"
+    },
+    {
+      "file": "docs/assets/hyakki-v1-prompts.json",
+      "sha256": "83aca2348348e3a88eb069015cbf6de67b8ed3ba4ed624450a4e3c12bd2a88a1"
+    },
+    {
+      "file": "docs/assets/hyakki-v1.md",
+      "sha256": "60f5befe1696a3d2ac8e3a0cd8c43f7ee484473801dbf909ebb641cb80baa60c"
+    },
+    {
+      "file": "docs/assets/hyakki-v2.md",
+      "sha256": "5664a31e962d472c0979b17bd9a302fc5faa9efbdd1bdc69e6bce12fe1cca15f"
+    },
+    {
+      "file": "docs/assets/jokers-v2.json",
+      "sha256": "85fc3aca7742499f45933f4214f6b5fdcb450cc124df387d9d487fdb8233759e"
+    },
+    {
+      "file": "docs/assets/jokers-v2.md",
+      "sha256": "ed6b88d6a87051474e920a1055269a444efe318be0515db4d2984b36a7d8a47d"
+    },
+    {
+      "file": "docs/assets/parks-v1.md",
+      "sha256": "f49667c673e121b8f6d032578cc10d46009ff4180f59a9fb74035283f8a3fc5d"
+    },
+    {
+      "file": "docs/assets/poker414.md",
+      "sha256": "67e2b95fefbc74ffa7f1845534681954ace2a1e0b28bbfcd6e37fc843446209f"
+    },
+    {
+      "file": "docs/assets/samples/flying-chess-step0-preview.jpg",
+      "sha256": "20f6d4314bfe880913b49b23471a24750b6c8027d7069a3ad163e62119fb8218"
+    },
+    {
+      "file": "docs/assets/samples/flying-chess-step0.svg",
+      "sha256": "f31e2c7fd313ed87072dc67c295146cd2ac1764362b215c27c683259f1deae14"
+    },
+    {
+      "file": "docs/assets/samples/jokers-v2-preview.png",
+      "sha256": "be860aebc6a1385a7f66b93056e3efd5951595afbf61e4067992b3d5f010f184"
+    },
+    {
+      "file": "docs/design/from-game-name.md",
+      "sha256": "7454b7e9b127853f03b064113cbd6d933cf3d0ab46d598e2e378d7d02349a898"
+    },
+    {
+      "file": "docs/design/game-design-template.md",
+      "sha256": "a3839c1b61238bdfa973652db900afe822f73b65b0e4721dd65483da074c3397"
+    },
+    {
+      "file": "docs/design/gameplay-experience.md",
+      "sha256": "789da660e24ac03806ad981d87d014e6f915efd4bf2bf1301eb852e40cbbfb81"
+    },
+    {
+      "file": "docs/design/games/army-flip.md",
+      "sha256": "76a7cf64ca0440ecd9e141ae4e82c50e4e382c3adc2bc248580d50e535a44ece"
+    },
+    {
+      "file": "docs/design/games/draw-and-guess-wordbank.md",
+      "sha256": "c44bd186e4727ee6fac351973a58a204b15a06c403eb1f14152b32652e5d856d"
+    },
+    {
+      "file": "docs/design/games/draw-and-guess.md",
+      "sha256": "52fea4773bad9a9d7c7fdd894a7aa76f70eed25f5e12dc71691c1e72e1f0b718"
+    },
+    {
+      "file": "docs/design/games/flying-chess.md",
+      "sha256": "5d623f88abcf0c8b88ced81d1eabe4033b02785f0a10cd5c17ba84a72ca4732a"
+    },
+    {
+      "file": "docs/design/games/poker414-1.md",
+      "sha256": "a9c362695be969acb0d336ce8e620e9218d98645c3953f3f95810dd5d853096f"
+    },
+    {
+      "file": "docs/design/games/poker414-2.md",
+      "sha256": "65e7ce369868e9606aa4c1c2111b3fcf85b6c1ca2be213555ebb7fd22005ac31"
+    },
+    {
+      "file": "docs/design/games/rummikub.md",
+      "sha256": "f636662ba231eba4d61b954197ce72ca7d2b8b3d1112d66a9571e581c97653a0"
+    },
+    {
+      "file": "docs/design/lessons.md",
+      "sha256": "752b6292e57236ee13e392c9b152f50108fb39daf574585c021c740ad047ce7b"
+    },
+    {
+      "file": "docs/design/platform.md",
+      "sha256": "909152ea9703c060535605420e2b2daf4325246034f775dc1ca5f3dcc3c47e7e"
+    },
+    {
+      "file": "docs/design/README.md",
+      "sha256": "3b9c24bf40646cba36fd6d3d548040cbdf7ba59a965658bdb40ca727a6cf312f"
+    },
+    {
+      "file": "docs/design/reference-notes.md",
+      "sha256": "f1b823a8417a7d0f92783a6bfb696ff888c3dc2407661c618adcfb4c9926eced"
+    },
+    {
+      "file": "docs/design/resource-stage.md",
+      "sha256": "8f39beb29f6f6d6b21aba124c5adbc2c002d825d4e58bd3eeb8f7dcf745f029f"
+    },
+    {
+      "file": "docs/design/room-layout.md",
+      "sha256": "fd8923fc236f19926fff4c463b88976cb4eb23e87b29ff3764dde0845ded1828"
+    },
+    {
+      "file": "docs/design/templates/card-definition.md",
+      "sha256": "2aebd65679089f16c05cdc5e6bacfa9d036fbe1ffcede475fccfe69f5c0aa516"
+    },
+    {
+      "file": "docs/design/templates/fixed-deck-game.md",
+      "sha256": "589b9ea9d9be6865d3f431c7f422b6182fd198457ee9d30bfa6a593655f783af"
+    },
+    {
+      "file": "docs/design/templates/tabletop-game.md",
+      "sha256": "1de0738522213d7c09eadec8b2a728abcd56dc06b1806edf5fd9520f54febe92"
+    },
+    {
+      "file": "docs/development-drawing.md",
+      "sha256": "7e5ad46b47e66d70e66ae83ead1629b4eeb1fecd8ededd2c292422555ab2f3aa"
+    },
+    {
+      "file": "docs/development.md",
+      "sha256": "3ab104eab1fe50e38f1429f2d046ecb27656eff0528824a404eb337dd3b57226"
+    },
+    {
+      "file": "docs/plans/game-implementation-plan-template.md",
+      "sha256": "9ad5f74e486200ec4f5be30fbd515ca9a625641d301fad03aee725a9665a1784"
+    },
+    {
+      "file": "docs/plans/gameplay-experience-v1.md",
+      "sha256": "357752d606767e09a21275ecd6af519240da61f0c94fd73fbfe0f74fd79dc2b7"
+    },
+    {
+      "file": "docs/plans/hyakki-trading-v1.md",
+      "sha256": "e67ac7bc46ba9c1a2220f455a813201b215f1c92e6bd2db008e85cacf7c73bcd"
+    },
+    {
+      "file": "docs/plans/parks-v1.md",
+      "sha256": "a9bcebc0c1a9cbc4aa11e46a434822d6f3d7f55e4a6e34925c2ee25d34e3d91e"
+    },
+    {
+      "file": "docs/plans/poker414-2-v1.md",
+      "sha256": "99abcf96dfe7df405c73c45285f072d881b1d2255d80e5e5485ffc709726a19a"
+    },
+    {
+      "file": "docs/plans/viewport-adaptation-v1.md",
+      "sha256": "f13f0f5f7c41abd7aacc1630690538d78272ac7ec8fe7a0910ee4e26d881f557"
+    },
+    {
+      "file": "docs/proposals/hyakki-trading/card-copy.md",
+      "sha256": "fe59ce38bc768c6ccb06462c2c87398484a463fa33b7915f8ca20c7a19b230a8"
+    },
+    {
+      "file": "docs/proposals/hyakki-trading/card-resolution-contracts.md",
+      "sha256": "7f86e9907c0c8238b63b9cb07e13930ae80d8f34b54a3e7da6f2792c0a0f2657"
+    },
+    {
+      "file": "docs/proposals/hyakki-trading/cards.md",
+      "sha256": "33496a8feb1e1b440dc1c05f2fc466884c5b20ab2986a7e23f827cadec33a4e6"
+    },
+    {
+      "file": "docs/proposals/hyakki-trading/current-rules.md",
+      "sha256": "5781f7b4babe0bdd214c5ad0d89babe7163fc5549f031a91d411c092776225fd"
+    },
+    {
+      "file": "docs/proposals/hyakki-trading/current-walkthrough.md",
+      "sha256": "59166c11996c2a428ad65d6f1e74934eef3f3e1e13160bb40447b5ac3abaaa42"
+    },
+    {
+      "file": "docs/proposals/hyakki-trading/decisions.md",
+      "sha256": "e4dbe0a3fd432f648d2669c039702138310ff5563996f1ef42892745a5adb928"
+    },
+    {
+      "file": "docs/proposals/hyakki-trading/digital-rulings.md",
+      "sha256": "7dfaa6a4b076ad01263974f212ec03248dcd0b2a51f61e9132052c129790eea1"
+    },
+    {
+      "file": "docs/proposals/hyakki-trading/implementation-contract.md",
+      "sha256": "68735dd98ae010aa6f471462ee734bd4e4e7fce6dcd3f2955e06aea07148f09f"
+    },
+    {
+      "file": "docs/proposals/hyakki-trading/physical-card-catalog.json",
+      "sha256": "8062610b6c345f961fd6a1900f0481292ee598e8aa68754bf1d1625180540e97"
+    },
+    {
+      "file": "docs/proposals/hyakki-trading/physical-card-catalog.md",
+      "sha256": "feda6767e247d814c6e515cda398d5c562f04c8687d0ac011fc6692c0dd42d6a"
+    },
+    {
+      "file": "docs/proposals/hyakki-trading/questions.md",
+      "sha256": "653bac6196c17d7554ce454514e227c836e5d9159c3bbdbd1d1c94af57aec1cb"
+    },
+    {
+      "file": "docs/proposals/hyakki-trading/README.md",
+      "sha256": "cbed0c01b3a8a4bcc520ba2838a224e8694db17a250a533d33b3ea76f94c7f83"
+    },
+    {
+      "file": "docs/proposals/hyakki-trading/walkthrough.md",
+      "sha256": "ad1bb97547ec2e4c01189ac33c5247fc175652d1ec64766ab37613ba9acae7ef"
+    },
+    {
+      "file": "docs/proposals/parks/camping-pairing-evidence.json",
+      "sha256": "be101e0fc10ec3cd292a4ca98297275d1faa8b027109cf51282fbb2ef43edc89"
+    },
+    {
+      "file": "docs/proposals/parks/camping-pairing.md",
+      "sha256": "9ed5572549594945a59c3342c3b67aa64f94bdb7ee588f03a5d08a3b2301a164"
+    },
+    {
+      "file": "docs/proposals/parks/component-catalog.json",
+      "sha256": "86562380f7c6dc506f2485832b87c4173fbd216e602aa25e8c603c22307be2e9"
+    },
+    {
+      "file": "docs/proposals/parks/components-list.md",
+      "sha256": "0e569b5e166230b63f2afcc6738e20fa252104dc2b8af373066443582b794404"
+    },
+    {
+      "file": "docs/proposals/parks/content.md",
+      "sha256": "ece44d6e0200a29a18f8fc35573498ad60122dcb0ccb4d77eaf540a23ca53888"
+    },
+    {
+      "file": "docs/proposals/parks/decisions.md",
+      "sha256": "46333f3bb03d11849786cacd347cf745feef37e2bb5fe39baec5e19142d22812"
+    },
+    {
+      "file": "docs/proposals/parks/design-checks.json",
+      "sha256": "50bfe00142127ebb8f272d7e8f0c088d49e98cc89f7db3837a9f954056680cc2"
+    },
+    {
+      "file": "docs/proposals/parks/functions.md",
+      "sha256": "337950813acef4c42d87baabeedcd6e8f8ee21fc8835e5ed3af2eeba7d30269c"
+    },
+    {
+      "file": "docs/proposals/parks/independent-review.md",
+      "sha256": "50572dc4311fab97aacbcad53105fc307744c22ce574f5729579848ec73aeea9"
+    },
+    {
+      "file": "docs/proposals/parks/modes.md",
+      "sha256": "bc747208bb86b9c978af346914ae9fe107189598c43c83274c2057fdaf542f28"
+    },
+    {
+      "file": "docs/proposals/parks/optional-catalog.json",
+      "sha256": "cf539a1f7cf967a240a742cc88769834dd995288f37e0fb2470c48f407e848da"
+    },
+    {
+      "file": "docs/proposals/parks/optional-components.md",
+      "sha256": "186d013543ae01292fe6ca21c068602f181097ab66442d45a8b975c30e791630"
+    },
+    {
+      "file": "docs/proposals/parks/paper-playthrough.md",
+      "sha256": "5caf4be426a99e3d961a69e471a7ef4b643b924ede5eb840c80e1a453cbf445f"
+    },
+    {
+      "file": "docs/proposals/parks/park-catalog.json",
+      "sha256": "30b5286f961cbb01c511dc923dd471b24462b008ff45bebbe037498946a8d660"
+    },
+    {
+      "file": "docs/proposals/parks/parks-list.md",
+      "sha256": "f5a8bf70955591cb248d39a82b83bb615ee0fc5e39f650058ff0a90add74b443"
+    },
+    {
+      "file": "docs/proposals/parks/README.md",
+      "sha256": "d305fa75feae9c059cf5a12663282e11cd917a274411d90a1dedfe99fd4567e9"
+    },
+    {
+      "file": "docs/proposals/parks/release-scope.md",
+      "sha256": "04aa519efff8bd3c0e62756b2f160aa185cfcb2775286d042a80b314f46b2f01"
+    },
+    {
+      "file": "docs/proposals/parks/rule-evidence.md",
+      "sha256": "e09a28c418c10a4ee0c916c95fb1a3caf7977aacb91501d35b28439b444f9517"
+    },
+    {
+      "file": "docs/proposals/parks/sources.md",
+      "sha256": "8c37ca42663f1a1f34b6a9d2b5ca566451cfce74eca9f55c9783154dde47e96f"
+    },
+    {
+      "file": "docs/proposals/README.md",
+      "sha256": "54429e308c10fee60dc49f791762f07368020d03d2e91cec4474041b52f7b79d"
+    },
+    {
+      "file": "infra/activate-release.sh",
+      "sha256": "7fd1109caf1ffd865fd5678771d5f6c0c6700a62bf07aa31663c419c3f22de50"
+    },
+    {
+      "file": "infra/Caddyfile",
+      "sha256": "1cf88a954586bf54a7059cc7f67f8ac229121337663341e138f12c1cf65dd84e"
+    },
+    {
+      "file": "infra/game-room-backup.service",
+      "sha256": "1c7b59ecc8564160c86694a4a40530505a9db0f395a6700fa3eefeee345a2723"
+    },
+    {
+      "file": "infra/game-room-backup.timer",
+      "sha256": "c4478ef2d3a238842b4974dc26954c3ee96b358e3f9b52b34cb322dc1bb8eae8"
+    },
+    {
+      "file": "infra/game-room-identity-batch.conf",
+      "sha256": "e84dc90d7642236094ef979d8cf1b4e75df207a1378541f3382677bae36e87cf"
+    },
+    {
+      "file": "infra/game-room-voice.conf",
+      "sha256": "699277c27ea37272a8a9dfbd46a5117bc4e6a3c2dd89e818e786219f02c47a88"
+    },
+    {
+      "file": "infra/game-room.service",
+      "sha256": "7ced884ed05619581f1d0fcb515b0e781900b3a61ebfa341675758cc3d2b2bdc"
+    },
+    {
+      "file": "infra/install-release.sh",
+      "sha256": "36b8641cbeca09e966ce20279d21990f560b0f1ffe4e6435a4f4ca23a2327e0e"
+    },
+    {
+      "file": "infra/lightsail.cfn.json",
+      "sha256": "23084720870a913af85c5b6946da0234d5f38451b64db0dddfb671e1f1057a7a"
+    },
+    {
+      "file": "infra/runtime.env.example",
+      "sha256": "96960ed77ba74dfbf4ad583b8fae4787ce1be1d2c79f5098eeb557b5b7b3421e"
+    },
+    {
+      "file": "package-lock.json",
+      "sha256": "1176f013780fd27b8dd76407e7f0e133f6efe8dfae438efe8c1ba03a81719259"
+    },
+    {
+      "file": "package.json",
+      "sha256": "88284026a6155580017d4aad53b1857366ac0384c80c2cd7b5edfb5c05041744"
+    },
+    {
+      "file": "README.md",
+      "sha256": "2abd9a815e287fbbb761d868412c28af7af3df202195e3e51ac75fc79c8c7fdf"
+    },
+    {
+      "file": "scripts/build-release.mjs",
+      "sha256": "9fa41c91f6dc982a57097286e693bedf54b479330c0aed31f8d2633b1eaa7ca3"
+    },
+    {
+      "file": "scripts/hyakki-digital-preview.test.mjs",
+      "sha256": "32c7e248ed67ad5b4a4db91fc19223dbf3a5df9df74b0da7a3aaa61e2c05f05d"
+    },
+    {
+      "file": "scripts/hyakki-live-local.mjs",
+      "sha256": "0b604e4cbc0d2aa165a30721a2ffbf8dc57ac805069c654b1535ad6c5bd09b0f"
+    },
+    {
+      "file": "scripts/hyakki-preview.mjs",
+      "sha256": "c5c3790fc9d6243c7dd8fcf3e0af4e1a1aed230db621f19482c3eb1420cca6f7"
+    },
+    {
+      "file": "scripts/hyakki-preview.test.mjs",
+      "sha256": "85f9be030fb8679110ee8d3e49342d54d694041d180ff6f96f3e0df7043c3172"
+    },
+    {
+      "file": "scripts/hyakki-recovery-child.mjs",
+      "sha256": "a23a4123ac09b6e3f473144eeef7f06f179c82898cf92c55a4484220d2bf879a"
+    },
+    {
+      "file": "scripts/hyakki-ui-audit.mjs",
+      "sha256": "0e80f275698d655da80af844b1bb005a2df09c190fd6e1fd5c8ac69745f5b1c3"
+    },
+    {
+      "file": "scripts/initialize-store-key.mjs",
+      "sha256": "b2d496f9c8bd1aabfa95fa4f3b0510b9c0124b92af84574cd23220ef03f637b6"
+    },
+    {
+      "file": "scripts/local-identity-preview.mjs",
+      "sha256": "6a1d14a321287317289fa8bf9b388d6ab8fb09c44023d01fd5184b0634e2e418"
+    },
+    {
+      "file": "scripts/parks-contract-probe.mjs",
+      "sha256": "ff1bdca39ab01add8254ec80ccbe797ccd0d99c89ec38b48d4d78692b5eb4a6c"
+    },
+    {
+      "file": "scripts/parks-contract-probe.test.mjs",
+      "sha256": "5dab686ebb2b9bc992920ed20c5ff17964b9546cd212b600b0498042a4706f91"
+    },
+    {
+      "file": "scripts/parks-preview.mjs",
+      "sha256": "6e49e38268584edb68f6beb489b01d9db389deb9e2eae61ad88d3963bb777e71"
+    },
+    {
+      "file": "scripts/parks-preview.test.mjs",
+      "sha256": "0f085aa3fbee69da056c01c145e91859b8ad64bb5acf516c64d7a336d5703366"
+    },
+    {
+      "file": "scripts/parks-ui-audit.mjs",
+      "sha256": "c6c0bd863695714fc3f09249f787e01fd9d31163b61f6b74ca39c20b3a352553"
+    },
+    {
+      "file": "scripts/poker414-capacity-client.mjs",
+      "sha256": "071055d734bcbee608cd01d998f7fabf6790c2a1bf2d3a617a75c9c84075120c"
+    },
+    {
+      "file": "scripts/poker414-capacity-local.mjs",
+      "sha256": "dc271e242c253b529b8e66776f997f22ed2ff2f1f08f212d48924d61ba25ef4e"
+    },
+    {
+      "file": "scripts/poker414-preview.mjs",
+      "sha256": "fb86e4286475059b841e5a52ccc4eb69f3eebc2b6111b95fc18b77b3991d684d"
+    },
+    {
+      "file": "scripts/poker414-preview.test.mjs",
+      "sha256": "63f7e70d7465ade1ae7214d800ca0f981b2b64d9e819284b6503de5b8e5b1311"
+    },
+    {
+      "file": "scripts/poker414-room-preview.mjs",
+      "sha256": "9df77c2cc1638a59f42caac2e039b8fa975278eed600c7a765ba1802a9ddaadd"
+    },
+    {
+      "file": "scripts/production-preflight.mjs",
+      "sha256": "96617ffba8f96c51de92803d112c77904f4bb6a7edb603416b6be5a6de7f460b"
+    },
+    {
+      "file": "scripts/production-start.mjs",
+      "sha256": "d614b9ff1920021a2e9cfebbfaacb24fdc86de84a8e105b385126c9cc7904112"
+    },
+    {
+      "file": "scripts/release-compatibility.mjs",
+      "sha256": "090419f8394f55a4ceccc52c11f49e8d80a9157612b9addf2065ce58e38c904e"
+    },
+    {
+      "file": "scripts/room-layout-audit.mjs",
+      "sha256": "984881c7e06b9c7893bfb55897fe99a08a6f895dc985729b7b6f054bcf1cc14d"
+    },
+    {
+      "file": "scripts/scheduled-backup.mjs",
+      "sha256": "b7c8c4d718b6823c60d6107f297124fa8011d591f6d73fe1388c45065fa2122a"
+    },
+    {
+      "file": "scripts/store-backup.mjs",
+      "sha256": "f0ed1fefafecd2e40438b75c79b180e4733b632978938a2bfbe73c2d0983b2fd"
+    },
+    {
+      "file": "scripts/store-restore.mjs",
+      "sha256": "d27e8cf8e76dde45f1ef1281ec4b90dacd75ad6d38e7676ff65fef6992fd4858"
+    },
+    {
+      "file": "scripts/test.mjs",
+      "sha256": "75f04b1523a1d30f7ce29b4416c7f025cca4637ab6bb31f7ddcf844d5c112482"
+    },
+    {
+      "file": "server/auth.mjs",
+      "sha256": "deb78b1830f834cec6c3136ab32594a6fe736a740435f3bd40b6fd57706d3277"
+    },
+    {
+      "file": "server/backup.mjs",
+      "sha256": "2da2c3ece5ec3dc5f6805d5d2b4a2075eff5483db1b3c67ec808459ebba57856"
+    },
+    {
+      "file": "server/chat.mjs",
+      "sha256": "4ab3a6b2df6b4ed4d54444d251b4a5d12295c8d2a11e4d33b0bfec49e6ce5ff8"
+    },
+    {
+      "file": "server/config.mjs",
+      "sha256": "ef7bcb0fde2554ec26cf3e83a176807a13a625c9e4466e02a146a7ba2d61a3ab"
+    },
+    {
+      "file": "server/content/draw-and-guess-definition.mjs",
+      "sha256": "eca07c2ef75eaf7543ace4d3a09407b9d7d208dc2023a136ea0e533107fa984d"
+    },
+    {
+      "file": "server/content/draw-and-guess-seed.mjs",
+      "sha256": "18e28037a3252ab18bebc14e9b3c794c4d46829af752924c8515746a59342b9d"
+    },
+    {
+      "file": "server/content/draw-and-guess-wordbank.mjs",
+      "sha256": "c8d4302cad0e920f18c5a4d98ba767ef3484371755f44f3edc9bdf6f7167b7d1"
+    },
+    {
+      "file": "server/content/wordbank-http.mjs",
+      "sha256": "fdc4acca640a3d67fa3386baf9763fcc8efce766b0e51963dc9d610d8f779ca0"
+    },
+    {
+      "file": "server/durable-rooms.mjs",
+      "sha256": "53ac2b991d4008be87de613e95fea376c077a00a8f528f2d60779706e2ef005e"
+    },
+    {
+      "file": "server/entry-context.mjs",
+      "sha256": "7edcdca28b2724683c5a92fc79d75725db1adef2639a3b8d2cab19a004e832b6"
+    },
+    {
+      "file": "server/game-scores-http.mjs",
+      "sha256": "74cf0fb46b9fe416c71a9ca7aa41308aac1c980dea769ed99f1ec8ffe60d47b7"
+    },
+    {
+      "file": "server/game-scores.mjs",
+      "sha256": "db89aa8f08698eecc4df6a93e474b8d48db25de03725c410f54abab7102f9efe"
+    },
+    {
+      "file": "server/games/adapter-contract.mjs",
+      "sha256": "82e7e13d7fd0cfbb731faa02d5642f3a6579ac4a0d4c61d0acfb1b65627a6e4a"
+    },
+    {
+      "file": "server/games/army-flip/adapter.mjs",
+      "sha256": "9571e1871fc0ab6e639b08ec75b90018ca0534d1a1083a87b83df90bb8bd2ed9"
+    },
+    {
+      "file": "server/games/draw-and-guess/adapter.mjs",
+      "sha256": "db20cf076fcfd79d52a0c5e1fbf5711240f9c497bdd7dc7a0bd0ea353b54767d"
+    },
+    {
+      "file": "server/games/draw-and-guess/canvas-http.mjs",
+      "sha256": "8859d2d2da1f7816bd9201da489fe6026aa66c1d1d96a2d68f62a3c03b337e9f"
+    },
+    {
+      "file": "server/games/draw-and-guess/canvas-service.mjs",
+      "sha256": "bf52c17f5102dac934cef73d73bef0a80c9c7905212f42b042f2bf2917920fae"
+    },
+    {
+      "file": "server/games/draw-and-guess/content-assembly.mjs",
+      "sha256": "cdf5b1f527d77c5e21a401019da7056a4f857c4a15372d8dae03132ca2bf48dc"
+    },
+    {
+      "file": "server/games/flying-chess/adapter.mjs",
+      "sha256": "c62c3a6c4dac4429f2ca49b293e2e1ae82ee3ad162e59c4b4a1755ec776e247c"
+    },
+    {
+      "file": "server/games/hyakki-trading/adapter.mjs",
+      "sha256": "7f1738079669929d32d5c161fc9f026319c796d6f06d23601349deaad74c4c34"
+    },
+    {
+      "file": "server/games/hyakki-trading/event-http.mjs",
+      "sha256": "319df527bffc87050bf66786357b70f7b7655d110407b66ec2b5761a003255e6"
+    },
+    {
+      "file": "server/games/hyakki-trading/event-store.mjs",
+      "sha256": "1a46b895dae71f87a30685668ae64fcf15c3a278757a99d23b188cd3b7e2565f"
+    },
+    {
+      "file": "server/games/parks/adapter.mjs",
+      "sha256": "b61115f6adb82198199403acb1325ac23b14b6b1e8b5570a713127b4abe769c2"
+    },
+    {
+      "file": "server/games/poker414-2/adapter.mjs",
+      "sha256": "02890b0614acefddc7ced0d964618eb1277ac417acb122857c98679f23d01728"
+    },
+    {
+      "file": "server/games/rummikub/adapter.mjs",
+      "sha256": "6e17a22c547c9d32d93196d2865982353b81f0457f5348f625ceac876a25dea7"
+    },
+    {
+      "file": "server/identity-batch-client.mjs",
+      "sha256": "56e89c0ce6473a234cccb02cef67a1885dea4f687c414fba21426cb2b7e4585a"
+    },
+    {
+      "file": "server/identity-batch-runtime.mjs",
+      "sha256": "cfb39045fdf3c5577f2d5ef77963631a8996a331080161e70d9d85152ee4e1b5"
+    },
+    {
+      "file": "server/identity-batch-transport.mjs",
+      "sha256": "3741c3d9ef8e36819730960cb3fc5612f581b93088bb402f978b35a374e191fa"
+    },
+    {
+      "file": "server/identity-batch-wire.mjs",
+      "sha256": "50ba261adf6c983073f0cdc959a775f7e8192a6e290c8ccba2bdb43dff93ab24"
+    },
+    {
+      "file": "server/identity-check-context.mjs",
+      "sha256": "987bf4933c38039a063857e39be65b8dcff06fad73e0652144dabd22ba1e9246"
+    },
+    {
+      "file": "server/identity-policy-client.mjs",
+      "sha256": "152ccd40bd1b00094d78c9fb8881474565db9769e6a20bb3c27ca52ab15106a1"
+    },
+    {
+      "file": "server/match-history.mjs",
+      "sha256": "978eabf3483fddcb039e1fa7511150aa6fa4228315f4d416a776af79cd850ce0"
+    },
+    {
+      "file": "server/production.mjs",
+      "sha256": "260c531f78fe90e4a60685a28eaaaf10189e461683a2a42bdd620ba9ee307984"
+    },
+    {
+      "file": "server/public-assets.mjs",
+      "sha256": "3866289a34bcb8d66f0ac8af4691e1fbb98c1cbcde3831d7e9b8765881379d76"
+    },
+    {
+      "file": "server/room-output-fence.mjs",
+      "sha256": "fff2daab208ac29447ea72e81016ee6afdaada1c9693dc67f5d482b154129120"
+    },
+    {
+      "file": "server/room-preview.mjs",
+      "sha256": "ab3ea24d2a020396be525e39fb25194aaa9e84e58a5df113c93861c3e79b791b"
+    },
+    {
+      "file": "server/room-score-commit.mjs",
+      "sha256": "3acd20f9454f680d81996f66d36ece99fcb6d9b61b2e9ed19a6715ee1bc21e1c"
+    },
+    {
+      "file": "server/room-snapshot-compat.mjs",
+      "sha256": "0b78f16dcb9db54f686d9fe6e0093c3d2723e9d2ff93ae68bd910e79d8050163"
+    },
+    {
+      "file": "server/room-system-driver.mjs",
+      "sha256": "f0f9cd8b2b7ded91ce1d17e56260350ae66ed5bc991a33e76a6a8eb4cef2fc4c"
+    },
+    {
+      "file": "server/room-system-driver.test.mjs",
+      "sha256": "8ae4fa24d148649479d2dbb429265f61f8e1e720abb7055f0a93fff7d6b61aec"
+    },
+    {
+      "file": "server/room-voice-http.mjs",
+      "sha256": "eff1c4dbbdecd1787e428f1e04f06c41d99724c2d5324ca58047e715c76f09e3"
+    },
+    {
+      "file": "server/room-voice-media.mjs",
+      "sha256": "00b176f897ea426e9f00d7f73f35663b61a26fd6d770405f32131343009f8632"
+    },
+    {
+      "file": "server/room-voice-media.test.mjs",
+      "sha256": "efb15df2b3096018de69ad0ceda53939da8c90a397fc95b79c8379539a09eae3"
+    },
+    {
+      "file": "server/room-voice-pipe.mjs",
+      "sha256": "6a44a4084a2ac945fa45c013e4d3eaaeb0aeb8e72f97787dafcae74f24ba5df5"
+    },
+    {
+      "file": "server/room-voice-pipe.test.mjs",
+      "sha256": "cd81a54b963d418ae12e11d239786b4e313dece13fc7b243abc3845850ede2bb"
+    },
+    {
+      "file": "server/room-voice-process.mjs",
+      "sha256": "f4313fc7f921c751d9e0886aef771e0a91fbbdf227191d13b6c9da5f7183d6e0"
+    },
+    {
+      "file": "server/room-voice-process.test.mjs",
+      "sha256": "73cae47fe735e50237c8dde5ad01183765af2350fa2a628a529c33f41ce6c325"
+    },
+    {
+      "file": "server/room-voice-proxy.mjs",
+      "sha256": "a711bf554c9e019cd79edbfbb9a92035d8f1405b1d70cf9e32201d6c16ee8fd7"
+    },
+    {
+      "file": "server/room-voice-service.mjs",
+      "sha256": "3df98140dae70e8d71a9ef27b96a58f9febe0b627774bede930eb997d4878483"
+    },
+    {
+      "file": "server/room-voice-service.test.mjs",
+      "sha256": "1066b4fc0d6178b00a76091d100543ee2a3740b53453c8798764866eb24ab56d"
+    },
+    {
+      "file": "server/runtime.mjs",
+      "sha256": "d961279ed5be74ccee0ab98011a0926b628fbe6626517d8444326d5a42d37b44"
+    },
+    {
+      "file": "server/session-renewal.mjs",
+      "sha256": "f52200fe26547a3b152fbd3c46ec9c554290f9ac0cba36b12869881e192d1dae"
+    },
+    {
+      "file": "server/session-service.mjs",
+      "sha256": "0b72516548c1044177973f8965707832e149c3548cd365a5f969fe17e34f234b"
+    },
+    {
+      "file": "server/storage.mjs",
+      "sha256": "9fe53e10296712c957ccb9a8813ed385c1004a9ba6b7a6d39a23555b2035074b"
+    },
+    {
+      "file": "server/unified-http.mjs",
+      "sha256": "40b8d74a09fd6e1fe8a73eca2616cca28d21ff81b788d0e2715faa88b8148e61"
+    },
+    {
+      "file": "tools/draw-and-guess-step0/preview-server.mjs",
+      "sha256": "8cb88cd72bf7e7969a5960297cb99c12855b982f62559fae7565e30e4923e29e"
+    },
+    {
+      "file": "tools/draw-and-guess-step0/preview.css",
+      "sha256": "68de42e9c266d5d3d52188037f251bc83e61ebbbff6fb4a17ca0b13550dd469f"
+    },
+    {
+      "file": "tools/draw-and-guess-step0/preview.html",
+      "sha256": "c45da8f7a62120caf66eba195b17c2f08fe21f862a31c420010c5040c1bbfc3b"
+    },
+    {
+      "file": "tools/draw-and-guess-step0/preview.mjs",
+      "sha256": "6726c41662821be7327b31595965afd608b20d8a00b45c63ef74253cbd8f7329"
+    },
+    {
+      "file": "tools/draw-and-guess-step0/transport-experiment.mjs",
+      "sha256": "f56f09a75e975adfef52d98c2bfaf56c7cce98cbc49f3c1662ae9c72c3d8e3eb"
+    }
+  ]
+}

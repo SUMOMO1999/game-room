@@ -1,4 +1,4 @@
-import { GOODS, getCard } from './content/definitions.mjs';
+import { GOODS, getCard } from './presentation-content.mjs';
 import { assetPath } from './content/manifest.mjs';
 import { renderCard, renderGoodsIcon } from './digital-card-ui.mjs';
 import { cardKey, choiceModel } from './game-ui-model.mjs';
@@ -24,6 +24,7 @@ export function renderDialogPager(page, action = 'choice-page') {
 /** Small decision faces retain identity, goods quantities and price; full rules are one action away. */
 export function renderCompactCard(card, { readButton = true, inline = false } = {}) {
   const face = getCard(card.definitionId ?? card.id), key = cardKey(card);
+  if(face.sourceCode.startsWith('X')||face.category==='role')return `<span class="hy-compact-card">${renderCard(card,{interactive:false})}</span>`;
   const art = face.category === 'goods'
     ? `<span class="hy-compact-goods">${Object.entries(face.goods).map(([id,count])=>`<span title="${esc(GOODS.find(good=>good.id===id).name)}">${renderGoodsIcon(id)}<b>×${count}</b></span>`).join('')}</span>`
     : `<span class="hy-compact-art"><img src="${assetPath(face.artId)}" alt="" draggable="false" decoding="sync"></span>`;
@@ -56,7 +57,7 @@ export function decisionContext(pending, game, selfId, playerName = id => id) {
   const targetId = pending.borrowedTargetId ?? pending.targetId;
   const target = targetId ? playerName(targetId) : '所选对手';
   const own = pending.actorId === selfId, selfSource = pending.ownerId === selfId;
-  const source = pending.kind==='peek' ? null : /^[CMT]\d{2}$/u.test(pending.code??'')
+  const source = pending.sourceRole?getCard(pending.sourceRole.roleId):pending.kind==='peek' ? null : /^[CMT]\d{2}$/u.test(pending.code??'')
     ? getCard(`yousei.${pending.code.toLowerCase()}`)
     : pending.sourceCards?.[0] ? getCard(pending.sourceCards[0].definitionId) : null;
   const kind = pending.choice?.kind;

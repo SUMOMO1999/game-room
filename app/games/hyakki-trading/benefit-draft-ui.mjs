@@ -1,4 +1,4 @@
-import { GOODS } from './content/definitions.mjs';
+import { GOODS } from './presentation-content.mjs';
 import { cardDraftChoices } from './card-draft.mjs';
 import { renderGoodsIcon } from './digital-card-ui.mjs';
 import { goodsTotal } from './game-ui-model.mjs';

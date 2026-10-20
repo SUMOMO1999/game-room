@@ -2,10 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { readSettings } from '../server/config.mjs';
+import { legacyHyakkiRegistry } from './test-support/hyakki-legacy-registry.mjs';
 import { createHyakkiHttpFixture as fixture } from './test-support/hyakki-http-fixture.mjs';
 
 async function started(t) {
-  const f = await fixture(t), members = [];
+  const f = await fixture(t, { gameRegistry: legacyHyakkiRegistry }), members = [];
   for (const sub of ['a', 'b', 'observer', 'outsider']) members.push(await f.login(sub));
   const created = await f.request('/api/rooms', members[0], { name: '同名', gameType: 'hyakki-trading', requestId: randomUUID() });
   assert.equal(created.status, 201, created.text); const code = created.body.roomCode;

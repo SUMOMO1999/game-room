@@ -1,3 +1,4 @@
+import { legacyHyakkiRegistry } from './test-support/hyakki-legacy-registry.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
@@ -8,7 +9,7 @@ import { createRuntime } from '../server/runtime.mjs';
 test('six-seat merchant persists idle presence without public updates, then delivers real actions and absence immediately', async t => {
   let at=Date.now(); const now=()=>at;
   const settings=readSettings({GAME_ROOM_AUTH_MODE:'mock',GAME_ROOM_HYAKKI_ENABLED:'1'});
-  const runtime=createRuntime(settings,{provider:new MockProvider(settings,{now}),now,
+  const runtime=createRuntime(settings,{provider:new MockProvider(settings,{now}),now,gameRegistry:legacyHyakkiRegistry,
     roomOptions:{pollIntervalMs:0,serverRandomInt:m=>m-1}});
   const users=Array.from({length:6},(_,i)=>createHash('sha256').update('idle-test-'+i).digest('hex'));
   const counts=Array(6).fill(0),stops=[];

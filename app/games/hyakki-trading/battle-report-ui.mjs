@@ -1,5 +1,6 @@
+import {readableBattleGroup} from './battle-history4.mjs';
 import { buildBattleReport, discardProvenance } from './battle-report-model.mjs';
-import { GOODS, getCard } from './content/definitions.mjs';
+import { GOODS, getCard } from './presentation-content.mjs';
 import { dialogEscape as esc } from './game-dialog-ui.mjs';
 
 const button = (action, label, fields = {}, disabled = false) => `<button type="button" data-hy-battle="${action}" data-hy-battle-fields="${esc(JSON.stringify(fields))}" ${disabled ? 'disabled' : ''}>${label}</button>`;
@@ -9,6 +10,7 @@ const signed = value => value > 0 ? `＋${value}` : `−${Math.abs(value)}`;
 
 /** Render only identities and deltas that the public transport actually disclosed. */
 export function publicGroupResult(group, players) {
+  group=readableBattleGroup(group);
   return (group.changes ?? []).map(change => {
     const parts = [];
     if (change.silver) parts.push(`银两${signed(change.silver)}`);
@@ -24,11 +26,13 @@ export function publicGroupResult(group, players) {
 }
 
 function groupMarkup(group, entries, players, formatEvent) {
-  const publicIds = new Set([group.sourceCardId, ...entries.flatMap(({event}) => [event.cardId, ...(event.cardIds ?? [])])].filter(id => cardName(id)));
+  group=readableBattleGroup(group);
+  const publicIds = new Set([group.sourceCardId,group.sourceRole?.roleId, ...entries.flatMap(({event}) => [event.cardId, ...(event.cardIds ?? [])])].filter(id => cardName(id)));
   const results = publicGroupResult(group, players);
   const reasons = { used:'使用后弃置', 'draw-discarded':'摸看后弃置', replaced:'替换装备', payment:'作为费用', response:'用于回应', 'auction-unsold':'拍卖未成交', removed:'被移除' };
   const discarded = (group.discard?.added ?? []).filter(item => cardName(item.cardId)).map(item => `${item.actorSeatId?`${playerName(players,item.actorSeatId)} · `:''}${cardName(item.cardId)}${reasons[item.reason] ? ` · ${reasons[item.reason]}` : ' · 来源未记录'}`);
-  return `<li class="hy-battle-step" data-history-sequence="${group.sequence}"><ol>${entries.map(({event}) => `<li>${esc(formatEvent(event, players))}</li>`).join('')}</ol>${publicIds.size ? `<div class="hy-battle-cards">${[...publicIds].map(id => `<button type="button" data-hy-read-card="${esc(id)}" aria-label="阅读${esc(cardName(id))}原牌文">${esc(cardName(id))} ↗</button>`).join('')}</div>` : ''}${results.length ? `<p class="hy-battle-result">${results.map(esc).join('<br>')}</p>` : ''}${discarded.length ? `<p class="hy-battle-discard">弃牌：${discarded.map(esc).join('；')}</p>` : ''}</li>`;
+  const prices=entries.filter(({event})=>event.price).map(({event:e})=>`印价${e.price.printed} · 书算${e.price.bookLayers}层 · 角色${signed(e.price.roleAdjustment)} · 税${e.price.buyTax} · 临时格${e.price.temporaryFee}两`);
+  return `<li class="hy-battle-step" data-history-sequence="${group.sequence}"><ol>${entries.map(({event}) => `<li>${esc(formatEvent(event, players))}</li>`).join('')}</ol>${publicIds.size ? `<div class="hy-battle-cards">${[...publicIds].map(id => `<button type="button" data-hy-read-card="${esc(id)}" aria-label="阅读${esc(cardName(id))}原牌文">${esc(cardName(id))} ↗</button>`).join('')}</div>` : ''}${prices.length?`<p class="hy-battle-result">${prices.map(esc).join('<br>')}</p>`:''}${results.length ? `<p class="hy-battle-result">${results.map(esc).join('<br>')}</p>` : ''}${discarded.length ? `<p class="hy-battle-discard">弃牌：${discarded.map(esc).join('；')}</p>` : ''}</li>`;
 }
 
 /** One inspector owner. Transport pages never become the reader's logical pages. */
@@ -45,7 +49,7 @@ export function mountBattleReport({ dialog, title, body, getContext, requestPage
   const rebuild = () => {
     const current = context();
     const first = [...groups.values()].sort((a,b)=>a.sequence-b.sequence)[0];
-    const explicit = first?.schemaVersion === 2 ? first.turn : null;
+    const explicit = [2,3,4].includes(first?.schemaVersion)?readableBattleGroup(first).turn:null;
     const readingCoverage = explicit ? { ...coverage, startSequence:first.sequence,
       firstTurn:{id:explicit.id,number:explicit.number,round:explicit.round,ownerId:explicit.ownerSeatId},
       partialStart:first.sequence > origin || coverage.partialStart === true } : coverage;
@@ -78,9 +82,19 @@ export function mountBattleReport({ dialog, title, body, getContext, requestPage
     const incomplete = !!turn?.partial || !turn && !!model?.partial;
     const status = error || (busy ? '正在读取本局战况…' : model?.unassigned?.length ? '部分记录的回合归属不明确，请展开查看。' : !following && targetHead > readingHead ? '有新的战况；你正在阅读的回合保持原位。' : incomplete ? '部分历史尚未完整记录；缺失步骤不会补猜。' : loadedStart > origin ? '本回合已完整读取；更早回合可继续向前查看。' : '已读取至当前确认的步骤。');
     const unassigned = model?.unassigned?.length ? `<details class="hy-battle-unassigned"><summary>未归属回合的记录 · ${model.unassigned.length}组</summary><p>部分记录尚不能确定回合主人，以下内容未计入任何玩家回合。</p><ol class="hy-battle-steps">${model.unassigned.map(group => groupMarkup(group,group.events.map((event,index)=>({event,index,sequence:group.sequence})),players,formatEvent)).join('')}</ol></details>` : '';
+    const opening=(model?.opening??[]).map(g=>`<details><summary>开局角色已统一公开</summary><p>${g.rolesRevealed.map(r=>`${esc(playerName(players,r.seatId))}：${esc(cardName(r.roleId))}`).join('；')}</p></details>`).join('');
     title.textContent = '战况';
-    body.innerHTML = `<section class="hy-battle-report" aria-label="本局战况"><nav class="hy-battle-tabs" aria-label="玩家">${players.map(player => `<button type="button" data-hy-battle="player" data-hy-battle-fields="${esc(JSON.stringify({id:player.id}))}" aria-pressed="${player.id === selectedPlayer}">${esc(player.name)}</button>`).join('')}</nav><div class="hy-battle-page-controls"><div><strong>${esc(turnLabel)}</strong>${turn ? `<small>本局第${turn.number}回合 · 第${turn.round}轮</small>` : ''}</div><nav aria-label="该玩家的回合">${button('page','上一回合',{id:turns[index - 1]?.id,older:index <= 0}, index <= 0 && loadedStart <= origin || busy)}<span>${index < 0 ? 0 : (turn?.playerTurnNumber ?? index + 1)} / ${turns.at(-1)?.playerTurnNumber ?? turns.length}${loadedStart > origin ? '（可向前读取）' : ''}</span>${button('page','下一回合',{id:turns[index + 1]?.id},index < 0 || index === turns.length - 1)}</nav></div><div class="hy-battle-status" role="status"><span>${esc(status)}</span>${error ? button('retry','重试') : ''}${!following ? button('current','回到当前') : ''}${responseDue ? button('table','轮到你回应 · 回到桌面') : ''}</div><div class="hy-battle-scroll" data-hy-battle-scroll="true" tabindex="0" aria-label="${esc(turnLabel)}的完整过程"><ol class="hy-battle-steps">${steps.join('')}</ol>${!steps.length ? `<p>${busy ? '正在查找这一回合…' : turn?.ongoing ? '本回合尚未行动。' : '暂无可读取的步骤。'}</p>` : ''}${incomplete ? '<p class="hy-battle-partial">本页含未完整记录的历史。</p>' : ''}${unassigned}</div></section>`;
+    // Keep the native scroll container attached. Replacing it on the first
+    // upward scroll cancels an iOS gesture and loses keyboard focus.
+    const headerMarkup = `<nav class="hy-battle-tabs" aria-label="玩家">${players.map(player => `<button type="button" data-hy-battle="player" data-hy-battle-fields="${esc(JSON.stringify({id:player.id}))}" aria-pressed="${player.id === selectedPlayer}">${esc(player.name)}</button>`).join('')}</nav><div class="hy-battle-page-controls"><div><strong>${esc(turnLabel)}</strong>${turn ? `<small>本局第${turn.number}回合 · 第${turn.round}轮</small>` : ''}</div><nav aria-label="该玩家的回合">${button('page','上一回合',{id:turns[index - 1]?.id,older:index <= 0}, index <= 0 && loadedStart <= origin || busy)}<span>${index < 0 ? 0 : (turn?.playerTurnNumber ?? index + 1)} / ${turns.at(-1)?.playerTurnNumber ?? turns.length}${loadedStart > origin ? '（可向前读取）' : ''}</span>${button('page','下一回合',{id:turns[index + 1]?.id},index < 0 || index === turns.length - 1)}</nav></div><div class="hy-battle-status" role="status"><span>${esc(status)}</span>${error ? button('retry','重试') : ''}${!following ? button('current','回到当前') : ''}${responseDue ? button('table','轮到你回应 · 回到桌面') : ''}</div>${opening}`;
+    const contentMarkup = `<ol class="hy-battle-steps">${steps.join('')}</ol>${!steps.length ? `<p>${busy ? '正在查找这一回合…' : turn?.ongoing ? '本回合尚未行动。' : '暂无可读取的步骤。'}</p>` : ''}${incomplete ? '<p class="hy-battle-partial">本页含未完整记录的历史。</p>' : ''}${unassigned}`;
+    if (!old || !body.querySelector('[data-hy-battle-header]')) {
+      body.innerHTML = '<section class="hy-battle-report" aria-label="本局战况"><div class="hy-battle-header" data-hy-battle-header="true"></div><div class="hy-battle-scroll" data-hy-battle-scroll="true" tabindex="0"></div></section>';
+    }
+    body.querySelector('[data-hy-battle-header]').innerHTML = headerMarkup;
     const scroll = body.querySelector('[data-hy-battle-scroll]');
+    scroll.setAttribute('aria-label', `${turnLabel}的完整过程`);
+    if (scroll.innerHTML !== contentMarkup) scroll.innerHTML = contentMarkup;
     scroll.scrollTop = following && !resetScroll ? scroll.scrollHeight : top;
     lastScroll = scroll.scrollTop;
   }
@@ -123,7 +137,7 @@ export function mountBattleReport({ dialog, title, body, getContext, requestPage
       else if (loadedHead < capturedHead) await readRange(loadedHead,capturedHead);
       while (live() && loadedStart > origin) {
         // Legacy groups need a continuous origin before their owner can be known.
-        const legacy = [...groups.values()].some(group=>group.schemaVersion!==2 || !group.turn);
+        const legacy = [...groups.values()].some(group=>group.schemaVersion===4?(!readableBattleGroup(group).turn&&!readableBattleGroup(group).opening):group.schemaVersion!==2||!group.turn);
         const previous = earlierThan && model.turns.filter(turn=>turn.ownerId===selectedPlayer && turn.number<earlierThan).at(-1);
         if (previous) { selectedTurn=previous.id;earlierThan=null;rebuild();render({resetScroll:true}); }
         const selected = model.turns.find(turn=>turn.id===selectedTurn && turn.ownerId===selectedPlayer);
@@ -180,7 +194,7 @@ export function mountBattleReport({ dialog, title, body, getContext, requestPage
     },
     scroll(node) {
       if (!active || node?.getAttribute?.('data-hy-battle-scroll') !== 'true') return;
-      if (node.scrollTop < lastScroll - 2) { following = false; readingHead = targetHead; render(); }
+      if (following && node.scrollTop < lastScroll - 2) { following = false; readingHead = targetHead; render(); }
       lastScroll = node.scrollTop;
     },
     close,

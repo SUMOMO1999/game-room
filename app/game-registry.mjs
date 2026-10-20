@@ -5,7 +5,7 @@ import { createArmyFlipAdapter } from '../server/games/army-flip/adapter.mjs';
 import { createFlyingChessAdapter } from '../server/games/flying-chess/adapter.mjs';
 import { createDrawAndGuessAdapter } from '../server/games/draw-and-guess/adapter.mjs';
 import { createPoker414Adapter } from '../server/games/poker414-2/adapter.mjs';
-import { createHyakkiAdapter } from '../server/games/hyakki-trading/adapter.mjs';
+import {createConfiguredHyakkiAdapter as createHyakkiAdapter} from '../server/games/hyakki-trading/configured-adapter.mjs';
 import { createParksAdapter } from '../server/games/parks/adapter.mjs';
 import { requireAdapter } from '../server/games/adapter-contract.mjs';
 
