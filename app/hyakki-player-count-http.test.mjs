@@ -1,3 +1,4 @@
+import { legacyHyakkiRegistry } from './test-support/hyakki-legacy-registry.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -7,7 +8,7 @@ import { historyPacketProblem } from './games/hyakki-trading/room-controller.mjs
 
 for (const [count, total, boards] of [[2,110,5],[3,144,7],[4,178,9],[5,212,11],[6,246,13]]) {
   test(`${count} seats: real current HTTP/SSE freezes recommended supply and exact new material`, async t => {
-    const f = await createHyakkiHttpFixture(t), members = [];
+    const f = await createHyakkiHttpFixture(t, { gameRegistry: legacyHyakkiRegistry }), members = [];
     for (let index = 0; index < count; index++) members.push(await f.login(`count-${count}-${index}`));
     const created = await f.request('/api/rooms', members[0], { name: '甲', gameType: 'hyakki-trading', requestId: randomUUID() });
     assert.equal(created.status, 201, created.text); const code = created.body.roomCode;

@@ -1,5 +1,7 @@
+import {quoteGoodsTrade,newTradeUsage} from './trade-contract.mjs';
+import {expansionProfile} from './content/expansion-one.mjs';
 /** UI input contracts consume only the current role projection. No hidden rules/state. */
-import { GOODS, getCard } from './content/definitions.mjs';
+import { GOODS, getCard,goodsFor,isExpansion } from './presentation-content.mjs';
 import { profileForPlayerCount } from './content/player-count-profile.mjs';
 const ids = GOODS.map(good => good.id);
 const copy = value => structuredClone(value);
@@ -10,7 +12,7 @@ export const goodsTotal = goods => ids.reduce((n, id) => n + (goods?.[id] ?? 0),
 export const cardKey = card => card.cardId ?? card.ref ?? card.id;
 /** A setup display, not the authority that freezes materials when a match starts. */
 export function supplySetup(playerCount, configuration = {}) {
-  const profile = Number.isSafeInteger(playerCount) && playerCount >= 2 && playerCount <= 6 ? profileForPlayerCount(playerCount) : null;
+  const profile = Number.isSafeInteger(playerCount) && playerCount >= 2 && playerCount <= 6 ? (configuration.packId==='six-trades-v1'?{...expansionProfile(playerCount),goodsPerTypeRecommended:3*playerCount}:profileForPlayerCount(playerCount)) : null;
   const goodsSupplyMode = configuration.goodsSupplyMode === 'recommended' ? 'recommended' : 'custom';
   const saved = Number.isSafeInteger(configuration.goodsPerType) ? configuration.goodsPerType : 6;
   return { playerCount, deckSize: profile?.deckSize ?? null, stallBoards: profile?.stallBoards ?? null,
@@ -31,6 +33,14 @@ export function opponentForDraft(game, selfId, targetId) {
 export function tradeAvailability(game, selfId, card) {
   const face = getCard(card.definitionId), self = game.players.find(player => player.id === selfId);
   if (face.category !== 'goods' || !self) return null;
+  if(isExpansion(game)&&face.recipe?.type==='fixed'||isExpansion(game)&&!face.recipe){
+    const usage=Object.fromEntries(Object.keys(newTradeUsage()).map(k=>[k,game.turnUsage[k]]));
+    const quoted=direction=>{try{return quoteGoodsTrade({owner:self,bankGoods:game.bankGoods,usage,bookLayers:game.bookLayers,definitionId:face.id,direction});}catch{return null;}};
+    const buy=quoted('buy'),sell=quoted('sell'),baseBuy=Math.max(0,face.buySilver-2*game.bookLayers),baseSell=face.sellSilver+2*game.bookLayers;
+    return {publicStock:!!buy,space:!!buy,silver:!!buy,ownStock:!!sell,action:game.remainingActions>0,buyPrice:buy?.goodsPrice??baseBuy,sellPrice:sell?.saleProceeds??baseSell,
+      temporaryFee:buy?.temporaryFee??0,buyTotal:buy?.totalPayment??baseBuy,canBuy:!!buy&&game.remainingActions>0,canSell:!!sell&&game.remainingActions>0};
+  }
+
   const count = goodsTotal(face.goods), nextCount = goodsTotal(self.goods) + count;
   const temporaryFee = nextCount > self.ordinaryCapacity && !self.temporaryOccupied ? 2 : 0;
   const buyPrice = Math.max(0, face.buySilver - 2 * game.bookLayers), sellPrice = face.sellSilver + 2 * game.bookLayers;
@@ -59,8 +69,9 @@ export function choiceModel(pending) {
 export function buildChoiceSelection(pending, input) {
   const model = choiceModel(pending); if (!model) return fail('当前没有可处理的选择。');
   if (model.type === 'goods') {
-    const goods = Object.fromEntries(ids.map(id => [id, Number(input.goods?.[id] ?? 0)]));
-    if (ids.some(id => !quantity(goods[id]) || goods[id] > model.stock[id]) || goodsTotal(goods) < model.minimum || goodsTotal(goods) > model.maximum) return fail(`请选择${model.minimum}～${model.maximum}件现有货物。`);
+    const stockKeys=Object.keys(model.stock);
+    const goods = Object.fromEntries(stockKeys.map(id => [id, Number(input.goods?.[id] ?? 0)]));
+    if (stockKeys.some(id => !quantity(goods[id]) || goods[id] > model.stock[id]) || goodsTotal(goods) < model.minimum || goodsTotal(goods) > model.maximum) return fail(`请选择${model.minimum}～${model.maximum}件现有货物。`);
     return model.raw ? goods : { goods };
   }
   if (model.type === 'cards') {
@@ -175,7 +186,7 @@ export function actionDraft(game, selfId, card, type, input = {}) {
   return fail('当前牌不能执行该操作。');
 }
 export function tableProjection(room) {
-  const game = room.game, self = game?.players.find(player => player.id === room.selfId);
+  const game = room.game, GOODS=goodsFor(game??room.hyakkiConfig), self = game?.players.find(player => player.id === room.selfId);
   const setup = supplySetup(room.players.length, room.hyakkiConfig);
   const players = (game?.players ?? room.players).map(player => ({...player, name: [...room.players,...(room.matchPlayers??[])].find(member => member.id === player.id)?.name ?? player.name ?? '伙伴',
     ready: !!room.players.find(member => member.id === player.id)?.ready, silver: player.silver ?? 20, handCount: player.handCount ?? 0, ordinaryCapacity: player.ordinaryCapacity ?? 5,

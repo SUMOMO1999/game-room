@@ -442,7 +442,8 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
       if (input.type === 'transferHost') await editPresence(roomId, () => {});
       const trustedContext = await context(record.value.snapshot);
       if (adapterFor(record.value.snapshot).usesPresenceLifecycle && record.value.snapshot.phase === 'playing'
-          && !['leave', 'transferHost'].includes(input.type) && trustedContext.presence.seats.some(seat => !seat.connected)) {
+          && !['leave', 'transferHost'].includes(input.type) && trustedContext.presence.seats.some(seat => !seat.connected)
+          && adapterFor(record.value.snapshot).presenceBlocksActions?.(record.value.snapshot.game)!==false) {
         await reconcileLifecycle(roomId); continue;
       }
       roomEngine.getTrustedView(code, userKey, trustedContext);
@@ -670,7 +671,8 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
       if (!clock || clock.deadlineAt === null || snapshot.phase !== 'playing' || now() < clock.deadlineAt || now() >= expiry(snapshot)) return false;
       limit = attemptsFor(snapshot);
       const trusted = adapterFor(snapshot).usesPresenceLifecycle ? await context(snapshot) : null;
-      if (trusted && trusted.presence.seats.some(seat => !seat.connected)) continue;
+      if (trusted && trusted.presence.seats.some(seat => !seat.connected)
+          && adapterFor(snapshot).presenceBlocksActions?.(snapshot.game)!==false) continue;
       const roomEngine = engine(snapshot);
       if (!roomEngine.applyTurnTimeout(snapshot.code, clock)) return false;
       const next = { ...record.value, snapshot: roomEngine.exportSnapshot(snapshot.code) };

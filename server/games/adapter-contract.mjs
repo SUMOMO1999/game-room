@@ -23,6 +23,10 @@ export const point = value => Number.isSafeInteger(value) && value >= 0 && value
 // actionDeadline: commit-time guard, independent of the clock used for display.
 // gameEndedAt(state): authoritative domain terminal timestamp, independent of
 // optional point settlement. Omission preserves the existing room-time policy.
+// unstartedCancellationProblem(before,after,context): explicit admission for
+// returning an uninitialized attempt to waiting WITHOUT conclude/history.
+// presenceBlocksActions(game): false only for a stage whose own deadline keeps
+// running while seats disconnect. Presence authentication/CAS guards still run.
 export function requireAdapter(adapter) {
   const methods = ['createGame', 'applyGameAction', 'privateView', 'spectatorView', 'stateProblem',
     'actionFields', 'validateAction', 'configurationSupportProblem', 'configure', 'roomView',
@@ -37,7 +41,7 @@ export function requireAdapter(adapter) {
       || methods.some(name => typeof adapter[name] !== 'function')
       || ['gameClock', 'commonActionProblem', 'lifecycleTransition', 'roomRetentionDeadline', 'actionConcurrencyProblem', 'actionDeadline',
         'gameStatusForRoomPhase', 'gameEndedAt', 'matchSummary', 'historySummaryProblem', 'participantLimits', 'historySummary',
-        'nextSystemStep', 'applySystemStep', 'describeSystemStep'].some(name => adapter[name] !== undefined && typeof adapter[name] !== 'function')
+        'nextSystemStep', 'applySystemStep', 'describeSystemStep', 'unstartedCancellationProblem', 'presenceBlocksActions'].some(name => adapter[name] !== undefined && typeof adapter[name] !== 'function')
       || adapter.allowsSolo !== undefined && typeof adapter.allowsSolo !== 'boolean'
       || (adapter.nextSystemStep === undefined) !== (adapter.applySystemStep === undefined)
       || adapter.historySummary !== undefined && (adapter.matchSummary !== undefined || !Array.isArray(adapter.historySummaryFields))
@@ -48,6 +52,8 @@ export function requireAdapter(adapter) {
       || adapter.clockAdvanceActionTypes !== undefined && (!Array.isArray(adapter.clockAdvanceActionTypes)
         || typeof adapter.actionConcurrencyProblem !== 'function'
         || adapter.clockAdvanceActionTypes.some(type => !adapter.actionTypes.includes(type)))
+      || ['pausedActionTypes'].some(key=>adapter[key]!==undefined&&(!Array.isArray(adapter[key])
+        ||new Set(adapter[key]).size!==adapter[key].length||adapter[key].some(type=>!adapter.actionTypes.includes(type))))
       || adapter.recoverOnStartup !== undefined && (typeof adapter.recoverOnStartup !== 'boolean'
         || adapter.recoverOnStartup && typeof adapter.lifecycleTransition !== 'function')
       || adapter.usesPresenceLifecycle !== undefined && (typeof adapter.usesPresenceLifecycle !== 'boolean'

@@ -210,6 +210,18 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
     for (const key of ['matchId', 'matchStartedAt', 'matchEndedAt', 'matchParticipants', 'abortedResult', 'clockAdvance']) delete room[key];
     for (const entry of room.players) entry.ready = false;
   }
+  function cancelUnstartedMatch(room, result, context) {
+    if (result.cancelUnstartedMatch !== true) return false;
+    const adapter=adapterFor(room);
+    if (typeof adapter.unstartedCancellationProblem!=='function'
+        ||adapter.unstartedCancellationProblem(room.game,result.state,{...context,room})
+        ||result.state?.result!==null||result.roomPhase!==undefined&&result.roomPhase!=='waiting') {
+      fail(500,'INVALID_OPENING_CANCELLATION','开局取消合同无效。');
+    }
+    // Do not call conclude(), create lastMatchResult, or allocate a history row.
+    resetForWaiting(room);
+    return true;
+  }
   function abort(room, reason = 'player-left', playerId = null, presence) {
     if (!['playing', 'paused'].includes(room.phase)) return false;
     const adapter = adapterFor(room);
@@ -218,6 +230,7 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
       const result = adapter.lifecycleTransition(room.game, { reason: resolvedReason, playerId, now: now(), presence });
       if (!result.ok) fail(409, result.code ?? 'INVALID_LIFECYCLE', result.error);
       if (result.changed === false) return false;
+      if (cancelUnstartedMatch(room,result,{reason:resolvedReason,playerId,now:now()})) return true;
       if (!['playing', 'paused', 'finished', 'aborted'].includes(result.roomPhase)
           || result.terminal === false && (!['playing', 'paused'].includes(result.roomPhase) || result.returnToWaiting)
           || result.status !== undefined && !['completed', 'aborted'].includes(result.status)) {
@@ -486,7 +499,8 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
           if (host) activity(room, player, 'transferHost', `${host.name}接任房主。`);
         }
         let endingText = '';
-        if (endedActiveGame) endingText = room.game?.result?.aborted ? '本局中止，不计输赢或得分。'
+        if (endedActiveGame) endingText = room.phase==='waiting' ? '开局已取消，请重新准备。'
+          : room.game?.result?.aborted ? '本局中止，不计输赢或得分。'
           : typeof adapter.lifecycleTransition !== 'function' ? '本局中止，不计输赢。'
           : adapter.usesPresenceLifecycle ? '本局已结束，结果已保存。' : '本局已结束，离席计分已确认。';
         activity(room, player, 'leave', `${player.name}退出房间。${endingText}`);
@@ -515,17 +529,19 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
         if (room.phase !== 'paused') fail(409, 'GAME_NOT_PAUSED', '当前对局没有暂停。');
         room.phase = 'playing'; room.pauseVote = null;
       } else {
-        if (room.phase !== 'playing') fail(409, room.phase === 'paused' ? 'GAME_PAUSED' : 'GAME_NOT_PLAYING', room.phase === 'paused' ? '对局已暂停，继续后才能出牌。' : '当前没有进行中的对局。');
-        const result = adapter.applyGameAction(room.game, player.id, input, { serverRandomInt, now: now(), phase: room.phase });
+        if (room.phase !== 'playing'&&!(room.phase==='paused'&&adapter.pausedActionTypes?.includes(input.type))) fail(409, room.phase === 'paused' ? 'GAME_PAUSED' : 'GAME_NOT_PLAYING', room.phase === 'paused' ? '对局已暂停，继续后才能出牌。' : '当前没有进行中的对局。');
+        const result = adapter.applyGameAction(room.game, player.id, input, { serverRandomInt, now: now(), phase: room.phase, hostId:room.hostId });
         if (!result.ok) fail(409, result.code ?? 'INVALID_GAME_ACTION', result.error);
         if (result.guessResult !== undefined) {
           if (typeof adapter.receiptResultProblem !== 'function' || adapter.receiptResultProblem(result.guessResult)) fail(500, 'INVALID_RECEIPT', '游戏反馈暂时无法保存。');
           guessResult = structuredClone(result.guessResult);
         }
-        if (result.roomPhase !== undefined && !['playing','paused','finished'].includes(result.roomPhase)) fail(500,'INVALID_GAME_PHASE','游戏阶段合同无效。');
-        room.game = result.state;
-        if (result.roomPhase !== undefined) room.phase = result.roomPhase;
-        if (room.game.status === 'finished') { room.phase = 'finished'; room.pauseVote = null; conclude(room, 'completed', room.game.result.reason); }
+        if (!cancelUnstartedMatch(room,result,{action:input,playerId:player.id,now:now()})) {
+          if (result.roomPhase !== undefined && !['playing','paused','finished'].includes(result.roomPhase)) fail(500,'INVALID_GAME_PHASE','游戏阶段合同无效。');
+          room.game = result.state;
+          if (result.roomPhase !== undefined) room.phase = result.roomPhase;
+          if (room.game.status === 'finished') { room.phase = 'finished'; room.pauseVote = null; conclude(room, 'completed', room.game.result.reason); }
+        }
       }
       if (['pause', 'resume'].includes(input.type) && typeof adapter.onPhaseChanged === 'function') {
         const changed = adapter.onPhaseChanged(room.game, room.phase, now(), { presence: context.presence });

@@ -1,4 +1,7 @@
-import { getCard, getGood, getCategory } from './content/definitions.mjs';
+import {renderExpansionPrint} from './expansion-card-ui.mjs';
+import {GOODS as EXP_GOODS} from './presentation-content.mjs';
+import {CATEGORIES as EXP_CLASSES} from './content/expansion-one.mjs';
+import { getCard, getGood, getCategory } from './presentation-content.mjs';
 import { ART_VERSION, assetPath } from './content/manifest.mjs';
 
 const escape = value => String(value).replace(/[&<>"']/gu, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
@@ -17,6 +20,7 @@ function picture(id, label, className = '') {
 
 export function renderGoodsIcon(id) {
   const good = getGood(id);
+  if(good.icon?.includes('/expansion-one/'))return `<span class="yousei-good-icon yousei-expansion-good" aria-hidden="true"><span class="yousei-art"><img src=".${escape(good.icon)}" alt="" draggable="false" decoding="sync"></span></span>`;
   return `<span class="yousei-good-icon" aria-hidden="true">${picture(id, good.name.slice(0, 1))}</span>`;
 }
 
@@ -26,6 +30,11 @@ export function renderCard(card, { selected = false, disabled = false, interacti
     if (typeof flag !== 'boolean') throw new TypeError('牌面显示状态必须为布尔值');
   }
   if (tapped && face.category !== 'tool') throw new RangeError('只有道具可以横置');
+  if(face.sourceCode?.startsWith('X')||face.category==='role'){
+    const raw=renderExpansionPrint(face,{goods:EXP_GOODS,classes:EXP_CLASSES});
+    const tag=interactive?'button':'span';
+    return `<${tag} ${interactive?`type="button" aria-pressed="${selected}"`:'role="img"'} class="yousei-card${selected?' is-selected':''}${disabled?' is-unavailable':''}${tapped?' is-tapped':''}" data-card-id="${escape(face.id)}" data-card-category="${face.category}" aria-label="${escape(face.name)}">${raw}</${tag}>`;
+  }
   const category = getCategory(face.category);
   const goods = face.category === 'goods';
   const watched = face.category === 'monitored_character';

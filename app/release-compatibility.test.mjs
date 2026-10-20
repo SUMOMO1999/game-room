@@ -381,7 +381,7 @@ test('group2 and public practice journal capabilities have conservative historic
   {forwardCompatible:true,rollbackCompatible:false,initial:false,priorLegacy:false});
  assert.equal(compareReleaseCompatibility(manifest(candidateId,old),manifest(priorId,current())).forwardCompatible,false);
  for(const key of ['hyakkiEvents','hyakkiPracticeJournal'])for(const value of [null,{}, {read:[1],write:[]},
-  {read:[1],write:[2]}, {read:[1,1],write:[1]}, {read:[4],write:[4]}, {read:[1],write:[1],extra:true}])
+  {read:[1],write:[2]}, {read:[1,1],write:[1]}, {read:[5],write:[5]}, {read:[1],write:[1],extra:true}])
   assert.throws(()=>validateDataCompatibility({...current(),[key]:value}),/DATA_COMPATIBILITY_INVALID/);
  for(const value of [null,{}, {read:1}, {read:1,write:2}, {read:0,write:0}, {read:1.5,write:1}, {read:10,write:10,extra:true}])
   assert.throws(()=>validateDataCompatibility({...current(),hyakkiPracticeSaveBytes:value}),/DATA_COMPATIBILITY_INVALID/);
@@ -405,8 +405,8 @@ test('compatible fallback may keep old UI while preserving the new data reader a
  const fallback=current(),f=fixture(t,{prior:fallback});assert.equal(activationPolicy(f.candidateManifest,f.priorManifest),'rollback-allowed');
  const result=f.run();assert.equal(result.status,1);assert.match(result.stderr,/prior code restored/);assert.equal(realpathSync(f.link),f.priorDir);
  // A fallback can keep its old writer only if it still reads every current
- // group, including group3's pinned material context.
- fallback.hyakkiEvents={read:[1,2,3],write:[1]};
+ // group, including group4's frozen expansion context.
+ fallback.hyakkiEvents={read:[1,2,3,4],write:[1]};
  assert.equal(compareReleaseCompatibility(manifest(candidateId,current()),manifest(priorId,fallback)).rollbackCompatible,true);
 });
 

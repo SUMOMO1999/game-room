@@ -1,4 +1,4 @@
-import { GOODS, getCard } from './content/definitions.mjs';
+import { GOODS, getCard } from './presentation-content.mjs';
 import { renderCard, renderCardBack, renderGoodsIcon } from './digital-card-ui.mjs';
 import { choiceModel, buildChoiceSelection, defaultChoiceInput, knownCards, cardKey, goodsTotal } from './game-ui-model.mjs';
 import { decisionContext } from './game-dialog-ui.mjs';
@@ -116,7 +116,7 @@ function goodsObject(id,selected,disabled,type,fields,caption=''){
       }).join('')}</div>${sources.length?'':'<p class="hy-material-chosen">你没有货物可交换。</p>'}</section>`;
     }
     const count=stock[exchange.fromGoodsId]??0;
-    return `<section class="hy-exchange-stage" data-exchange-step="to"><div class="hy-exchange-source"><strong>交出全部${goodName(exchange.fromGoodsId)}${count}件</strong>${chooseAction('native-select','改选交出',{type:'exchange-back'},disabled,'hy-exchange-back')}</div><p class="hy-exchange-instruction">2 · 选择换入的另一类，共${count}件</p><div class="hy-exchange-options">${GOODS.map(good=>{
+    return `<section class="hy-exchange-stage" data-exchange-step="to"><div class="hy-exchange-source"><strong>交出全部${goodName(exchange.fromGoodsId)}${count}件</strong>${chooseAction('native-select','改选交出',{type:'exchange-back'},disabled,'hy-exchange-back')}</div><p class="hy-exchange-instruction">2 · 选择换入的另一类，共${count}件</p><div class="hy-exchange-options">${GOODS.filter(good=>Object.hasOwn(stock,good.id)).map(good=>{
       const index=exchange.options.findIndex(option=>option.fromGoodsId===exchange.fromGoodsId&&option.toGoodsId===good.id),available=game.bankGoods[good.id]??0;
       const caption=good.id===exchange.fromGoodsId?'不能换回同种货物':index<0?`公库${available}件 · 不足${count}件`:`换入${count}件 · 公库${available}件`;
       return goodsObject(good.id,index>=0&&draft.optionIndex===index,disabled||index<0,'option',{index},caption);
@@ -186,7 +186,7 @@ export function renderNativeWork({pending,game,selfId,draft,step=0,short=false,n
     body=`<p class="hy-work-effect">${esc(effect)}</p>${pending.auction?`<p class="hy-work-preview">${auctionSummary}</p>`:''}<p>等待${esc(name(pending.actorId))}完成这一步。</p>`;
   }else if(pending.auction){
     const bid=pending.decision.options?.find(option=>option.type==='bid'),amount=draft.amount??bid?.minimum;
-    body=`<p class="hy-work-effect">${esc(effect)}</p><p class="hy-work-preview">${auctionSummary}</p><p class="hy-work-cost">你有${actor?.silver??0}两；报价不扣款，成交付最终报价。</p>${bid?`<div class="hy-native-bid">${action('native-bid-adjust','−',{delta:-1},!canChoose||amount<=bid.minimum)}<label><input id="hy-native-bid-amount" aria-label="本次报价" type="number" inputmode="numeric" min="${bid.minimum}" max="${bid.maximum}" step="1" value="${amount}" ${!canChoose?'disabled':''}>两</label>${action('native-bid-adjust','＋',{delta:1},!canChoose||amount>=bid.maximum)}<small>${bid.minimum}～${bid.maximum}两</small></div>`:''}`;
+    body=`<div class="hy-auction-context"><p class="hy-work-effect">${esc(effect)}</p><p class="hy-work-preview">${auctionSummary}</p><p class="hy-work-cost">你有${actor?.silver??0}两；报价不扣款，成交付最终报价。</p></div>${bid?`<div class="hy-native-bid">${action('native-bid-adjust','−',{delta:-1},!canChoose||amount<=bid.minimum)}<label><input id="hy-native-bid-amount" aria-label="本次报价" type="number" inputmode="numeric" min="${bid.minimum}" max="${bid.maximum}" step="1" value="${amount}" ${!canChoose?'disabled':''}>两</label>${action('native-bid-adjust','＋',{delta:1},!canChoose||amount>=bid.maximum)}<small>${bid.minimum}～${bid.maximum}两</small></div>`:''}`;
     actions=(bid?action('native-bid','确认报价',{},!canChoose,'hy-primary-action'):'')+action('pass-bid','放弃本次竞价',{},!canChoose);
   }else{
     actions=action('native-confirm','确认选择',{},!canChoose||!ready,'hy-primary-action')+action('native-reset','重新选择',{},!canChoose);

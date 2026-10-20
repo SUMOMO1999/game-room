@@ -1,6 +1,6 @@
 import { mountNightMarket } from './night-market-ui.mjs';
 import { mountNightMarketBackground } from './night-market-background.mjs';
-import { CARDS, CATEGORIES, GOODS, getCard } from './content/definitions.mjs';
+import { CARDS, CATEGORIES, GOODS, getCard } from './presentation-content.mjs';
 import { renderCard, renderCardDetails, renderGoodsIcon, renderCardBack } from './digital-card-ui.mjs';
 import { mountArtFallback } from './content/manifest.mjs';
 import { createGameAudio } from '../../game-audio.mjs';
@@ -50,7 +50,7 @@ export function renderPublicPlayerPanel(player, { bookLayers = 0, finalTurn = fa
     <button type="button" class="yg-peer-overview" data-player="${escape(player.id)}" aria-label="查看${escape(player.name)}的公开商铺详情">
       <span class="yg-peer-heading"><strong title="${escape(player.name)}">${escape(player.name)}</strong><b>${player.silver}两</b><span>手牌${player.handCount}张</span></span>
       ${badges.length ? `<span class="yg-peer-badges">${badges.map(badge => `<span>${badge}</span>`).join('')}</span>` : ''}
-      <span class="yg-peer-goods">${GOODS.map(good => { const count = player.goods.find(item => item.id === good.id)?.count ?? 0; return `<span class="yg-peer-good" data-good-id="${good.id}" title="${good.name}${count}件" aria-label="${good.name}${count}件">${renderGoodsIcon(good.id)}<b>${count}</b></span>`; }).join('')}</span>
+      <span class="yg-peer-goods">${GOODS.filter(good=>player.goods.some(g=>g.id===good.id)).map(good => { const count = player.goods.find(item => item.id === good.id)?.count ?? 0; return `<span class="yg-peer-good" data-good-id="${good.id}" title="${good.name}${count}件" aria-label="${good.name}${count}件">${renderGoodsIcon(good.id)}<b>${count}</b></span>`; }).join('')}</span>
     </button>
     <div class="yg-peer-tools" aria-label="已装备道具">${player.tools.length ? player.tools.map(tool => { const face = definition(tool); return `<button type="button" class="yg-peer-tool${tool.tapped ? ' is-tapped' : ''}" data-detail-id="${face.id}" aria-label="${face.name}，${tool.tapped ? '已用' : '可用'}，查看牌文">${renderCard(tool, { interactive: false })}<span class="yg-peer-tool-name">${face.name}</span><span class="yg-peer-tool-state">${tool.tapped ? '已用' : '可用'}</span></button>`; }).join('') : '<span class="yg-peer-no-tools">尚未装备道具</span>'}</div>
   </section>`;

@@ -1,5 +1,5 @@
 /** Browser-side intent and committed cues. Never receives the hidden deck. */
-const fieldsByAction = Object.freeze({
+const legacyFields = Object.freeze({
   peek: [], 'keep-peek': [], 'discard-peek': [], 'finish-draw': [], 'end-turn': [],
   buy: ['cardId'], sell: ['cardId'], 'buy-stall': ['cardId'],
   'play-character': ['cardId', 'params'], 'install-tool': ['cardId', 'replaceCardId'],
@@ -7,9 +7,11 @@ const fieldsByAction = Object.freeze({
   'choose-effect': ['selection'], bid: ['amount'], 'pass-bid': [],
 });
 
+const configuredFields=Object.freeze({...legacyFields,peek:['inspect'],buy:['cardId','materials'],sell:['cardId','materials'],'use-role':['params'],'confirm-role':['openingId','candidateId','roleId'],'cancel-opening':['openingId']});
 export function hyakkiCommand(game, type, fields = {}) {
+  const fieldsByAction=game?.version===3?configuredFields:legacyFields;
   if (!game || !Object.hasOwn(fieldsByAction, type)) throw new TypeError('当前没有可提交的幽街操作。');
-  const body = { matchId: game.matchId, turnId: game.turnId };
+  const body = game.kind==='hyakki-opening-game'?{}:{matchId:game.matchId,turnId:game.turnId};
   if (game.pending) {
     body.effectId = game.pending.id;
     body.decisionId = game.pending.decisionId;

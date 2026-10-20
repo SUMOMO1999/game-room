@@ -1,8 +1,8 @@
 import { mountHyakkiPage } from './game-ui.mjs';
 import { createHyakkiPracticeSession, PRACTICE_SELF, PRACTICE_STORAGE_KEY } from './practice-engine.mjs';
-import { chooseHyakkiPracticeAction } from './practice-bot.mjs';
+import {chooseConfiguredPracticeAction as chooseHyakkiPracticeAction} from './configured/practice-runtime.mjs';
 import { hyakkiCues } from './presentation.mjs';
-import { getCard } from './content/definitions.mjs';
+import { getCard } from './presentation-content.mjs';
 import { entryStorageKey } from '../../entry-path.mjs';
 import { replacePracticeWithLobby } from '../../platform/practice-navigation.mjs';
 
@@ -55,7 +55,7 @@ function applySnapshot(next) {
   const before = snapshot; snapshot = next;
   const players = next.players.map(player => ({ ...player, ready: true, connected: true }));
   const game = next.game;
-  const room = { gameType: 'hyakki-trading', roomId: 'hyakki-local-practice', roomCode: '',
+  const room = { gameType: 'hyakki-trading', roomId: game?.version===3?next.matchId:'hyakki-local-practice', roomCode: '',
     matchId: next.matchId, revision: game?.revision ?? 0, selfId: PRACTICE_SELF, selfRole: 'player', hostId: PRACTICE_SELF,
     phase: game ? ['finished', 'aborted'].includes(game.status) ? game.status : 'playing' : 'waiting',
     players, matchPlayers: players, spectators: [], game,
@@ -87,7 +87,7 @@ function dispose() {
   destroyed = true; observer.disconnect(); removers.forEach(remove => remove()); ui.destroy();
 }
 try {
-  session = await createHyakkiPracticeSession({ key: entryStorageKey(PRACTICE_STORAGE_KEY), onChange: applySnapshot });
+  session = await createHyakkiPracticeSession({packId:'six-trades-v1', key: entryStorageKey(PRACTICE_STORAGE_KEY), onChange: applySnapshot });
   applySnapshot(session.snapshot()); syncActivity();
 } catch (error) {
   report(error);

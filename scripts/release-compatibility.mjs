@@ -15,7 +15,7 @@ const LEGACY = { format: 1, roomSnapshots: { read: [1], write: [1] },
 // Schema20 pins Rummikub friends-v5; older binaries cannot read its snapshots.
 // Schema21 pins Hyakki's player-count content; legacy snapshots stay readable.
 export const CURRENT_DATA_COMPATIBILITY = Object.freeze({ format: 1,
-  roomSnapshots: Object.freeze({ read: Object.freeze([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 18, 19, 20, 21]), write: Object.freeze([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 15, 17, 18, 19, 20, 21]) }),
+  roomSnapshots: Object.freeze({ read: Object.freeze([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 18, 19, 20, 21, 22]), write: Object.freeze([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 15, 17, 18, 19, 20, 21, 22]) }),
   backupScopes: Object.freeze({ read: Object.freeze([...CURRENT_SCOPES]), write: Object.freeze([...CURRENT_SCOPES]) }),
   // Snapshot schema1 is unchanged, but a 5000-word reader rejects a valid new
   // shared pack. Capacity is therefore part of binary activation compatibility.
@@ -27,10 +27,10 @@ export const CURRENT_DATA_COMPATIBILITY = Object.freeze({ format: 1,
   // Snapshot/backup scope names do not change when public event groups gain
   // trusted turn/delta metadata. Group3 additionally pins content/count;
   // every group retains the measured 32 KiB ceiling and original reserve.
-  hyakkiEvents: Object.freeze({ read: Object.freeze([1, 2, 3]), write: Object.freeze([2, 3]) }),
+  hyakkiEvents: Object.freeze({ read: Object.freeze([1, 2, 3, 4]), write: Object.freeze([2, 3, 4]) }),
   // Zero means the historical practice envelope without a public journal.
   // Pausing an untouched old save can still write that exact legacy shape.
-  hyakkiPracticeJournal: Object.freeze({ read: Object.freeze([0, 1]), write: Object.freeze([0, 1]) }),
+  hyakkiPracticeJournal: Object.freeze({ read: Object.freeze([0, 1, 2]), write: Object.freeze([0, 1, 2]) }),
   hyakkiPracticeSaveBytes: Object.freeze({ read: 9 * 1024 * 1024, write: 9 * 1024 * 1024 }) });
 
 const invalid = (reason) => { throw new Error(`DATA_COMPATIBILITY_INVALID: ${reason}`); };
@@ -73,7 +73,7 @@ export function validateDataCompatibility(value) {
   if (canvasStrokePoints.read < canvasStrokePoints.write) invalid('release cannot read its own canvas stroke writes');
   const hyakkiEvents = Object.hasOwn(value, 'hyakkiEvents') ? value.hyakkiEvents : { read: [1], write: [1] };
   const hyakkiPracticeJournal = Object.hasOwn(value, 'hyakkiPracticeJournal') ? value.hyakkiPracticeJournal : { read: [0], write: [0] };
-  for (const [capability, minimum, maximum] of [[hyakkiEvents, 1, 3], [hyakkiPracticeJournal, 0, 1]]) {
+  for (const [capability, minimum, maximum] of [[hyakkiEvents, 1, 4], [hyakkiPracticeJournal, 0, 2]]) {
     keys(capability, ['read', 'write']);
     for (const direction of ['read', 'write']) list(capability[direction], entry => Number.isSafeInteger(entry) && entry >= minimum && entry <= maximum);
     if (!includes(capability.read, capability.write)) invalid('release cannot read its own hyakki writes');

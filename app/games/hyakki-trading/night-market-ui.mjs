@@ -1,5 +1,5 @@
 import { mountMarketMotion } from './night-market-motion.mjs';
-import { GOODS, getCard } from './content/definitions.mjs';
+import { GOODS, getCard } from './presentation-content.mjs';
 import { assetPath } from './content/manifest.mjs';
 import { renderGoodsIcon } from './digital-card-ui.mjs';
 
@@ -24,12 +24,13 @@ export function renderStallStock(player) {
   const board = (label, slots, kind) => `<span class="nm-stall-board ${kind}" aria-label="${label}"><span class="nm-stall-caption">${label}</span><span class="nm-stall-grid">${slots}</span></span>`;
   const base = board('主摊', Array.from({length:5}, (_, i) => slot(occupied[i], i)).join('')
     + slot(occupied[player.ordinaryCapacity], 5, true), 'nm-base-stall');
-  const expansions = Array.from({length:(player.ordinaryCapacity - 5) / 3}, (_, boardIndex) => {
+  const expansions = Array.from({length:player.stallCount??Math.floor((player.ordinaryCapacity - 5) / 3)}, (_, boardIndex) => {
     const offset = 5 + boardIndex * 3;
     return board(`扩摊${boardIndex + 1}${player.ordinaryCapacity > 8 ? ' ↔' : ''}`, Array.from({length:3}, (_, i) => slot(occupied[offset + i], offset + i)).join(''), 'nm-expansion-stall');
   }).join('');
   const locked = board('扩摊 · 未解锁', Array.from({length:3}, () => '<span class="nm-stock-slot is-locked" aria-label="未解锁扩摊位，使用摊位许可证解锁"><i aria-hidden="true">锁</i></span>').join(''), 'nm-expansion-stall is-locked');
-  return base + `<span class="nm-stall-expansions" aria-label="永久扩摊">${expansions || locked}</span>`;
+  const extra=player.roleId==='yousei.role.r10'?board('仓栈',slot(occupied[5+3*(player.stallCount??0)],5+3*(player.stallCount??0)),'nm-expansion-stall'):'';
+  return base + extra + `<span class="nm-stall-expansions" aria-label="永久扩摊">${expansions || locked}</span>`;
 }
 
 /** Presentation only: real role-filtered views and the existing UI's event IDs. */
@@ -163,14 +164,14 @@ export function mountNightMarket({root}) {
     history.disabled = view.phase === 'waiting';
     const peers = view.selfRole === 'player' ? view.players.filter(p=>p.id!==view.selfId) : view.players;
     const peerNode = $('yg-peer'); peerNode.dataset.playerCount = peers.length;
-    markup(peerNode, peers.map(player=>{
+    markup(peerNode, peers.map((player,peerIndex)=>{
       const index = view.players.indexOf(player), active = (view.decisionActorId ?? view.currentPlayerId) === player.id;
       return `<article class="nm-merchant${active?' is-current':''}${player.id==='empty-seat'?' is-empty':''}" data-public-player="${esc(player.id)}" style="--shop-color:${colours[index%6]}">
         <button type="button" class="nm-merchant-overview" data-player="${esc(player.id)}" aria-label="查看第${index+1}席${esc(player.name)}的公开商铺，${player.silver}两，手牌${player.handCount}张">
-          <img class="nm-portrait" src="${assetPath(portraits[index%6])}" alt="" draggable="false"><span class="nm-peer-copy"><strong title="${esc(player.name)}">${esc(player.name)}</strong><b class="nm-money">${player.silver}<small>两</small></b><small>${index+1}席${active?view.decisionActorId?' · 决定中':' · 正在经营':''}${view.closing?.finalPlayerId===player.id?' · 末回合':''}</small><span class="nm-hand-count">▱ ${player.handCount}</span></span>
+          <img class="nm-portrait" src="${assetPath(portraits[index%6])}" alt="" draggable="false"><span class="nm-peer-copy"><strong title="${esc(player.name)}">${esc(player.name)}</strong><b class="nm-money">${player.silver}<small>两</small></b><small>${index+1}席${active?view.decisionActorId?' · 决定中':' · 正在经营':''}${view.closing?.finalPlayerId===player.id?' · 末回合':''}</small><span class="nm-hand-count">▱ ${player.handCount}${player.goods.length===12?`<span class="ex-peer-index">${peerIndex+1}/${peers.length}</span>`:''}</span></span>
         </button>
-        <div class="nm-peer-goods">${GOODS.map(good=>{const count=player.goods.find(g=>g.id===good.id)?.count??0;return `<span class="nm-mini-good${count?'':' is-zero'}" data-good-id="${good.id}" title="${good.name}${count}件">${renderGoodsIcon(good.id)}<b>${count}</b></span>`;}).join('')}</div>
-        <div class="nm-peer-tools" aria-label="${esc(player.name)}的已装道具">${player.tools.length?player.tools.map(tool=>`<button type="button" data-detail-id="${face(tool).id}" class="${tool.tapped?'is-tapped':''}" aria-label="${esc(face(tool).name)}，${tool.tapped?'已用':'可用'}，阅读牌文">${esc(face(tool).name)}${tool.tapped?' ↷':''}</button>`).join(''):'<small>尚未装备</small>'}${view.currentPlayerId===player.id&&view.bookLayers?`<small>书算${view.bookLayers}层</small>`:''}</div>
+        <div class="nm-peer-goods" data-goods-count="${player.goods.length}" role="group" aria-label="${player.goods.length}种货物，空间不足时左右滑动查看">${GOODS.filter(good=>player.goods.some(g=>g.id===good.id)).map(good=>{const count=player.goods.find(g=>g.id===good.id)?.count??0;return `<span class="nm-mini-good${count?'':' is-zero'}" data-good-id="${good.id}" title="${good.name}${count}件">${renderGoodsIcon(good.id)}<b>${count}</b></span>`;}).join('')}${player.goods.length===12&&player.goods.every(g=>!g.count)?'<small class="ex-peer-empty">暂无货物</small>':''}</div>
+        <div class="nm-peer-tools" aria-label="${esc(player.name)}的已装道具">${player.tools.length?player.tools.map(tool=>`<button type="button" data-detail-id="${face(tool).id}" class="${tool.tapped?'is-tapped':''}" aria-label="${esc(face(tool).name)}，${tool.tapped?'已用':'可用'}，阅读牌文">${esc(face(tool).name)}${tool.tapped?' ↷':''}</button>${player.goods.length===12?`<span class="ex-peer-tool-label${tool.tapped?' is-tapped':''}" title="${esc(face(tool).name)}，${tool.tapped?'已用':'可用'}">${esc(face(tool).name)}${tool.tapped?' ↷':''}</span>`:''}`).join(''):'<small>尚未装备</small>'}${view.currentPlayerId===player.id&&view.bookLayers?`<small>书算${view.bookLayers}层</small>`:''}</div>
       </article>`;
     }).join(''));
     const self = view.selfRole === 'player' && view.players.find(p=>p.id===view.selfId);

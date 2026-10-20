@@ -69,17 +69,17 @@ function finishGame(state, lastPlayerId, now) {
   state.timing.active.deadlineAt = null;
   emit(state, { type: 'match-ended', reason: 'normal-close', winnerSeatId: winnerId });
 }
-function endTurn(state, now, { voluntary = false } = {}) {
+function endTurn(state, now, { voluntary = false, closingTarget = 60 } = {}) {
   requireRule(!state.pending, '请先完成已经开始的操作。');
   const owner = player(state, state.turnPlayerId);
   if (voluntary && qualifiesForIdleReward(state)) addSilver(owner, 1);
   owner.tools.forEach(tool => { tool.exhausted = false; }); state.bookLayers = 0;
   emit(state, { type: 'turn-ended', actorSeatId: owner.id });
   const finalPlayerId = state.players[(state.players.findIndex(value => value.id === state.firstPlayerId) + state.players.length - 1) % state.players.length].id;
-  if (state.closing?.finalPlayerId === owner.id || owner.silver >= 60 && owner.id === finalPlayerId) {
+  if (state.closing?.finalPlayerId === owner.id || owner.silver >= closingTarget && owner.id === finalPlayerId) {
     finishGame(state, owner.id, now); return;
   }
-  if (owner.silver >= 60 && !state.closing) state.closing = { triggerPlayerId: owner.id, finalPlayerId };
+  if (owner.silver >= closingTarget && !state.closing) state.closing = { triggerPlayerId: owner.id, finalPlayerId };
   state.turnIndex = (state.turnIndex + 1) % state.players.length; state.turnPlayerId = state.players[state.turnIndex].id;
   state.turnNumber++; state.turnId = `turn-${state.turnNumber}`; state.round = Math.ceil(state.turnNumber / state.players.length);
   state.stage = 'draw'; state.actionsUsed = 0; state.drawStarted = false;
@@ -209,7 +209,7 @@ function dispatch(state, actorId, action, ctx) {
     case 'finish-draw':
       requireRule(state.stage === 'draw', '已进入用牌阶段。'); requireFirstPeek(state); state.stage = 'use';
       emit(state, { type: 'draw-finished', actorSeatId: actorId }); break;
-    case 'end-turn': requireFirstPeek(state); endTurn(state, ctx.now, { voluntary: true }); break;
+    case 'end-turn': requireFirstPeek(state); endTurn(state, ctx.now, { voluntary: true,closingTarget:ctx.closingTarget??60 }); break;
     case 'buy': case 'sell': trade(state, actorId, action.cardId, action.type === 'buy'); break;
     case 'buy-stall': {
       requireUse(state); ownedCard(state, actorId, action.cardId, 'stall_permit');
@@ -253,7 +253,7 @@ function dispatch(state, actorId, action, ctx) {
 function commit(state, ctx, initialTurn) {
   continuePending(state, ctx);
   // The last action cannot bypass a response, payment or material selection.
-  if (!state.pending && state.status === 'playing' && state.turnId === initialTurn && state.actionsUsed >= state.actionLimit) endTurn(state, ctx.now);
+  if (!state.pending && state.status === 'playing' && state.turnId === initialTurn && state.actionsUsed >= state.actionLimit) endTurn(state, ctx.now,{closingTarget:ctx.closingTarget??60});
   state.revision++; state.publicEventSequence++; state.committedAt = ctx.now;
   synchronizeClock(state, ctx.now); check(state); return { ok: true, state };
 }
@@ -288,7 +288,7 @@ export function applyTimeout(game, actorId, ctx = {}) {
     // has run out. Only the expired actor's remaining choices use defaults.
     for (let step = 0; activeExpired && state.pending && currentDecision(state)?.actorId === actorId && step < 250; step++) defaultPending(state, ctx);
     requireRule(!activeExpired || !state.pending || currentDecision(state)?.actorId !== actorId, '超时结算未收敛。', 'INVALID_GAME_STATE');
-    if (!state.pending && state.status === 'playing' && (activeExpired || state.timing.active.remainingMs === 0)) endTurn(state, ctx.now);
+    if (!state.pending && state.status === 'playing' && (activeExpired || state.timing.active.remainingMs === 0)) endTurn(state, ctx.now,{closingTarget:ctx.closingTarget??60});
     return commit(state, ctx, game.turnId);
   } catch (error) { if (error instanceof RuleError) return failure(error); throw error; }
 }
