@@ -471,3 +471,41 @@
 .pg-stage[data-tutorial=true] .pg-branch-effect{display:block;font-size:13px;font-weight:400;line-height:1.35;margin-top:4px;white-space:normal}
 .pg-stage[data-tutorial=true] .pg-choice:has(.pg-branch-effect){flex:1;min-width:200px;max-width:none;align-self:stretch}
 .pg-stage[data-tutorial=true][data-stage-profile=mobile-landscape] .pg-branch-effect{font-size:12px;line-height:1.25;margin-top:2px}
+
+/* Mobile header budget — geometry only; game controls and dialogs stay full size. */
+@media(max-width:600px),(max-width:1000px) and (max-height:600px){
+  .pg-stage[data-stage-profile] .pg-header{height:var(--room-header-height);min-height:var(--room-header-height);max-height:var(--room-header-height);gap:5px;flex:none}
+  .pg-stage[data-stage-profile] .pg-header nav{gap:4px;flex:none}
+  .pg-stage[data-stage-profile] .pg-header .pg-brand{gap:5px;min-width:0}
+  .pg-stage[data-stage-profile] .pg-header .pg-brand strong{font-size:17px;letter-spacing:1px}
+  .pg-stage[data-stage-profile] .pg-header .pg-brand span{font-size:11px;line-height:12px}
+  .pg-stage[data-stage-profile] .pg-header .pg-brand small{font-size:9px;margin-left:3px}
+  .pg-stage[data-stage-profile] .pg-header #pg-connection{font-size:10px;max-width:95px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pg-stage[data-stage-profile] .pg-header button{height:var(--room-header-control-height);min-height:var(--room-header-control-height);min-width:var(--room-header-control-size);padding:4px 6px;font-size:var(--room-header-control-font-size)}
+
+}
+
+/* Public header controls have ID-owned legacy 44px/scale rules. They consume
+   the same compact dimensions as nav without changing the public table. */
+@media(max-width:600px),(max-width:1000px) and (max-height:600px){
+  .pg-stage[data-stage-profile] .pg-header .pg-public-controls :is(#pg-season,#pg-die){height:var(--room-header-control-height);min-height:var(--room-header-control-height);min-width:var(--room-header-control-size);padding:4px 6px;font-size:var(--room-header-control-font-size);line-height:1.2}
+  .pg-stage[data-stage-profile] .pg-header .pg-public-controls #pg-die svg{width:15px;height:15px;flex:none}
+
+  /* Unscaled admission header: a blocked portrait/tiny viewport is a device
+     message, not a miniature playable board. Fit still owns its original
+     inline values; removing the visible gate restores them automatically. */
+  .pg-stage:is(:has(>#pg-rotate:not([hidden])),:has(>#pg-too-small:not([hidden]))){width:100%!important;height:100%!important;transform:none!important;--stage-scale:1!important;padding:6px 8px;gap:8px}
+  .pg-stage:is(:has(>#pg-rotate:not([hidden])),:has(>#pg-too-small:not([hidden])))>.pg-content{visibility:hidden}
+  .pg-stage:is(:has(>#pg-rotate:not([hidden])),:has(>#pg-too-small:not([hidden])))>.pg-header{display:grid;grid-template-columns:minmax(0,1fr) auto auto;grid-template-rows:33px 31px;gap:4px;height:68px;min-height:68px;max-height:68px;width:100%;align-items:center}
+  .pg-stage:is(:has(>#pg-rotate:not([hidden])),:has(>#pg-too-small:not([hidden]))) .pg-header .pg-brand{grid-column:1;grid-row:1;margin:0;min-width:0}
+  .pg-stage:is(:has(>#pg-rotate:not([hidden])),:has(>#pg-too-small:not([hidden]))) .pg-header #pg-room{grid-column:2;grid-row:1;min-width:31px;max-width:112px;overflow:hidden;text-overflow:ellipsis}
+  .pg-stage:is(:has(>#pg-rotate:not([hidden])),:has(>#pg-too-small:not([hidden]))) .pg-header nav{grid-column:3;grid-row:1;justify-content:flex-end}
+  .pg-stage:is(:has(>#pg-rotate:not([hidden])),:has(>#pg-too-small:not([hidden]))) .pg-header #pg-connection{grid-column:1;grid-row:2;max-width:100%;min-width:0}
+  .pg-stage:is(:has(>#pg-rotate:not([hidden])),:has(>#pg-too-small:not([hidden]))) .pg-header .pg-public-controls{grid-column:2/4;grid-row:2;min-width:0;max-width:none;width:100%;gap:4px;justify-content:flex-end}
+  .pg-stage:is(:has(>#pg-rotate:not([hidden])),:has(>#pg-too-small:not([hidden]))) .pg-header #pg-season{flex:1;min-width:31px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pg-stage:is(:has(>#pg-rotate:not([hidden])),:has(>#pg-too-small:not([hidden])))>.pg-rotate{inset:82px 8px 8px;padding:8px}
+  .pg-stage:is(:has(>#pg-rotate:not([hidden])),:has(>#pg-too-small:not([hidden])))>.pg-rotate>div{max-width:100%}
+  .pg-stage:is(:has(>#pg-rotate:not([hidden])),:has(>#pg-too-small:not([hidden])))>.pg-rotate>div>svg{width:52px;height:52px}
+  .pg-stage:is(:has(>#pg-rotate:not([hidden])),:has(>#pg-too-small:not([hidden])))>.pg-rotate h2{font-size:20px;line-height:1.25;margin:10px 0}
+  .pg-stage:is(:has(>#pg-rotate:not([hidden])),:has(>#pg-too-small:not([hidden])))>.pg-rotate p{font-size:13px;line-height:1.5;margin:8px 0}
+}

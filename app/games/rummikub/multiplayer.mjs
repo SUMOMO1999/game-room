@@ -120,7 +120,7 @@ function playersProblem(players, withRacks = false) {
 }
 
 export function gameProblem(game) {
-  if (!game || game.version !== 1 || !['friends-v1', 'friends-v2', 'friends-v3', 'friends-v4'].includes(game.ruleVersion)
+  if (!game || game.version !== 1 || !['friends-v1', 'friends-v2', 'friends-v3', 'friends-v4', 'friends-v5'].includes(game.ruleVersion)
       || !Array.isArray(game.pool) || !Array.isArray(game.board)
       || !game.board.every(Array.isArray)) return '对局状态无效。';
   const layoutProblem = positionsProblem(game.boardPositions, game.board.length);
@@ -128,8 +128,8 @@ export function gameProblem(game) {
   const playerProblem = playersProblem(game.players, true);
   if (playerProblem) return playerProblem;
   try {
-    if (['friends-v3', 'friends-v4'].includes(game.ruleVersion) && (game.jokerConfig === undefined || jokerCountOf(game.jokerConfig) !== game.jokerCount)
-        || !['friends-v3', 'friends-v4'].includes(game.ruleVersion) && game.jokerConfig !== undefined) return '鬼牌设置与本局规则版本不一致。';
+    if (['friends-v3', 'friends-v4', 'friends-v5'].includes(game.ruleVersion) && (game.jokerConfig === undefined || jokerCountOf(game.jokerConfig) !== game.jokerCount)
+        || !['friends-v3', 'friends-v4', 'friends-v5'].includes(game.ruleVersion) && game.jokerConfig !== undefined) return '鬼牌设置与本局规则版本不一致。';
   } catch { return '鬼牌设置无效。'; }
   let deck;
   try {
@@ -206,9 +206,9 @@ export function createGame(players, options = {}) {
   const jokerConfig = options.jokerConfig === undefined ? undefined : normalizeJokerConfig(options.jokerConfig);
   const jokerCount = jokerConfig === undefined ? options.jokerCount ?? copies : jokerCountOf(jokerConfig);
   if (jokerConfig !== undefined && options.jokerCount !== undefined && options.jokerCount !== jokerCount) throw new Error('鬼牌总数必须与设置一致。');
-  const ruleVersion = options.ruleVersion ?? (jokerConfig === undefined ? 'friends-v2' : 'friends-v4');
-  if (!['friends-v1', 'friends-v2', 'friends-v3', 'friends-v4'].includes(ruleVersion)
-      || ['friends-v3', 'friends-v4'].includes(ruleVersion) !== (jokerConfig !== undefined)) throw new Error('鬼牌设置与本局规则版本不一致。');
+  const ruleVersion = options.ruleVersion ?? (jokerConfig === undefined ? 'friends-v2' : 'friends-v5');
+  if (!['friends-v1', 'friends-v2', 'friends-v3', 'friends-v4', 'friends-v5'].includes(ruleVersion)
+      || ['friends-v3', 'friends-v4', 'friends-v5'].includes(ruleVersion) !== (jokerConfig !== undefined)) throw new Error('鬼牌设置与本局规则版本不一致。');
   const deck = gameDeck({ copies, jokerCount, ...(jokerConfig === undefined ? {} : { jokerConfig }) });
   for (let index = deck.length - 1; index > 0; index -= 1) {
     const target = nextRandom(index + 1);
@@ -274,7 +274,7 @@ function finishTurn(game) {
 function submissionProblem(action, game) {
   const isId = (id) => typeof id === 'string' && id.length > 0 && id.length <= 128;
   if (!Array.isArray(action.boardIds) || action.boardIds.length > 106
-      || !action.boardIds.every((meld) => Array.isArray(meld) && meld.length <= (['friends-v3', 'friends-v4'].includes(game.ruleVersion) ? 27 : 13) && meld.every(isId))
+      || !action.boardIds.every((meld) => Array.isArray(meld) && meld.length <= (['friends-v3', 'friends-v4', 'friends-v5'].includes(game.ruleVersion) ? 27 : 13) && meld.every(isId))
       || !Array.isArray(action.rackIds) || action.rackIds.length > game.tileCount || !action.rackIds.every(isId)) {
     return '提交只能包含桌面牌ID组合和剩余手牌ID。';
   }

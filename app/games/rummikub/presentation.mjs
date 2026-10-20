@@ -58,7 +58,7 @@ export function openingProgress(committed, draft, options = {}) {
   }, 0);
   const missing = Math.max(0, 30 - points);
   const hasMirror = (committed.jokerConfig?.mirror ?? 0) > 0;
-  const mirrorNote = hasMirror ? ruleVersion === 'friends-v4' ? '镜像计对应数字' : '镜像自身计 0 点' : '';
+  const mirrorNote = hasMirror ? ['friends-v4', 'friends-v5'].includes(ruleVersion) ? '镜像计对应数字' : '镜像自身计 0 点' : '';
   return { points, missing, ownGroups: ownGroups.length, mirrorNote,
     label: `开局 ${points} / 30 点`,
     detail: `开局 ${points} / 30 点 · ${missing ? `还差 ${missing} 点` : '点数已达标'}${mirrorNote ? ` · ${mirrorNote}` : ''}` };

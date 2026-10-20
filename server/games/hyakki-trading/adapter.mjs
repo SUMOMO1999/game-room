@@ -3,7 +3,9 @@ import { randomInt } from 'node:crypto';
 import * as core from '../../../app/games/hyakki-trading/rules.mjs';
 import { privateView, spectatorView } from '../../../app/games/hyakki-trading/view.mjs';
 import { gameProblem, plainObject, exactFields, integer, seatId, validCopy } from '../../../app/games/hyakki-trading/validation.mjs';
-import { DIGITAL_RULE_VERSION, MULTIPLAYER_RULE_VERSION } from '../../../app/games/hyakki-trading/content/definitions.mjs';
+import { CONTENT_VERSION, PLAYER_COUNT_CONTENT_VERSION, materialProfile, materialProfileFor,
+  DIGITAL_RULE_VERSION, MULTIPLAYER_RULE_VERSION } from '../../../app/games/hyakki-trading/content/definitions.mjs';
+import { recommendedGoodsPerType } from '../../../app/games/hyakki-trading/content/player-count-profile.mjs';
 import { currentDecision } from '../../../app/games/hyakki-trading/decision.mjs';
 import { DEFAULT_ACTION_LIMIT, DEFAULT_GOODS_PER_TYPE, goodsPerTypeOf,
   validActionLimit, validGoodsPerType } from '../../../app/games/hyakki-trading/model.mjs';
@@ -11,22 +13,33 @@ import { transitionHyakkiLifecycle, hyakkiCommonActionProblem, changeHyakkiPause
   hyakkiGameClock, hyakkiRetentionDeadline } from '../../../app/games/hyakki-trading/lifecycle.mjs';
 import { problem } from '../adapter-contract.mjs';
 import { createHyakkiEventStore } from './event-store.mjs';
+import { projectPublicBattleMetadata } from '../../../app/games/hyakki-trading/battle-public-metadata.mjs';
 
 const gameType = 'hyakki-trading';
 const clone = value => structuredClone(value);
+const eventContext = game => game.contentVersion === PLAYER_COUNT_CONTENT_VERSION
+  ? { schemaVersion: 3, contentVersion: game.contentVersion, playerCount: game.players.length } : { schemaVersion: 2 };
 const fences = ['matchId', 'turnId', 'effectId', 'decisionId'];
 const actionExtras = Object.freeze({ peek: [], 'keep-peek': [], 'discard-peek': [], 'finish-draw': [], 'end-turn': [],
   buy: ['cardId'], sell: ['cardId'], 'buy-stall': ['cardId'], 'play-character': ['cardId', 'params'],
   'install-tool': ['cardId', 'replaceCardId'], 'activate-tool': ['cardId', 'params'], respond: ['cardId'],
   'decline-response': [], 'choose-effect': ['selection'], bid: ['amount'], 'pass-bid': [] });
 const token = value => typeof value === 'string' && value.length > 0 && value.length <= 180 && !/\p{Cc}/u.test(value);
-const validConfiguration = value => (exactFields(value, ['actionLimit']) || exactFields(value, ['actionLimit', 'goodsPerType']))
+const validConfiguration = value => (exactFields(value, ['actionLimit']) || exactFields(value, ['actionLimit', 'goodsPerType'])
+  || exactFields(value, ['actionLimit', 'goodsPerType', 'goodsSupplyMode']) && ['recommended', 'custom'].includes(value.goodsSupplyMode))
   && validActionLimit(value.actionLimit) && validGoodsPerType(goodsPerTypeOf(value));
-const reference = value => validCopy(value) || typeof value === 'string' && /^(?:tool-[0-5]|discard|pool|source):\d+:\d+$/u.test(value);
-const jsonInput = (value, depth = 0) => depth < 7 && (value === null || typeof value === 'boolean' || integer(value)
-  || typeof value === 'string' && value.length <= 180 || Array.isArray(value) && value.length <= 110 && value.every(item => jsonInput(item, depth + 1))
-  || plainObject(value) && Object.keys(value).length <= 12 && Object.entries(value).every(([key, item]) => /^[A-Za-z][A-Za-z0-9-]{0,40}$/u.test(key) && jsonInput(item, depth + 1)));
-function actionProblem(action) {
+const modeOf = config => config.goodsSupplyMode ?? 'custom';
+const waitingCount = room => Math.max(2, room.players?.length ?? 2);
+const effectiveGoods = room => modeOf(room.hyakkiConfig) === 'recommended'
+  ? recommendedGoodsPerType(room.game?.players.length ?? waitingCount(room)) : goodsPerTypeOf(room.hyakkiConfig);
+const reference = (value, profile) => validCopy(value, profile) || typeof value === 'string' && /^(?:tool-[0-5]|discard|pool|source):\d+:\d+$/u.test(value);
+const jsonInput = (value, profile, depth = 0) => depth < 7 && (value === null || typeof value === 'boolean' || integer(value)
+  || typeof value === 'string' && value.length <= 180 && (!validCopy(value) || validCopy(value, profile))
+  || Array.isArray(value) && value.length <= profile.deckSize && value.every(item => jsonInput(item, profile, depth + 1))
+  || plainObject(value) && Object.keys(value).length <= 12 && Object.entries(value).every(([key, item]) => /^[A-Za-z][A-Za-z0-9-]{0,40}$/u.test(key) && jsonInput(item, profile, depth + 1)));
+// The transport parser does not own a match. The second validation at apply
+// uses its frozen profile; a legacy match never accepts the larger material set.
+function actionProblem(action, profile = materialProfile(PLAYER_COUNT_CONTENT_VERSION, 6)) {
   if (!plainObject(action) || !Object.hasOwn(actionExtras, action.type)) return problem(400, 'INVALID_ACTION', '幽街操作无效。');
   const allowed = ['type', 'requestId', 'expectedRevision', ...fences, ...actionExtras[action.type]];
   if (Object.keys(action).some(key => !allowed.includes(key)) || !seatId(action.matchId) || !/^turn-[1-9]\d*$/u.test(action.turnId ?? '')
@@ -34,10 +47,10 @@ function actionProblem(action) {
       || (action.effectId !== undefined && !token(action.effectId)) || (action.decisionId !== undefined && !token(action.decisionId))) {
     return problem(400, 'INVALID_ACTION', '操作需要当前对局、回合与有效请求编号。');
   }
-  if (actionExtras[action.type].includes('cardId') && !reference(action.cardId)
-      || action.replaceCardId !== undefined && !reference(action.replaceCardId)
-      || action.params !== undefined && (!plainObject(action.params) || !jsonInput(action.params))
-      || action.type === 'choose-effect' && !jsonInput(action.selection)
+  if (actionExtras[action.type].includes('cardId') && !reference(action.cardId, profile)
+      || action.replaceCardId !== undefined && !reference(action.replaceCardId, profile)
+      || action.params !== undefined && (!plainObject(action.params) || !jsonInput(action.params, profile))
+      || action.type === 'choose-effect' && !jsonInput(action.selection, profile)
       || action.type === 'bid' && !integer(action.amount, 1)) return problem(400, 'INVALID_ACTION', '请选择合法的牌、目标或金额。');
   if (Object.hasOwn(action.params ?? {}, 'initialChoices') && (action.type !== 'play-character'
       || !Array.isArray(action.params.initialChoices) || action.params.initialChoices.length < 1 || action.params.initialChoices.length > 2
@@ -77,11 +90,12 @@ function lifecycle(game, context) {
 }
 function roomStateProblem(room, hasRoles) {
   if (!hasRoles || room.gameType !== gameType || !validConfiguration(room.hyakkiConfig)) return '幽街房间设置无效。';
-  if (!room.game) return room.phase !== 'waiting' || room.turnClock !== null ? '等待房间状态无效。' : null;
+  if (!room.game) return room.phase !== 'waiting' || room.turnClock !== null
+    || effectiveGoods(room) !== goodsPerTypeOf(room.hyakkiConfig) ? '等待房间状态无效。' : null;
   const issue = gameProblem(room.game); if (issue) return issue;
   const game = room.game, ids = game.players.map(player => player.id);
   if (game.matchId !== room.matchId || room.matchStartedAt !== game.lifecycle.startedAt || game.actionLimit !== room.hyakkiConfig.actionLimit
-      || goodsPerTypeOf(game) !== goodsPerTypeOf(room.hyakkiConfig)
+      || goodsPerTypeOf(game) !== goodsPerTypeOf(room.hyakkiConfig) || effectiveGoods(room) !== goodsPerTypeOf(game)
       || !Array.isArray(room.matchParticipants) || room.matchParticipants.length !== ids.length
       || new Set(room.matchParticipants.map(entry => entry.userKey)).size !== ids.length
       || room.matchParticipants.some((entry, index) => !exactFields(entry, ['playerId', 'name', 'userKey']) || entry.playerId !== ids[index]
@@ -109,25 +123,37 @@ export function createHyakkiAdapter({ maxSnapshotBytes = 256 * 1024 } = {}) {
     gameOptions(room, options) {
       const source = options.serverRandomInt ?? randomInt, first = source(room.players.length);
       if (!integer(first, 0, room.players.length - 1)) throw new TypeError('服务端随机结果无效。');
-      return { matchId: options.matchId, actionLimit: room.hyakkiConfig.actionLimit, goodsPerType: goodsPerTypeOf(room.hyakkiConfig), firstPlayerId: room.players[first].id,
+      return { matchId: options.matchId, actionLimit: room.hyakkiConfig.actionLimit, goodsPerType: effectiveGoods(room),
+        contentVersion: PLAYER_COUNT_CONTENT_VERSION, firstPlayerId: room.players[first].id,
         now: options.now, presence: options.presence, randomInt: source };
     },
     applyGameAction(game, actorId, action, context) {
-      const invalid = actionProblem(action); if (invalid) return fail(invalid);
+      const invalid = actionProblem(action, materialProfileFor(game)); if (invalid) return fail(invalid);
       try { return core.applyGameAction(game, actorId, domainAction(action), { now: context.now, randomInt: context.serverRandomInt ?? randomInt }); }
       catch (error) { if (error.name === 'RuleError') return { ok: false, error: error.message, code: error.code }; throw error; }
     },
     privateView, spectatorView, stateProblem: gameProblem, gameEndedAt: game => game.result.settledAt,
-    roomDefaults: () => ({ turnClock: null, hyakkiConfig: { actionLimit: DEFAULT_ACTION_LIMIT, goodsPerType: DEFAULT_GOODS_PER_TYPE } }),
-    playersChanged(room) { if (room.phase === 'waiting') for (const player of room.players) player.ready = false; },
+    roomDefaults: () => ({ turnClock: null, hyakkiConfig: { actionLimit: DEFAULT_ACTION_LIMIT, goodsPerType: 6, goodsSupplyMode: 'recommended' } }),
+    playersChanged(room) {
+      if (room.phase !== 'waiting') return;
+      for (const player of room.players) player.ready = false;
+      if (modeOf(room.hyakkiConfig) === 'recommended') room.hyakkiConfig.goodsPerType = effectiveGoods(room);
+    },
+    rematchRoomUpdates(room) {
+      return modeOf(room.hyakkiConfig) === 'recommended'
+        ? { hyakkiConfig: { ...clone(room.hyakkiConfig), goodsPerType: recommendedGoodsPerType(waitingCount(room)) } } : {};
+    },
     configurationSupportProblem: () => null,
     configure(room, action) {
       if (!validConfiguration(action.hyakkiConfig)) return { problem: problem(400, 'INVALID_CONFIG', '每回合行动上限须为1～10步，每类货物须为4～20件。') };
       const config = action.hyakkiConfig;
+      const mode = config.goodsSupplyMode ?? (Object.hasOwn(config, 'goodsPerType') ? 'custom' : modeOf(room.hyakkiConfig));
       return { updates: { hyakkiConfig: { actionLimit: config.actionLimit,
-        goodsPerType: Object.hasOwn(config, 'goodsPerType') ? config.goodsPerType : goodsPerTypeOf(room.hyakkiConfig) } } };
+        goodsPerType: mode === 'recommended' ? recommendedGoodsPerType(waitingCount(room))
+          : Object.hasOwn(config, 'goodsPerType') ? config.goodsPerType : goodsPerTypeOf(room.hyakkiConfig),
+        ...(Object.hasOwn(config, 'goodsSupplyMode') || Object.hasOwn(room.hyakkiConfig, 'goodsSupplyMode') ? { goodsSupplyMode: mode } : {}) } } };
     },
-    roomView: room => ({ hyakkiConfig: { ...clone(room.hyakkiConfig), goodsPerType: goodsPerTypeOf(room.hyakkiConfig) },
+    roomView: room => ({ hyakkiConfig: { ...clone(room.hyakkiConfig), goodsPerType: effectiveGoods(room) },
       exitPolicy: (room.game?.players.length ?? room.players?.length ?? 2) > 2 ? 'cancel' : 'resign' }),
     playerSummary: (view, playerId) => ({ handCount: view?.players.find(player => player.id === playerId)?.handCount ?? 0 }),
     playerResult(result, playerId) { return { outcome: result?.aborted ? 'unscored'
@@ -146,9 +172,11 @@ export function createHyakkiAdapter({ maxSnapshotBytes = 256 * 1024 } = {}) {
       }
       return false;
     },
-    snapshotSchema: () => 14,
-    snapshotProblem: data => ![12, 13, 14].includes(data?.schemaVersion) || data.gameType !== gameType || !Object.hasOwn(data, 'turnClock')
-      || data.schemaVersion !== 14 && (data.game?.version === 2 || data.game?.ruleVersion === MULTIPLAYER_RULE_VERSION || data.players?.length > 2)
+    snapshotSchema: room => room?.game?.contentVersion === PLAYER_COUNT_CONTENT_VERSION || Object.hasOwn(room?.hyakkiConfig ?? {}, 'goodsSupplyMode') ? 21 : 14,
+    snapshotProblem: data => ![12, 13, 14, 21].includes(data?.schemaVersion) || data.gameType !== gameType || !Object.hasOwn(data, 'turnClock')
+      || ![14, 21].includes(data.schemaVersion) && (data.game?.version === 2 || data.game?.ruleVersion === MULTIPLAYER_RULE_VERSION || data.players?.length > 2)
+      || data.schemaVersion !== 21 && (data.game?.contentVersion === PLAYER_COUNT_CONTENT_VERSION || Object.hasOwn(data.hyakkiConfig ?? {}, 'goodsSupplyMode'))
+      || data.schemaVersion === 21 && data.game && data.game.contentVersion !== PLAYER_COUNT_CONTENT_VERSION
       || data.schemaVersion === 12 && (Object.hasOwn(data.hyakkiConfig ?? {}, 'goodsPerType') || Object.hasOwn(data.game ?? {}, 'goodsPerType'))
       || Buffer.byteLength(JSON.stringify(data), 'utf8') > maxSnapshotBytes,
     roomStateProblem, gameStatusForRoomPhase: phase => ['finished', 'aborted'].includes(phase) ? phase : 'playing',
@@ -183,16 +211,19 @@ export function createHyakkiTransitionPreparers(storage, { now = Date.now, capac
     if (!room?.game) {
       const ended = next?.pendingRecords?.find(summary => summary.matchId === before?.matchId);
       if (!before?.game || before.game.status !== 'playing' || !ended) return null;
-      return { match: { roomId: before.roomId, matchId: before.matchId, ruleVersion: before.game.ruleVersion,
+      const events = [{ type: 'match-ended', reason: ended.reason,
+        winnerSeatId: ended.players.find(player => player.outcome === 'win')?.seatId ?? null }];
+      return { ...eventContext(before.game), ...projectPublicBattleMetadata(before.game, { ...before.game, lastPublicEvents: events }),
+        match: { roomId: before.roomId, matchId: before.matchId, ruleVersion: before.game.ruleVersion,
         contentVersion: before.game.contentVersion, startedAt: before.matchStartedAt,
         participants: before.matchParticipants.map(player => ({ seatId: player.playerId, userKey: player.userKey })) },
         sequence: before.game.publicEventSequence + 1, commitId: `${before.matchId}-${before.game.publicEventSequence + 1}`,
-        committedAt: ended.endedAt, mode: 'terminal', events: [{ type: 'match-ended', reason: ended.reason,
-          winnerSeatId: ended.players.find(player => player.outcome === 'win')?.seatId ?? null }] };
+        committedAt: ended.endedAt, mode: 'terminal', events };
     }
     if (room.game.publicEventSequence === before?.game?.publicEventSequence && room.matchId === before?.matchId) return null;
     const game = room.game;
-    return { match: { roomId: room.roomId, matchId: room.matchId, ruleVersion: game.ruleVersion, contentVersion: game.contentVersion,
+    return { ...eventContext(game), ...projectPublicBattleMetadata(before?.game, game),
+      match: { roomId: room.roomId, matchId: room.matchId, ruleVersion: game.ruleVersion, contentVersion: game.contentVersion,
       startedAt: room.matchStartedAt, participants: room.matchParticipants.map(player => ({ seatId: player.playerId, userKey: player.userKey })) },
       sequence: game.publicEventSequence, commitId: `${room.matchId}-${game.publicEventSequence}`, committedAt: game.committedAt,
       mode: ['finished', 'aborted'].includes(game.status) ? 'terminal' : game.lifecycle.capacity && !before?.game?.lifecycle.capacity ? 'capacity'

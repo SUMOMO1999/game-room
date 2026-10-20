@@ -13,6 +13,11 @@ const illustrations = Object.freeze({
 });
 const fallbackIllustration = '<rect x="59" y="31" width="62" height="84" rx="8" fill="#fffaf0" stroke="#acbda9" stroke-width="2" transform="rotate(-10 90 73)"/><rect x="104" y="22" width="62" height="84" rx="8" fill="#315b50"/><text x="135" y="80" text-anchor="middle" fill="#fffaf0" font-size="44" font-family="Georgia,serif">3</text>';
 
+export function gameIllustrationSvg(gameType) {
+  const drawing = Object.hasOwn(illustrations, gameType) ? illustrations[gameType] : fallbackIllustration;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 140" focusable="false">${drawing}</svg>`;
+}
+
 function element(document, tag, className, text) {
   const node = document.createElement(tag);
   if (className) node.className = className;
@@ -27,8 +32,7 @@ function gameCard(document, game) {
   art.dataset.art = game.gameType;
   art.setAttribute('aria-hidden', 'true');
   // Only fixed local illustrations reach innerHTML. Game labels use textContent.
-  const drawing = Object.hasOwn(illustrations, game.gameType) ? illustrations[game.gameType] : fallbackIllustration;
-  art.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 140" focusable="false">${drawing}</svg>`;
+  art.innerHTML = gameIllustrationSvg(game.gameType);
   const body = element(document, 'div', 'hub-body');
   const title = element(document, 'h3', '', game.name);
   title.id = `hub-${game.gameType}`;

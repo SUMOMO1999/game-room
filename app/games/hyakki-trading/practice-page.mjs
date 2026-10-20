@@ -9,7 +9,8 @@ import { replacePracticeWithLobby } from '../../platform/practice-navigation.mjs
 const root = document.getElementById('hyakki-digital-root');
 let session, snapshot, destroyed = false, leaving = false, running = false;
 const removers = [];
-const ui = mountHyakkiPage({ root, practice: true, onAction: action, onLeave: leave });
+const ui = mountHyakkiPage({ root, practice: true, onAction: action, onLeave: leave,
+  onHistory: async query => { if (!session || destroyed) return null; return session.history(query); } });
 const listen = (node, event, fn) => { node.addEventListener(event, fn); removers.push(() => node.removeEventListener(event, fn)); };
 const report = error => { if (!destroyed) { ui.feedback(error?.message || '本机练习暂时无法继续。'); ui.audio.play('invalid'); } };
 const task = fn => (...args) => Promise.resolve().then(() => fn(...args)).catch(report);
@@ -58,7 +59,8 @@ function applySnapshot(next) {
     matchId: next.matchId, revision: game?.revision ?? 0, selfId: PRACTICE_SELF, selfRole: 'player', hostId: PRACTICE_SELF,
     phase: game ? ['finished', 'aborted'].includes(game.status) ? game.status : 'playing' : 'waiting',
     players, matchPlayers: players, spectators: [], game,
-    hyakkiConfig: { actionLimit: game?.actionLimit ?? 5, goodsPerType: game?.goodsPerType ?? 6 },
+    hyakkiConfig: { ...(next.configuration??{}), actionLimit: game?.actionLimit ?? next.configuration?.actionLimit ?? 5,
+      goodsPerType: game?.goodsPerType ?? next.configuration?.goodsPerType ?? 6 },
     exitPolicy: players.length > 2 ? 'cancel' : 'resign',
     turnClock: game?.clock ? { ...game.clock, version: 4, matchId: next.matchId } : null, serverTime: next.logicalNow };
   ui.applyView(room, { connection: 'online', pending: false,

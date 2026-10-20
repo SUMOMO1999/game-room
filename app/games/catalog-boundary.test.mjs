@@ -108,13 +108,14 @@ test('release packaging follows production imports and excludes unreferenced exp
     'app/games/demo/tests/test.mjs', 'app/games/demo/fixtures/data.mjs', 'server/test-support/secret.mjs',
     'server/games/demo/__fixtures__/secret.mjs',
     ...['production-start.mjs', 'production-preflight.mjs', 'initialize-store-key.mjs', 'store-backup.mjs', 'store-restore.mjs', 'scheduled-backup.mjs', 'release-compatibility.mjs'].map(file => `scripts/${file}`),
-    ...['Caddyfile', 'game-room.service', 'game-room-identity-batch.conf', 'game-room-backup.service', 'game-room-backup.timer', 'runtime.env.example', 'install-release.sh', 'activate-release.sh'].map(file => `infra/${file}`)];
+    ...['Caddyfile', 'game-room.service', 'game-room-identity-batch.conf', 'game-room-voice.conf', 'game-room-backup.service', 'game-room-backup.timer', 'runtime.env.example', 'install-release.sh', 'activate-release.sh'].map(file => `infra/${file}`)];
   for (const path of fixtureFiles) { const target = join(root, path); mkdirSync(dirname(target), { recursive: true }); writeFileSync(target, 'synthetic packaging fixture\n'); }
   writeFileSync(join(root, 'scripts/production-start.mjs'), "import '../server/games/demo/adapter.mjs';\n");
   const publicPaths = ['index.html', 'games/demo/public.mjs'];
   const sources = releaseSources(root, { publicPaths });
   assert.ok(sources.includes('app/games/demo/public.mjs')); assert.ok(sources.includes('server/games/demo/adapter.mjs'));
   assert.ok(sources.includes('infra/game-room-identity-batch.conf'));
+  assert.ok(sources.includes('infra/game-room-voice.conf'));
   assert.equal(sources.some(path => /(?:^|\/)(?:test-support|tests|fixtures|__tests__|__fixtures__)(?:\/|$)|\.test\.mjs$/.test(path)), false);
   const release = buildRelease({ projectRoot: root, outputRoot: join(directory, 'artifacts'), publicPaths });
   const members = execFileSync('tar', ['-tzf', release.artifact], { encoding: 'utf8' }).trim().split('\n');

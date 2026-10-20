@@ -6,7 +6,7 @@ import { problem, publicFields } from '../adapter-contract.mjs';
 
 const gameType = core.GAME_TYPE;
 const actions = Object.freeze({ choose: Object.freeze(['matchId','turnId','candidateId']),
-  guess: Object.freeze(['matchId','turnId','text']) });
+  guess: Object.freeze(['matchId','turnId','text']),skip:Object.freeze(['matchId','turnId']) });
 const fields = ['version','ruleVersion','matcherVersion','resourceVersion','matchId','players','firstPlayerIndex',
   'turnIndex','turnPlayerId','round','turnNumber','turnId','revision','status','stage','settings','stageClock','result'];
 const otherGameFields = ['jokerConfig','jokerCount','copies','deckCopies','deckSize','tileCount','boardPositions','assignment'];
@@ -39,10 +39,13 @@ function selectionProblem(selection) {
   return null;
 }
 export function drawConfigProblem(config,{allowUnselected=true}={}) {
-  if(!keys(config,['rounds','drawingSeconds','contentSelection']) || Object.keys(config).length!==3) return '你画我猜设置字段无效。';
-  const invalid=core.settingsProblem({rounds:config.rounds,drawingSeconds:config.drawingSeconds});if(invalid) return invalid;
+  if(!keys(config,['rounds','drawingSeconds','candidateCount','contentSelection'])
+    || !['rounds','drawingSeconds','contentSelection'].every(key=>Object.hasOwn(config,key))) return '你画我猜设置字段无效。';
+  const invalid=core.settingsProblem({rounds:config.rounds,drawingSeconds:config.drawingSeconds,
+    ...(Object.hasOwn(config,'candidateCount')?{candidateCount:config.candidateCount}:{})});if(invalid) return invalid;
   return config.contentSelection===null && allowUnselected ? null : selectionProblem(config.contentSelection);
 }
+const normalizedConfig = config => ({candidateCount:core.DEFAULT_SETTINGS.candidateCount,...structuredClone(config)});
 function actionProblem(action) {
   if(!object(action)||!Object.hasOwn(actions,action.type)) return problem(400,'INVALID_ACTION','你画我猜操作格式无效。');
   if(!keys(action,['type','requestId','expectedRevision',...actions[action.type]])
@@ -72,10 +75,11 @@ function projection(game,playerId,observer,context={}) {
   const drawer=!observer && game.turnPlayerId===playerId;
   const view=publicFields(game,fields,gameType,{...(observer?{}:{playerId}),
     totalTurns:game.players.length*game.settings.rounds,guessedPlayerIds:game.currentGuesses.map(guess=>guess.playerId),
-    canChoose:running&&drawer&&game.stage==='choosing',canDraw:running&&drawer&&game.stage==='drawing',
+    canChoose:running&&drawer&&game.stage==='choosing',canDraw:running&&drawer&&game.stage==='drawing',canSkip:running&&drawer&&game.stage==='drawing',
     canGuess:running&&!observer&&!drawer&&game.stage==='drawing'&&!game.currentGuesses.some(guess=>guess.playerId===playerId)});
+  view.settings=core.normalizeSettings(game.settings);
   // Public action events never contain a word ID or guessed text. All guesses
-  // are accepted privately; only successful participants become public events.
+  // are accepted privately; text is published only with the current answer.
   view.lastAction=game.lastAction===null?null:{...game.lastAction};
   if(game.stage==='choosing'&&drawer) view.candidates=core.candidatesForTurn(game)
     .map(word=>({id:word.id,answer:word.answer,categoryName:word.categoryName,difficulty:word.difficulty,hintLength:word.hintLength}));
@@ -85,7 +89,10 @@ function projection(game,playerId,observer,context={}) {
     if(drawer||['reveal','finished'].includes(game.stage)) view.word=wordDisplay(word);
   }
   if(['reveal','finished'].includes(game.stage)) view.turnResult={reason:game.turnResults.at(-1).reason,
-    scores:game.currentGuesses.map(guess=>({playerId:guess.playerId,score:guess.score})),drawerScore:game.currentGuesses.length*25};
+    scores:game.currentGuesses.map(guess=>({playerId:guess.playerId,score:guess.score})),drawerScore:game.currentGuesses.length*25,
+    // Absence identifies a legacy turn whose earlier input was never stored.
+    guesses:game.players.filter(player=>player.id!==game.turnPlayerId).map(player=>({playerId:player.id,
+      attempts:(game.guessAttempts??[]).filter(attempt=>attempt.playerId===player.id).map(({text,correct})=>({text,correct}))}))};
   return view;
 }
 export function drawingGameClock(game) {
@@ -117,6 +124,7 @@ function roomStateProblem(room,hasRoles) {
     if(saved.name!==member.name||saved.userKey!==member.userKey) return '比赛参与者与原席位不符。';
   }
   if(room.drawConfig.rounds!==game.settings.rounds||room.drawConfig.drawingSeconds!==game.settings.drawingSeconds
+    ||core.candidateCountFor(room.drawConfig)!==core.candidateCountFor(game.settings)
     || drawConfigProblem(room.drawConfig,{allowUnselected:false})
     || game.frozenCandidates.some(word=>word.packId!==room.drawConfig.contentSelection.packId
       || word.packVersion!==String(room.drawConfig.contentSelection.version)
@@ -156,27 +164,30 @@ export function createDrawAndGuessAdapter() {
       if(action.matchId!==game?.matchId) return fail('对局已经改变，请读取最新状态。','MATCH_CHANGED');
       if((context.phase??'playing')!=='playing') return fail('当前房间不能提交游戏操作。','GAME_NOT_PLAYING');
       const at=context.now ?? Date.now();
-      return action.type==='choose'?core.applyChoose(game,playerId,action,at):core.applyGuess(game,playerId,action,at);
+      if(action.type==='choose')return core.applyChoose(game,playerId,action,at);
+      if(action.type==='skip')return core.applySkip(game,playerId,action,at);
+      return core.applyGuess(game,playerId,action,at);
     },
     configurationSupportProblem:()=>null,
     rematchRoomUpdates(room, options) {
-      return {drawConfig:structuredClone(options.drawRematchConfig ?? room.drawConfig)};
+      return {drawConfig:normalizedConfig(options.drawRematchConfig ?? room.drawConfig)};
     },
     configure(room,input) {
       const invalid=drawConfigProblem(input?.drawConfig);
-      return invalid?{problem:problem(400,'INVALID_CONFIG',invalid)}:{updates:{drawConfig:structuredClone(input.drawConfig)}};
+      return invalid?{problem:problem(400,'INVALID_CONFIG',invalid)}:{updates:{drawConfig:normalizedConfig(input.drawConfig)}};
     },
-    roomView:room=>({drawConfig:structuredClone(room.drawConfig)}),
+    roomView:room=>({drawConfig:normalizedConfig(room.drawConfig)}),
     gameOptions(room,options={}) {
       if(!room||room.gameType!==gameType||room.phase!=='waiting'||room.game!==null||membersProblem(room.players)||room.players.length<2) throw new Error('请先准备有效的你画我猜等待房间。');
       const invalid=drawConfigProblem(room.drawConfig,{allowUnselected:false});if(invalid) throw new Error(invalid);
       // Only the server content service supplies this pre-sampled frozen pool.
       // HTTP configuration/action schemas never accept candidate definitions.
       const words=core.freezeCandidates(options.frozenCandidates);
-      const required=room.players.length*room.drawConfig.rounds*3,s=room.drawConfig.contentSelection;
+      const required=room.players.length*room.drawConfig.rounds*core.candidateCountFor(room.drawConfig),s=room.drawConfig.contentSelection;
       if(words.length!==required||words.some(word=>word.packId!==s.packId||word.packVersion!==String(s.version)
         ||!s.categoryIds.includes(word.category)||!s.difficulties.includes(word.difficulty))) throw new Error('冻结抽词池与本局设置不符。');
-      const settings={rounds:room.drawConfig.rounds,drawingSeconds:room.drawConfig.drawingSeconds};
+      const settings=core.normalizeSettings({rounds:room.drawConfig.rounds,drawingSeconds:room.drawConfig.drawingSeconds,
+        candidateCount:core.candidateCountFor(room.drawConfig)});
       // Check every deterministic dependency before consuming the first-player
       // sample. Client firstPlayerIndex/random/seed never enter the option seam.
       core.createGame(room.players.map(player=>player.id),{settings,frozenCandidates:words,firstPlayerIndex:0,matchId:options.matchId,now:options.now});
@@ -203,6 +214,7 @@ export function createDrawAndGuessAdapter() {
     },
     describeAction({action,player,afterGame,guessResult}) {
       if(action.type==='choose') return `${player.name}开始绘画。`;
+      if(action.type==='skip') return `${player.name}跳过了本题，开始揭晓。`;
       if(action.type==='guess'&&guessResult?.correct) return `${player.name}猜中了，加${guessResult.points}分。`;
       return null;
     },
@@ -224,13 +236,13 @@ export function createDrawAndGuessAdapter() {
       if(context.turnId!==undefined&&context.turnId!==game.turnId||context.stage!==undefined&&context.stage!==game.stage) return fail('题目或阶段已经改变。');
       if(game.status!=='playing'||game.stageClock.pausedAt!==null||!integer(at)||at<game.stageClock.deadlineAt) return fail('当前阶段尚未到期。');
       let candidateIndex;
-      if(game.stage==='choosing') {try{candidateIndex=randomIndex(context.serverRandomInt,3);}catch(error){return fail(error.message);}}
+      if(game.stage==='choosing') {try{candidateIndex=randomIndex(context.serverRandomInt,core.candidateCountFor(game.settings));}catch(error){return fail(error.message);}}
       return core.applyTimeout(game,{now:at,expectedTurnId:context.turnId??game.turnId,expectedStage:context.stage??game.stage,candidateIndex});
     },
     describeTimeout:(game,player)=>game.stage==='choosing'?`${player.name}选词时间已到，开始绘画。`
       :game.stage==='drawing'?'绘画时间已到，本题揭晓。':'揭晓结束，继续下一题。',
-    snapshotSchema:()=>10,
-    snapshotProblem:data=>data?.schemaVersion!==10||data.gameType!==gameType||!Object.hasOwn(data,'drawConfig')
+    snapshotSchema:()=>19,
+    snapshotProblem:data=>![10,17,18,19].includes(data?.schemaVersion)||data.gameType!==gameType||!Object.hasOwn(data,'drawConfig')
       ||!Object.hasOwn(data,'turnClock')||data.game!==null&&data.game?.ruleVersion!==core.RULE_VERSION,
     roomStateProblem,
     historyPlayerProblem:(status,player)=>Object.hasOwn(player,'remainingPoints')

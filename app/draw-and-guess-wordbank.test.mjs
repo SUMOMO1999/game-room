@@ -6,7 +6,7 @@ import {
   selectReviewedDrawAndGuessWords, validateDrawAndGuessDefinition, validateDrawAndGuessWordbank,
 } from '../server/content/draw-and-guess-definition.mjs';
 import {
-  DRAW_AND_GUESS_CATEGORIES, DRAW_AND_GUESS_SEED, DRAW_AND_GUESS_SEED_METADATA,
+  DRAW_AND_GUESS_CATEGORIES, DRAW_AND_GUESS_SEED, DRAW_AND_GUESS_SEED_METADATA, DRAW_AND_GUESS_ORIGINAL_SEED,
 } from '../server/content/draw-and-guess-seed.mjs';
 import { publicAssetPaths } from '../server/public-assets.mjs';
 
@@ -118,26 +118,33 @@ test('retired and draft terms never enter new selections, disabled or unselected
   assert.deepEqual(selectReviewedDrawAndGuessWords(words, { packIds: [] }), []);
 });
 
-test('first seed covers all seven 80-word categories and the default pool without counting friends', () => {
+test('original 560 baseline definitions remain available while the expanded library validates as one pool', async () => {
   const report = validateDrawAndGuessWordbank(DRAW_AND_GUESS_SEED, { categories, requireBaseMinimums: true });
   assert.equal(report.valid, true, JSON.stringify(report.errors));
-  assert.equal(report.stats.total, 560);
-  assert.equal(report.stats.reviewed, 560);
+  assert.ok(report.stats.total >= 5600);
+  assert.equal(report.stats.reviewed, report.stats.total);
+  assert.equal(DRAW_AND_GUESS_ORIGINAL_SEED.length, 560);
+  const {DRAW_AND_GUESS_PREVIOUS_14400_SEED}=await import('../server/content/draw-and-guess-seed.mjs');
+  assert.deepEqual(DRAW_AND_GUESS_PREVIOUS_14400_SEED.slice(0,560),DRAW_AND_GUESS_ORIGINAL_SEED);
+  assert.ok(categories.length >= 30);
   assert.equal(DRAW_AND_GUESS_SEED.filter(entry => entry.category === 'friends').length, 0);
   for (const id of ['daily', 'nature', 'food', 'action-job', 'place-transport', 'screen', 'idiom-abstract']) {
-    assert.equal(report.stats.byCategory[id].total, 80, id);
+    assert.equal(DRAW_AND_GUESS_ORIGINAL_SEED.filter(entry => entry.category === id).length, 80, id);
+    assert.ok(report.stats.byCategory[id].total >= 80, id);
   }
   for (const id of ['daily', 'nature', 'food', 'action-job', 'place-transport']) {
     const selected = selectReviewedDrawAndGuessWords(DRAW_AND_GUESS_SEED, { categoryIds: [id], difficulties: ['easy', 'normal'] });
     assert.ok(selected.length >= 64, id);
     assert.ok(selected.length >= 8 * 2 * 3, `${id} must supply eight players with two turns and three candidates`);
   }
-  assert.equal(report.stats.byCategory.screen.easy, 0);
-  assert.equal(report.stats.byCategory['idiom-abstract'].easy, 0);
-  const short = validateDrawAndGuessWordbank(DRAW_AND_GUESS_SEED.slice(1), { categories, requireBaseMinimums: true });
+  // The old classification remains an exact migration baseline. New explicitly
+  // reviewed visual idioms may be easy; the category alone is not a difficulty.
+  const {DRAW_AND_GUESS_PREVIOUS_CLASSIFIED_SEED}=await import('../server/content/draw-and-guess-seed.mjs');
+  for(const id of ['screen','idiom-abstract'])assert.equal(DRAW_AND_GUESS_PREVIOUS_CLASSIFIED_SEED.filter(word=>word.category===id&&word.difficulty==='easy').length,0);
+  const short = validateDrawAndGuessWordbank(DRAW_AND_GUESS_ORIGINAL_SEED.slice(1), { categories, requireBaseMinimums: true });
   assert.ok(codes(short).includes('base-category-minimum'));
   assert.ok(codes(short).includes('base-total-minimum'));
-  const falseFill = [...DRAW_AND_GUESS_SEED.slice(1), word({ category: 'friends' })];
+  const falseFill = [...DRAW_AND_GUESS_ORIGINAL_SEED.slice(1), word({ category: 'friends' })];
   assert.ok(codes(validateDrawAndGuessWordbank(falseFill, { categories, requireBaseMinimums: true })).includes('base-total-minimum'));
 });
 
@@ -178,7 +185,7 @@ test('seed is immutable editorial material with maintenance-only cues and 21 rep
   assert.ok(representatives.some(entry => entry.aliases.some(alias => drawAndGuessCharacterLength(alias) !== entry.hintLength)));
   assert.ok(representatives.some(entry => /[A-Za-z]/.test(entry.answer) && /\d/.test(entry.answer)));
   assert.ok(representatives.some(entry => entry.aliases.includes('自行車')));
-  assert.equal(Math.max(...representatives.map(entry => entry.hintLength)), Math.max(...DRAW_AND_GUESS_SEED.map(entry => entry.hintLength)));
+  assert.equal(Math.max(...representatives.map(entry => entry.hintLength)), Math.max(...DRAW_AND_GUESS_ORIGINAL_SEED.map(entry => entry.hintLength)));
 });
 
 test('production public asset contract has no seed, definition module or content library import', () => {
@@ -188,4 +195,68 @@ test('production public asset contract has no seed, definition module or content
     const source = readFileSync(new URL(`./${asset}`, import.meta.url), 'utf8');
     assert.equal(/(?:server\/content\/|draw-and-guess-seed|DRAW_AND_GUESS_SEED)/u.test(source), false, asset);
   }
+});
+
+ test('expanded prompts merge conventional synonyms, exclude typos and keep specialist knowledge out of easy selection', () => {
+  const allTerms = new Map(DRAW_AND_GUESS_SEED.flatMap(word => [word.answer,...word.aliases].map(term => [normalizeDrawAndGuessGuess(term),word.id])));
+  for(const [first,second] of [['全身镜','穿衣镜'],['蝉','知了'],['可颂','牛角包'],['大鲵','娃娃鱼'],['地垫','门垫']]) {
+    assert.ok(allTerms.has(normalizeDrawAndGuessGuess(first)),first);
+    assert.equal(allTerms.get(normalizeDrawAndGuessGuess(first)),allTerms.get(normalizeDrawAndGuessGuess(second)));
+  }
+  for(const bad of ['朵鞘','朵云','萧','冷身','水莲']) assert.equal(allTerms.has(normalizeDrawAndGuessGuess(bad)),false,bad);
+  for(const answer of ['薮猫','兵蚁','大红袍','白矮星','处女座','化学家','洱海']) {
+    const retained=DRAW_AND_GUESS_SEED.find(word=>word.answer===answer);
+    if(retained)assert.equal(retained.difficulty,'hard',answer);
+  }
+  for(const answer of ['菜心','茭白','茶树菇','白兰瓜']) assert.notEqual(DRAW_AND_GUESS_SEED.find(word=>word.answer===answer)?.difficulty,'easy',answer);
+ });
+
+test('historic baselines remain exact while the quality library keeps only approved unique definitions',async()=>{
+  const {DRAW_AND_GUESS_PREVIOUS_6408_SEED,DRAW_AND_GUESS_PREVIOUS_14400_SEED,DRAW_AND_GUESS_PREVIOUS_CLASSIFIED_SEED}=await import('../server/content/draw-and-guess-seed.mjs');
+  assert.equal(DRAW_AND_GUESS_PREVIOUS_6408_SEED.length,6408);
+  assert.deepEqual(DRAW_AND_GUESS_PREVIOUS_14400_SEED.slice(0,6408),DRAW_AND_GUESS_PREVIOUS_6408_SEED);
+  for(const [index,word]of DRAW_AND_GUESS_PREVIOUS_CLASSIFIED_SEED.entries())assert.deepEqual({...word,difficulty:DRAW_AND_GUESS_PREVIOUS_14400_SEED[index].difficulty},DRAW_AND_GUESS_PREVIOUS_14400_SEED[index]);
+  const {DRAW_AND_GUESS_QUALITY_REMOVALS}=await import('../server/content/draw-and-guess-quality-replacements.mjs');
+  assert.equal(DRAW_AND_GUESS_SEED.length,14400-DRAW_AND_GUESS_QUALITY_REMOVALS.length);
+  assert.ok(DRAW_AND_GUESS_SEED.length>=5600,'keep a large useful pool without per-category quotas');
+  const validated=validateDrawAndGuessWordbank(DRAW_AND_GUESS_SEED,{categories:DRAW_AND_GUESS_CATEGORIES});
+  assert.equal(validated.valid,true,JSON.stringify(validated.errors));
+  for(const category of DRAW_AND_GUESS_CATEGORIES) {
+    const count=DRAW_AND_GUESS_SEED.filter(w=>w.category===category.id).length;
+    if(category.id==='friends')assert.equal(count,0); else assert.ok(count>0,category.id);
+  }
+  for(const entry of DRAW_AND_GUESS_SEED.slice(6408)) {
+    assert.ok(entry.source);
+    assert.ok(entry.drawingCue.length>4);assert.ok(Object.isFrozen(entry.aliases));
+  }
+});
+
+test('reviewed replacements remove rejected terms rather than hiding them in hard difficulty',async()=>{
+  const {DRAW_AND_GUESS_COMMON_ANSWERS}=await import('../server/content/draw-and-guess-common-selection.mjs');
+  const {DRAW_AND_GUESS_QUALITY_REPLACEMENTS,DRAW_AND_GUESS_QUALITY_REMOVALS}=await import('../server/content/draw-and-guess-quality-replacements.mjs');
+  const {DRAW_AND_GUESS_PREVIOUS_CLASSIFIED_SEED}=await import('../server/content/draw-and-guess-seed.mjs');
+  const approved=new Set(DRAW_AND_GUESS_COMMON_ANSWERS),replacements=new Map(DRAW_AND_GUESS_QUALITY_REPLACEMENTS.map(row=>[row.id,row]));
+  assert.ok(replacements.size>=10,'a handful of difficulty switches is not the requested cleanup');
+  const allTerms=new Set(DRAW_AND_GUESS_SEED.flatMap(word=>[word.answer,...word.aliases].map(normalizeDrawAndGuessGuess)));
+  const previous=new Map(DRAW_AND_GUESS_PREVIOUS_CLASSIFIED_SEED.map(word=>[word.id,word]));
+  for(const word of DRAW_AND_GUESS_SEED) {
+    const replacement=replacements.get(word.id);
+    if(replacement) {
+      assert.notEqual(word.answer,previous.get(word.id).answer);
+      assert.equal(word.definitionVersion,previous.get(word.id).definitionVersion+1);
+      assert.equal(allTerms.has(normalizeDrawAndGuessGuess(replacement.previousAnswer)),false,replacement.previousAnswer);
+      assert.ok(word.drawingCue.length>4,word.answer);
+    } else {
+      assert.deepEqual(word,previous.get(word.id));
+      assert.equal(word.difficulty!=='hard',approved.has(word.answer),word.answer);
+    }
+  }
+  for(const removal of DRAW_AND_GUESS_QUALITY_REMOVALS){
+    assert.equal(DRAW_AND_GUESS_SEED.some(word=>word.id===removal.id),false,removal.id);
+    assert.equal(allTerms.has(normalizeDrawAndGuessGuess(removal.previousAnswer)),false,removal.previousAnswer);
+  }
+  for(const answer of ['真空压缩收纳袋','首饰收纳镜柜','尼古赫琴','引力波探测臂','哈特谢普苏特神庙'])
+    assert.equal(allTerms.has(normalizeDrawAndGuessGuess(answer)),false,answer);
+  const firstFive=new Set(['daily','nature','food','action-job','place-transport']);
+  assert.ok(DRAW_AND_GUESS_SEED.filter(word=>firstFive.has(word.category)&&word.difficulty!=='hard').length>=400);
 });

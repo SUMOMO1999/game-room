@@ -251,8 +251,10 @@ export function createRoomStore({ now = Date.now, ttlMs = 8 * 60 * 60 * 1000,
     const previousPhase = room.phase;
     const transition = abort(room, reason, playerId, presence);
     if (!transition) return false;
-    room.revision += 1;
-    if (!transition.checkpointOnly) room.lastActiveAt = now();
+    // Transport evidence is persisted for recovery, but it is not a game
+    // change. Advancing the public revision here pushes every idle heartbeat
+    // to every seat and makes private identity checks outgrow the wire budget.
+    if (!transition.checkpointOnly) { room.revision += 1; room.lastActiveAt = now(); }
     if (adapterFor(room).usesPresenceLifecycle) {
       if (room.phase !== previousPhase) activity(room, null, 'lifecycle', room.phase === 'paused' ? '对局已挂起，当前步骤与余时保留。'
         : room.phase === 'playing' ? '对局已恢复，继续原步骤。' : '本局已结束，结果已保存。');

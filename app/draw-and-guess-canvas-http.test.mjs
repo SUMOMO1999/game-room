@@ -9,7 +9,7 @@ import { readSettings } from '../server/config.mjs';
 import { IdentityFailure } from '../server/auth.mjs';
 import { SessionService } from '../server/session-service.mjs';
 import { EncryptedStore, SQLiteAdapter, identityKey, opaqueId } from '../server/storage.mjs';
-import { createCanvasService, CANVAS_SCOPE, canvasIdFor } from '../server/games/draw-and-guess/canvas-service.mjs';
+import { createCanvasService, CANVAS_SCOPE, CANVAS_QUOTA_ID, canvasIdFor, validateCanvasRecord, validateCanvasCollection } from '../server/games/draw-and-guess/canvas-service.mjs';
 import { createCanvasHttp } from '../server/games/draw-and-guess/canvas-http.mjs';
 
 const roomId='a'.repeat(32),matchId='b'.repeat(32),drawer='c'.repeat(32),other='d'.repeat(32),spectator='e'.repeat(32);
@@ -121,6 +121,59 @@ test('same account in a new session cannot reuse the old writer until explicit a
   const acquired=await f.request('POST',{deviceId:'device-a'},{path:path+'/acquire',session:newSession});assert.equal(acquired.body.leaseGeneration,2);
   assert.equal((await f.request('POST',input(acquired.body),{path:path+'/append',session:newSession})).status,200);
   assert.equal((await f.request('POST',input(lease),{path:path+'/append'})).status,409);
+});
+
+const recoveryInput=(snapshot,requestId)=>({deviceId:'device-a',canvasId:snapshot.canvasId,bootId:snapshot.bootId,
+  leaseGeneration:snapshot.leaseGeneration,clearGeneration:snapshot.clearGeneration,expectedSequence:snapshot.sequence,requestId,recoverWriter:true});
+test('HTTP full2MiB acquire metadata refusal is413 capacity, retains identity and permits explicit clear then a new stroke',async t=>{
+  const f=await fixture(t);let lease;
+  for(let i=0;i<9;i++)lease=(await f.request('POST',{deviceId:'device-a'},{path:path+'/acquire'})).body;
+  const value=await f.storage.get(CANVAS_SCOPE,lease.canvasId),budget=2*1024*1024,point=[0.0000012345678901234567,0.000009876543210987654];
+  const size=value=>Buffer.byteLength(JSON.stringify(value));value.strokes=[{...operation,strokeId:'s',points:[]}];
+  const count=Math.floor((budget-size(value)-1)/(JSON.stringify(point).length+1));value.strokes[0].points=Array.from({length:count},()=>point);
+  const remaining=budget-size(value);assert.ok(remaining>=0&&remaining<128);value.strokes[0].strokeId+='x'.repeat(remaining);
+  assert.equal(size(value),budget);validateCanvasRecord(value);await f.storage.put(CANVAS_SCOPE,value.canvasId,value);
+  const quota=await f.storage.get(CANVAS_SCOPE,CANVAS_QUOTA_ID);quota.entries[value.canvasId].bytes=budget;quota.totalBytes=budget;
+  await f.storage.put(CANVAS_SCOPE,CANVAS_QUOTA_ID,quota);validateCanvasCollection((await f.storage.scan(CANVAS_SCOPE)).map(record=>record.value));
+  const original=f.canvases.invalidateAuthorization.bind(f.canvases),invalidated=[];
+  f.canvases.invalidateAuthorization=id=>{invalidated.push(id);original(id);};
+  const refused=await f.request('POST',{deviceId:'device-a'},{path:path+'/acquire'});
+  assert.equal(refused.status,413);assert.equal(refused.body.code,'CANVAS_LIMIT');assert.deepEqual(invalidated,[]);
+  assert.equal((await f.storage.get('sessions',f.primary.id)).phase,'active');
+  const confirmed=(await f.request()).body;assert.equal(confirmed.leaseGeneration,9);assert.equal(confirmed.pointCount,count);
+  const cleared=await f.request('POST',recoveryInput(confirmed,'clear-after-capacity'),{path:path+'/clear'});
+  assert.equal(cleared.status,200);assert.equal(cleared.body.ack.leaseGeneration,10);assert.equal(cleared.body.ack.clearGeneration,1);
+  const drawn=await f.request('POST',input(cleared.body.ack,{requestId:'new-after-capacity',expectedSequence:1,clearGeneration:1}),{path:path+'/append'});
+  assert.equal(drawn.status,200);assert.equal((await f.request()).body.pointCount,2);assert.deepEqual(invalidated,[]);
+});
+test('HTTP explicit clear recovers a missing writer under fresh session and CSRF without acquire or replay',async t=>{
+  const f=await fixture(t),lease=(await f.request('POST',{deviceId:'device-a'},{path:path+'/acquire'})).body;
+  await f.request('POST',input(lease),{path:path+'/append'});f.canvases.invalidateAuthorization(f.primary.id);
+  const current=(await f.request()).body,body=recoveryInput(current,'explicit-clear'),session=await f.session();
+  for(const sub of ['guesser','spectator'])assert.equal((await f.request('POST',body,{path:path+'/clear',session:await f.session(sub)})).status,403);
+  for(const headers of [{'x-csrf-token':'wrong'},{origin:'https://untrusted.example'}])
+    assert.equal((await f.request('POST',body,{path:path+'/clear',session,headers})).status,403);
+  assert.equal((await f.request()).body.pointCount,2);
+  const response=await f.request('POST',body,{path:path+'/clear',session});assert.equal(response.status,200);assert.equal(response.body.ack.persisted,true);
+  assert.equal(response.body.ack.leaseGeneration,2);assert.equal(response.body.ack.clearGeneration,1);assert.equal(response.body.ack.sequence,2);
+  assert.equal((await f.request('POST',input(lease,{requestId:'stale',expectedSequence:2,clearGeneration:1}),{path:path+'/append'})).body.code,'CANVAS_STALE_WRITER');
+  const fresh=response.body.ack;
+  assert.equal((await f.request('POST',input(fresh,{requestId:'after-recovery',expectedSequence:2,clearGeneration:1}),{path:path+'/append',session})).status,200);
+  const duplicate=await f.request('POST',body,{path:path+'/clear',session});assert.equal(duplicate.status,200);assert.equal(duplicate.body.duplicate,true);
+  assert.equal((await f.request()).body.pointCount,2,'receipt replay cannot clear newer ink');
+  const another=await f.session();assert.equal((await f.request('POST',body,{path:path+'/clear',session:another})).body.code,'CANVAS_REQUEST_REUSED');
+  for(const secret of [owner,session.id,'authorizationId','requests','actorSeatId'])assert.equal(JSON.stringify(response.body).includes(secret),false);
+});
+
+test('fresh503 after recovery commit suppresses its ack, preserves clear, and requires a new explicit intent',async t=>{
+  const f=await fixture(t),lease=(await f.request('POST',{deviceId:'device-a'},{path:path+'/acquire'})).body;
+  await f.request('POST',input(lease),{path:path+'/append'});const current=(await f.request()).body,body=recoveryInput(current,'unknown-clear');
+  f.failAt(f.providerCalls+2,503);const failed=await f.request('POST',body,{path:path+'/clear'});
+  assert.equal(failed.status,503);assert.equal('ack' in failed.body,false);assert.equal((await f.storage.get(CANVAS_SCOPE,lease.canvasId)).sequence,2);
+  f.failAt(-1,503);const confirmed=(await f.request()).body;assert.equal(confirmed.pointCount,0);assert.equal(confirmed.clearGeneration,1);
+  assert.equal((await f.request('POST',body,{path:path+'/clear'})).body.code,'CANVAS_STALE_WRITER');
+  const fresh=await f.request('POST',recoveryInput(confirmed,'new-explicit-clear'),{path:path+'/clear'});
+  assert.equal(fresh.status,200);assert.equal(fresh.body.ack.sequence,3);assert.equal(fresh.body.ack.leaseGeneration,3);
 });
 
 for(const status of [401,503])test(`fresh authorization ${status} after commit suppresses output and invalidates only the temporary writer`,async t=>{

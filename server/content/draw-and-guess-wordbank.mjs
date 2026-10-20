@@ -1,7 +1,9 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { normalizeDrawAndGuessAnswer, validateDrawAndGuessWordbank, summarizeDrawAndGuessWordbank } from './draw-and-guess-definition.mjs';
-import { DRAW_AND_GUESS_CATEGORIES, DRAW_AND_GUESS_SEED } from './draw-and-guess-seed.mjs';
+import { normalizeDrawAndGuessAnswer, normalizeDrawAndGuessGuess, validateDrawAndGuessWordbank, summarizeDrawAndGuessWordbank } from './draw-and-guess-definition.mjs';
+import { DRAW_AND_GUESS_CATEGORIES, DRAW_AND_GUESS_SEED, DRAW_AND_GUESS_ORIGINAL_SEED, DRAW_AND_GUESS_PREVIOUS_14400_SEED, DRAW_AND_GUESS_PREVIOUS_CATEGORIES, DRAW_AND_GUESS_PREVIOUS_CLASSIFIED_SEED } from './draw-and-guess-seed.mjs';
+import { DRAW_AND_GUESS_QUALITY_REMOVALS } from './draw-and-guess-quality-replacements.mjs';
 import { canonicalWordbankRequest } from '../../app/games/draw-and-guess/request-intent.mjs';
+import { defaultDrawingCategoryIds } from '../../app/games/draw-and-guess/content-defaults.mjs';
 
 const FOREVER = Number.MAX_SAFE_INTEGER;
 const PACKS = 'wordbank-packs', RELEASES = 'wordbank-releases', INDEX = 'wordbank-index';
@@ -12,7 +14,7 @@ const hash = value => createHash('sha256').update(typeof value === 'string' ? va
 const bytes = value => value === null ? 0 : Buffer.byteLength(JSON.stringify(value), 'utf8');
 const identifier = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 export const DRAW_AND_GUESS_WORDBANK_LIMITS = Object.freeze({ sharedPacks: 20, privatePacks: 10,
-  categories: 64, sharedWords: 5000, privateWords: 2000, sharedBytes: 4 * 1024 * 1024,
+  categories: 64, sharedWords: 20000, privateWords: 2000, sharedBytes: 8 * 1024 * 1024,
   privateBytes: 2 * 1024 * 1024, totalBytes: 128 * 1024 * 1024, receipts: 128,
   requestWindowMs: 24 * 60 * 60 * 1000, futureSkewMs: 5 * 60 * 1000, versions: 50,
   historyMs: 180 * 24 * 60 * 60 * 1000, historyEntries: 2000, references: 1000,
@@ -375,11 +377,15 @@ export function createDrawAndGuessWordbank({ storage, now = Date.now, limits: ov
             if (pack.draft.categories.some(category => category.id === categoryId)) fail(409, 'CATEGORY_EXISTS', '分类编号已存在。');
             pack.draft.categories.push({ id: categoryId, name: text(operation.name), status: 'active' }); break;
           }
-          case 'category.rename': case 'category.status': {
-            keys(operation, operation.type === 'category.rename' ? ['type', 'id', 'name'] : ['type', 'id', 'status', 'confirmedAffectedCount']);
+          case 'category.rename': case 'category.status': case 'category.default': {
+            keys(operation, operation.type === 'category.rename' ? ['type', 'id', 'name'] : operation.type === 'category.default' ? ['type', 'id', 'selected'] : ['type', 'id', 'status', 'confirmedAffectedCount']);
             const category = pack.draft.categories.find(item => item.id === id(operation.id));
             if (!category) fail(404, 'CATEGORY_MISSING', '分类不存在。');
             if (operation.type === 'category.rename') category.name = text(operation.name);
+            else if (operation.type === 'category.default') {
+              if (typeof operation.selected !== 'boolean') fail(400, 'CATEGORY_DEFAULT', '默认勾选须为明确的开关。');
+              category.defaultSelected = operation.selected;
+            }
             else {
               if (!['active', 'disabled'].includes(operation.status)) fail(400, 'CATEGORY_STATUS', '分类状态无效。');
               const affected = pack.draft.words.filter(word => word.category === category.id && word.status !== 'retired').length;
@@ -435,6 +441,9 @@ export function createDrawAndGuessWordbank({ storage, now = Date.now, limits: ov
     const candidate = content(pack), report = validateDrawAndGuessWordbank(candidate.words, { categories: candidate.categories });
     if (!candidate.words.some(word => word.status === 'reviewed' && candidate.categories.some(category => category.id === word.category && category.status === 'active'))) {
       report.valid = false; report.errors.push({ code: 'empty-release', path: 'words', message: '发布版需要至少一个有效词条。' });
+    }
+    if (!defaultDrawingCategoryIds(candidate.categories, pack.id).length) {
+      report.valid = false; report.errors.push({ code: 'empty-default-categories', path: 'categories', message: '请至少勾选一个已启用的默认分类。' });
     }
     return { packId, draftRevision: pack.draftRevision, publishedHead: pack.publishedHead, previewHash: previewHash(pack), report, content: candidate };
   }
@@ -543,32 +552,131 @@ export function createDrawAndGuessWordbank({ storage, now = Date.now, limits: ov
   async function ensureSeed({ publishInitial = false } = {}) {
     if (typeof publishInitial !== 'boolean') fail(400, 'SEED_OPTIONS', '初始化选项无效。');
     const seedHash = hash({ categories: DRAW_AND_GUESS_CATEGORIES, words: DRAW_AND_GUESS_SEED });
+    const originalHash = hash({ categories: DRAW_AND_GUESS_PREVIOUS_CATEGORIES.slice(0, 8), words: DRAW_AND_GUESS_ORIGINAL_SEED });
+    // Exact 6,408-definition predecessor shipped in release 192b4e51dd75d69a04e3.
+    // A saved, unknown seed is never accepted merely because its own content hashes.
+    const expanded6408Hash = '65bd1fd391bb324a1ba84e2777e47e3b439a4a0bed8450c314d160f67d2d58bd';
+    const expanded14400Hash = '50d838083e330dda763175023669168fce483b383ea0704f9ca9c65c46031554';
+    const classified14400Hash = hash({ categories: DRAW_AND_GUESS_PREVIOUS_CATEGORIES, words: DRAW_AND_GUESS_PREVIOUS_CLASSIFIED_SEED });
+    const previousWords = new Map(DRAW_AND_GUESS_PREVIOUS_14400_SEED.map(word => [word.id, canonical(word)]));
+    const classifiedWords = new Map(DRAW_AND_GUESS_PREVIOUS_CLASSIFIED_SEED.map(word => [word.id, canonical(word)]));
+    const previousCategories = new Map(DRAW_AND_GUESS_PREVIOUS_CATEGORIES.map(category => [category.id, canonical(category)]));
+    const removalIds = new Set(DRAW_AND_GUESS_QUALITY_REMOVALS.map(word => word.id));
+    // Merge the published head and pending draft independently. Only a complete
+    // known system definition can change; a member edit is never overwritten.
+    function appendSeed(current) {
+      const categories = copy(current.categories);
+      const report = { added: 0, preservedById: 0, semanticCollision: 0, retiredPreserved: 0,
+        difficultyUpdated: 0, replaced: 0, removed: 0, replacementConflicts: 0, categoriesUpdated: 0 };
+      // Only an explicitly rejected, untouched system definition is omitted
+      // from the new draft/head. Old publications and member edits remain.
+      const words = copy(current.words).filter(word => {
+        if (!removalIds.has(word.id)) return true;
+        const definition = canonical(word);
+        if (definition === previousWords.get(word.id) || definition === classifiedWords.get(word.id)) {
+          report.removed++; return false;
+        }
+        report.preservedById++;
+        if (word.status === 'retired') report.retiredPreserved++;
+        return true;
+      });
+      const categoryById = new Map(categories.map(category => [category.id, category]));
+      for (const category of DRAW_AND_GUESS_CATEGORIES) {
+        const savedCategory = categoryById.get(category.id);
+        if (!savedCategory) { categories.push(copy(category)); categoryById.set(category.id, category); }
+        else if (canonical(savedCategory) === previousCategories.get(category.id) && canonical(savedCategory) !== canonical(category)) {
+          Object.assign(savedCategory, copy(category)); report.categoriesUpdated++;
+        }
+      }
+      const ids = new Map(words.map(word => [word.id, word]));
+      // Retired definitions also reserve their terms. Keep owner IDs so a new
+      // answer can keep one of its own aliases without colliding with itself.
+      const terms = new Map();
+      const normalizedTerms = word => [...new Set([word.answer, ...word.aliases].map(normalizeDrawAndGuessGuess))];
+      const reserve = word => { for (const term of normalizedTerms(word)) {
+        if (!terms.has(term)) terms.set(term, new Set()); terms.get(term).add(word.id);
+      } };
+      for (const word of words) reserve(word);
+      const collides = word => normalizedTerms(word).some(term => [...(terms.get(term) ?? [])].some(owner => owner !== word.id));
+      for (const word of DRAW_AND_GUESS_SEED) {
+        const currentWord = ids.get(word.id);
+        if (currentWord) {
+          const savedDefinition = canonical(currentWord);
+          const untouched = savedDefinition === previousWords.get(word.id) || savedDefinition === classifiedWords.get(word.id);
+          if (untouched && savedDefinition !== canonical(word)) {
+            if (collides(word)) { report.replacementConflicts++; report.preservedById++; }
+            else {
+              for (const term of normalizedTerms(currentWord)) {
+                const owners = terms.get(term); owners?.delete(word.id); if (!owners?.size) terms.delete(term);
+              }
+              if (currentWord.difficulty !== word.difficulty) report.difficultyUpdated++;
+              if (currentWord.answer !== word.answer) report.replaced++;
+              Object.assign(currentWord, copy(word)); reserve(currentWord);
+            }
+          } else report.preservedById++;
+          if (currentWord.status === 'retired') report.retiredPreserved++;
+          continue;
+        }
+        if (collides(word)) { report.semanticCollision++; continue; }
+        words.push(copy(word)); ids.set(word.id, word); reserve(word); report.added++;
+      }
+      const validation = validateDrawAndGuessWordbank(words, { categories });
+      if (!validation.valid) fail(503, 'CONTENT_CORRUPT', '基础词库增量无法验证，原内容保持。');
+      return { categories, words, report };
+    }
     for (let attempt = 0; attempt < maxCasAttempts; attempt++) {
       const saved = await storage.read(PACKS, 'dg-base');
       if (saved) {
         try { validateDrawAndGuessWordbankSnapshot(PACKS, saved.value); } catch { fail(503, 'CONTENT_CORRUPT', '基础词库现有数据无法验证。'); }
         if (saved.value.visibility !== 'shared' || saved.value.ownerKey !== null) fail(409, 'SEED_NOT_EMPTY', '基础包并非未初始化公共包，不覆盖。');
       }
-      if (saved?.value.seed) return { imported: false, packId: 'dg-base', seedHash: saved.value.seed.hash };
-      if (saved && (saved.value.draftRevision !== 0 || saved.value.publishedHead !== null || saved.value.draft.words.length)) fail(409, 'SEED_NOT_EMPTY', '基础包已有伙伴内容，不覆盖。');
+      if (saved?.value.seed?.hash === seedHash) return { imported: false, packId: 'dg-base', seedHash };
+      if (saved?.value.seed && ![originalHash, expanded6408Hash, expanded14400Hash, classified14400Hash].includes(saved.value.seed.hash)) fail(409, 'SEED_VERSION_UNKNOWN', '当前基础词库来源版本未知，请核对后再更新。');
+      if (saved && !saved.value.seed && (saved.value.draftRevision !== 0 || saved.value.publishedHead !== null || saved.value.draft.words.length)) fail(409, 'SEED_NOT_EMPTY', '基础包已有伙伴内容，不覆盖。');
       const q = await quota(), qNext = copy(q.value);
       if (!saved && qNext.packs.filter(entry => entry.visibility === 'shared').length >= limits.sharedPacks) fail(409, 'PACK_QUOTA', '公共词包数量已达到上限。');
-      const pack = { schemaVersion: 1, id: 'dg-base', name: '基础词库', visibility: 'shared', ownerKey: null,
+      const upgrading = Boolean(saved?.value.seed), changes = [], guards = [];
+      const pack = upgrading ? copy(saved.value) : { schemaVersion: 1, id: 'dg-base', name: '基础词库', visibility: 'shared', ownerKey: null,
         retired: false, draftRevision: 0, draft: { categories: copy(DRAW_AND_GUESS_CATEGORIES), words: copy(DRAW_AND_GUESS_SEED) },
         publishedHead: null, versions: [], references: [], history: [], seed: { version: 1, hash: seedHash } };
-      const changes = [];
-      if (publishInitial) {
-        const candidate = content(pack), release = { schemaVersion: 1, packId: 'dg-base', version: 1,
-          ...candidate, contentHash: hash(candidate), publishedAt: now(), publicationSource: 'system-seed',
+      let draftReport = null, releaseReport = null, publication = null;
+      if (upgrading) {
+        const merged = appendSeed(pack.draft);
+        pack.draft = { categories: merged.categories, words: merged.words };
+        draftReport = merged.report; pack.draftRevision++;
+        pack.seed = { ...pack.seed, hash: seedHash };
+        // Preserve an intentionally unpublished seed and an explicitly retired
+        // pack. Initialization is not authorization to undo either choice.
+        if (pack.publishedHead && !pack.retired) {
+          const head = await storage.read(RELEASES, releaseId('dg-base', pack.publishedHead));
+          try { validateDrawAndGuessWordbankSnapshot(RELEASES, head?.value); } catch { fail(503, 'CONTENT_CORRUPT', '基础词库已发布内容无法验证。'); }
+          const entry = pack.versions.find(version => version.version === pack.publishedHead);
+          if (entry?.hash !== head.value.contentHash) fail(503, 'CONTENT_CORRUPT', '基础词库发布引用不一致。');
+          const released = appendSeed(head.value); releaseReport = released.report;
+          publication = { name: head.value.name, categories: released.categories, words: released.words };
+          guards.push({ scope: RELEASES, id: releaseId('dg-base', pack.publishedHead), expectedVersion: head.version });
+        }
+      } else if (publishInitial) publication = content(pack);
+      if (publication) {
+        const version = (pack.lastPublishedVersion ?? 0) + 1;
+        const release = { schemaVersion: 1, packId: 'dg-base', version, ...publication,
+          contentHash: hash(publication), publishedAt: now(), publicationSource: 'system-seed',
           publisher: { displayName: '系统基础词库', displayCode: 'system-seed' } };
-        pack.publishedHead = 1; pack.lastPublishedVersion = 1; pack.seed.initialPublished = true;
-        pack.versions.push({ version: 1, hash: release.contentHash, publishedAt: release.publishedAt });
-        changes.push({ scope: RELEASES, id: releaseId('dg-base', 1), expectedVersion: null, value: release });
+        if (bytes(release) > limits.sharedBytes) fail(409, 'PACK_BYTE_LIMIT', '基础词库发布内容超过字节上限，原内容保持。');
+        pack.publishedHead = version; pack.lastPublishedVersion = version; pack.seed.initialPublished = true;
+        pack.versions.push({ version, hash: release.contentHash, publishedAt: release.publishedAt });
+        changes.push({ scope: RELEASES, id: releaseId('dg-base', version), expectedVersion: null, value: release });
       }
+      if (upgrading) history(pack, { label: { displayName: '系统基础词库', displayCode: 'system-seed' } }, 'change',
+        `新增${draftReport.added} 替换${draftReport.replaced} 剔除${draftReport.removed} 难度${draftReport.difficultyUpdated}`);
       packLimits(pack);
+      try { validateDrawAndGuessWordbankSnapshot(PACKS, pack); } catch { fail(409, 'SEED_UPDATE_LIMIT', '基础词库更新超出保存边界，原内容保持。'); }
       if (!saved) qNext.packs.push({ packId: 'dg-base', visibility: 'shared', ownerKey: null });
       const qChange = quotaChange(q, qNext, bytes(pack) - (saved ? bytes(saved.value) : 0) + changes.reduce((sum, change) => sum + bytes(change.value), 0));
-      if (await storage.compareAndSwapMany({ changes: [...changes, { scope: PACKS, id: 'dg-base', expectedVersion: saved?.version ?? null, value: pack }, qChange], guards: [] })) return { imported: true, packId: 'dg-base', seedHash, publishedHead: pack.publishedHead };
+      if (await storage.compareAndSwapMany({ changes: [...changes, { scope: PACKS, id: 'dg-base', expectedVersion: saved?.version ?? null, value: pack }, qChange], guards })) {
+        return { imported: !upgrading, upgraded: upgrading, packId: 'dg-base', seedHash, publishedHead: pack.publishedHead,
+          ...(upgrading ? { draft: draftReport, release: releaseReport } : {}) };
+      }
     }
     fail(409, 'CONTENT_BUSY', '基础词库初始化有并发，请重新查询。');
   }

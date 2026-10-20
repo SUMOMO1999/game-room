@@ -8,9 +8,14 @@ export const GAME_TYPE = 'draw-and-guess';
 export const RULE_VERSION = 'draw-and-guess-classic-v1';
 export const RESOURCE_VERSION = 'dg-tools-v1';
 export const STATE_VERSION = 1;
-export const DEFAULT_SETTINGS = Object.freeze({ rounds: 2, drawingSeconds: 120 });
+export const DEFAULT_SETTINGS = Object.freeze({ rounds: 2, drawingSeconds: 120, candidateCount: 3 });
+export const MIN_CANDIDATE_COUNT = 2;
+export const MAX_CANDIDATE_COUNT = 10;
 export const CHOOSING_MS = 15_000;
 export const REVEAL_MS = 8_000;
+// Retain only this turn, including during its reveal. Never silently drop a
+// submitted answer; reject further input at the per-player storage bound.
+export const MAX_GUESS_ATTEMPTS = 200;
 const stateKeys = ['version','gameType','ruleVersion','matcherVersion','resourceVersion','matchId','players',
   'firstPlayerIndex','turnIndex','turnPlayerId','round','turnNumber','turnId','revision','status','stage','settings',
   'frozenCandidates','selectedWordId','currentGuesses','turnResults','stageClock','lastAction','result'];
@@ -59,11 +64,16 @@ function clock(stage, settings, now) {
   return { durationMs, remainingMs: durationMs, startedAt: now, deadlineAt: now + durationMs, pausedAt: null };
 }
 export function settingsProblem(settings) {
-  return !exact(settings,['rounds','drawingSeconds']) || !integer(settings.rounds,1,5)
-    || !integer(settings.drawingSeconds,30,600) ? '轮数需要1～5，绘画时间需要30～600秒。' : null;
+  // Existing schema10/17 matches froze three words per turn. Read their
+  // missing field as three without changing confirmed candidates or clocks.
+  if (!(exact(settings,['rounds','drawingSeconds']) || exact(settings,['rounds','drawingSeconds','candidateCount']))
+    || !integer(settings.rounds,1,5) || !integer(settings.drawingSeconds,30,600)) return '轮数需要1～5，绘画时间需要30～600秒。';
+  return Object.hasOwn(settings,'candidateCount') && !integer(settings.candidateCount,MIN_CANDIDATE_COUNT,MAX_CANDIDATE_COUNT)
+    ? '每题候选词数量需要2～10的整数。' : null;
 }
+export const candidateCountFor = settings => settings.candidateCount ?? DEFAULT_SETTINGS.candidateCount;
 export function normalizeSettings(settings = {}) {
-  if (!object(settings) || Object.keys(settings).some(key=>!['rounds','drawingSeconds'].includes(key))) throw new TypeError('游戏设置字段无效。');
+  if (!object(settings) || Object.keys(settings).some(key=>!['rounds','drawingSeconds','candidateCount'].includes(key))) throw new TypeError('游戏设置字段无效。');
   const value = { ...DEFAULT_SETTINGS, ...settings }, problem = settingsProblem(value);
   if (problem) throw new TypeError(problem);
   return value;
@@ -91,7 +101,7 @@ function wordProblem(word) {
 }
 // Discard maintenance-only drawing cues. Nothing here imports an answer corpus.
 export function freezeCandidates(words) {
-  if (!array(words,6,120)) throw new TypeError('冻结候选需要6～120条。');
+  if (!array(words,2*MIN_CANDIDATE_COUNT,8*5*MAX_CANDIDATE_COUNT)) throw new TypeError('冻结候选需要4～400条。');
   const frozen = words.map(word => ({ id:word?.id, answer:word?.answer, aliases:clone(word?.aliases), category:word?.category,
     categoryName:word?.categoryName ?? word?.category, difficulty:word?.difficulty, language:word?.language,
     packId:word?.packId, packVersion:String(word?.packVersion ?? word?.definitionVersion ?? ''), definitionVersion:word?.definitionVersion,
@@ -107,7 +117,8 @@ export function freezeCandidates(words) {
   return frozen;
 }
 export function candidatesForTurn(game, number = game.turnNumber) {
-  return game.frozenCandidates.slice((number-1)*3,number*3);
+  const count=candidateCountFor(game.settings);
+  return game.frozenCandidates.slice((number-1)*count,number*count);
 }
 export function selectedWord(game) {
   return candidatesForTurn(game).find(word=>word.id===game.selectedWordId) ?? null;
@@ -118,11 +129,11 @@ export function createGame(playerIds, { settings = {}, rounds, drawingSeconds, f
   const config=normalizeSettings({ ...settings, ...(rounds===undefined?{}:{rounds}), ...(drawingSeconds===undefined?{}:{drawingSeconds}) });
   if(!integer(firstPlayerIndex,0,playerIds.length-1) || typeof matchId!=='string'||!/^[a-f0-9]{32}$/u.test(matchId)) throw new TypeError('首位或对局标识无效。');
   const words=freezeCandidates(frozenCandidates);
-  if(words.length!==playerIds.length*config.rounds*3) throw new TypeError('冻结候选数量与人数和轮数不符。');
+  if(words.length!==playerIds.length*config.rounds*config.candidateCount) throw new TypeError('冻结候选数量与人数、轮数和候选词数量不符。');
   return { version:STATE_VERSION,gameType:GAME_TYPE,ruleVersion:RULE_VERSION,matcherVersion:DRAW_AND_GUESS_MATCHER_VERSION,
     resourceVersion:RESOURCE_VERSION,matchId,players:playerIds.map(id=>({id,score:0})),firstPlayerIndex,
     turnIndex:firstPlayerIndex,turnPlayerId:playerIds[firstPlayerIndex],round:1,turnNumber:1,turnId:turnId(1),revision:0,
-    status:'playing',stage:'choosing',settings:config,frozenCandidates:words,selectedWordId:null,currentGuesses:[],turnResults:[],
+    status:'playing',stage:'choosing',settings:config,frozenCandidates:words,selectedWordId:null,currentGuesses:[],guessAttempts:[],turnResults:[],
     stageClock:clock('choosing',config,now),lastAction:null,result:null };
 }
 function guessListProblem(guesses, game, drawerId) {
@@ -139,7 +150,9 @@ export function resultFor(game) {
   return { version:1,reason:noWinners?'no-guesses':'rounds-complete',winnerIds,scores,tie:winnerIds.length>1 };
 }
 export function gameProblem(game) {
-  if(!exact(game,stateKeys) || game.version!==STATE_VERSION || game.gameType!==GAME_TYPE || game.ruleVersion!==RULE_VERSION
+  // Additive v1 field: pre-update saves have no attempts. Their confirmed
+  // scores and clocks remain valid; only subsequent submissions are recorded.
+  if(!(exact(game,stateKeys)||exact(game,[...stateKeys,'guessAttempts'])) || game.version!==STATE_VERSION || game.gameType!==GAME_TYPE || game.ruleVersion!==RULE_VERSION
     || game.matcherVersion!==DRAW_AND_GUESS_MATCHER_VERSION || game.resourceVersion!==RESOURCE_VERSION
     || typeof game.matchId!=='string'||!/^[a-f0-9]{32}$/u.test(game.matchId) || settingsProblem(game.settings)
     || !array(game.players,2,8) || game.players.some(player=>!exact(player,['id','score'])||!memberId(player.id)||!integer(player.score,0,8000))
@@ -149,19 +162,21 @@ export function gameProblem(game) {
     || game.turnIndex!==(game.firstPlayerIndex+game.turnNumber-1)%game.players.length || game.turnPlayerId!==game.players[game.turnIndex].id
     || !['playing','finished'].includes(game.status) || !['choosing','drawing','reveal','finished'].includes(game.stage)
     || (game.status==='finished')!==(game.stage==='finished')) return '你画我猜状态字段或轮序无效。';
-  if(!array(game.frozenCandidates,game.players.length*game.settings.rounds*3,game.players.length*game.settings.rounds*3)) return '冻结候选数量无效。';
+  const required=game.players.length*game.settings.rounds*candidateCountFor(game.settings);
+  if(!array(game.frozenCandidates,required,required)) return '冻结候选数量无效。';
   try { const frozen=freezeCandidates(game.frozenCandidates);if(!same(frozen,game.frozenCandidates)) return '冻结候选字段无效。'; } catch(error) { return error.message; }
   const revealing=['reveal','finished'].includes(game.stage), total=game.players.length*game.settings.rounds;
   if(game.stage==='choosing' ? game.selectedWordId!==null || !array(game.currentGuesses,0,0) : !selectedWord(game)
     || guessListProblem(game.currentGuesses,game,game.turnPlayerId)) return '当前答案或猜中集合无效。';
   if(game.stage==='drawing' && game.currentGuesses.length===game.players.length-1) return '全员猜中后必须揭晓。';
+  if(Object.hasOwn(game,'guessAttempts') && attemptsProblem(game)) return '本题猜测记录无效。';
   if(!array(game.turnResults,game.turnNumber-(revealing?0:1),game.turnNumber-(revealing?0:1))) return '逐题结果数量无效。';
   const sums=new Map(game.players.map(player=>[player.id,0]));
   for(const [index,result] of game.turnResults.entries()) {
     const drawer=game.players[(game.firstPlayerIndex+index)%game.players.length].id;
     if(!exact(result,['turnId','turnNumber','drawerId','wordId','guesses','reason']) || result.turnNumber!==index+1
       || result.turnId!==turnId(index+1) || result.drawerId!==drawer || !candidatesForTurn(game,index+1).some(word=>word.id===result.wordId)
-      || !['all-guessed','timeout'].includes(result.reason) || guessListProblem(result.guesses,game,drawer)
+      || !['all-guessed','timeout','skipped'].includes(result.reason) || guessListProblem(result.guesses,game,drawer)
       || (result.reason==='all-guessed')!==(result.guesses.length===game.players.length-1)) return '逐题结果定义无效。';
     for(const guess of result.guesses) {sums.set(guess.playerId,sums.get(guess.playerId)+guess.score);sums.set(drawer,sums.get(drawer)+25);}
   }
@@ -177,7 +192,7 @@ export function gameProblem(game) {
         : !integer(c.pausedAt)||c.pausedAt<c.startedAt||c.remainingMs+c.pausedAt-c.startedAt>duration||c.deadlineAt!==null)) return '阶段期限无效。';
   }
   if(game.lastAction!==null && (!exact(game.lastAction,['type','playerId','turnId','points','correct'])
-    || !['choose','guess','timeout'].includes(game.lastAction.type)||!game.players.some(player=>player.id===game.lastAction.playerId)
+    || !['choose','guess','timeout','skip'].includes(game.lastAction.type)||!game.players.some(player=>player.id===game.lastAction.playerId)
     || !integer(game.lastAction.points,0,200)||!(game.lastAction.correct===null||typeof game.lastAction.correct==='boolean')
     || !/^dg-turn-[1-9][0-9]*$/u.test(game.lastAction.turnId))) return '最近事件无效。';
   if(game.lastAction!==null) {
@@ -190,11 +205,35 @@ export function gameProblem(game) {
       const guessed=(number===game.turnNumber?game.currentGuesses:game.turnResults[number-1]?.guesses)
         ?.find(guess=>guess.playerId===last.playerId);
       if(!guessed||guessed.score!==last.points) return '最近猜中事件与得分不符。';
-    } else if(last.playerId!==drawer||last.type==='choose'&&(number!==game.turnNumber||game.stage==='choosing')) return '最近画者事件无效。';
+    } else if(last.playerId!==drawer||last.type==='choose'&&(number!==game.turnNumber||game.stage==='choosing')
+      ||last.type==='skip'&&(number!==game.turnNumber||game.stage!=='reveal'||game.turnResults.at(-1)?.reason!=='skipped')) return '最近画者事件无效。';
   } else if(game.stage!=='choosing'||game.turnNumber!==1) {
     return '缺少阶段事件。';
   }
   return null;
+}
+function attemptsProblem(game) {
+  if(!array(game.guessAttempts,0,(game.players.length-1)*MAX_GUESS_ATTEMPTS)
+    || game.stage==='choosing'&&game.guessAttempts.length) return true;
+  const counts=new Map(),finished=new Set(),word=selectedWord(game);
+  const accepted=word?[word.answer,...word.aliases].map(normalizeDrawAndGuessGuess):[];
+  for(const attempt of game.guessAttempts) {
+    if(!exact(attempt,['playerId','text','correct']) || attempt.playerId===game.turnPlayerId
+      || !game.players.some(player=>player.id===attempt.playerId) || typeof attempt.correct!=='boolean'
+      || finished.has(attempt.playerId)) return true;
+    try {
+      const normalized=normalizeDrawAndGuessGuess(attempt.text);
+      if(!normalized||attempt.text!==attempt.text.normalize('NFC').trim()
+        || attempt.correct!==accepted.includes(normalized)) return true;
+    } catch {return true;}
+    counts.set(attempt.playerId,(counts.get(attempt.playerId)??0)+1);
+    if(counts.get(attempt.playerId)>MAX_GUESS_ATTEMPTS) return true;
+    if(attempt.correct) {
+      if(!game.currentGuesses.some(guess=>guess.playerId===attempt.playerId)) return true;
+      finished.add(attempt.playerId);
+    }
+  }
+  return false;
 }
 function activeProblem(game, now, expectedTurnId, stage) {
   const invalid=gameProblem(game);if(invalid) return invalid;
@@ -209,7 +248,7 @@ function activeProblem(game, now, expectedTurnId, stage) {
 export function applyChoose(game, playerId, { turnId:expectedTurnId, candidateId } = {}, now) {
   const error=activeProblem(game,now,expectedTurnId,'choosing');if(error) return fail(error);
   if(playerId!==game.turnPlayerId) return fail('只有当前画者可以选词。','DRAWER_REQUIRED');
-  if(!candidatesForTurn(game).some(word=>word.id===candidateId)) return fail('只能从本题三个候选中选词。');
+  if(!candidatesForTurn(game).some(word=>word.id===candidateId)) return fail('只能从本题候选中选词。');
   const state=clone(game);state.selectedWordId=candidateId;state.stage='drawing';state.stageClock=clock('drawing',state.settings,now);state.revision++;
   state.lastAction={type:'choose',playerId,turnId:state.turnId,points:0,correct:null};
   return {ok:true,state};
@@ -219,16 +258,27 @@ function reveal(state, now, reason) {
     wordId:state.selectedWordId,guesses:clone(state.currentGuesses),reason});
   state.stage='reveal';state.stageClock=clock('reveal',state.settings,now);
 }
+export function applySkip(game, playerId, { turnId:expectedTurnId } = {}, now) {
+  const error=activeProblem(game,now,expectedTurnId,'drawing');if(error) return fail(error);
+  if(playerId!==game.turnPlayerId) return fail('只有当前画者可以跳过本题。','DRAWER_REQUIRED');
+  const state=clone(game);reveal(state,now,'skipped');state.revision++;
+  state.lastAction={type:'skip',playerId,turnId:state.turnId,points:0,correct:null};
+  return {ok:true,state};
+}
 export function applyGuess(game, playerId, { turnId:expectedTurnId, text } = {}, now) {
   const error=activeProblem(game,now,expectedTurnId,'drawing');if(error) return fail(error);
   if(!game.players.some(player=>player.id===playerId)||playerId===game.turnPlayerId) return fail('只有本局其他参赛者可以猜词。','GUESSER_REQUIRED');
   if(game.currentGuesses.some(guess=>guess.playerId===playerId)) return fail('本题已经猜中。','ALREADY_GUESSED');
   let normalized;try {normalized=normalizeDrawAndGuessGuess(text);if(!normalized) return fail('请填写答案。','INVALID_GUESS');} catch(error) {return fail(error.message,'INVALID_GUESS');}
+  if((game.guessAttempts??[]).filter(attempt=>attempt.playerId===playerId).length>=MAX_GUESS_ATTEMPTS)
+    return fail('本题已提交200次答案，请等待揭晓。','GUESS_LIMIT');
   const word=selectedWord(game),correct=[word.answer,...word.aliases].some(term=>normalizeDrawAndGuessGuess(term)===normalized);
-  if(!correct) return {ok:true,state:clone(game),guessResult:{correct:false,points:0}};
-  const state=clone(game),remainingMs=state.stageClock.deadlineAt-now,points=100+Math.floor(100*remainingMs/(state.settings.drawingSeconds*1000));
+  const state=clone(game);state.guessAttempts??=[];
+  state.guessAttempts.push({playerId,text:text.normalize('NFC').trim(),correct});state.revision++;
+  if(!correct) return {ok:true,state,guessResult:{correct:false,points:0}};
+  const remainingMs=state.stageClock.deadlineAt-now,points=100+Math.floor(100*remainingMs/(state.settings.drawingSeconds*1000));
   state.currentGuesses.push({playerId,score:points,remainingMs});state.players.find(player=>player.id===playerId).score+=points;
-  state.players[state.turnIndex].score+=25;state.revision++;
+  state.players[state.turnIndex].score+=25;
   state.lastAction={type:'guess',playerId,turnId:state.turnId,points,correct:true};
   if(state.currentGuesses.length===state.players.length-1) reveal(state,now,'all-guessed');
   return {ok:true,state,guessResult:{correct:true,points}};
@@ -240,7 +290,7 @@ export function applyTimeout(game, { now, expectedTurnId=game?.turnId, expectedS
   if(game.revision>=Number.MAX_SAFE_INTEGER-2) return fail('对局计数已达上限。');
   const state=clone(game),previousTurn=state.turnId,previousPlayer=state.turnPlayerId;state.revision++;
   if(state.stage==='choosing') {
-    if(!integer(candidateIndex,0,2)) return fail('自动选词需要可信随机结果。');
+    if(!integer(candidateIndex,0,candidateCountFor(game.settings)-1)) return fail('自动选词需要可信随机结果。');
     state.selectedWordId=candidatesForTurn(state)[candidateIndex].id;state.stage='drawing';state.stageClock=clock('drawing',state.settings,now);
   } else if(state.stage==='drawing') reveal(state,now,'timeout');
   else if(state.turnNumber===state.players.length*state.settings.rounds) {
@@ -248,7 +298,7 @@ export function applyTimeout(game, { now, expectedTurnId=game?.turnId, expectedS
   } else {
     state.turnNumber++;state.turnId=turnId(state.turnNumber);state.round=Math.ceil(state.turnNumber/state.players.length);
     state.turnIndex=(state.firstPlayerIndex+state.turnNumber-1)%state.players.length;state.turnPlayerId=state.players[state.turnIndex].id;
-    state.selectedWordId=null;state.currentGuesses=[];state.stage='choosing';state.stageClock=clock('choosing',state.settings,now);
+    state.selectedWordId=null;state.currentGuesses=[];state.guessAttempts=[];state.stage='choosing';state.stageClock=clock('choosing',state.settings,now);
   }
   state.lastAction={type:'timeout',playerId:previousPlayer,turnId:previousTurn,points:0,correct:null};return {ok:true,state};
 }

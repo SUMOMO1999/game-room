@@ -7,7 +7,7 @@
   <meta name="description" content="飞行棋固定教学与2至4方本机轮流练习，使用朋友版完整规则；本机保存，不计战绩。">
   <title>飞行棋练习 · 棋牌室</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./styles.css?v=appearance-fa567212b08e">
   <link rel="stylesheet" href="./games/flying-chess/ui.css">
   <link rel="stylesheet" href="./app-shell.css">
   <link rel="manifest" href="./manifest.webmanifest">
@@ -16,8 +16,8 @@
   <meta name="apple-mobile-web-app-title" content="棋牌室">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="stylesheet" href="./platform/room-settings.css"><script type="module" src="./games/flying-chess/practice-page.mjs"></script>
-</head>
-<body data-mode="flying-practice" class="flying-screen in-game">
+<script type="module" src="./platform/appearance-bootstrap.mjs"></script></head>
+<body data-appearance-scope="flying-chess" data-mode="flying-practice" class="flying-screen in-game">
   <div id="flying-root" role="main"><p>正在恢复本机飞行棋练习…</p><a href="./?practice=1">返回大厅</a></div>
   <noscript><p>请开启浏览器的JavaScript后进入练习。</p><a href="./">返回大厅</a></noscript>
 </body>

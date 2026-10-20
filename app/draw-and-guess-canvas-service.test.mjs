@@ -137,24 +137,123 @@ for(const kind of ['Memory','SQLite']) {
     assert.equal(idle.canvasId,null);assert.equal(idle.pointCount,0);assert.equal((await f.storage.scan(CANVAS_SCOPE)).length,1);
   });
 
-  test(`${kind}: absent presence, room and canvas revisions fence commit together`,async t=>{
+  test(`${kind}: harmless room, presence and canvas revision churn is re-read before one atomic append`,async t=>{
     const f=await fixture(t,kind),lease=await acquire(f.canvas,'123456',owner,{deviceId:'device-a'},auth),original=f.storage.compareAndSwapMany.bind(f.storage);
+    let sequence=0;
     for(const scope of ['rooms','room-presence',CANVAS_SCOPE]) {
-      let once=true;f.storage.compareAndSwapMany=async transaction=>{
-        if(once) {once=false;const id=scope===CANVAS_SCOPE?lease.canvasId:roomId,record=await f.storage.read(scope,id);
+      let calls=0;f.storage.compareAndSwapMany=async transaction=>{
+        if(++calls===1) {const id=scope===CANVAS_SCOPE?lease.canvasId:roomId,record=await f.storage.read(scope,id);
           await f.storage.replaceCAS(scope,id,record.version,record.value);}
         return original(transaction);
       };
-      await reject(f.canvas.append('123456',owner,body(lease,{requestId:`conflict-${scope}`}),auth),'CANVAS_CONFLICT');
-      assert.equal((await f.canvas.read('123456',owner)).pointCount,0);
+      const receipt=await f.canvas.append('123456',owner,body(lease,{requestId:`conflict-${scope}`,expectedSequence:sequence}),auth);
+      assert.equal(receipt.ack.sequence,++sequence);assert.equal(calls,2);
+      assert.equal((await f.canvas.read('123456',owner)).pointCount,3*sequence);
     }
     f.storage.compareAndSwapMany=original;
+  });
+
+  test(`${kind}: a concurrent guess does not discard a still-authorized append`,async t=>{
+    const f=await fixture(t,kind),lease=await acquire(f.canvas,'123456',owner,{deviceId:'device-a'},auth);
+    const original=f.storage.compareAndSwapMany.bind(f.storage);let calls=0;
+    f.storage.compareAndSwapMany=async transaction=>{
+      if(++calls===1)await f.editRoom(snapshot=>{snapshot.game.guesses=[{seatId:guesser,text:'帽子'}];});
+      return original(transaction);
+    };
+    const receipt=await f.canvas.append('123456',owner,body(lease),auth);
+    assert.equal(receipt.ack.sequence,1);assert.equal(receipt.duplicate,false);assert.equal(calls,2);
+    const saved=await f.canvas.read('123456',owner);assert.equal(saved.pointCount,3);
+    assert.equal(Object.keys((await f.storage.get(CANVAS_SCOPE,lease.canvasId)).requests).length,1);
+    assert.equal((await f.canvas.append('123456',owner,body(lease),auth)).duplicate,true);
+    assert.equal((await f.canvas.read('123456',owner)).pointCount,3);
+  });
+
+  test(`${kind}: renewal under concurrent guesses increments the lease once and publishes before acknowledgement`,async t=>{
+    const f=await fixture(t,kind),lease=await acquire(f.canvas,'123456',owner,{deviceId:'device-a'},auth);
+    const original=f.storage.compareAndSwapMany.bind(f.storage);let calls=0,acknowledged=false;const generations=[];
+    await f.canvas.watch('123456',guest,packet=>{if(packet.kind==='replace'){assert.equal(acknowledged,false);generations.push(packet.leaseGeneration);}});
+    f.storage.compareAndSwapMany=async transaction=>{
+      if(++calls<=2)await f.editRoom(snapshot=>{snapshot.game.guessCount=(snapshot.game.guessCount??0)+1;});
+      return original(transaction);
+    };
+    const renewed=await f.canvas.acquire('123456',owner,{deviceId:'device-a',canvasId:lease.canvasId,bootId:lease.bootId},auth);acknowledged=true;
+    assert.equal(calls,3);assert.equal(renewed.leaseGeneration,lease.leaseGeneration+1);assert.deepEqual(generations,[renewed.leaseGeneration]);
+    await reject(f.canvas.append('123456',owner,body(lease),auth),'CANVAS_STALE_WRITER');
+    assert.equal((await f.canvas.append('123456',owner,body(renewed),auth)).ack.sequence,1);
+  });
+
+  test(`${kind}: renewal cannot retry through reveal or indefinitely through repeated room writes`,async t=>{
+    for(const mode of ['reveal','busy']) {
+      const f=await fixture(t,kind),lease=await acquire(f.canvas,'123456',owner,{deviceId:'device-a'},auth);
+      const original=f.storage.compareAndSwapMany.bind(f.storage);let calls=0;
+      f.storage.compareAndSwapMany=async transaction=>{
+        calls++;await f.editRoom(snapshot=>{if(mode==='reveal')snapshot.game.stage='reveal';});return original(transaction);
+      };
+      await reject(f.canvas.acquire('123456',owner,{deviceId:'device-a',canvasId:lease.canvasId,bootId:lease.bootId},auth),mode==='reveal'?'CANVAS_STAGE_CLOSED':'CANVAS_CONFLICT');
+      assert.equal(calls,mode==='reveal'?1:3);assert.equal((await f.storage.get(CANVAS_SCOPE,lease.canvasId)).leaseGeneration,lease.leaseGeneration);
+    }
+  });
+
+  test(`${kind}: the final guess closing drawing is rechecked before a conflicted append can retry`,async t=>{
+    const f=await fixture(t,kind),lease=await acquire(f.canvas,'123456',owner,{deviceId:'device-a'},auth);
+    const original=f.storage.compareAndSwapMany.bind(f.storage);let calls=0;
+    f.storage.compareAndSwapMany=async transaction=>{
+      calls++;await f.editRoom(snapshot=>{snapshot.game.stage='reveal';snapshot.game.stageClock.deadlineAt=9000;});
+      return original(transaction);
+    };
+    await reject(f.canvas.append('123456',owner,body(lease),auth),'CANVAS_STAGE_CLOSED');
+    assert.equal(calls,1);assert.equal((await f.canvas.read('123456',owner)).pointCount,0);
+  });
+
+  test(`${kind}: concurrent guesses retry at most two times without duplicate persisted points`,async t=>{
+    const f=await fixture(t,kind),lease=await acquire(f.canvas,'123456',owner,{deviceId:'device-a'},auth);
+    const original=f.storage.compareAndSwapMany.bind(f.storage);let calls=0,remaining=2;
+    f.storage.compareAndSwapMany=async transaction=>{
+      calls++;if(remaining-->0)await f.editRoom(snapshot=>{snapshot.game.guessCount=(snapshot.game.guessCount??0)+1;});
+      return original(transaction);
+    };
+    assert.equal((await f.canvas.append('123456',owner,body(lease),auth)).ack.sequence,1);
+    assert.equal(calls,3);assert.equal((await f.canvas.read('123456',owner)).pointCount,3);
+    calls=0;remaining=100;
+    await reject(f.canvas.append('123456',owner,body(lease,{expectedSequence:1,requestId:'busy-guesses'}),auth),'CANVAS_CONFLICT');
+    assert.equal(calls,3);assert.equal(remaining,97);assert.equal((await f.canvas.read('123456',owner)).pointCount,3);
+  });
+
+  test(`${kind}: authority loss and lease invalidation during a conflict cannot be retried into a write`,async t=>{
+    for(const change of ['left','new-turn','new-drawer','authorization']) {
+      const f=await fixture(t,kind),lease=await acquire(f.canvas,'123456',owner,{deviceId:'device-a'},auth);
+      const original=f.storage.compareAndSwapMany.bind(f.storage);let calls=0;
+      f.storage.compareAndSwapMany=async transaction=>{
+        calls++;
+        if(change==='left') {const record=await f.storage.read('room-presence',roomId);delete record.value.members[owner];await f.storage.replaceCAS('room-presence',roomId,record.version,record.value);}
+        else await f.editRoom(snapshot=>{
+          if(change==='new-turn')snapshot.game.turnId='dg-turn-2';
+          else if(change==='new-drawer')snapshot.game.turnPlayerId=guesser;
+        });
+        if(change==='authorization')f.canvas.invalidateAuthorization(auth.authorizationId);
+        return original(transaction);
+      };
+      await reject(f.canvas.append('123456',owner,body(lease),auth),{
+        left:'ROOM_MEMBER_REQUIRED','new-turn':'CANVAS_TURN_CHANGED','new-drawer':'CANVAS_DRAWER_REQUIRED',authorization:'CANVAS_STALE_WRITER'}[change]);
+      assert.equal(calls,1);assert.equal((await f.storage.get(CANVAS_SCOPE,lease.canvasId)).sequence,0);
+    }
+  });
+
+  test(`${kind}: an exception after a durable commit is never replayed as a new write`,async t=>{
+    const f=await fixture(t,kind),lease=await acquire(f.canvas,'123456',owner,{deviceId:'device-a'},auth);
+    const original=f.storage.compareAndSwapMany.bind(f.storage);let calls=0;
+    f.storage.compareAndSwapMany=async transaction=>{calls++;await original(transaction);throw new Error('synthetic lost transaction result');};
+    await assert.rejects(f.canvas.append('123456',owner,body(lease),auth),/lost transaction result/);
+    assert.equal(calls,1);assert.equal((await f.canvas.read('123456',owner)).pointCount,3);
+    f.storage.compareAndSwapMany=original;
+    assert.equal((await f.canvas.append('123456',owner,body(lease),auth)).duplicate,true);
+    assert.equal((await f.canvas.read('123456',owner)).pointCount,3);
   });
 
   test(`${kind}: deadline crossed during adapter transaction preserves both canvas and quota`,async t=>{
     const f=await fixture(t,kind),lease=await acquire(f.canvas,'123456',owner,{deviceId:'device-a'},auth),original=f.storage.adapter.compareAndSwapMany.bind(f.storage.adapter);
     f.storage.adapter.compareAndSwapMany=(transaction,clock)=>{f.setTime(601000);return original(transaction,clock);};
-    await reject(f.canvas.append('123456',owner,body(lease),auth),'CANVAS_CONFLICT');
+    await reject(f.canvas.append('123456',owner,body(lease),auth),'CANVAS_STAGE_CLOSED');
     assert.equal((await f.storage.get(CANVAS_SCOPE,lease.canvasId)).sequence,0);validateCanvasCollection((await f.storage.scan(CANVAS_SCOPE)).map(record=>record.value));
   });
 
@@ -166,15 +265,24 @@ for(const kind of ['Memory','SQLite']) {
     await reject(f.canvas.append('123456',owner,first,auth),'CANVAS_SEQUENCE_GAP');assert.equal(saved.strokes[0].points.length,129);
   });
 
-  test(`${kind}: malformed batches and the single-stroke cap reject before durable growth`,async t=>{
+  test(`${kind}: long gestures retain one undo identity and reject beyond the unchanged whole-canvas budget`,async t=>{
     const f=await fixture(t,kind),lease=await acquire(f.canvas,'123456',owner,{deviceId:'device-a'},auth);
     for(const operations of [{},[{...stroke(),points:[[NaN,.5]]}],[{...stroke(),tool:'image'}],[{...stroke(),userKey:owner}]])
       await assert.rejects(f.canvas.append('123456',owner,body(lease,{operations}),auth),error=>error.status===400);
     await reject(f.canvas.append('123456',owner,body(lease,{operations:[stroke(257)]}),auth),'CANVAS_BATCH_TOO_LARGE');
     await reject(f.canvas.append('123456',owner,body(lease,{operations:Array.from({length:17},(_,i)=>stroke(1,`stroke-${i}`))}),auth),'CANVAS_BATCH_TOO_LARGE');
     for(let i=0;i<16;i++)await f.canvas.append('123456',owner,body(lease,{requestId:`chunk-${i}`,expectedSequence:i,operations:[stroke(256)]}),auth);
-    await reject(f.canvas.append('123456',owner,body(lease,{requestId:'over',expectedSequence:16,operations:[stroke(1)]}),auth),'CANVAS_LIMIT');
-    assert.equal((await f.canvas.read('123456',owner)).pointCount,4096);
+    let points=4096,sequence=16;
+    while(points<50000){const count=Math.min(256,50000-points);await f.canvas.append('123456',owner,body(lease,{requestId:`long-${sequence}`,expectedSequence:sequence,operations:[stroke(count)]}),auth);points+=count;sequence++;}
+    const whole=await f.canvas.read('123456',owner);assert.equal(whole.pointCount,50000);assert.equal(whole.strokes.length,1);
+    await reject(f.canvas.append('123456',owner,body(lease,{requestId:'over',expectedSequence:sequence,operations:[stroke(1)]}),auth),'CANVAS_LIMIT');
+    assert.equal((await f.canvas.read('123456',owner)).pointCount,50000);
+    const undoBody=body(lease,{requestId:'undo-long',expectedSequence:sequence++});delete undoBody.operations;
+    await f.canvas.undo('123456',owner,undoBody,auth);
+    assert.equal((await f.canvas.read('123456',owner)).pointCount,0,'undo removes the entire gesture');
+    const redoBody=body(lease,{requestId:'redo-long',expectedSequence:sequence++});delete redoBody.operations;
+    await f.canvas.redo('123456',owner,redoBody,auth);
+    assert.equal((await f.canvas.read('123456',owner)).pointCount,50000,'redo restores the entire gesture');
   });
 }
 
@@ -183,6 +291,34 @@ test('SQLite: a second connection observes committed canvas before append delive
     if(packet.kind==='append')events.push((await second.get(CANVAS_SCOPE,packet.canvasId)).sequence);
   });const lease=await acquire(f.canvas,'123456',owner,{deviceId:'device-a'},auth);await f.canvas.append('123456',owner,body(lease),auth);
   assert.deepEqual(events,[1]);assert.equal(second.adapter.db.prepare('PRAGMA journal_mode').get().journal_mode,'wal');
+});
+
+test('SQLite: a 30720-point held stroke stays complete for 16 watchers while guesses race commits',async t=>{
+  const f=await fixture(t),lease=await acquire(f.canvas,'123456',owner,{deviceId:'device-a'},auth),receivers=Array.from({length:16},()=>[]);
+  for(const received of receivers)await f.canvas.watch('123456',guest,packet=>{if(packet.kind==='append')received.push(structuredClone(packet));});
+  const original=f.storage.compareAndSwapMany.bind(f.storage),samples=[];let pendingGuess=false,commits=0;
+  f.storage.compareAndSwapMany=async transaction=>{
+    if(pendingGuess){pendingGuess=false;await f.editRoom(snapshot=>{snapshot.game.guessCount=(snapshot.game.guessCount??0)+1;});}
+    const committed=await original(transaction);if(committed)commits++;return committed;
+  };
+  const expected=[];
+  for(let sequence=0;sequence<120;sequence++) {
+    const points=Array.from({length:256},(_,index)=>{const i=sequence*256+index;return [Math.round((.5+.4*Math.sin(i/30))*10000)/10000,Math.round((.5+.3*Math.cos(i/50))*10000)/10000];});
+    expected.push(...points);pendingGuess=sequence%3===0;f.setTime(1000+sequence*1000);
+    const start=performance.now(),receipt=await f.canvas.append('123456',owner,body(lease,{requestId:`continuous-${sequence}`,expectedSequence:sequence,
+      operations:[{...stroke(1),points}]}),auth);samples.push(performance.now()-start);
+    assert.equal(receipt.ack.sequence,sequence+1);assert.equal(receipt.duplicate,false);
+  }
+  assert.equal(commits,120);const saved=await f.canvas.read('123456',owner);
+  assert.equal(saved.strokes.length,1);assert.deepEqual(saved.strokes[0].points,expected);assert.equal(saved.pointCount,30720);
+  for(const received of receivers) {
+    assert.equal(received.length,120);assert.deepEqual(received.map(packet=>packet.sequence),Array.from({length:120},(_,index)=>index+1));
+    assert.deepEqual(received.flatMap(packet=>packet.operations[0].points),expected);
+  }
+  const sorted=samples.toSorted((a,b)=>a-b),metrics={appendCount:samples.length,watchers:receivers.length,points:saved.pointCount,
+    p50Ms:Number(sorted[59].toFixed(2)),p95Ms:Number(sorted[113].toFixed(2)),maxMs:Number(sorted.at(-1).toFixed(2))};
+  t.diagnostic(JSON.stringify(metrics));assert.ok(metrics.maxMs<1000,'local durable fan-out must finish within the existing one-second collection cadence');
+  validateCanvasCollection((await f.storage.scan(CANVAS_SCOPE)).map(record=>record.value));
 });
 
 test('old turn and old boot requests cannot collide with a new canvas lease having the same numeric generations',async t=>{

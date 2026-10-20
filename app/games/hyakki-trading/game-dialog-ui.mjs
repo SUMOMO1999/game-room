@@ -1,6 +1,6 @@
 import { GOODS, getCard } from './content/definitions.mjs';
 import { assetPath } from './content/manifest.mjs';
-import { renderGoodsIcon } from './digital-card-ui.mjs';
+import { renderCard, renderGoodsIcon } from './digital-card-ui.mjs';
 import { cardKey, choiceModel } from './game-ui-model.mjs';
 
 export const dialogEscape = value => String(value ?? '').replace(/[&<>"']/gu, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[char]);
@@ -33,6 +33,21 @@ export function renderCompactCard(card, { readButton = true, inline = false } = 
 export function renderCompactCards(cards, pageNumber = 0) {
   const page = dialogPage(cards,pageNumber);
   return `<div class="hy-compact-cards" style="--hy-card-count:${Math.max(1,page.items.length)}">${page.items.map(card=>`<article>${renderCompactCard(card)}</article>`).join('')}</div>${renderDialogPager(page,'cards-page')}`;
+}
+
+/** Current public pile only: each physical copy remains one independently readable card. */
+export function renderPublicDiscardCards(cards, pageNumber = 0, { origins = [], originsLoaded = false, name = () => '伙伴' } = {}) {
+  const page = dialogPage(cards, pageNumber);
+  if (!cards.length) return '<p>弃牌区现在是空的。</p>';
+  const reasons={used:'使用后弃置','draw-discarded':'摸看后弃置',replaced:'替换装备',payment:'作为费用',response:'用于回应','auction-unsold':'拍卖未成交',removed:'被移除'};
+  return `<p class="hy-discard-guide">当前弃牌 · 最新在前 · 共${cards.length}张。</p><div class="hy-public-discard">${page.items.map((card,offset) => {
+    const face = getCard(card.definitionId ?? card.id);
+    const goods = Object.entries(face.goods ?? {}).map(([id, count]) => `${GOODS.find(good => good.id === id).name}×${count}`).join(' · ');
+    const caption = face.category === 'goods' ? `${goods} · 买${face.buySilver}两／卖${face.sellSilver}两` : `${face.name} · ${face.costText}`;
+    const origin=origins[cards.length-1-page.start-offset];
+    const source=origin?.known&&reasons[origin.reason]?`${origin.actorSeatId?`${name(origin.actorSeatId)} · `:''}${reasons[origin.reason]}${origin.sourceCardId&&origin.sourceCardId!==face.id?` · ${getCard(origin.sourceCardId).name}`:''}`:originsLoaded?'来源未完整记录':'来源尚未载入';
+    return `<button type="button" class="hy-discard-card" data-definition-id="${esc(face.id)}" data-hy-detail="${esc(cardKey(card))}" data-hy-read-card="${esc(face.id)}" aria-label="阅读${esc(caption)}原牌文">${renderCard(card,{interactive:false})}<span class="hy-discard-caption">${esc(caption)}</span><span class="hy-discard-origin">${esc(source)}</span></button>`;
+  }).join('')}</div>${renderDialogPager(page,'discard-page')}`;
 }
 
 /** Explain the current projected step; the engine remains the owner of costs and outcomes. */

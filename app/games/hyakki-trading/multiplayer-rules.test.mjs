@@ -1,14 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createGame, applyGameAction, applyTimeout, currentDecision, gameProblem } from './rules.mjs';
-import { DIGITAL_RULE_VERSION, MULTIPLAYER_RULE_VERSION, createDeck, GOODS } from './content/definitions.mjs';
+import { CONTENT_VERSION, DIGITAL_RULE_VERSION, MULTIPLAYER_RULE_VERSION, createDeck, GOODS } from './content/definitions.mjs';
 import { definition, resolvePublicCardRef, goodsPerTypeOf } from './model.mjs';
 import { privateView, spectatorView } from './view.mjs';
 import { changeHyakkiPause } from './lifecycle.mjs';
 
 const ids = Array.from({ length: 6 }, (_, index) => String(index + 1).repeat(32));
 const context = { now: 1000, randomInt: limit => limit - 1 };
-const fresh = (count = 6, options = {}) => createGame(ids.slice(0, count), { ...context, matchId: 'a'.repeat(32), ...options });
+// Preserve the original multiplayer-v2/110 material contract as a recovery regression.
+const fresh = (count = 6, options = {}) => createGame(ids.slice(0, count), { ...context, contentVersion: CONTENT_VERSION, matchId: 'a'.repeat(32), ...options });
 function command(state, type, fields = {}, now = 1000, actorId = currentDecision(state)?.actorId ?? state.turnPlayerId) {
   const decision = currentDecision(state);
   return applyGameAction(state, actorId, { type, matchId: state.matchId, turnId: state.turnId, expectedRevision: state.revision,

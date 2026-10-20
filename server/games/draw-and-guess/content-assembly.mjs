@@ -1,11 +1,14 @@
 import { randomInt } from 'node:crypto';
 import { RoomError } from '../../../app/rooms.mjs';
 import { drawConfigProblem } from './adapter.mjs';
+import { candidateCountFor } from '../../../app/games/draw-and-guess/rules.mjs';
+import { defaultDrawingCategoryIds } from '../../../app/games/draw-and-guess/content-defaults.mjs';
 
 const fail = (status, code, message) => { throw new RoomError(status, code, message); };
 const actor = userKey => ({ userKey, member: true, displayName: '伙伴' });
-const defaults = version => ({ packId: 'dg-base', version,
-  categoryIds: ['daily', 'nature', 'food', 'action-job', 'place-transport'], difficulties: ['easy', 'normal'] });
+const defaults = release => ({ packId: 'dg-base', version: release.version,
+  categoryIds: defaultDrawingCategoryIds(release.categories),
+  difficulties: ['easy', 'normal'] });
 
 // Content is assembled on the server before a room CAS. A frozen match never
 // follows later edits or depends on the current head of its original word pack.
@@ -19,7 +22,8 @@ export function createDrawingContentAssembly({ wordbanks, ready, enabled = false
     const categories = new Map(release.categories.filter(category => category.status === 'active').map(category => [category.id, category.name]));
     if (selection.categoryIds.some(id => !categories.has(id))) fail(400, 'CATEGORY_UNAVAILABLE', '请选择发布版本中的有效分类。');
     const pool = release.words.filter(word => word.status === 'reviewed' && selection.categoryIds.includes(word.category) && selection.difficulties.includes(word.difficulty));
-    if (pool.length < 3) fail(400, 'WORD_POOL_SMALL', '所选分类和难度需要至少三个有效词条。');
+    const candidateCount=candidateCountFor(config);
+    if (pool.length < candidateCount) fail(400, 'WORD_POOL_SMALL', `每题需要 ${candidateCount} 个不同候选词，所选分类和难度只有 ${pool.length} 个有效词条。`);
     return { pool, categories, selection };
   }
   return {
@@ -29,7 +33,8 @@ export function createDrawingContentAssembly({ wordbanks, ready, enabled = false
       await ready;
       const base = await wordbanks.get(actor(userKey), 'dg-base');
       if (!base.publishedHead) fail(503, 'CONTENT_UNAVAILABLE', '基础词库还未完成发布。');
-      snapshot.drawConfig.contentSelection = defaults(base.publishedHead);
+      const release = await wordbanks.getRelease(actor(userKey), 'dg-base', base.publishedHead);
+      snapshot.drawConfig.contentSelection = defaults(release);
       await selected(snapshot, userKey, snapshot.drawConfig, context.expiresAt);
       return snapshot;
     },
@@ -56,14 +61,14 @@ export function createDrawingContentAssembly({ wordbanks, ready, enabled = false
       }
       if (!['configure', 'start'].includes(input.type)) return {};
       if (member?.id !== snapshot.hostId) fail(403, 'HOST_REQUIRED', '只有房主可以更改或开始对局。');
-      if (snapshot.phase !== 'waiting') fail(409, 'ROOM_LOCKED', '开局后不能改变本局词库。');
+      if (snapshot.phase !== 'waiting') fail(409, 'ROOM_LOCKED', '开局后不能改变本局玩法设置。');
       if (input.expectedRevision !== snapshot.revision) fail(409, 'REVISION_CONFLICT', '房间已更新，请同步后重试。');
       if (input.type === 'start' && (snapshot.players.length < 2 || !snapshot.players.every(player => player.ready))) return {};
       await ready;
       const { pool, categories, selection } = await selected(snapshot, userKey, input.type === 'configure' ? input.drawConfig : snapshot.drawConfig, context.expiresAt);
       if (input.type === 'configure') return {};
-      const required = snapshot.players.length * snapshot.drawConfig.rounds * 3;
-      if (pool.length < required) fail(400, 'WORD_POOL_SMALL', `本局需要至少 ${required} 个词条，请增加分类或降低轮数。`);
+      const required = snapshot.players.length * snapshot.drawConfig.rounds * candidateCountFor(snapshot.drawConfig);
+      if (pool.length < required) fail(400, 'WORD_POOL_SMALL', `本局需要至少 ${required} 个不同词条，所选范围只有 ${pool.length} 个；请增加分类、降低轮数或候选词数量。`);
       const shuffled = [...pool];
       for (let index = 0; index < required; index++) {
         const offset = serverRandomInt(shuffled.length - index);

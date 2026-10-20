@@ -2,6 +2,7 @@ import { gamePath, entryStorageKey } from '../../entry-path.mjs';
 import { accountState, accountGeneration, onAccountChange, loadAccount, watchAccountLifecycle, reportAuthFailure } from '../../account-client.mjs';
 import { normalizeDrawAndGuessAnswer, normalizeDrawAndGuessGuess } from './matcher.mjs';
 import { createWordbankRequestId, canonicalWordbankRequestFingerprint } from './request-intent.mjs';
+import { categorySelectedByDefault } from './content-defaults.mjs';
 
 const copy = value => structuredClone(value);
 const fail = (message, code) => { throw Object.assign(new Error(message), { code }); };
@@ -53,18 +54,20 @@ export async function requestWordbank(path, { method = 'GET', body, signal } = {
       if (!response.ok) throw Object.assign(new Error(data.error || data.message || '词库操作未完成。'), { status: response.status, code: data.code, details: data.details });
       return data;
     })();
-    const timeout = new Promise((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(Object.assign(new Error(method === 'GET' ? '词库读取未完成，请重试。' : '操作结果未知，请查询原回执。'), { status: 503, code: 'UNKNOWN_RESULT' })); }, 10000); });
+    const timeout = new Promise((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(Object.assign(new Error(method === 'GET' ? '词库读取未完成，请重试。' : '操作结果未知，请查询原回执。'), { status: 504, code: method === 'GET' ? 'WORD_BANK_READ_TIMEOUT' : 'UNKNOWN_RESULT' })); }, 10000); });
     return await Promise.race([operation, timeout]);
   } catch (error) {
     if (epoch !== accountGeneration()) throw new DOMException('登录状态已更新。', 'AbortError');
-    if ([401, 503].includes(error.status)) reportAuthFailure(error);
+    // A slow content request is not evidence that the verified identity expired.
+    // Only an explicit authentication failure may conceal this account's data.
+    if (error.status === 401 || error.status === 503 && ['identity_unavailable', 'WORD_BANK_IDENTITY_UNAVAILABLE'].includes(error.code)) reportAuthFailure(error);
     throw error;
   } finally { clearTimeout(timer); signal?.removeEventListener('abort', abort); }
 }
 
 export function createWordbankPageController({ request = requestWordbank, getAccount = accountState, getGeneration = accountGeneration,
   onChange = () => {}, storage = globalThis.sessionStorage, now = Date.now, cryptoRef = globalThis.crypto } = {}) {
-  let owner = null, sequence = 0, destroyed = false;
+  let owner = null, sequence = 0, destroyed = false, directoryTask = null;
   const buffers = new Map();
   let state = { packs: [], pack: null, operations: [], pending: null, preview: null, restorePreview: null, serverConflict: null,
     busy: false, authenticated: false, message: '', error: null, bulk: '', form: null, pendingExpired: false, pendingInspection: null, manualReconfirmation: false, unconfirmedIntent: null };
@@ -104,7 +107,7 @@ export function createWordbankPageController({ request = requestWordbank, getAcc
       for (const savedIdentity of buffers.keys()) if (savedIdentity !== identity) clearPrivate(savedIdentity);
       if (draftOwner && draftOwner !== identity) clearPrivate(draftOwner);
     } else if (!preserveDraft && draftOwner) clearPrivate(draftOwner);
-    ++sequence;
+    ++sequence; directoryTask = null;
     owner = identity;
     state = { packs: [], pack: null, operations: [], pending: null, preview: null, restorePreview: null, serverConflict: null,
       busy: false, authenticated: Boolean(identity), message: identity ? '' : '登录后才能读取和维护词库。', error: null, bulk: '', form: null,
@@ -139,8 +142,13 @@ export function createWordbankPageController({ request = requestWordbank, getAcc
     catch (error) { if (current(captured) && error.name !== 'AbortError') { state.error = { message: error.message, code: error.code, details: error.details }; state.message = error.message; emit(); } throw error; }
     finally { if (current(captured)) { state.busy = false; emit(); } }
   }
-  async function refreshDirectory() {
-    const result = await read('/api/wordbanks?limit=100'); state.packs = result.packs; emit(); return result;
+  function refreshDirectory() {
+    if (directoryTask) return directoryTask;
+    const task = (async () => {
+      try { const result = await read('/api/wordbanks?limit=100'); state.packs = result.packs; emit(); return result; }
+      finally { if (directoryTask === task) directoryTask = null; }
+    })();
+    directoryTask = task; return task;
   }
   async function openPack(packId, { discard = false } = {}) {
     if (state.busy) fail('当前操作尚在处理，请稍后切换。');
@@ -276,18 +284,25 @@ export function mountWordbankPage(root, options = {}) {
   const input = (placeholder, type = 'text') => { const node = el('input'); node.type = type; node.placeholder = placeholder; return node; };
   const select = values => { const node = el('select'); for (const [value, name] of values) { const option = el('option', name); option.value = value; node.append(option); } return node; };
   const label = (name, control) => { const node = el('label', name); node.append(control); return node; };
-  const section = (title, intro) => { const node = el('section', undefined, 'wordbank-section'); node.append(el('h2', title)); if (intro) node.append(el('p', intro, 'wordbank-note')); return node; };
+  const section = (title, intro) => { const node = el('section', undefined, 'wordbank-region'); node.append(el('h2', title)); if (intro) node.append(el('p', intro, 'wordbank-note')); return node; };
+  const disclosure = (title, intro) => { const node = el('details', undefined, 'wordbank-disclosure'); node.append(el('summary', title)); if (intro) node.append(el('p', intro, 'wordbank-note')); return node; };
   root.classList.add('wordbank-page'); root.replaceChildren();
   const header = el('header', undefined, 'wordbank-heading'), back = el('a', '← 返回大厅', 'quiet-link'); back.href = gamePath('/');
-  header.append(back, el('p', 'DRAW & GUESS', 'eyebrow'), el('h1', '一起维护好玩的词。'), el('p', '公共库伙伴共编，私人库自己管理。已有房间继续使用开局时采用的版本。', 'wordbank-note')); root.append(header);
+  header.append(back, el('p', 'DRAW & GUESS', 'eyebrow'), el('h1', '你画我猜 · 词库'), el('p', '搜一个词，补一点灵感。公共库伙伴共编，私人库自己管理。', 'wordbank-note')); root.append(header);
   const status = el('p', '', 'wordbank-status'); status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite'); root.append(status);
+  const readRecovery = el('div', undefined, 'wordbank-read-recovery'); readRecovery.hidden = true;
+  const retryRead = button('重试读取词库', async () => { retryRead.disabled = true; status.textContent = '正在重新读取词库…';
+    try { await controller.refreshDirectory(); readRecovery.hidden = true; status.textContent = '目录已读取，可选择词库继续。'; } finally { retryRead.disabled = false; } });
+  readRecovery.append(el('p', '词库暂时未读完，已确认的登录与本机编辑保持。'), retryRead); root.append(readRecovery);
   const gate = el('div', undefined, 'wordbank-gate'), login = el('a', '登录棋牌室', 'primary-button'); login.href = gamePath('/auth/login?returnTo=%2Fwords'); gate.append(el('p', '登录后读取和维护词库。'), login); root.append(gate);
   const content = el('div', undefined, 'wordbank-content'); root.append(content);
-  const library = section('公共与我的词库'), scope = select([['shared', '公共词库'], ['private', '我的私人词库']]), packs = select([]), newName = input('新词库名称');
-  const packToolbar = el('div', undefined, 'wordbank-toolbar'); packToolbar.append(label('范围', scope), label('词库', packs), button('打开', () => controller.openPack(packs.value)));
-  const creation = el('div', undefined, 'wordbank-toolbar'); creation.append(label('新建名称', newName), button('新建词库', () => confirmRecoveredWrite(options => controller.create({ name: newName.value, visibility: scope.value }, options))));
-  library.append(packToolbar, creation); content.append(library);
-  const summary = el('p', '', 'wordbank-note'), pendingBox = el('div', undefined, 'wordbank-warning'), queryReceiptButton = button('查询原回执', () => controller.queryPending());
+  const library = el('section', undefined, 'wordbank-library'), scope = select([['shared', '公共词库'], ['private', '我的私人词库']]), packs = select([]), newName = input('新词库名称');
+  const libraryToggle = button('选择词库', () => { library.dataset.open = String(library.dataset.open !== 'true'); libraryToggle.setAttribute('aria-expanded', library.dataset.open); }, 'wordbank-library-toggle secondary-button'); libraryToggle.dataset.pendingSafe = 'true'; libraryToggle.setAttribute('aria-expanded', 'true'); library.dataset.open = 'true';
+  const libraryControls = el('div', undefined, 'wordbank-library-controls');
+  const packToolbar = el('div', undefined, 'wordbank-toolbar wordbank-pack-toolbar'); packToolbar.append(label('范围', scope), label('当前词库', packs), button('打开词库', () => controller.openPack(packs.value)));
+  const creation = disclosure('新建词库'), creationRow = el('div', undefined, 'wordbank-toolbar'); creationRow.append(label('新词库名称', newName), button('新建词库', () => confirmRecoveredWrite(options => controller.create({ name: newName.value, visibility: scope.value }, options)))); creation.append(creationRow);
+  libraryControls.append(packToolbar, creation); library.append(libraryToggle, libraryControls); content.append(library);
+  const summary = el('p', '', 'wordbank-pack-summary'), pendingBox = el('div', undefined, 'wordbank-warning'), queryReceiptButton = button('查询原回执', () => controller.queryPending());
   queryReceiptButton.dataset.pendingSafe = 'true'; pendingBox.append(el('strong', '原操作结果未知'), el('p', '当前编辑已保留。只查询原回执，不会重发。'), queryReceiptButton); content.append(pendingBox);
   const inspectExpiredButton = button('读取服务器现状，人工核对', () => controller.inspectExpiredIntent()), releaseExpiredButton = button('已人工核对，保留原稿并解除过期编号', () => {
     if (windowRef.confirm('服务器现状不能证明原操作成功或失败。确认已经逐项人工核对？原编号继续标记为无法确认，之后新操作还需再次确认，不会自动补写。')) controller.releaseExpiredIntent({ confirmed: true });
@@ -296,57 +311,96 @@ export function mountWordbankPage(root, options = {}) {
   const conflictBox = el('div', undefined, 'wordbank-warning'), conflictText = el('div'); conflictBox.append(el('strong', '伙伴先保存了修改'), conflictText,
     button('保留本人操作，采用新草稿版本', () => { if (windowRef.confirm('确认已比较伙伴草稿与本人待保存操作？相同词条请先逐项核对。')) controller.mergeConflict(); })); content.append(conflictBox);
   const workspace = el('div', undefined, 'wordbank-workspace'); workspace.append(summary); content.append(workspace);
-  const packSettings = section('当前词库'), packName = input('词库名称'), packStatus = button('停用词库', () => {
-    const pack = controller.snapshot().pack;
-    if (windowRef.confirm(`${pack.retired ? '启用' : '停用'}“${pack.name}”？这项修改保存后会影响之后新局选用，已开局继续原内容。`)) controller.queue([{ type: 'pack.status', retired: !pack.retired, confirmed: true }]);
-  });
-  packSettings.append(label('词库名称', packName), button('加入名称修改', () => controller.queue([{ type: 'pack.rename', name: normalizeDrawAndGuessAnswer(packName.value) }])), packStatus); workspace.append(packSettings);
-  const categoriesSection = section('分类', '分类改名保留编号。停用分类影响之后采用的新版本。'), categoriesList = el('div', undefined, 'wordbank-category-list'), categoryName = input('新分类名称');
-  categoriesSection.append(categoriesList, label('新增分类', categoryName), button('加入新分类', () => controller.queue([{ type: 'category.add', id: `dg-category-${globalThis.crypto.randomUUID()}`, name: normalizeDrawAndGuessAnswer(categoryName.value) }]))); workspace.append(categoriesSection);
-  const wordsSection = section('词语与认可别名', '程序校验通过表示文字与别名一致；难度和可画性还需要伙伴试画。'), search = input('搜索正文、别名或标签'), categoryFilter = select([['', '全部分类']]), difficultyFilter = select([['', '全部难度'], ['easy', '简单'], ['normal', '普通'], ['hard', '挑战']]), wordList = el('div', undefined, 'wordbank-word-list');
-  const filters = el('div', undefined, 'wordbank-toolbar'); filters.append(label('搜索', search), label('分类', categoryFilter), label('难度', difficultyFilter)); wordsSection.append(filters, wordList);
-  let page = 0; const pager = el('div', undefined, 'wordbank-toolbar'), pageLabel = el('span'); pager.append(button('上一页', () => { page = Math.max(0, page - 1); render(controller.snapshot()); }), pageLabel,
-    button('下一页', () => { page++; render(controller.snapshot()); })); wordsSection.append(pager); workspace.append(wordsSection);
-  const editor = section('添加或修改词语'), answer = input('例如：自行车'), aliases = input('例如：脚踏车｜自行車'), wordCategory = select([]), difficulty = select([['easy', '简单'], ['normal', '普通'], ['hard', '挑战']]), tags = input('维护标签，用｜分开'); let editingId = null;
-  const editorRow = el('div', undefined, 'wordbank-grid'); editorRow.append(label('正文', answer), label('认可别名', aliases), label('分类', wordCategory), label('难度', difficulty), label('维护标签', tags));
-  editor.append(editorRow, button('加入本次修改', () => {
+  const mobileNavigation = el('nav', undefined, 'wordbank-mobile-navigation'); mobileNavigation.setAttribute('aria-label', '词库任务');
+  const browseButton = button('找词', () => setMobileView('browse')), composeButton = button('添加', () => setMobileView('compose'));
+  for (const control of [browseButton, composeButton]) control.dataset.pendingSafe = 'true';
+  mobileNavigation.append(browseButton, composeButton); workspace.append(mobileNavigation);
+  const workbench = el('div', undefined, 'wordbank-workbench'); workspace.append(workbench);
+  const wordsSection = section('词条', '可搜索正文、别名和标签。每页30词。'), search = input('搜索正文、别名或标签'), categoryFilter = select([['', '全部分类']]), difficultyFilter = select([['', '全部难度'], ['easy', '简单'], ['normal', '普通'], ['hard', '挑战']]), wordList = el('div', undefined, 'wordbank-word-list');
+  wordsSection.classList.add('wordbank-words'); wordList.setAttribute('role', 'list');
+  const filters = el('div', undefined, 'wordbank-filters'); filters.append(label('搜索词条', search), label('分类', categoryFilter), label('难度', difficultyFilter)); wordsSection.append(filters, wordList);
+  const emptyList = el('p', '没有找到词条，换个关键词或分类试试。', 'wordbank-empty'); wordsSection.append(emptyList);
+  let page = 0; const pager = el('div', undefined, 'wordbank-pager'), pageLabel = el('span'), previousPage = button('上一页', () => { page = Math.max(0, page - 1); render(controller.snapshot()); }), nextPage = button('下一页', () => { page++; render(controller.snapshot()); });
+  pager.append(previousPage, pageLabel, nextPage); wordsSection.append(pager); workbench.append(wordsSection);
+  const composer = el('aside', undefined, 'wordbank-composer'), composerTitle = el('h2', '添加词语'), editorMode = el('div', undefined, 'wordbank-editor-mode'); composer.setAttribute('aria-label', '录入词语'); composer.append(composerTitle, editorMode); workbench.append(composer);
+  let composeMode = 'single';
+  const singleModeButton = button('逐个添加', () => setComposeMode('single')), bulkModeButton = button('批量录入', () => setComposeMode('bulk'));
+  editorMode.append(singleModeButton, bulkModeButton);
+  const editor = el('div', undefined, 'wordbank-editor'), answer = input('例如：自行车'), aliases = input('例如：脚踏车｜自行車'), wordCategory = select([]), difficulty = select([['easy', '简单'], ['normal', '普通'], ['hard', '挑战']]), tags = input('维护标签，用｜分开'); let editingId = null;
+  const sharedFields = el('div', undefined, 'wordbank-grid wordbank-editor-fields'); sharedFields.append(label('分类', wordCategory), label('难度', difficulty));
+  const editorRow = el('div', undefined, 'wordbank-editor-inputs'), extraFields = disclosure('别名与标签（可选）'); extraFields.classList.add('wordbank-extra-fields'); extraFields.append(label('认可别名（用｜分开）', aliases), label('维护标签（用｜分开）', tags)); editorRow.append(sharedFields, extraFields);
+  // The answer is the primary task; category and difficulty follow it in one row.
+  editor.append(label('正文', answer));
+  const addWordButton = button('加入待保存', () => {
     const fields = { answer: normalizeDrawAndGuessAnswer(answer.value), aliases: aliases.value.trim() ? aliases.value.split(/[|｜]/u).map(normalizeDrawAndGuessAnswer) : [],
       category: wordCategory.value, difficulty: difficulty.value, tags: tags.value.trim() ? tags.value.split(/[|｜]/u).map(normalizeDrawAndGuessAnswer) : [] };
     controller.queue([editingId ? { type: 'word.update', id: editingId, patch: fields } : { type: 'word.add', ...fields }]);
-    editingId = null; answer.value = ''; aliases.value = ''; tags.value = ''; controller.setBuffer({ form: null });
-  }), button('改为新增', () => { editingId = null; answer.value = ''; aliases.value = ''; tags.value = ''; controller.setBuffer({ form: null }); })); workspace.append(editor);
-  const bulkSection = section('分批录入', '一行一个词：正文｜别名1｜别名2。每批至多200词，先预览，再加入待保存修改。'), bulk = el('textarea'); bulk.rows = 7; bulk.placeholder = '纸船｜折纸小船\n风车';
+    editingId = null; answer.value = ''; aliases.value = ''; tags.value = ''; extraFields.open = false; controller.setBuffer({ form: null }); composerTitle.textContent = '添加词语'; addWordButton.textContent = '加入待保存';
+    answer.focus();
+  }, 'primary-button');
+  editor.append(editorRow, addWordButton, button('清空，改为新增', () => { editingId = null; answer.value = ''; aliases.value = ''; tags.value = ''; extraFields.open = false; controller.setBuffer({ form: null }); composerTitle.textContent = '添加词语'; addWordButton.textContent = '加入待保存'; })); composer.append(editor);
+  const bulkSection = el('div', undefined, 'wordbank-bulk'), bulk = el('textarea'); bulk.rows = 7; bulk.placeholder = '纸船｜折纸小船\n风车';
   const importStatus = el('div', undefined, 'wordbank-import-preview'); let importPreview = null;
-  const importAddButton = button('将预览词加入本次修改', () => { if (!importPreview?.valid) fail('请先完成没有错误的逐行预览。'); controller.queue(importPreview.operations); importPreview = null; bulk.value = ''; controller.setBuffer({ bulk: '' }); importStatus.replaceChildren(); });
-  bulkSection.append(label('逐行输入', bulk), button('预览这批词', () => { importPreview = previewWordbankImport(bulk.value, { category: wordCategory.value, difficulty: difficulty.value, words: controller.snapshot().pack.draft.words });
+  const importAddButton = button('加入待保存', () => { if (!importPreview?.valid) fail('请先完成没有错误的逐行预览。'); controller.queue(importPreview.operations); importPreview = null; bulk.value = ''; controller.setBuffer({ bulk: '' }); importStatus.replaceChildren(); }, 'primary-button');
+  bulkSection.append(el('p', '一行一个词：正文｜别名1｜别名2。每批至多200词，先预览再加入。', 'wordbank-note'), label('逐行输入', bulk), button('预览这批词', () => { importPreview = previewWordbankImport(bulk.value, { category: wordCategory.value, difficulty: difficulty.value, words: controller.snapshot().pack.draft.words });
     importStatus.replaceChildren(el('p', importPreview.valid ? `整批校验通过，可录入${importPreview.operations.length}词。` : `本批存在错误，整批暂不加入；${importPreview.operations.length}行文字通过检查。`)); for (const error of importPreview.errors) importStatus.append(el('p', `${error.row ? `第${error.row}行：` : ''}${error.message}`, 'wordbank-error'));
     for (const operation of importPreview.operations.slice(0, 20)) importStatus.append(el('p', `${operation.answer}${operation.aliases.length ? ` · 别名 ${operation.aliases.join('、')}` : ''}`));
     importAddButton.disabled = !importPreview.valid;
-  }), importAddButton, importStatus); workspace.append(bulkSection);
-  const actions = section('草稿、发布与恢复', '保存草稿不等于发布。发布前检查分类、词数、别名和难度。'), queued = el('ol', undefined, 'wordbank-queued'), previewBox = el('div', undefined, 'wordbank-preview');
-  actions.append(queued, button('保存草稿', () => confirmRecoveredWrite(options => controller.save(options)), 'primary-button'), button('放弃本机待保存修改', () => { if (windowRef.confirm('只放弃当前本机未保存编辑？服务器草稿与发布版本保留。')) { controller.discard(); importPreview = null; editingId = null; answer.value = ''; aliases.value = ''; tags.value = ''; } }),
-    button('校验并预览发布', () => controller.validate()), button('确认发布当前预览', () => { if (windowRef.confirm('确认已检查当前预览，并将这个版本供伙伴的新局选择？')) return confirmRecoveredWrite(options => controller.publish(options)); }, 'primary-button'), previewBox); workspace.append(actions);
-  const versions = select([]), history = el('div', undefined, 'wordbank-history'), restoreBox = el('div', undefined, 'wordbank-preview');
-  actions.append(label('已发布版本', versions), button('预览恢复差异', () => controller.restorePreview(Number(versions.value))), button('确认复制旧版为新草稿', () => { if (windowRef.confirm('复制预览旧版为新草稿？当前未发布内容将由这份草稿接续，请先核对差异。')) return confirmRecoveredWrite(options => controller.restore(options)); }), restoreBox, history);
-  const copyName = input('副本名称'), copyScope = select([['private', '我的私人副本'], ['shared', '明确共享公共副本']]); actions.append(label('复制名称', copyName), label('副本范围', copyScope),
+  }), importAddButton, importStatus); composer.append(bulkSection);
+  const actions = section('保存与发布', '保存草稿供伙伴共编；发布后供新局选用。'), draftCount = el('strong', '', 'wordbank-draft-count'), actionRow = el('div', undefined, 'wordbank-action-row'), queued = el('ol', undefined, 'wordbank-queued'), previewBox = el('div', undefined, 'wordbank-preview');
+  const queuedDetails = disclosure('查看待保存修改'); queuedDetails.append(queued);
+  const saveButton = button('保存草稿', () => confirmRecoveredWrite(options => controller.save(options)), 'primary-button'), validateButton = button('校验并预览发布', () => controller.validate()), publishButton = button('确认发布当前预览', () => { if (windowRef.confirm('确认已检查当前预览，并将这个版本供伙伴的新局选择？')) return confirmRecoveredWrite(options => controller.publish(options)); }, 'primary-button');
+  actionRow.append(saveButton, validateButton, publishButton, button('放弃本机修改', () => { if (windowRef.confirm('只放弃当前本机未保存编辑？服务器草稿与发布版本保留。')) { controller.discard(); importPreview = null; editingId = null; answer.value = ''; aliases.value = ''; tags.value = ''; composerTitle.textContent = '添加词语'; addWordButton.textContent = '加入待保存'; } }));
+  actions.classList.add('wordbank-save-actions'); actions.append(draftCount, actionRow, queuedDetails, previewBox); workbench.append(actions);
+  const management = el('div', undefined, 'wordbank-management'); workspace.append(management);
+  const packSettings = disclosure('词库设置', '名称与启停都先加入本机修改，保存后生效。'), packName = input('词库名称'), packStatus = button('停用词库', () => {
+    const pack = controller.snapshot().pack;
+    if (windowRef.confirm(`${pack.retired ? '启用' : '停用'}“${pack.name}”？这项修改保存后会影响之后新局选用，已开局继续原内容。`)) controller.queue([{ type: 'pack.status', retired: !pack.retired, confirmed: true }]);
+  });
+  const settingsRow = el('div', undefined, 'wordbank-toolbar'); settingsRow.append(label('词库名称', packName), button('加入名称修改', () => controller.queue([{ type: 'pack.rename', name: normalizeDrawAndGuessAnswer(packName.value) }])), packStatus); packSettings.append(settingsRow); management.append(packSettings);
+  const defaultCategories = el('fieldset', undefined, 'wordbank-default-categories'), defaultCategoryList = el('div', undefined, 'wordbank-default-category-list');
+  defaultCategories.append(el('legend', '加载题库时默认勾选的分类'), el('p', '修改加入待保存。保存草稿并发布后，新房间或重新加载该发布版本时采用；已有房间的选择不变。', 'wordbank-note'), defaultCategoryList);
+  packSettings.append(defaultCategories);
+  const categoriesSection = disclosure('分类管理', '改名保留编号；停用影响之后采用的新版本。'), categoriesList = el('div', undefined, 'wordbank-category-list'), categoryName = input('新分类名称'), categoryCreation = el('div', undefined, 'wordbank-toolbar');
+  categoryCreation.append(label('新增分类', categoryName), button('加入新分类', () => controller.queue([{ type: 'category.add', id: `dg-category-${globalThis.crypto.randomUUID()}`, name: normalizeDrawAndGuessAnswer(categoryName.value) }]))); categoriesSection.append(categoriesList, categoryCreation); management.append(categoriesSection);
+  const versions = select([]), history = el('div', undefined, 'wordbank-history'), restoreBox = el('div', undefined, 'wordbank-preview'), historySection = disclosure('发布历史、恢复与复制', '恢复旧版生成新草稿，不覆盖已开局的内容。');
+  const restoreRow = el('div', undefined, 'wordbank-toolbar'); restoreRow.append(label('已发布版本', versions), button('预览恢复差异', () => controller.restorePreview(Number(versions.value))), button('确认复制旧版为新草稿', () => { if (windowRef.confirm('复制预览旧版为新草稿？当前未发布内容将由这份草稿接续，请先核对差异。')) return confirmRecoveredWrite(options => controller.restore(options)); }));
+  historySection.append(restoreRow, restoreBox, history);
+  const copyName = input('副本名称'), copyScope = select([['private', '我的私人副本'], ['shared', '明确共享公共副本']]), copyRow = el('div', undefined, 'wordbank-toolbar'); copyRow.append(label('复制名称', copyName), label('副本范围', copyScope),
     button('复制所选发布版', () => { if (copyScope.value === 'shared' && !windowRef.confirm('确认把所选版本的全部词语复制到伙伴共用的公共草稿？')) return;
-      return confirmRecoveredWrite(options => controller.copy({ name: copyName.value, visibility: copyScope.value, sourceVersion: Number(versions.value) }, options)); }));
+      return confirmRecoveredWrite(options => controller.copy({ name: copyName.value, visibility: copyScope.value, sourceVersion: Number(versions.value) }, options)); })); historySection.append(copyRow, el('p', '私人副本最多2000词、2 MiB；扩充后的完整基础包可复制为共享副本，或新建私人库逐批添加自己需要的词。', 'wordbank-note')); management.append(historySection);
+  function setMobileView(view) {
+    workspace.dataset.mobileView = view;
+    browseButton.setAttribute('aria-pressed', String(view === 'browse')); composeButton.setAttribute('aria-pressed', String(view === 'compose'));
+  }
+  setMobileView('browse');
+  function setComposeMode(mode, { focus = false } = {}) {
+    composeMode = mode;
+    if (mode === 'bulk') bulkSection.insertBefore(sharedFields, bulkSection.children[0]); else editorRow.insertBefore(sharedFields, editorRow.children[0]);
+    editor.hidden = mode !== 'single'; bulkSection.hidden = mode !== 'bulk';
+    singleModeButton.setAttribute('aria-pressed', String(mode === 'single')); bulkModeButton.setAttribute('aria-pressed', String(mode === 'bulk'));
+    composerTitle.textContent = mode === 'bulk' ? '批量录入' : editingId ? '修改词语' : '添加词语';
+    if (focus) (mode === 'bulk' ? bulk : answer).focus();
+  }
+  setComposeMode('single');
   let shownPack = null, shownAccount = null;
   const controller = createWordbankPageController({ ...options, onChange: render });
   function confirmRecoveredWrite(action) {
     if (controller.snapshot().manualReconfirmation && !windowRef.confirm('原操作无法确认。确认已核对这份原稿与服务器，现在明确提交一次新的操作？此操作会使用新编号。')) return;
     return action({ confirmedNewIntent: true });
   }
-  function run(action) { Promise.resolve().then(action).catch(error => { if (error.name !== 'AbortError') status.textContent = error.message; }); }
+  function run(action) { Promise.resolve().then(action).catch(error => { if (error.name !== 'AbortError') { status.dataset.quiet = 'false'; status.textContent = error.message; readRecovery.hidden = !controller.snapshot().authenticated || error.status === 401; } }); }
   function render(state) {
     const displayedAccount = state.authenticated ? (options.getAccount || accountState)().userKey : null;
     if (displayedAccount !== shownAccount) {
-      shownAccount = displayedAccount; shownPack = null; editingId = null; importPreview = null; page = 0;
+      shownAccount = displayedAccount; shownPack = null; editingId = null; importPreview = null; page = 0; setComposeMode('single'); setMobileView('browse'); library.dataset.open = 'true'; libraryToggle.setAttribute('aria-expanded', 'true');
+      for (const detail of [creation, packSettings, categoriesSection, historySection, queuedDetails, extraFields]) detail.open = false;
       for (const control of [packName, answer, aliases, tags, bulk, newName, copyName, categoryName, search]) control.value = '';
-      for (const node of [summary, conflictText, pendingComparison, queued, previewBox, restoreBox, importStatus, wordList, categoriesList, history]) node.replaceChildren();
+      for (const node of [summary, conflictText, pendingComparison, queued, previewBox, restoreBox, importStatus, wordList, categoriesList, defaultCategoryList, history]) node.replaceChildren();
       for (const control of [versions, categoryFilter, wordCategory]) control.replaceChildren();
     }
     gate.hidden = state.authenticated; content.hidden = !state.authenticated; status.textContent = state.message || (state.busy ? '正在处理…' : '未保存内容只在当前浏览器保留；保存后伙伴才能读取。');
+    status.dataset.quiet = String(!state.message && !state.busy);
     pendingBox.hidden = !state.pending; conflictBox.hidden = !state.serverConflict; workspace.hidden = !state.pack;
     inspectExpiredButton.hidden = !state.pendingExpired; releaseExpiredButton.hidden = !state.pendingInspection;
     pendingComparison.replaceChildren();
@@ -363,15 +417,26 @@ export function mountWordbankPage(root, options = {}) {
     const selected = state.pack?.id || packs.value, visiblePacks = state.packs.filter(pack => pack.visibility === scope.value); packs.replaceChildren();
     for (const pack of visiblePacks) { const option = el('option', `${pack.name}${pack.retired ? '（停用）' : ''}`); option.value = pack.id; packs.append(option); }
     packs.value = visiblePacks.some(pack => pack.id === selected) ? selected : visiblePacks[0]?.id || '';
-    if (!state.pack) return;
+    if (!state.pack) { libraryToggle.textContent = '选择词库'; return; }
     const pack = state.pack, oldFilter = categoryFilter.value, oldCategory = wordCategory.value;
-    if (shownPack !== pack.id) { packName.value = pack.name; shownPack = pack.id; }
+    defaultCategoryList.replaceChildren();
+    for (const category of pack.draft.categories) {
+      const row = el('label', undefined, 'wordbank-default-category'), control = input('', 'checkbox');
+      const pending = state.operations.filter(operation => operation.type === 'category.default' && operation.id === category.id).at(-1);
+      control.checked = pending?.selected ?? categorySelectedByDefault(category, pack.id); control.disabled = category.status !== 'active' || state.busy || Boolean(state.pending); control.dataset.defaultCategory = category.id;
+      control.addEventListener('change', () => run(() => controller.queue([{ type: 'category.default', id: category.id, selected: control.checked }])));
+      row.append(control, el('span', category.name + (category.status === 'active' ? '' : '（已停用）'))); defaultCategoryList.append(row);
+    }
+    if (shownPack !== pack.id) { packName.value = pack.name; shownPack = pack.id; page = 0; setComposeMode(state.bulk && !state.form?.answer ? 'bulk' : 'single'); library.dataset.open = 'false'; libraryToggle.setAttribute('aria-expanded', 'false'); }
+    libraryToggle.textContent = `${pack.name} · ${pack.draft.words.length}词　⌄`;
     packStatus.textContent = pack.retired ? '启用词库' : '停用词库';
     categoryFilter.replaceChildren(); const all = el('option', '全部分类'); all.value = ''; categoryFilter.append(all); wordCategory.replaceChildren(); categoriesList.replaceChildren();
+    const categoryCounts = new Map(pack.draft.categories.map(category => [category.id, 0]));
+    for (const word of pack.draft.words) if (word.status !== 'retired') categoryCounts.set(word.category, (categoryCounts.get(word.category) || 0) + 1);
     for (const category of pack.draft.categories) {
-      for (const control of [categoryFilter, wordCategory]) { const option = el('option', `${category.name}${category.status === 'disabled' ? '（停用）' : ''}`); option.value = category.id; control.append(option); }
+      for (const control of [categoryFilter, wordCategory]) { const option = el('option', `${category.name} · ${categoryCounts.get(category.id) || 0}词${category.status === 'disabled' ? '（停用）' : ''}`); option.value = category.id; control.append(option); }
       const row = el('div', undefined, 'wordbank-category-row'), rename = input('分类名称'); rename.value = category.name;
-      row.append(label('分类名称', rename), button('改名', () => controller.queue([{ type: 'category.rename', id: category.id, name: normalizeDrawAndGuessAnswer(rename.value) }])),
+      row.append(label(`${categoryCounts.get(category.id) || 0}词 · 分类名称`, rename), button('改名', () => controller.queue([{ type: 'category.rename', id: category.id, name: normalizeDrawAndGuessAnswer(rename.value) }])),
         button(category.status === 'active' ? '停用' : '启用', () => { const affected = pack.draft.words.filter(word => word.category === category.id && word.status !== 'retired').length;
           if (category.status === 'active' && !windowRef.confirm(`停用“${category.name}”会影响${affected}个词，确认加入本次修改？`)) return;
           controller.queue([{ type: 'category.status', id: category.id, status: category.status === 'active' ? 'disabled' : 'active', confirmedAffectedCount: affected }]); })); categoriesList.append(row);
@@ -381,18 +446,25 @@ export function mountWordbankPage(root, options = {}) {
     const filtered = pack.draft.words.filter(word => (!categoryFilter.value || word.category === categoryFilter.value) && (!difficultyFilter.value || word.difficulty === difficultyFilter.value)
       && [word.answer, ...word.aliases, ...word.tags].some(term => term.toLowerCase().includes(search.value.toLowerCase())));
     page = Math.min(page, Math.max(0, Math.ceil(filtered.length / 30) - 1)); wordList.replaceChildren();
+    const categoryNames = new Map(pack.draft.categories.map(category => [category.id, category.name]));
     for (const word of filtered.slice(page * 30, (page + 1) * 30)) {
-      const row = el('article', undefined, 'wordbank-word-row'), details = el('div'); details.append(el('strong', word.answer),
-        el('p', `${word.aliases.length ? `别名：${word.aliases.join('、')} · ` : ''}${({ easy: '简单', normal: '普通', hard: '挑战' })[word.difficulty]} · ${word.status === 'retired' ? '退役' : word.status === 'draft' ? '草稿' : '编辑校对'} · 提示${word.hintLength}字`, 'wordbank-note'));
-      row.append(details, button('编辑', () => { editingId = word.id; answer.value = word.answer; aliases.value = word.aliases.join('｜'); wordCategory.value = word.category; difficulty.value = word.difficulty; tags.value = word.tags.join('｜'); answer.focus();
+      const row = el('div', undefined, 'wordbank-word-row'), details = el('div', undefined, 'wordbank-term'), rowActions = el('div', undefined, 'wordbank-row-actions'); row.setAttribute('role', 'listitem');
+      details.append(el('strong', word.answer), el('p', `${categoryNames.get(word.category) || word.category} · ${({ easy: '简单', normal: '普通', hard: '挑战' })[word.difficulty]}${word.status === 'retired' ? ' · 已退役' : word.status === 'draft' ? ' · 草稿' : ''}`, 'wordbank-note'));
+      if (word.aliases.length) details.append(el('p', `认可别名：${word.aliases.join('、')}`, 'wordbank-aliases'));
+      rowActions.append(button('编辑', () => { editingId = word.id; answer.value = word.answer; aliases.value = word.aliases.join('｜'); wordCategory.value = word.category; difficulty.value = word.difficulty; tags.value = word.tags.join('｜'); addWordButton.textContent = '加入这项修改'; extraFields.open = Boolean(word.aliases.length || word.tags.length); setMobileView('compose'); setComposeMode('single', { focus: true }); composer.scrollIntoView?.({ block: 'nearest' });
         controller.setBuffer({ form: { editingId, answer: answer.value, aliases: aliases.value, category: wordCategory.value, difficulty: difficulty.value, tags: tags.value } }); }),
-        button('退役', () => { if (windowRef.confirm(`确认将“${word.answer}”从之后发布的新局中退役？`)) controller.queue([{ type: 'word.retire', id: word.id, confirmed: true }]); })); wordList.append(row);
+        button('退役', () => { if (windowRef.confirm(`确认将“${word.answer}”从之后发布的新局中退役？`)) controller.queue([{ type: 'word.retire', id: word.id, confirmed: true }]); })); row.append(details, rowActions); wordList.append(row);
     }
-    pageLabel.textContent = `${filtered.length}词 · 第${page + 1}/${Math.max(1, Math.ceil(filtered.length / 30))}页`;
-    summary.textContent = `${pack.name} · ${pack.visibility === 'private' ? '仅本人可读' : '伙伴公共共编'} · 草稿${pack.draftRevision} · 已发布${pack.publishedHead ?? '尚无版本'} · ${pack.draft.words.length}词`;
-    const operationNames = { 'category.add': '新增分类', 'category.rename': '分类改名', 'category.status': '启停分类', 'word.add': '新增词语', 'word.update': '修改词语', 'word.retire': '退役词语', 'pack.rename': '词库改名', 'pack.status': '启停词库' };
+    emptyList.hidden = filtered.length > 0;
+    const pageCount = Math.max(1, Math.ceil(filtered.length / 30));
+    pageLabel.textContent = `${filtered.length}词 · ${page + 1} / ${pageCount}页`;
+    summary.textContent = `${pack.name} · ${pack.visibility === 'private' ? '仅本人可读' : '公共共编'} · ${pack.draft.words.length}词 · ${pack.draft.categories.length}分类 · 草稿${pack.draftRevision} · ${pack.publishedHead ? `发布版${pack.publishedHead}` : '尚未发布'}`;
+    composeButton.textContent = state.operations.length ? `添加 · 待保存${state.operations.length}` : '添加';
+    draftCount.textContent = state.operations.length ? `${state.operations.length}项本机修改，尚未保存` : '草稿已同步，无本机待保存修改';
+    queuedDetails.hidden = state.operations.length === 0;
+    const operationNames = { 'category.add': '新增分类', 'category.rename': '分类改名', 'category.status': '启停分类', 'category.default': '默认勾选分类', 'word.add': '新增词语', 'word.update': '修改词语', 'word.retire': '退役词语', 'pack.rename': '词库改名', 'pack.status': '启停词库' };
     queued.replaceChildren(); for (const [index, operation] of state.operations.entries()) {
-      const row = el('li', `${operationNames[operation.type] || '内容修改'} · ${operation.answer || operation.patch?.answer || operation.name || pack.draft.words.find(word => word.id === operation.id)?.answer || operation.id || '词库状态'}`);
+      const row = el('li', `${operationNames[operation.type] || '内容修改'} · ${operation.answer || operation.patch?.answer || operation.name || pack.draft.words.find(word => word.id === operation.id)?.answer || (operation.type === 'category.default' ? `${pack.draft.categories.find(category => category.id === operation.id)?.name || operation.id} · ${operation.selected ? '默认勾选' : '默认不勾选'}` : operation.id) || '词库状态'}`);
       row.append(button('移除此项', () => controller.removeOperation(index))); queued.append(row);
     }
     previewBox.replaceChildren(); if (state.preview) {
@@ -406,10 +478,13 @@ export function mountWordbankPage(root, options = {}) {
     history.replaceChildren(el('h3', '修改记录')); for (const entry of [...pack.history].reverse().slice(0, 50)) history.append(el('p', `${new Date(entry.at).toLocaleString()} · ${entry.actor.displayName} #${entry.actor.displayCode} · ${entry.summary}`));
     if (state.serverConflict) { conflictText.replaceChildren(); appendComparison(conflictText, pack, state.serverConflict, state.operations); }
     bulk.value = state.bulk;
-    if (state.form && answer.value === '') { editingId = state.form.editingId; answer.value = state.form.answer; aliases.value = state.form.aliases; wordCategory.value = state.form.category; difficulty.value = state.form.difficulty; tags.value = state.form.tags; }
+    if (state.form && answer.value === '') { editingId = state.form.editingId; answer.value = state.form.answer; aliases.value = state.form.aliases; wordCategory.value = state.form.category; difficulty.value = state.form.difficulty; tags.value = state.form.tags; extraFields.open = Boolean(state.form.aliases || state.form.tags); addWordButton.textContent = editingId ? '加入这项修改' : '加入待保存'; setComposeMode(composeMode); }
     // Dynamic rows are recreated above; fence their new controls as well.
     for (const control of content.querySelectorAll('button')) control.disabled = state.busy || Boolean(state.pending && control.dataset.pendingSafe !== 'true');
     importAddButton.disabled ||= !importPreview?.valid;
+    previousPage.disabled ||= page === 0; nextPage.disabled ||= page + 1 >= pageCount;
+    saveButton.disabled ||= state.operations.length === 0; validateButton.disabled ||= state.operations.length > 0;
+    publishButton.hidden = !state.preview?.report.valid; publishButton.disabled ||= !state.preview?.report.valid || state.operations.length > 0;
   }
   function appendComparison(node, base, remote, operations) {
     node.append(el('p', `服务器草稿${remote.draftRevision}，${remote.draft.words.length}词，发布${remote.publishedHead ?? '尚无'}；本机保留${operations.length}项操作。服务器现状不能单独证明原操作结果。`));
@@ -422,6 +497,9 @@ export function mountWordbankPage(root, options = {}) {
         node.append(el('p', `本机：${wordText(local)}。服务器：${wordText(server)}。`));
       } else if (operation.type.startsWith('category.')) {
         const server = remote.draft.categories.find(category => category.id === operation.id);
+        if (operation.type === 'category.default') {
+          node.append(el('p', `默认分类：${server?.name || operation.id}。本机：${operation.selected ? '勾选' : '不勾选'}；服务器：${server ? (categorySelectedByDefault(server, remote.id) ? '勾选' : '不勾选') : '分类不存在'}。`)); continue;
+        }
         node.append(el('p', `分类操作：${operation.name || server?.name || '新增分类'}${operation.status ? ` · ${operation.status === 'active' ? '启用' : '停用'}` : ''}。服务器：${server ? `${server.name} · ${server.status === 'active' ? '启用' : '停用'}` : '尚无此分类'}。`));
       } else node.append(el('p', `词库操作：${operation.name || (operation.retired ? '停用' : '启用')}。服务器：${remote.name} · ${remote.retired ? '停用' : '启用'}。`));
     }
@@ -429,7 +507,10 @@ export function mountWordbankPage(root, options = {}) {
   scope.addEventListener('change', () => render(controller.snapshot()));
   for (const control of [search, categoryFilter, difficultyFilter]) control.addEventListener('input', () => { page = 0; render(controller.snapshot()); });
   bulk.addEventListener('input', () => { importPreview = null; importAddButton.disabled = true; importStatus.replaceChildren(); controller.setBuffer({ bulk: bulk.value }); });
-  for (const control of [answer, aliases, wordCategory, difficulty, tags]) control.addEventListener('input', () => controller.setBuffer({ form: { editingId, answer: answer.value, aliases: aliases.value, category: wordCategory.value, difficulty: difficulty.value, tags: tags.value } }));
+  for (const control of [answer, aliases, wordCategory, difficulty, tags]) control.addEventListener('input', () => {
+    if ([wordCategory, difficulty].includes(control)) { importPreview = null; importAddButton.disabled = true; importStatus.replaceChildren(); }
+    controller.setBuffer({ form: { editingId, answer: answer.value, aliases: aliases.value, category: wordCategory.value, difficulty: difficulty.value, tags: tags.value } });
+  });
   const unsubscribe = (options.onAccountChange || onAccountChange)(() => { controller.identityChanged(); if (controller.snapshot().authenticated) run(() => controller.refreshDirectory()); });
   const lifecycle = options.watchLifecycle === false ? null : watchAccountLifecycle({ windowRef, documentRef, onSuspend: () => { content.hidden = true; }, onVerified: () => { controller.identityChanged(); render(controller.snapshot()); } });
   run(async () => { if (!options.getAccount) await loadAccount(); controller.identityChanged(); if (controller.snapshot().authenticated) await controller.refreshDirectory(); });

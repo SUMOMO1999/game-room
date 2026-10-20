@@ -1,4 +1,6 @@
 /** Public digital content only. Original photographs and source paths are never imported. */
+import { PLAYER_COUNT_CONTENT_VERSION, playerCountProfile } from './player-count-profile.mjs';
+export { PLAYER_COUNT_CONTENT_VERSION } from './player-count-profile.mjs';
 export const DIGITAL_RULE_VERSION = 'yousei-digital-v1';
 // Saved matches retain their rule version; new matches use the explicit multiplayer contract.
 export const MULTIPLAYER_RULE_VERSION = 'yousei-digital-v2';
@@ -1295,7 +1297,7 @@ export const CARDS = deepFreeze([
     "compactText": "增3格 · 首6后3",
     "details": [
       "使用许可牌购买1块公共扩展摊位板，永久增加自己的3个普通货位，耗1步。",
-      "整局第一块板6两，此后无论由谁购买均为3两；公共板一共5块，无板或钱不足不能使用。",
+      "整局第一块板6两，此后无论由谁购买均为3两。原110张材料包共5块；按人数材料包2／3／4／5／6人分别配5／7／9／11／13块，以本局库存为准。每人最多扩充5块，无板或钱不足不能使用。",
       "扩容后自动腾空已付费的临时格，但不退费；许可牌用后弃置。"
     ],
     "costText": "1步 · 全局首6两／后3两",
@@ -1332,15 +1334,32 @@ export function getCategory(id) {
 }
 
 /** Fixed material construction, without shuffling. Entity IDs stay inside trusted state. */
-export function createDeck() {
-  return deepFreeze(CARDS.flatMap(card => Array.from({ length: card.copies }, (_, index) => ({
+const legacyProfiles = new Map();
+export function materialProfile(contentVersion = CONTENT_VERSION, playerCount = 2) {
+  const profile = playerCountProfile(playerCount);
+  if (contentVersion === PLAYER_COUNT_CONTENT_VERSION) return profile;
+  if (contentVersion !== CONTENT_VERSION) throw new RangeError('不支持的幽街商人内容版本');
+  if (!legacyProfiles.has(playerCount)) legacyProfiles.set(playerCount, Object.freeze({ ...playerCountProfile(2), contentVersion: CONTENT_VERSION, playerCount }));
+  return legacyProfiles.get(playerCount);
+}
+export const materialProfileFor = game => materialProfile(game.contentVersion, game.players.length);
+/** Decode a known face; authorization always supplies the frozen match profile. */
+export function definitionIdForCopy(copyId, profile = playerCountProfile(6)) {
+  if (typeof copyId !== 'string') return null;
+  const match = /^(yousei\.[a-z0-9-]+)#(\d{2})$/u.exec(copyId);
+  const card = match && cardsById.get(match[1]), count = match ? Number(match[2]) : 0;
+  return card && count >= 1 && count <= profile.copiesByCode[card.sourceCode] ? card.id : null;
+}
+export function createDeck({ contentVersion = CONTENT_VERSION, playerCount = 2 } = {}) {
+  const profile = materialProfile(contentVersion, playerCount);
+  return deepFreeze(CARDS.flatMap(card => Array.from({ length: profile.copiesByCode[card.sourceCode] }, (_, index) => ({
     id: `${card.id}#${String(index + 1).padStart(2, '0')}`,
     definitionId: card.id,
   }))));
 }
 
 export function assertContentVersion(version) {
-  if (version !== CONTENT_VERSION) throw new RangeError('不支持的幽街商人内容版本');
+  if (![CONTENT_VERSION, PLAYER_COUNT_CONTENT_VERSION].includes(version)) throw new RangeError('不支持的幽街商人内容版本');
   return true;
 }
 

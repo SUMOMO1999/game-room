@@ -1,12 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHyakkiPracticeSession, PRACTICE_SELF, PRACTICE_BOT, PRACTICE_STORAGE_KEY,
-  encodeHyakkiPractice, decodeHyakkiPractice } from './practice-engine.mjs';
+  encodeHyakkiPractice, decodeHyakkiPractice, PRACTICE_JOURNAL_MAX_BYTES } from './practice-engine.mjs';
+import { buildBattleReport } from './battle-report-model.mjs';
 import { chooseHyakkiPracticeAction } from './practice-bot.mjs';
 import { createGame, applyGameAction, gameProblem, currentDecision } from './rules.mjs';
 import { privateView } from './view.mjs';
 import { definition, refreshTemporary } from './model.mjs';
-import { createDeck, GOODS, DIGITAL_RULE_VERSION } from './content/definitions.mjs';
+import { createDeck, materialProfileFor, GOODS, DIGITAL_RULE_VERSION } from './content/definitions.mjs';
 
 const ids = [PRACTICE_SELF, PRACTICE_BOT], ctx = { now: 0, randomInt: limit => limit - 1 };
 const flush = () => new Promise(resolve => setImmediate(resolve));
@@ -15,7 +16,7 @@ function environment(seed = 7) {
   const values = new Map(), timers = new Map(), changes = [], writes = [];
   const storage = { getItem: key => values.get(key) ?? null, setItem(key, value) { values.set(key, value); writes.push(value); } };
   const withLock = callback => { const task = chain.then(callback); chain = task.catch(() => {}); return task; };
-  return { values, timers, changes, writes, storage, withLock, seed, requestId: () => (++id).toString(16).padStart(32, '0'),
+  return { values, timers, changes, writes, storage, withLock, seed, botDelayMs: 700, requestId: () => (++id).toString(16).padStart(32, '0'),
     now: () => wall, canRun: () => running, run: value => { running = value; }, onChange: value => changes.push(value),
     setTimer(callback, delay) { const id = ++timerId; timers.set(id, { at: wall + delay, callback }); return id; },
     clearTimer: id => timers.delete(id), jump: ms => { wall += ms; }, flush,
@@ -59,16 +60,16 @@ function applyDefault(state) {
 function conserved(game) {
   assert.equal(gameProblem(game), null);
   assert.deepEqual([...game.deck, ...game.discard, ...game.players.flatMap(owner => [...owner.hand, ...owner.tools.map(tool => tool.cardId)]),
-    ...(game.pending?.sourceCards ?? []), ...(game.pending?.poolCards ?? [])].sort(), createDeck().map(card => card.id).sort());
+    ...(game.pending?.sourceCards ?? []), ...(game.pending?.poolCards ?? [])].sort(), createDeck({ contentVersion: game.contentVersion, playerCount: game.players.length }).map(card => card.id).sort());
   for (const good of GOODS) assert.equal(game.bankGoods[good.id] + game.players.reduce((sum, owner) => sum + owner.goods[good.id], 0)
     + (game.pending?.goods[good.id] ?? 0), game.goodsPerType ?? 6);
-  assert.equal(game.availableStalls + game.players.reduce((sum, owner) => sum + owner.stallCount, 0), 5);
+  assert.equal(game.availableStalls + game.players.reduce((sum, owner) => sum + owner.stallCount, 0), materialProfileFor(game).stallBoards);
 }
 
 test('new practice is paused, contains real materials and exposes exactly the human hand', async () => {
   const env = environment(), session = await createHyakkiPracticeSession(env);
   const view = session.snapshot(), saved = savedAt(env);
-  assert.equal(view.game.actionLimit, 5); assert.equal(view.game.goodsPerType, 8);
+  assert.equal(view.game.actionLimit, 5); assert.equal(view.game.goodsPerType, 6);
   conserved(saved.game); assert.equal(saved.game.deck.length, 100); assert.equal(view.active, false); assert.equal(view.game.clock.paused, true);
   assert.equal(view.players.length, 2); assert.equal(view.selfId, PRACTICE_SELF);
   assert.equal(view.game.players.filter(owner => owner.hand).length, 1);
@@ -98,7 +99,7 @@ test('legacy six-goods practice restores untouched, while only explicit restart 
   for (const options of [{ goodsPerType: 3 }, { goodsPerType: 21 }, { goodsPerType: '8' }, { goodsPerType: null }, { unexpected: 8 }]) {
     await rejects(session.restart(options), 'PRACTICE_OPTIONS_INVALID'); assert.equal(env.values.get(PRACTICE_STORAGE_KEY), before);
   }
-  await session.restart(); assert.equal(session.snapshot().game.goodsPerType, 8); assert.equal(session.snapshot().game.actionLimit, 5);
+  await session.restart(); assert.equal(session.snapshot().game.goodsPerType, 6); assert.equal(session.snapshot().game.actionLimit, 5);
   await session.destroy();
 });
 
@@ -264,14 +265,25 @@ for (const actionLimit of [1, 5, 10]) test(`session scheduling, human commands a
   }
   const view = session.snapshot(); assert.equal(view.game.status, 'finished', view.storageNote); assert.equal(view.game.result.reason, 'normal-close');
   assert.ok(view.game.players.some(owner => owner.silver >= 60)); conserved(savedAt(env).game); assert.equal(env.timers.size, 0);
-  assert.deepEqual([...env.values.keys()], [PRACTICE_STORAGE_KEY]); t.diagnostic(JSON.stringify({ actionLimit, turns: view.game.turnNumber, humanCommands: commands, restores }));
+  assert.deepEqual([...env.values.keys()], [PRACTICE_STORAGE_KEY]); const report = buildBattleReport(session.history({ limit: 50 }).groups, { game: view.game, players: view.players, coverage: { complete: false } });
+  assert.equal(report.partial, true, 'a transport page never masquerades as complete history');
+  const all = []; let after = 0, packet;
+  do { packet = session.history({ after, limit: 50 }); all.push(...packet.groups); after = packet.nextAfter; } while (packet.hasMore);
+  assert.equal(all.length, view.game.publicEventSequence);
+  const full = buildBattleReport(all, { game: view.game, players: view.players, coverage: { ...packet.coverage, complete: true } });
+  assert.equal(full.partial, false); assert(full.turns.every(turn => turn.complete));
+  const stored = savedAt(env);
+  t.diagnostic(JSON.stringify({ actionLimit, turns: view.game.turnNumber, humanCommands: commands, restores,
+    journalGroups: all.length, journalBytes: Buffer.byteLength(JSON.stringify(stored.journal)),
+    finalEnvelopeBytes: Buffer.byteLength(env.values.get(PRACTICE_STORAGE_KEY)), writes: env.writes.length,
+    cumulativeWrittenBytes: env.writes.reduce((sum, value) => sum + Buffer.byteLength(value), 0) }));
   await session.destroy();
 });
 
 for (const playerCount of [3, 4, 5, 6]) test(`${playerCount}-seat practice runs only the current computer, saves all seats and finishes after reloads`, async t => {
   const env = environment(37); let session = await createHyakkiPracticeSession({ ...env, playerCount });
   assert.equal(savedAt(env).version, 2); assert.equal(savedAt(env).game.version, 2);
-  assert.equal(session.snapshot().players.length, playerCount); assert.equal(savedAt(env).game.deck.length, 110 - playerCount * 5);
+  assert.equal(session.snapshot().players.length, playerCount); assert.equal(savedAt(env).game.deck.length, [110, 144, 178, 212, 246][playerCount - 2] - playerCount * 5);
   assert.equal(session.snapshot().game.players.filter(player => Object.hasOwn(player, 'hand')).length, 1);
   await session.setActive(true); let commands = 0, restores = 0;
   for (let tick = 0; tick < 7000 && session.snapshot().game.status === 'playing'; tick++) {
@@ -299,4 +311,92 @@ for (const playerCount of [3, 4, 5, 6]) test(`${playerCount}-seat practice runs 
     assert.equal(env.values.get(PRACTICE_STORAGE_KEY), original); }
   await session.restart({ playerCount: 6 }); assert.equal(session.snapshot().players.length, 6);
   await session.destroy();
+});
+
+test('practice public history survives quota failure in memory without splitting a legal move from its journal', async () => {
+  const env = environment(2), session = await createHyakkiPracticeSession(env);
+  const initial = env.values.get(PRACTICE_STORAGE_KEY), first = session.history();
+  env.storage.setItem = () => { throw new Error('quota'); };
+  const actor = session.snapshot().game.turnPlayerId;
+  // Fresh seed 2 starts the human. Never bypass the real owner/command contract.
+  assert.equal(actor, PRACTICE_SELF); await session.action('peek');
+  const after = session.history(); assert.equal(after.headSequence, first.headSequence + 1);
+  assert.equal(after.groups.at(-1).sequence, after.headSequence);
+  assert.equal(env.values.get(PRACTICE_STORAGE_KEY), initial); assert.equal(session.snapshot().storageAvailable, false);
+  assert.match(session.snapshot().storageNote, /此前成功|无法继续保存/);
+  await session.action('discard-peek'); assert.equal(session.history().headSequence, after.headSequence + 1);
+  assert.equal(session.history().groups.at(-1).discard.added[0].reason, 'draw-discarded'); await session.destroy();
+});
+test('legacy practice starts explicit partial history at the next commit, preserves old bytes until then', async () => {
+  const env = environment(), game = createGame(ids, { ...ctx, matchId: 'c'.repeat(32), ruleVersion: DIGITAL_RULE_VERSION });
+  const original = encodeHyakkiPractice(savedGame(game)); env.values.set(PRACTICE_STORAGE_KEY, original);
+  const session = await createHyakkiPracticeSession(env), empty = session.history();
+  assert.deepEqual(empty.groups, []); assert.equal(empty.coverage.partialStart, true);
+  assert.equal(env.values.get(PRACTICE_STORAGE_KEY), original); await session.action('peek');
+  const result = session.history(); assert.equal(result.groups.length, 1); assert.equal(result.coverage.startSequence, game.publicEventSequence + 1);
+  assert.equal(result.coverage.partialStart, true); assert.equal(result.groups[0].turn.ownerSeatId, PRACTICE_SELF);
+  const saved = savedAt(env), changed = structuredClone(saved); changed.journal = null;
+  assert.equal(decodeHyakkiPractice(JSON.stringify(changed)), null);
+  changed.journal = { ...saved.journal, secret: game.deck }; assert.equal(decodeHyakkiPractice(JSON.stringify(changed)), null);
+  await session.destroy(); const restored = await createHyakkiPracticeSession(env);
+  assert.deepEqual(restored.history(), result); await restored.destroy();
+});
+
+test('default computer pacing leaves two seconds between real commands while normal logical clocks continue', async () => {
+ const env = environment(7), session = await createHyakkiPracticeSession({ ...env, botDelayMs: undefined });
+ assert.equal(session.snapshot().game.turnPlayerId, PRACTICE_BOT); const before=session.snapshot().game.revision;
+ await session.setActive(true); await env.step(1999); assert.equal(session.snapshot().game.revision,before);
+ assert.equal(session.snapshot().logicalNow,1750); await env.step(1); assert.equal(session.snapshot().game.revision,before+1);
+ assert.equal(session.snapshot().logicalNow,2000); await env.step(1999); assert.equal(session.snapshot().game.revision,before+1);
+ await env.step(1); assert.equal(session.snapshot().game.revision,before+2); await session.destroy();
+});
+
+test('journal has an independent bounded budget while original game subtree remains limited', async () => {
+ const env=environment(2),session=await createHyakkiPracticeSession(env), saved=savedAt(env), first=saved.journal.groups[0];
+ // Capacity fixture repeats safe public groups only; it is not evidence of a
+ // played match. Real complete-match measurements are in the scheduling tests.
+ const item={...first,events:[{type:'draw-kept',actorSeatId:PRACTICE_SELF}]};
+ const count=Math.ceil(PRACTICE_JOURNAL_MAX_BYTES/Buffer.byteLength(JSON.stringify(item)))+100;
+ saved.journal.groups=Array.from({length:count},(_,index)=>({...item,sequence:index+1}));
+ saved.game.publicEventSequence=count;saved.game.revision=count-1;
+ assert.throws(()=>encodeHyakkiPractice(saved),error=>error.code==='PRACTICE_SAVE_CAPACITY');
+ const invalid=structuredClone(savedAt(env));invalid.game.extra='x'.repeat(524289);
+ assert.throws(()=>encodeHyakkiPractice(invalid),error=>error.code==='PRACTICE_SAVE_INVALID');await session.destroy();
+});
+
+test('default-paced full match keeps complete public history and measures real persistence volume', async t => {
+ const env=environment(37),session=await createHyakkiPracticeSession({...env,botDelayMs:undefined});
+ await session.setActive(true);
+ for(let tick=0;tick<5000&&session.snapshot().game.status==='playing';tick++){
+  const view=session.snapshot(),command=chooseHyakkiPracticeAction(view.game,PRACTICE_SELF,{now:view.logicalNow});
+  if(command)await session.action(command.type,fields(command));else await env.step(2000);
+ }
+ const view=session.snapshot();assert.equal(view.game.status,'finished');assert.equal(view.storageAvailable,true);
+ const all=[];let after=0,packet;
+ do{packet=session.history({after,limit:50});all.push(...packet.groups);after=packet.nextAfter;}while(packet.hasMore);
+ assert.equal(all.length,view.game.publicEventSequence);
+ const report=buildBattleReport(all,{game:view.game,players:view.players,coverage:{...packet.coverage,complete:true}});
+ assert.equal(report.partial,false);assert(report.turns.every(turn=>turn.complete));
+ const material=savedAt(env),publicText=JSON.stringify(material.journal);
+ for(const copy of createDeck())assert.equal(publicText.includes(JSON.stringify(copy.id)),false,'journal has no private physical-copy identifiers');
+ const writes=env.writes.length;session.history();assert.equal(env.writes.length,writes,'history read is side-effect free');
+ t.diagnostic(JSON.stringify({botDelayMs:2000,turns:view.game.turnNumber,journalGroups:all.length,journalBytes:Buffer.byteLength(publicText),
+  finalEnvelopeBytes:Buffer.byteLength(env.values.get(PRACTICE_STORAGE_KEY)),writes,
+  cumulativeWrittenBytes:env.writes.reduce((sum,text)=>sum+Buffer.byteLength(text),0)}));
+ await session.destroy();
+});
+
+test('pure-clock storage checkpoints are bounded to one second while actions, pause and exit save immediately', async () => {
+ const env=environment(2),session=await createHyakkiPracticeSession({...env,botDelayMs:undefined});await session.setActive(true);
+ const writes=env.writes.length;await env.step(999);assert.equal(env.writes.length,writes);assert.equal(session.snapshot().logicalNow,750);
+ await env.step(1);assert.equal(env.writes.length,writes+1);assert.equal(savedAt(env).logicalNow,1000);
+ await env.step(500);assert.equal(env.writes.length,writes+1);assert.equal(session.snapshot().logicalNow,1500);
+ // Simulate a separate process reopening the last durable checkpoint, without
+ // running graceful destroy in the crashed process.
+ const other=environment(9);other.values.set(PRACTICE_STORAGE_KEY,env.values.get(PRACTICE_STORAGE_KEY));
+ const reopened=await createHyakkiPracticeSession(other);assert.equal(reopened.snapshot().logicalNow,1000);
+ assert(session.snapshot().logicalNow-reopened.snapshot().logicalNow<1000);await reopened.destroy();
+ await session.action('peek');assert.equal(savedAt(env).logicalNow,1500);assert.equal(session.history().groups.length,2);
+ env.jump(123);await session.setActive(false);assert.equal(savedAt(env).logicalNow,1623);
+ await session.setActive(true);env.jump(77);await session.destroy();assert.equal(savedAt(env).logicalNow,1700);
 });

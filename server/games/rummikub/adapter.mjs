@@ -3,7 +3,7 @@ import { normalizeJokerConfig } from '../../../app/games/rummikub/rules.mjs';
 import { point, problem, publicFields } from '../adapter-contract.mjs';
 
 const gameType = 'rummikub';
-const ruleVersions = Object.freeze(['friends-v1', 'friends-v2', 'friends-v3', 'friends-v4']);
+const ruleVersions = Object.freeze(['friends-v1', 'friends-v2', 'friends-v3', 'friends-v4', 'friends-v5']);
 const actions = Object.freeze({ submit: Object.freeze(['boardIds', 'rackIds', 'boardPositions']),
   draw: Object.freeze(['boardPositions']), pass: Object.freeze(['boardPositions']) });
 const fields = ['version', 'ruleVersion', 'board', 'players', 'turnIndex', 'turnPlayerId', 'round',
@@ -59,9 +59,11 @@ export function createRummikubAdapter({ gameEngine = rules } = {}) {
     supportsTimeout: () => true,
     applyTimeout: (game, playerId) => engine.applyGameAction(game, playerId, { type: game.pool.length ? 'draw' : 'pass' }),
     describeTimeout: (game, player) => `${player.name}本回合时间已到，${game.pool?.length > 0 ? '自动摸牌。' : '牌池已空，自动跳过。'}`,
-    snapshotSchema: room => room.game?.ruleVersion === 'friends-v4' ? 8 : Object.hasOwn(room, 'turnClock') ? 7
+    snapshotSchema: room => room.game?.ruleVersion === 'friends-v5' ? 20 : room.game?.ruleVersion === 'friends-v4' ? 8 : Object.hasOwn(room, 'turnClock') ? 7
       : room.rolesEnabled || room.spectators?.length ? 4 : 2,
-    snapshotProblem: data => ![1, 2, 4, 7, 8].includes(data.schemaVersion)
+    snapshotProblem: data => ![1, 2, 4, 7, 8, 20].includes(data.schemaVersion)
+      || data.schemaVersion === 20 && data.game?.ruleVersion !== 'friends-v5'
+      || data.schemaVersion !== 20 && data.game?.ruleVersion === 'friends-v5'
       || data.schemaVersion === 8 && data.game?.ruleVersion !== 'friends-v4'
       || data.schemaVersion !== 8 && data.game?.ruleVersion === 'friends-v4',
     roomStateProblem(data, hasRoles) {
@@ -70,7 +72,7 @@ export function createRummikubAdapter({ gameEngine = rules } = {}) {
         try { data.jokerConfig = normalizeJokerConfig(data.jokerConfig); }
         catch { return '房间保存的鬼牌设置无效。'; }
       }
-      if (data.game && (['friends-v3', 'friends-v4'].includes(data.game.ruleVersion)
+      if (data.game && (['friends-v3', 'friends-v4', 'friends-v5'].includes(data.game.ruleVersion)
         ? !data.jokerConfig || canonical(data.jokerConfig) !== canonical(data.game.jokerConfig)
         : data.jokerConfig !== undefined)) return '本局鬼牌设置与房间保存内容不一致。';
       return null;

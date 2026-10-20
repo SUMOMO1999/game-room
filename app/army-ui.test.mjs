@@ -1,3 +1,4 @@
+import {withRoomVoice} from './platform/room-voice-session.mjs';
 import { mountArmyMotion } from './games/army-flip/motion-ui.mjs';
 import * as roomClock from './platform/room-clock.mjs';
 import * as roomSession from './platform/room-session.mjs';
@@ -86,6 +87,7 @@ async function moduleIn(context,file,extra='') {
   Object.assign(context, entryPath);
   const source=await readFile(new URL(file,import.meta.url),'utf8');
   const names=[...source.matchAll(/^export (?:async )?(?:function|class|const)\s+(\w+)/gm)].map(match=>match[1]);
+  Object.assign(context,{withRoomVoice,BaseRoomClient:context.RoomClient});
   const code=source.replace(/^import[\s\S]*?;\s*/gm,'').replace(/^export /gm,'');
   return vm.runInContext(`(()=>{${code}\n${extra}\nreturn {${names.join(',')}};})()`,context,{filename:file});
 }
@@ -142,6 +144,10 @@ async function fixture(t,{state=AUTH,query='',viewport={width:844,height:390},st
     cell:id=>document.getElementById('army-cells').querySelector(`[data-cell-id="${id}"]`)};
 }
 
+// Ordinary hidden now retains verified passive output. Keep every strong
+// cancellation assertion below on the still-destructive pagehide boundary.
+const dispatchPagehide=window=>{const event=new Event('pagehide');Object.defineProperty(event,'persisted',{value:true});window.dispatchEvent(event);};
+
 test('actual invited army page reports an account conflict once without changing current identity, seat or game revision',async t=>{
   const f=await fixture(t,{query:'&login=account'}),before=f.pageAPI.view();
   assert.equal(f.account.accountState().userKey,USER);assert.equal(before.selfId,'self');assert.equal(before.game.revision,4);
@@ -178,8 +184,8 @@ test('presence or pause-vote metadata preserves selection; a newer game revision
   assert.equal(f.pageAPI.selected(),'r0c0');assert.equal(f.cell('r1c0').classList.contains('target'),true);
   updated.revision=3;updated.game.revision=5;updated.game.turnPlayerId='friend';updated.game.legalMoves=[];updated.game.legalFlips=[];f.push(updated);await settle();assert.equal(f.pageAPI.selected(),null);assert.equal(f.cell('r1c0').classList.contains('target'),false);
 });
-test('background immediately clears complete board and stops SSE; focus waits for fresh identity before stable seat recovery',async t=>{
-  const f=await fixture(t);f.pageAPI.click('r0c0');f.document.hidden=true;f.document.dispatchEvent(new Event('visibilitychange'));
+test('pagehide immediately clears complete board and stops SSE; focus waits for fresh identity before stable seat recovery',async t=>{
+  const f=await fixture(t);f.pageAPI.click('r0c0');f.document.hidden=true;dispatchPagehide(f.window);
   assert.equal(f.get('army-cells').children.length,0);assert.equal(f.get('army-lines').children.length,0);assert.equal(f.get('room-players').children.length,0);assert.equal(f.pageAPI.client(),null);assert.equal(f.streams[0].signal.aborted,true);
   const pending=deferred();f.deferState(pending);f.document.hidden=false;f.window.dispatchEvent(new Event('focus'));await settle();assert.equal(f.get('army-cells').children.length,0);
   pending.resolve(json(AUTH));await settle();assert.equal(f.get('army-cells').children.length,60);assert.equal(f.pageAPI.view().selfId,'self');assert.equal(f.pageAPI.view().matchId,'synthetic-match');assert.equal(f.pageAPI.selected(),null);
@@ -197,8 +203,8 @@ test('503 pauses without business writes and fresh same-account verification res
   const f=await fixture(t);f.deferState({promise:Promise.resolve(json({message:'unavailable'},503))});f.timers.tick(15000);await settle();assert.equal(f.get('army-cells').children.length,0);assert.match(f.get('waiting-hint').textContent,/原席位.*服务器/);
   f.setState(AUTH);f.timers.tick(15000);await settle();assert.equal(f.pageAPI.view().selfId,'self');assert.equal(f.pageAPI.view().matchId,'synthetic-match');assert.equal(f.get('army-cells').children.length,60);assert.ok(f.calls.every(call=>(call.options.method??'GET')==='GET'));
 });
-test('a delayed private read cannot repaint after background or identity replacement',async t=>{
-  const f=await fixture(t),pending=deferred();f.deferRoom(pending);const reading=f.pageAPI.client().refresh();await settle();f.document.hidden=true;f.document.dispatchEvent(new Event('visibilitychange'));
+test('a delayed private read cannot repaint after pagehide or identity replacement',async t=>{
+  const f=await fixture(t),pending=deferred();f.deferRoom(pending);const reading=f.pageAPI.client().refresh();await settle();f.document.hidden=true;dispatchPagehide(f.window);
   pending.resolve(json({view:{...roomView(),revision:99}}));await assert.rejects(reading,error=>error.name==='AbortError');assert.equal(f.get('army-cells').children.length,0);
   f.setState({...AUTH,userKey:OTHER,csrf:'other'});f.document.hidden=false;f.window.dispatchEvent(new Event('focus'));await settle();assert.equal(f.get('room-players').textContent.includes('原朋友'),false);
 });
@@ -476,8 +482,9 @@ test('both army entry documents declare the same dark root and safe-area status 
     assert.equal(document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]').getAttribute('content'),'black-translucent',file);
     assert.equal(document.querySelector('meta[name="apple-mobile-web-app-capable"]').getAttribute('content'),'yes',file);
     assert.match(document.querySelector('meta[name="viewport"]').getAttribute('content'),/viewport-fit=cover/,file);
-    const styles=document.querySelectorAll('link[rel="stylesheet"]').map(node=>node.getAttribute('href'));
-    assert.ok(styles.indexOf('./army.css')>styles.indexOf('./styles.css'),file);
+    const styles=document.querySelectorAll('link[rel="stylesheet"]').map(node=>new URL(node.getAttribute('href'),'https://assets.invalid/').pathname);
+    assert.notEqual(styles.indexOf('/styles.css'),-1,file);
+    assert.ok(styles.indexOf('/army.css')>styles.indexOf('/styles.css'),file);
     assert.equal(document.querySelector('link[rel="manifest"]').getAttribute('href'),'./manifest.webmanifest',file);
   }
 });
@@ -601,9 +608,9 @@ test('waiting army spectator may request a free player seat while a full table d
   assert.equal(f.calls.filter(call=>call.url.endsWith('/actions')).length,1);
 });
 
-test('spectator background and identity failures erase spectator names and recover the same observer membership',async t=>{
+test('spectator pagehide and identity failures erase spectator names and recover the same observer membership',async t=>{
   const f=await fixture(t);const observer=spectatorView();observer.revision=2;f.setView(observer);f.push(observer);await settle();
-  f.document.hidden=true;f.document.dispatchEvent(new Event('visibilitychange'));
+  f.document.hidden=true;dispatchPagehide(f.window);
   assert.equal(f.get('army-cells').children.length,0);assert.equal(f.get('army-spectator-note').textContent,'');
   f.document.hidden=false;f.window.dispatchEvent(new Event('focus'));await settle();
   assert.equal(f.pageAPI.view().selfId,'self');assert.equal(f.pageAPI.view().selfRole,'spectator');

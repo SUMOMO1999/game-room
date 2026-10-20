@@ -1,0 +1,17 @@
+/* The settings surface only; no table geometry or foreground filtering. */
+.hy-night .nm-background-settings fieldset{border:0;padding:0;margin:0;min-width:0}
+.hy-night .nm-background-settings legend{font-weight:700;margin-bottom:12px;padding:0;font-size:16px}
+.hy-night .nm-background-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.hy-night .nm-background-option{display:flex;flex-direction:column;gap:8px;min-width:44px;min-height:44px;cursor:pointer;padding:6px;border:1px solid #b69b6577;border-radius:5px;background:#172d24}
+.hy-night .nm-background-option.is-selected{border-color:#ffdb8f;box-shadow:inset 0 0 0 1px #ffdb8f}
+.hy-night .nm-background-option:focus-within{outline:2px solid #ffdb8f;outline-offset:3px}
+.hy-night .nm-background-option>img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:3px;background:#152720}
+.hy-night .nm-background-option>span{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:5px;min-height:24px;font-size:12px;line-height:1.4;text-align:center}
+#hyakki-digital-root.hy-night .nm-background-option input[type=radio]{appearance:auto;min-width:18px;min-height:18px;width:18px;height:18px;margin:0;padding:0;accent-color:#d3a360;flex:none}
+.hy-night .nm-background-status{min-height:2.8em;margin:12px 0 0;color:#c3b08b;font-size:12px;line-height:1.4}
+@media(max-width:500px){.hy-night .nm-background-options{gap:6px}.hy-night .nm-background-option{padding:5px}.hy-night .nm-background-option>span{font-size:11px}}
+/* Only the two brighter scenes need a quiet reading mat. A background and
+   paint-only spread keep the accepted object positions and font metrics exact. */
+#hyakki-digital-root.hy-night:is([data-night-market-background=lantern],[data-night-market-background=rain]) :is(.yg-scene-note,#yg-hand-title,.yg-public-heading,.yg-time,.nm-room-label,.hy-work-heading,.hy-work-effect,.hy-work-outcome,.hy-work-cost,.hy-decision-heading,.hy-decision-summary,.hy-action-note,.hy-trade-conditions,.hy-decision-preview,.hy-target-summary,.hy-work-preview,#yg-feedback),
+#hyakki-digital-root.hy-night:is([data-night-market-background=lantern],[data-night-market-background=rain]) .yg-pile>span:not(.yg-pile-art){background:#10251ee6;box-shadow:0 0 0 4px #10251ee6;border-radius:2px}
+#hyakki-digital-root.hy-night:is([data-night-market-background=lantern],[data-night-market-background=rain]) #yg-public-stock>.yg-public-heading{border-radius:6px}

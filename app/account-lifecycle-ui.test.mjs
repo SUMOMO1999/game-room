@@ -1,3 +1,4 @@
+import {withRoomVoice} from './platform/room-voice-session.mjs';
 import * as roomClock from './platform/room-clock.mjs';
 import * as roomSession from './platform/room-session.mjs';
 import * as roomAudioControls from './platform/room-audio-controls.mjs';
@@ -12,6 +13,7 @@ import * as presentation from './game-presentation.mjs';
 import * as lobbyModel from './lobby-model.mjs';
 import * as gameRouting from './game-routing.mjs';
 import * as gameCatalog from './games/catalog.mjs';
+import { gameIllustrationSvg } from './practice-hub.mjs';
 import * as rummiFeedback from './rummikub-feedback.mjs';
 import * as rummiAssist from './rummikub-assist.mjs';
 import * as rummiMotion from './games/rummikub/motion-ui.mjs';
@@ -92,6 +94,7 @@ async function moduleIn(context,file,extra='') {
   Object.assign(context, entryPath);
   const source=await readFile(new URL(file,import.meta.url),'utf8');
   const names=[...source.matchAll(/^export (?:async )?(?:function|class|const)\s+(\w+)/gm)].map(match=>match[1]);
+  Object.assign(context,{withRoomVoice,BaseRoomClient:context.RoomClient});
   const code=source.replace(/^import[\s\S]*?;\s*/gm,'').replace(/^export /gm,'');
   return vm.runInContext(`(()=>{${code}\n${extra}\nreturn {${names.join(',')}};})()`,context,{filename:file});
 }
@@ -102,13 +105,13 @@ function roomView(user=USER) {
     game:{rack:practice.rack,board:practice.board,opened:true,round:2,revision:1,status:'playing',turnPlayerId:self,ruleVersion:'friends-v2',copies:2,jokerCount:2,poolCount:69,
       players:[{id:self,rackCount:14},{id:'friend',rackCount:14}]}};
 }
-async function fixture(t,{page='room',query='',state=AUTH,history,firstRoom=null}={}) {
+async function fixture(t,{page='room',query='',state=AUTH,history,firstRoom=null,firstState=null}={}) {
   const document=dom(await readFile(new URL(page==='room'?'room.html':'index.html',import.meta.url),'utf8'));
   if(page==='lobby') document.getElementById('create-game').value='rummikub';
   const window=new EventTarget(),timers=clock(),sessionStorage=storage(),localStorage=storage();
   const location={hostname:'127.0.0.1',search:page==='room'?`?code=${CODE}${query}`:query,href:`http://127.0.0.1/${page==='room'?`room.html?code=${CODE}`:''}${query}`,
     replace(url){this.replaced=url;},assign(url){this.assigned=url;}};
-  const calls=[],streams=[],watchers=[];let nextState=state,stateResponse=null,roomResponse=firstRoom,entryResponse=null,actionResponse=null;
+  const calls=[],streams=[],watchers=[];let nextState=state,stateResponse=firstState?()=>firstState.promise:null,roomResponse=firstRoom,entryResponse=null,actionResponse=null;
   const fetch=async(url,options={})=>{
     calls.push({url,options});
     if(options.method==='POST' && (url==='/api/rooms' || /\/api\/rooms\/\d{6}\/join$/.test(url)) && entryResponse) return entryResponse().then(response=>response.clone());
@@ -132,7 +135,7 @@ async function fixture(t,{page='room',query='',state=AUTH,history,firstRoom=null
     AbortController,DOMException,Event,EventTarget,structuredClone,performance,crypto,innerWidth:844,innerHeight:390,
     setTimeout:timers.setTimeout,clearTimeout:timers.clearTimeout,queueMicrotask,requestAnimationFrame:()=>0,cancelAnimationFrame(){},
     getComputedStyle:()=>({paddingLeft:'8',paddingRight:'8',paddingTop:'8',paddingBottom:'8'}),
-    ...roomClock,...roomSession,...roomAudioControls,...roomViewport,...rules,...presentation,...lobbyModel,...gameRouting,...gameCatalog,...rummiFeedback,...rummiAssist,...rummiMotion,...rackLayout,...tableLayout,...viewport,createGameAudio});
+    ...roomClock,...roomSession,...roomAudioControls,...roomViewport,...rules,...presentation,...lobbyModel,...gameRouting,...gameCatalog,...rummiFeedback,...rummiAssist,...rummiMotion,...rackLayout,...tableLayout,...viewport,createGameAudio,gameIllustrationSvg});
   context.mountRummikubMotion=()=>rummiMotion.mountRummikubMotion({root:document.body,document,window});
   const account=await moduleIn(context,'account-client.mjs');Object.assign(context,account);
   context.watchAccountLifecycle=(options)=>{const watcher=account.watchAccountLifecycle(options);watchers.push(watcher);return watcher;};
@@ -152,6 +155,10 @@ async function fixture(t,{page='room',query='',state=AUTH,history,firstRoom=null
     deferEntry(value){entryResponse=()=>value.promise;},
     get(id){return document.getElementById(id);}};
 }
+
+// Ordinary hidden now retains verified passive output. Keep every strong
+// cancellation assertion below on the still-destructive pagehide boundary.
+const dispatchPagehide=window=>{const event=new Event('pagehide');Object.defineProperty(event,'persisted',{value:true});window.dispatchEvent(event);};
 
 test('periodic checks keep the same private draft, account epoch and SSE connection',async t=>{
   const f=await fixture(t),epoch=f.account.accountGeneration(),client=f.pageAPI.client();
@@ -193,9 +200,9 @@ test('transport EOF keeps the actual desktop game and draft, then reconnects aft
   assert.ok(!f.calls.some(call=>call.url.endsWith('/actions')&&(call.options.method??'GET')!=='GET'));
 });
 
-test('background immediately removes private DOM and flow; return waits for fresh state before restoring same-match draft',async t=>{
+test('pagehide immediately removes private DOM and flow; return waits for fresh state before restoring same-match draft',async t=>{
   const f=await fixture(t);f.pageAPI.move(f.pageAPI.draft().rack[0].id);const draft=f.pageAPI.draft();
-  f.document.hidden=true;f.document.dispatchEvent(new Event('visibilitychange'));
+  f.document.hidden=true;dispatchPagehide(f.window);
   assert.equal(f.get('rack').children.length,0);assert.equal(f.get('board').children.length,0);assert.equal(f.get('room-play').hidden,true);
   assert.equal(f.streams[0].signal.aborted,true);assert.equal(f.sessionStorage.getItem('game-room.private-draft-owner.v1'),USER);
   const reads=f.calls.length;f.timers.tick(90000);await settle();assert.equal(f.calls.length,reads);
@@ -241,17 +248,62 @@ test('a hung state response has a ten-second limit and cannot revive the private
   assert.equal(f.get('rack').children.length,0);assert.equal(f.account.accountState().authenticated,false);
 });
 
-test('restoring a lobby hides profiles, rooms and a delayed history response until the new identity is verified',async t=>{
+test('cold lobby waits for the actual account and flags instead of painting three guest games',async t=>{
+  const flags={drawingEnabled:true,poker414Enabled:true,hyakkiEnabled:true,parksEnabled:true};
+  for(const state of [{...AUTH,...flags},{...AUTH,...flags,authenticated:false},{...AUTH,drawingEnabled:false,poker414Enabled:false,hyakkiEnabled:false,parksEnabled:false}]) {
+    const pending=deferred(),f=await fixture(t,{page:'lobby',firstState:pending});
+    assert.equal(f.document.body.dataset.lobbyAuth,'checking');
+    assert.equal(f.get('lobby-loading').hidden,false);assert.equal(f.get('lobby-workspace').hidden,true);
+    assert.equal(f.get('lobby-games').children.length,0,'no fallback catalog before feature flags arrive');
+    assert.equal(f.get('lobby-forms').hidden,true);assert.equal(f.get('recent-section').hidden,true);
+    assert.equal(f.get('create-name').value,'');assert.equal(f.get('account-login').hidden,true);
+    assert.deepEqual(f.calls.map(call=>call.url),['/api/state']);
+    pending.resolve(json(state));await settle();
+    assert.equal(f.get('lobby-loading').hidden,true);assert.equal(f.get('lobby-workspace').hidden,false);
+    assert.equal(f.document.body.dataset.lobbyAuth,state.authenticated?'member':'guest');
+    assert.equal(f.get('lobby-games').children.length,state.drawingEnabled?7:3);
+    assert.equal(f.get('lobby-forms').hidden,!state.authenticated);
+    assert.equal(f.get('account-login').hidden,state.authenticated);
+  }
+});
+
+test('a timed-out cold lobby leaves loading, offers retry and ignores a late successful response',async t=>{
+  const pending=deferred(),f=await fixture(t,{page:'lobby',firstState:pending});
+  f.timers.tick(10000);await settle();
+  assert.equal(f.get('lobby-loading').hidden,true);assert.equal(f.get('lobby-workspace').hidden,false);
+  assert.equal(f.document.body.dataset.lobbyAuth,'guest');assert.equal(f.get('account-retry').hidden,false);
+  assert.equal(f.get('lobby-forms').hidden,true);assert.equal(f.account.accountState().failureStatus,503);
+  pending.resolve(json(AUTH));await settle();
+  assert.equal(f.get('lobby-forms').hidden,true);assert.equal(f.get('create-name').value,'');
+  assert.equal(f.get('account-retry').hidden,false);
+  f.setState(AUTH);f.get('account-retry').dispatchEvent(new Event('click'));await settle();
+  assert.equal(f.document.body.dataset.lobbyAuth,'member');assert.equal(f.get('lobby-forms').hidden,false);
+  assert.equal(f.get('lobby-loading').hidden,true);
+});
+
+test('pending lobby markup is neutral before any JavaScript or account request runs',async()=>{
+  const document=dom(await readFile(new URL('index.html',import.meta.url),'utf8'));
+  assert.equal(document.body.dataset.lobbyAuth,'checking');
+  assert.equal(document.getElementById('lobby-loading').hidden,false);
+  assert.equal(document.getElementById('lobby-workspace').hidden,true);
+  assert.equal(document.getElementById('lobby-games').children.length,0);
+  assert.equal(document.getElementById('lobby-forms').hidden,true);
+});
+
+test('pagehide: restoring a lobby hides profiles, rooms and a delayed history response until the new identity is verified',async t=>{
   const oldHistory=deferred();const f=await fixture(t,{page:'lobby',history:()=>oldHistory.promise});
   assert.equal(f.get('create-name').value,'原朋友');assert.ok(f.get('recent-list').children.length);
-  f.document.hidden=true;f.document.dispatchEvent(new Event('visibilitychange'));
+  f.document.hidden=true;dispatchPagehide(f.window);
   assert.equal(f.get('create-name').value,'');assert.equal(f.get('recent-list').children.length,0);assert.equal(f.get('history-section').hidden,true);
+  assert.equal(f.document.body.dataset.lobbyAuth,'checking');assert.equal(f.get('lobby-workspace').hidden,true);assert.equal(f.get('lobby-loading').hidden,false);
+  assert.equal(f.get('account-heading').textContent.includes('原朋友'),false);
   oldHistory.resolve(json({items:[{matchId:'old-match',roomCode:CODE,endedAt:Date.now(),status:'finished',self:{outcome:'win'},players:[]}],stats:{wins:1}}));await settle();
   assert.equal(f.get('history-list').children.length,0);
   const pending=deferred();f.deferState(pending);f.document.hidden=false;f.window.dispatchEvent(new Event('focus'));await settle();
   assert.equal(f.get('recent-list').children.length,0);assert.equal(f.get('lobby-forms').hidden,true);
   pending.resolve(json({...AUTH,userKey:OTHER,csrf:'other-csrf',profile:{nickname:'新朋友'},recentRooms:[]}));await settle();
   assert.equal(f.get('create-name').value,'新朋友',JSON.stringify({state:f.account.accountState(),heading:f.get('account-heading').textContent,description:f.get('account-description').textContent}));assert.equal(f.get('recent-list').children.length,0);
+  assert.equal(f.get('lobby-loading').hidden,true);assert.equal(f.get('lobby-workspace').hidden,false);
 });
 
 test('callback verification failure preserves the invitation and shows explicit central recovery with no automatic redirect',async t=>{
@@ -267,9 +319,9 @@ test('only the explicitly configured central account destination can become a re
   }
 });
 
-test('a state check already pending before background cannot unhide the old identity on focus/pageshow',async t=>{
+test('a state check already pending before pagehide cannot unhide the old identity on focus/pageshow',async t=>{
   const f=await fixture(t),old=deferred();f.deferState(old);f.timers.tick(15000);await settle();
-  f.document.hidden=true;f.document.dispatchEvent(new Event('visibilitychange'));assert.equal(f.get('rack').children.length,0);
+  f.document.hidden=true;dispatchPagehide(f.window);assert.equal(f.get('rack').children.length,0);
   f.setState({...AUTH,userKey:OTHER,csrf:'other-csrf',profile:{nickname:'新朋友'}});
   f.document.hidden=false;f.window.dispatchEvent(new Event('focus'));f.window.dispatchEvent(new Event('pageshow'));await settle();
   assert.equal(f.get('rack').children.length,0);old.resolve(json(AUTH));await settle();
@@ -277,9 +329,9 @@ test('a state check already pending before background cannot unhide the old iden
   assert.equal(f.streams.length,2);
 });
 
-test('a delayed private room read ignores its abort signal but still cannot repaint after background',async t=>{
+test('a delayed private room read ignores its abort signal but still cannot repaint after pagehide',async t=>{
   const f=await fixture(t),pending=deferred();f.deferRoom(pending);const client=f.pageAPI.client();
-  const reading=client.refresh();await settle();f.document.hidden=true;f.document.dispatchEvent(new Event('visibilitychange'));
+  const reading=client.refresh();await settle();f.document.hidden=true;dispatchPagehide(f.window);
   assert.equal(f.get('rack').children.length,0);pending.resolve(json({view:{...roomView(),revision:99}}));
   await assert.rejects(reading,error=>error.name==='AbortError');assert.equal(f.get('rack').children.length,0);assert.equal(client.stopped,true);
 });
@@ -292,12 +344,12 @@ test('the lobby preserves invitation login destination and exposes explicit cent
   assert.equal(f.get('lobby-forms').hidden,true);assert.equal(f.location.replaced,undefined);
 });
 
-test('stable lobby soft checks do not reload history; returning and explicit refresh each read it only once',async t=>{
+test('stable lobby soft checks do not reload history; pagehide return and explicit refresh each read it only once',async t=>{
   const f=await fixture(t,{page:'lobby'}),historyReads=()=>f.calls.filter(call=>call.url.startsWith('/api/history')).length;
   assert.equal(historyReads(),1);
   for(let index=0;index<3;index++){f.timers.tick(15000);await settle();}
   assert.equal(historyReads(),1);assert.equal(f.calls.filter(call=>call.url==='/api/state').length,4);
-  f.document.hidden=true;f.document.dispatchEvent(new Event('visibilitychange'));f.document.hidden=false;f.window.dispatchEvent(new Event('focus'));await settle();
+  f.document.hidden=true;dispatchPagehide(f.window);f.document.hidden=false;f.window.dispatchEvent(new Event('focus'));await settle();
   assert.equal(historyReads(),2);f.get('history-refresh').dispatchEvent(new Event('click'));await settle();assert.equal(historyReads(),3);
 });
 
@@ -316,12 +368,12 @@ test('create and join buttons recover after a 503 without replaying the write or
   }
 });
 
-test('background cancels old lobby submission and its late 401 cannot clear or unlock a newer submission',async t=>{
+test('pagehide cancels old lobby submission and its late 401 cannot clear or unlock a newer submission',async t=>{
   const f=await fixture(t,{page:'lobby'}),form=f.get('create-form'),button=form.querySelector('button[type=submit]'),old=deferred(),current=deferred();
   f.deferEntry(old);form.dispatchEvent(new Event('submit'));await settle();
   const originalId=form.requestId,oldRequest=f.calls.find(call=>call.options.method==='POST');
   assert.equal(button.disabled,true);
-  f.document.hidden=true;f.document.dispatchEvent(new Event('visibilitychange'));
+  f.document.hidden=true;dispatchPagehide(f.window);
   assert.equal(oldRequest.options.signal.aborted,true);assert.equal(button.disabled,false);
   f.document.hidden=false;f.document.dispatchEvent(new Event('visibilitychange'));await settle();
   assert.equal(f.account.accountState().authenticated,true);assert.equal(button.disabled,false);
@@ -336,11 +388,11 @@ test('background cancels old lobby submission and its late 401 cannot clear or u
   assert.deepEqual(f.calls.filter(call=>call.options.method==='POST').map(call=>JSON.parse(call.options.body).requestId),[originalId,originalId]);
 });
 
-test('a retired lobby history failure cannot replace fresh state or hide the restored page',async t=>{
+test('pagehide: a retired lobby history failure cannot replace fresh state or hide the restored page',async t=>{
   const old=deferred();let reads=0;
   const f=await fixture(t,{page:'lobby',history:()=>++reads===1?old.promise:Promise.resolve(json({items:[],stats:{},retentionDays:180}))});
   const retired=f.calls.find(call=>call.url.startsWith('/api/history'));
-  f.document.hidden=true;f.document.dispatchEvent(new Event('visibilitychange'));
+  f.document.hidden=true;dispatchPagehide(f.window);
   assert.equal(retired.options.signal.aborted,true);
   f.document.hidden=false;f.window.dispatchEvent(new Event('focus'));await settle();
   assert.equal(f.account.accountState().authenticated,true);assert.equal(f.get('lobby-forms').hidden,false);
@@ -402,10 +454,10 @@ test('many visible focus events during one check queue at most one soft followup
   assert.deepEqual(f.pageAPI.draft(),draft);assert.equal(f.streams.length,1);assert.equal(f.streams[0].signal.aborted,false);
 });
 
-test('pageshow upgrades a pending soft focus check to one concealed fresh restoration and later focus cannot downgrade it',async t=>{
+test('pagehide: pageshow upgrades a pending soft focus check to one concealed fresh restoration and later focus cannot downgrade it',async t=>{
   const f=await fixture(t),old=f.pageAPI.client(),pending=deferred();f.pageAPI.move(f.pageAPI.draft().rack[0].id);
   const draft=f.pageAPI.draft();f.deferState(pending);f.window.dispatchEvent(new Event('focus'));await settle();
-  f.window.dispatchEvent(new Event('pageshow'));f.window.dispatchEvent(new Event('focus'));await settle();
+  dispatchPagehide(f.window);f.window.dispatchEvent(new Event('pageshow'));f.window.dispatchEvent(new Event('focus'));await settle();
   assert.equal(f.get('room-play').hidden,true);assert.equal(f.get('rack').children.length,0);assert.equal(old.stopped,true);
   assert.equal(f.calls.filter(call=>call.url==='/api/state').length,2);f.setState(AUTH);
   pending.resolve(json(AUTH));await settle();

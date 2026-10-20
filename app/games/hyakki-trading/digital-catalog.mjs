@@ -1,4 +1,5 @@
-import { DEFAULT_GOODS_PER_TYPE, MIN_GOODS_PER_TYPE, MAX_GOODS_PER_TYPE } from './model.mjs';
+import { MIN_GOODS_PER_TYPE, MAX_GOODS_PER_TYPE } from './model.mjs';
+import { profileForPlayerCount } from './content/player-count-profile.mjs';
 import { CARDS, CATEGORIES, GOODS, getCard, getCategory } from './content/definitions.mjs';
 import { mountArtFallback } from './content/manifest.mjs';
 import { renderCard, renderCardDetails, renderCardBack, renderGoodsIcon } from './digital-card-ui.mjs';
@@ -27,14 +28,15 @@ export function mountDigitalCatalog(root) {
   const documentRef = root.ownerDocument;
   const theme = initializeGameTheme(documentRef);
   const dialogId = `yousei-catalog-detail-${++nextDialogId}`;
+  const twoPlayers = profileForPlayerCount(2);
   root.classList.add('yousei-catalog');
-  root.innerHTML = `<header class="yousei-catalog__heading"><div><p class="yousei-catalog__eyebrow">幽街商人 · 数字版</p><h1>全卡图鉴</h1><p>51种牌面 · 110张牌 · 五类生意</p></div><a class="yousei-catalog__link" href="${gamePath('/hyakki-preview.html?enter=1')}">进入页面样板 →</a></header>
-    <section class="yousei-catalog__intro"><div><h2>认清手里的每一张牌</h2><p>按牌名、编号、货物或效果查找，点牌查看完整用法。货物牌整组买卖；人物用后弃置；道具先安装，再按时机激活。</p><p class="yousei-catalog__note">牌面使用自制美术和归纳说明。实际库存按每局开局设置，旧局保留原数量。</p></div><div class="yousei-catalog__stock" aria-label="数字版初始公共库存">${GOODS.map(good => `<span>${renderGoodsIcon(good.id)}<strong>${good.name}</strong><span>×${DEFAULT_GOODS_PER_TYPE}</span></span>`).join('')}<small>新局默认各${DEFAULT_GOODS_PER_TYPE}件 · 可设${MIN_GOODS_PER_TYPE}～${MAX_GOODS_PER_TYPE}件</small></div></section>
-    <nav class="yousei-catalog__filters" aria-label="图鉴筛选"><label>搜索牌面<input type="search" data-catalog-search placeholder="牌名、编号、货物或效果" maxlength="120" autocomplete="off"></label><label>牌类<select data-catalog-category><option value="all">全部 · 51种／110张</option>${CATEGORIES.map(category => { const cards = CARDS.filter(card => card.category === category.id); return `<option value="${category.id}">${category.name} · ${cards.length}种／${cards.reduce((sum, card) => sum + card.copies, 0)}张</option>`; }).join('')}</select></label><label>桌布主题<select data-catalog-theme>${GAME_THEMES.map(item => `<option value="${item.id}">${item.name}</option>`).join('')}</select></label><button type="button" data-catalog-missing aria-pressed="false">检查缺图阅读</button></nav>
+  root.innerHTML = `<header class="yousei-catalog__heading"><div><p class="yousei-catalog__eyebrow">幽街商人 · 数字版</p><h1>全卡图鉴</h1><p>51种牌面 · 双人基准110张 · 多人自动配牌</p></div><a class="yousei-catalog__link" href="${gamePath('/hyakki-preview.html?enter=1')}">进入页面样板 →</a></header>
+    <section class="yousei-catalog__intro"><div><h2>认清手里的每一张牌</h2><p>按牌名、编号、货物或效果查找，点牌查看完整用法。货物牌整组买卖；人物用后弃置；道具先安装，再按时机激活。</p><p class="yousei-catalog__note">下列副本数以双人基准展示。新局按参赛人数自动组牌：${[2,3,4,5,6].map(count=>`${count}人${profileForPlayerCount(count).deckSize}张`).join('、')}。观众不计人数；进行中的旧局保留原牌量与库存。</p></div><div class="yousei-catalog__stock" aria-label="双人推荐公共库存">${GOODS.map(good => `<span>${renderGoodsIcon(good.id)}<strong>${good.name}</strong><span>×${twoPlayers.goodsPerTypeRecommended}</span></span>`).join('')}<small>双人推荐各${twoPlayers.goodsPerTypeRecommended}件；多人每种推荐3×人数，可手选${MIN_GOODS_PER_TYPE}～${MAX_GOODS_PER_TYPE}件</small></div></section>
+    <nav class="yousei-catalog__filters" aria-label="图鉴筛选"><label>搜索牌面<input type="search" data-catalog-search placeholder="牌名、编号、货物或效果" maxlength="120" autocomplete="off"></label><label>牌类<select data-catalog-category><option value="all">全部 · 51种／双人110张</option>${CATEGORIES.map(category => { const cards = CARDS.filter(card => card.category === category.id); return `<option value="${category.id}">${category.name} · ${cards.length}种／双人${cards.reduce((sum, card) => sum + card.copies, 0)}张</option>`; }).join('')}</select></label><label>桌布主题<select data-catalog-theme>${GAME_THEMES.map(item => `<option value="${item.id}">${item.name}</option>`).join('')}</select></label><button type="button" data-catalog-missing aria-pressed="false">检查缺图阅读</button></nav>
     <div class="yousei-catalog__result"><strong data-catalog-count role="status" aria-live="polite"></strong><button type="button" data-catalog-reset>重置筛选</button></div>
     <section class="yousei-catalog__cards" data-catalog-cards aria-label="全部卡牌"></section>
     <section class="yousei-catalog__states"><div><h2>同名道具，各自使用</h2><p>选中有描边，横置有文字；当前不可用的牌也能点开阅读。暗牌全部使用同一个牌背。</p></div><div>${renderCard(getCard('yousei.t05'), { selected: true })}${renderCard(getCard('yousei.t05'), { tapped: true, disabled: true })}${renderCardBack()}</div></section>
-    <footer class="yousei-catalog__footer">许可：全局首次买板6两，之后3两；共5块，每块增加3格。数字版裁定随版本固定。</footer>
+    <footer class="yousei-catalog__footer">许可：全局首次买板6两，之后3两；双人基准5块，新局随参赛人数配板，每块增加3格。数字版裁定与材料随本局版本固定。</footer>
     <dialog class="yousei-catalog__dialog" aria-labelledby="${dialogId}"><header><h2 id="${dialogId}">牌面说明</h2><button type="button" data-catalog-close aria-label="关闭牌面说明">×</button></header><div data-catalog-detail></div></dialog>`;
   const query = root.querySelector('[data-catalog-search]');
   const category = root.querySelector('[data-catalog-category]');

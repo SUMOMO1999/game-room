@@ -13,7 +13,8 @@ export const point = value => Number.isSafeInteger(value) && value >= 0 && value
 // lifecycleTransition: {ok,state,roomPhase,returnToWaiting}; only server calls it.
 // terminal:false preserves a live match; terminal results may specify the
 // history status ('completed' or 'aborted'). Omission retains legacy aborts.
-// checkpointOnly:true advances CAS revision without renewing activity or TTL.
+// checkpointOnly:true persists the storage CAS version without advancing the
+// public game revision, renewing activity/TTL, or creating an idle view push.
 // usesPresenceLifecycle opts into trusted seat evidence on presence/recovery
 // events. Evidence contains observedAt and seats with playerId, connected,
 // lastSeenAt, leaseExpiresAt and absenceSinceAt, never transport credentials.

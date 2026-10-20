@@ -7,6 +7,9 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { CURRENT_DATA_COMPATIBILITY, validateDataCompatibility, compareReleaseCompatibility, activationPolicy } from '../scripts/release-compatibility.mjs';
 import { buildRelease } from '../scripts/build-release.mjs';
+import { DRAW_AND_GUESS_WORDBANK_LIMITS } from '../server/content/draw-and-guess-wordbank.mjs';
+import { PRACTICE_SAVE_MAX_BYTES } from './games/hyakki-trading/practice-engine.mjs';
+import { CANVAS_LIMITS } from '../server/games/draw-and-guess/canvas-service.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const candidateId = 'a'.repeat(20), priorId = 'b'.repeat(20);
@@ -184,6 +187,55 @@ test('schema4 settings and observer snapshots forbid rollback to schema3 despite
   assert.ok(!f.commands().includes(`start game-room.service ${f.priorDir}`));
 });
 
+test('shared wordbank capacity is bound to the actual runtime limit while old manifests normalize to 5000', () => {
+  assert.equal(current().wordbankSharedWords.read, DRAW_AND_GUESS_WORDBANK_LIMITS.sharedWords);
+  assert.equal(current().wordbankSharedWords.write, DRAW_AND_GUESS_WORDBANK_LIMITS.sharedWords);
+  const prior = current(); delete prior.wordbankSharedWords;
+  assert.deepEqual(validateDataCompatibility(prior).wordbankSharedWords, { read: 5000, write: 5000 });
+  const result = compareReleaseCompatibility(manifest(candidateId, current()), manifest(priorId, prior));
+  assert.deepEqual(result, { forwardCompatible: true, rollbackCompatible: false, initial: false, priorLegacy: false });
+  // Capacity alone makes rollback unsafe: room schemas and backup scopes match.
+  assert.deepEqual(prior.roomSnapshots, current().roomSnapshots);
+  assert.deepEqual(prior.backupScopes, current().backupScopes);
+});
+
+test('read and write wordbank capacities are distinct, bounded declarations rather than an unlimited schema1 assumption', () => {
+  const readerOnlyUpgrade = current(); readerOnlyUpgrade.wordbankSharedWords = { read: 10000, write: 5000 };
+  const old = current(); delete old.wordbankSharedWords;
+  assert.deepEqual(compareReleaseCompatibility(manifest(candidateId, readerOnlyUpgrade), manifest(priorId, old)),
+    { forwardCompatible: true, rollbackCompatible: true, initial: false, priorLegacy: false });
+  for (const capacity of [null, {}, { read: 10000 }, { read: 5000, write: 10000 }, { read: 0, write: 0 },
+    { read: 10000.5, write: 5000 }, { read: Number.MAX_SAFE_INTEGER + 1, write: 5000 },
+    { read: 10000, write: 10000, unlimited: true }, { read: '10000', write: 10000 }]) {
+    assert.throws(() => validateDataCompatibility({ ...current(), wordbankSharedWords: capacity }), /DATA_COMPATIBILITY_INVALID/);
+  }
+});
+
+test('new wordbank writer health failure never starts the identical-schema prior 5000-word binary or restores its database', t => {
+  const prior = current(); delete prior.wordbankSharedWords;
+  const f = fixture(t, { prior }), identityPolicy = 'agora-account-security-v1';
+  writeFileSync(f.candidateManifest, JSON.stringify({ ...manifest(candidateId, current()), identityPolicy }));
+  writeFileSync(f.priorManifest, JSON.stringify({ ...manifest(priorId, prior), identityPolicy }));
+  assert.equal(activationPolicy(f.candidateManifest, f.priorManifest), 'rollback-forbidden');
+  const result = f.run();
+  assert.equal(result.status, 1, result.stderr); assert.match(result.stderr, /AUTOMATIC ROLLBACK FORBIDDEN/);
+  assert.equal(realpathSync(f.link), f.candidateDir); assert.equal(readFileSync(f.database, 'utf8'), 'candidate-data-retained');
+  assert.ok(!f.commands().includes(`start game-room.service ${f.priorDir}`));
+  assert.ok(f.commands().at(-1).startsWith('stop game-room.service '));
+});
+
+test('downgrading to an undeclared or explicit 5000-word capacity stops before preflight, backup, services or current changes', t => {
+  for (const explicit of [false, true]) {
+    const old = current(); if (explicit) old.wordbankSharedWords = { read: 5000, write: 5000 }; else delete old.wordbankSharedWords;
+    const f = fixture(t, { candidate: old, prior: current() });
+    assert.throws(() => activationPolicy(f.candidateManifest, f.priorManifest), /CANDIDATE_DATA_INCOMPATIBLE/);
+    const result = f.run();
+    assert.equal(result.status, 1); assert.match(result.stderr, /Data compatibility declaration rejected/);
+    assert.deepEqual(f.commands(), []); assert.equal(realpathSync(f.link), f.priorDir);
+    assert.equal(readFileSync(f.database, 'utf8'), 'prior-data-retained');
+  }
+});
+
 test('missing, malformed, unknown-format and self-inconsistent candidate declarations fail closed', () => {
   assert.throws(() => compareReleaseCompatibility(manifest(candidateId)), /candidate declaration/);
   const malformed = [null, {}, { ...current(), format: 2 }, { ...current(), unexpected: true },
@@ -283,8 +335,91 @@ test('new artifact actually includes its compatibility guard and manifest declar
   const release = buildRelease({ projectRoot: root, outputRoot });
   const value = JSON.parse(execFileSync('tar', ['-xOzf', release.artifact, 'release-manifest.json'], { encoding: 'utf8' }));
   assert.deepEqual(value.dataCompatibility, current());
+  assert.deepEqual(value.dataCompatibility.wordbankSharedWords, { read: 20000, write: 20000 });
+  assert.deepEqual(value.dataCompatibility.wordbankSharedBytes, { read: 8 * 1024 * 1024, write: 8 * 1024 * 1024 });
   assert.equal(value.identityPolicy,'agora-account-security-v1');
   assert.ok(value.sourceFiles.some((entry) => entry.file === 'scripts/release-compatibility.mjs'));
   assert.equal(compareReleaseCompatibility(value, manifest(priorId)).rollbackCompatible, false);
   assert.ok(existsSync(release.artifact));
+});
+
+test('shared wordbank bytes are bound to runtime; historical readers stay at 4 MiB and cannot roll back a larger pack',()=>{
+  assert.equal(current().wordbankSharedBytes.read,DRAW_AND_GUESS_WORDBANK_LIMITS.sharedBytes);
+  assert.equal(current().wordbankSharedBytes.write,DRAW_AND_GUESS_WORDBANK_LIMITS.sharedBytes);
+  const old=current();delete old.wordbankSharedBytes;
+  assert.deepEqual(validateDataCompatibility(old).wordbankSharedBytes,{read:4194304,write:4194304});
+  assert.deepEqual(compareReleaseCompatibility(manifest(candidateId,current()),manifest(priorId,old)),
+    {forwardCompatible:true,rollbackCompatible:false,initial:false,priorLegacy:false});
+  for(const capacity of [null,{}, {read:1}, {read:1,write:2}, {read:0,write:0}, {read:0.5,write:0.5}, {read:8388608,write:8388608,extra:true}])
+    assert.throws(()=>validateDataCompatibility({...current(),wordbankSharedBytes:capacity}),/DATA_COMPATIBILITY_INVALID/);
+});
+
+test('single-stroke capacity is bound to the runtime and legacy schema1 canvas readers stay at 4096 points',()=>{
+  assert.equal(current().canvasStrokePoints.read,CANVAS_LIMITS.maxStrokePoints);
+  assert.equal(current().canvasStrokePoints.write,CANVAS_LIMITS.maxStrokePoints);
+  assert.equal(current().canvasStrokePoints.write,50000);
+  const old=current();delete old.canvasStrokePoints;
+  assert.deepEqual(validateDataCompatibility(old).canvasStrokePoints,{read:4096,write:4096});
+  assert.deepEqual(compareReleaseCompatibility(manifest(candidateId,current()),manifest(priorId,old)),
+    {forwardCompatible:true,rollbackCompatible:false,initial:false,priorLegacy:false});
+  assert.deepEqual(compareReleaseCompatibility(manifest(candidateId,old),manifest(priorId,current())),
+    {forwardCompatible:false,rollbackCompatible:true,initial:false,priorLegacy:false});
+  for(const capacity of [null,{}, {read:50000}, {read:4096,write:50000}, {read:0,write:0},
+    {read:1.5,write:1.5}, {read:50000,write:50000,extra:true}])
+    assert.throws(()=>validateDataCompatibility({...current(),canvasStrokePoints:capacity}),/DATA_COMPATIBILITY_INVALID/);
+});
+
+test('group2 and public practice journal capabilities have conservative historical defaults',()=>{
+ const old=current();delete old.hyakkiEvents;delete old.hyakkiPracticeJournal;delete old.hyakkiPracticeSaveBytes;
+ const normalized=validateDataCompatibility(old);
+ assert.deepEqual(normalized.hyakkiEvents,{read:[1],write:[1]});
+ assert.deepEqual(normalized.hyakkiPracticeJournal,{read:[0],write:[0]});
+ assert.deepEqual(normalized.hyakkiPracticeSaveBytes,{read:524288,write:524288});
+ assert.equal(current().hyakkiPracticeSaveBytes.read,PRACTICE_SAVE_MAX_BYTES);
+ assert.equal(current().hyakkiPracticeSaveBytes.write,PRACTICE_SAVE_MAX_BYTES);
+ assert.deepEqual(compareReleaseCompatibility(manifest(candidateId,current()),manifest(priorId,old)),
+  {forwardCompatible:true,rollbackCompatible:false,initial:false,priorLegacy:false});
+ assert.equal(compareReleaseCompatibility(manifest(candidateId,old),manifest(priorId,current())).forwardCompatible,false);
+ for(const key of ['hyakkiEvents','hyakkiPracticeJournal'])for(const value of [null,{}, {read:[1],write:[]},
+  {read:[1],write:[2]}, {read:[1,1],write:[1]}, {read:[4],write:[4]}, {read:[1],write:[1],extra:true}])
+  assert.throws(()=>validateDataCompatibility({...current(),[key]:value}),/DATA_COMPATIBILITY_INVALID/);
+ for(const value of [null,{}, {read:1}, {read:1,write:2}, {read:0,write:0}, {read:1.5,write:1}, {read:10,write:10,extra:true}])
+  assert.throws(()=>validateDataCompatibility({...current(),hyakkiPracticeSaveBytes:value}),/DATA_COMPATIBILITY_INVALID/);
+});
+test('actual activation never starts bare group1 code after group2 writes, even with identical room snapshots and scopes',t=>{
+ const old=current();delete old.hyakkiEvents;
+ const f=fixture(t,{prior:old});assert.equal(activationPolicy(f.candidateManifest,f.priorManifest),'rollback-forbidden');
+ const result=f.run();assert.equal(result.status,1);assert.match(result.stderr,/AUTOMATIC ROLLBACK FORBIDDEN/);
+ assert.equal(realpathSync(f.link),f.candidateDir);assert.equal(readFileSync(f.database,'utf8'),'candidate-data-retained');
+ assert(!f.commands().includes(`start game-room.service ${f.priorDir}`));
+});
+test('actual activation independently blocks old practice shape and small practice capacity readers',t=>{
+ for(const missing of ['hyakkiPracticeJournal','hyakkiPracticeSaveBytes']){
+  const old=current();delete old[missing];const f=fixture(t,{prior:old});
+  assert.equal(activationPolicy(f.candidateManifest,f.priorManifest),'rollback-forbidden');
+  const result=f.run();assert.equal(result.status,1);assert.match(result.stderr,/AUTOMATIC ROLLBACK FORBIDDEN/);
+  assert(!f.commands().includes(`start game-room.service ${f.priorDir}`));assert.equal(realpathSync(f.link),f.candidateDir);
+ }
+});
+test('compatible fallback may keep old UI while preserving the new data reader and writer contract',t=>{
+ const fallback=current(),f=fixture(t,{prior:fallback});assert.equal(activationPolicy(f.candidateManifest,f.priorManifest),'rollback-allowed');
+ const result=f.run();assert.equal(result.status,1);assert.match(result.stderr,/prior code restored/);assert.equal(realpathSync(f.link),f.priorDir);
+ // A fallback can keep its old writer only if it still reads every current
+ // group, including group3's pinned material context.
+ fallback.hyakkiEvents={read:[1,2,3],write:[1]};
+ assert.equal(compareReleaseCompatibility(manifest(candidateId,current()),manifest(priorId,fallback)).rollbackCompatible,true);
+});
+
+test('schema21 and group3 independently block an old material reader without changing backup scopes', () => {
+  const latest = current(), oldGroups = current();
+  oldGroups.hyakkiEvents = { read: [1, 2], write: [2] };
+  assert.deepEqual(latest.backupScopes, oldGroups.backupScopes);
+  assert.deepEqual(latest.roomSnapshots, oldGroups.roomSnapshots);
+  assert.equal(compareReleaseCompatibility(manifest(candidateId, latest), manifest(priorId, oldGroups)).rollbackCompatible, false);
+  assert.equal(compareReleaseCompatibility(manifest(candidateId, oldGroups), manifest(priorId, latest)).forwardCompatible, false);
+  const oldSnapshot = current();
+  oldSnapshot.roomSnapshots.read = oldSnapshot.roomSnapshots.read.filter(version => version !== 21);
+  oldSnapshot.roomSnapshots.write = oldSnapshot.roomSnapshots.write.filter(version => version !== 21);
+  assert.deepEqual(latest.hyakkiEvents, oldSnapshot.hyakkiEvents);
+  assert.equal(compareReleaseCompatibility(manifest(candidateId, latest), manifest(priorId, oldSnapshot)).rollbackCompatible, false);
 });

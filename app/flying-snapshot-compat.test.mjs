@@ -137,9 +137,9 @@ test('schema9 serializer preserves spectators and request receipts without leaki
   assert.equal(snapshotFormatProblem(result, syntheticFlyingAdapter), false);
 });
 
-test('current candidate adds schema15 and retains legacy schema12/13, old write versions and eighteen scopes', () => {
-  assert.deepEqual(CURRENT_DATA_COMPATIBILITY.roomSnapshots.read, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
-  assert.deepEqual(CURRENT_DATA_COMPATIBILITY.roomSnapshots.write, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 15]);
+test('current candidate retains legacy schemas and scopes while declaring drawing17 and Rummikub20', () => {
+  assert.deepEqual(CURRENT_DATA_COMPATIBILITY.roomSnapshots.read, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 18, 19, 20]);
+  assert.deepEqual(CURRENT_DATA_COMPATIBILITY.roomSnapshots.write, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 15, 17, 18, 19, 20]);
   const historicalScopes = ['game-profiles', 'room-invites', 'rooms', 'room-memberships', 'room-registry', 'room-requests', 'room-chat', 'game-history', 'history-index'];
   assert.deepEqual(CURRENT_DATA_COMPATIBILITY.backupScopes.read,
     [...historicalScopes, 'wordbank-packs', 'wordbank-releases', 'wordbank-index', 'draw-canvases', 'game-score-ledger', 'game-score-balances', 'game-score-meta', 'hyakki-events', 'hyakki-event-meta']);

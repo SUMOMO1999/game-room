@@ -80,6 +80,7 @@ export function createGameAudio({ storage = defaultStorage(), AudioContext = def
   let { muted, volume } = preference(storage);
   let context = null, master = null, limiter = null, mixScale = 1, priorityUntil = 0, connected = false, unlocked = false, closed = false, attempt = null, rebuildOnGesture = false;
   let notificationRecoveryTried = false;
+  let authorizedContext = null, foregroundCheck = false, foregroundRecoveryDone = false;
   const voices = new Set(), lastPlayed = new Map(), subscribers = new Set(), previewBindings = new Set();
   const hidden = () => document?.hidden === true || document?.visibilityState === 'hidden';
   const state = () => {
@@ -139,22 +140,22 @@ export function createGameAudio({ storage = defaultStorage(), AudioContext = def
   function discardContext() {
     const old = context;
     if (old) old.onstatechange = null;
-    disconnect(master); disconnect(limiter); context = null; master = null; limiter = null; mixScale = 1; priorityUntil = 0; connected = false; unlocked = false; rebuildOnGesture = false;
+    disconnect(master); disconnect(limiter); context = null; authorizedContext = null; master = null; limiter = null; mixScale = 1; priorityUntil = 0; connected = false; unlocked = false; rebuildOnGesture = false; foregroundCheck = false; foregroundRecoveryDone = false;
     try { const closing = old?.close(); closing?.catch?.(() => {}); return closing; } catch { return undefined; }
   }
   function complete(record, ok, discard = false) {
     if (attempt !== record || record.done) return;
     record.done = true; attempt = null;
-    try { clearTimeout?.(record.timer); } catch { /* Optional timer environment. */ }
-    unlocked = Boolean(ok && record.trusted && !closed && !hidden() && context === record.context && context?.state === 'running');
-    if (unlocked) notificationRecoveryTried = false;
+    try { clearTimeout?.(record.timer); clearTimeout?.(record.clockTimer); } catch { /* Optional timer environment. */ }
+    unlocked = Boolean(ok && (record.trusted || record.previouslyAuthorized) && !closed && !hidden() && context === record.context && context?.state === 'running');
+    if (unlocked) { authorizedContext = context; foregroundCheck = false; notificationRecoveryTried = false; }
     const cue = unlocked ? record.cue : null; record.cue = null;
     if (discard) discardContext();
     notify(); record.resolve(unlocked);
     if (cue) play(cue);
   }
   function revokeGesture({ suspend = false } = {}) {
-    unlocked = false; notificationRecoveryTried = false; priorityUntil = 0; stopVoices();
+    unlocked = false; authorizedContext = null; foregroundCheck = false; foregroundRecoveryDone = false; notificationRecoveryTried = false; priorityUntil = 0; stopVoices();
     // A pending WebKit resume can resolve after focus returns. Do not let it
     // authorize playback or resurrect the discarded action cue.
     if (attempt) complete(attempt, false, true);
@@ -164,21 +165,37 @@ export function createGameAudio({ storage = defaultStorage(), AudioContext = def
     }
     notify();
   }
-  function visibilityChanged() { if (hidden()) revokeGesture({ suspend: true }); else notify(); }
+  function backgrounded() {
+    unlocked = false; priorityUntil = 0; stopVoices(); foregroundCheck = Boolean(authorizedContext && authorizedContext === context); foregroundRecoveryDone = false;
+    notificationRecoveryTried = false;
+    if (attempt) { if (attempt.trusted && !attempt.previouslyAuthorized) revokeGesture({ suspend: true }); else complete(attempt, false); }
+    notify();
+  }
+  function recoverExisting() {
+    if (closed || hidden() || !context || context !== authorizedContext || rebuildOnGesture || muted || volume === 0) { notify(); return; }
+    if (context.state === 'running' && unlocked && !foregroundCheck) { notify(); return; }
+    // A notification rejected while unfocused does not consume the next
+    // foreground transition's single retry of this already authorized graph.
+    if (!foregroundRecoveryDone) { foregroundRecoveryDone = true; notificationRecoveryTried = true; void beginAttempt(false); }
+    else notify();
+  }
+  function visibilityChanged() { if (hidden()) backgrounded(); else recoverExisting(); }
   function pageHidden() { revokeGesture({ suspend: true }); }
   function windowBlurred() {
+    foregroundRecoveryDone = false;
     // A visible window losing keyboard focus does not suspend an already
     // authorized running graph. Hidden pages and unfinished first activation
     // still revoke their grant; focus alone must never authorize late sounds.
     if (!hidden() && unlocked && !attempt && context?.state === 'running') notify();
-    else pageHidden();
+    else if (!hidden() && authorizedContext === context && !attempt) { foregroundCheck = true; stopVoices(); notify(); }
+    else backgrounded();
   }
   function pageReturned() {
     if (closed) return;
     // iOS can dispatch pageshow/focus after the first restoring tap. The earlier
     // suspension already revoked its old grant; do not cancel this new tap.
-    if (hidden()) revokeGesture({ suspend: true });
-    else { if (context?.state !== 'running') { unlocked = false; stopVoices(); } notify(); }
+    if (hidden()) backgrounded();
+    else recoverExisting();
   }
   try { document?.addEventListener?.('visibilitychange', visibilityChanged); } catch { /* Non-browser environment. */ }
   try {
@@ -197,10 +214,10 @@ export function createGameAudio({ storage = defaultStorage(), AudioContext = def
   }
   function beginAttempt(trusted) {
     if (attempt) { if (trusted) attempt.trusted = true; return attempt.promise; }
-    if (!trusted && (!context || context.state === 'closed' || rebuildOnGesture)) return Promise.resolve(false);
+    if (!trusted && (!context || context.state === 'closed' || rebuildOnGesture || authorizedContext !== context)) return Promise.resolve(false);
     let resolve;
     const promise = new Promise(yes => { resolve = yes; });
-    const record = { promise, resolve, context: null, timer: null, cue: null, done: false, trusted }; attempt = record;
+    const record = { promise, resolve, context: null, timer: null, clockTimer: null, cue: null, done: false, trusted, previouslyAuthorized: Boolean(context && authorizedContext === context) }; attempt = record;
     try {
       // A WebKit context can report running after foregrounding while its audio
       // clock has stopped. Rebuild only on a fresh trusted tap, never on a timer.
@@ -224,24 +241,39 @@ export function createGameAudio({ storage = defaultStorage(), AudioContext = def
       current.onstatechange = () => {
         if (closed || context !== current) return;
         if (current.state === 'running') {
-          if (attempt?.context === current) complete(attempt, true);
+          if (attempt?.context === current) resumed(attempt, true);
           else notify(); // The OS alone cannot grant a new trusted gesture.
         } else {
-          unlocked = false; stopVoices(); notify();
+          unlocked = false; foregroundCheck = authorizedContext === current; stopVoices(); notify();
           if (attempt?.context === current && current.state !== 'suspended') complete(attempt, false);
         }
       };
-      if (current.state === 'running') complete(record, true);
+      if (current.state === 'running') resumed(record, true);
       else {
         // iOS can leave resume() pending forever after restoring a Home Screen
         // app. A finite attempt lets the next real tap create a healthy graph.
         const timeout = Number.isFinite(resumeTimeoutMs) ? Math.max(100, Math.min(3000, resumeTimeoutMs)) : 1000;
         record.timer = setTimeout?.(() => complete(record, false, true), timeout);
-        Promise.resolve(current.resume()).then(() => complete(record, current.state === 'running'),
+        Promise.resolve(current.resume()).then(() => resumed(record, current.state === 'running'),
           () => complete(record, false));
       }
     } catch { complete(record, false, !connected); }
     return promise;
+  }
+
+  function resumed(record, ok) {
+    if (attempt !== record || record.done) return;
+    if (!ok || record.trusted) { complete(record, ok); return; }
+    if (record.clockTimer !== null) return;
+    // A formerly authorized WebKit graph may say running with a stopped clock.
+    // Verify the same graph once; only a later real gesture may replace it.
+    const current = record.context, started = current.currentTime;
+    record.clockTimer = setTimeout?.(() => {
+      if (attempt !== record || context !== current || closed) return;
+      const running = current.state === 'running' && Number.isFinite(current.currentTime) && current.currentTime > started;
+      if (!running) rebuildOnGesture = true;
+      complete(record, running);
+    }, 100);
   }
 
   function play(kind, { gesture = false } = {}) {

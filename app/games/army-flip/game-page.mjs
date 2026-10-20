@@ -1,9 +1,10 @@
+import {withRoomVoice} from '../../platform/room-voice-session.mjs';
 import { mountRoomAudioControls } from '../../platform/room-audio-controls.mjs';
 import { mountGameViewport, mountCanvasPin } from '../../platform/room-viewport.mjs';
 import { createRoomClock, renderRoomClock } from '../../platform/room-clock.mjs';
 import { createRoomSession, createRoomExit } from '../../platform/room-session.mjs';
 import { accountState, accountGeneration, onAccountChange, loadAccount, watchAccountLifecycle, logoutAccount, loginHref, reauthenticationHref } from '../../account-client.mjs';
-import { RoomClient, api, loadMembership, forgetMembership } from '../../room-client.mjs';
+import { RoomClient as BaseRoomClient, api, loadMembership, forgetMembership } from '../../room-client.mjs';
 import { mountRoomChat } from '../../room-chat.mjs';
 import { createGameAudio } from '../../game-audio.mjs';
 import { gameErrorMessage, roomExitExplanation, orderedRoomPlayers } from '../../platform/room-presentation.mjs';
@@ -12,6 +13,8 @@ import { BOARD_CELLS, ROAD_EDGES, RAIL_EDGES } from './board.mjs';
 import { armySideLabel, armyAssignmentText, armyBoardGeometry, armyPoint, armyCellPosition, fitArmyBoard, armyCellLabel, armyTargets, armyIntent, armyTransition, armyResultText, armyLastActionText, armyUsesFlagTransport, armyFlagMarks, armyPickups, armyRulePages, armyRuleModeLabel } from './presentation.mjs';
 import { gameViewport } from '../../game-viewport.mjs';
 import { mountArmyMotion } from './motion-ui.mjs';
+
+const RoomClient=withRoomVoice(BaseRoomClient,{gameType:'army-flip',getAccount:accountState,document,window});
 
 const $ = id => document.getElementById(id);
 const roomCode = new URLSearchParams(location.search).get('code') || '';
@@ -286,12 +289,12 @@ async function action(type, fields = {}) {
   const current=client, fence=roomSession.capture(client);
   let accepted=false;
   busy=true; if (['flip','move','pickup','resign'].includes(type)) selected=null; renderRoom();
-  try { await current.action(type,fields); if(!roomSession.current(fence)) return false; accepted=true;
+  try { await current.action(type,fields); if(!roomSession.passive(fence)) return false; accepted=true;
     if(type==='ready')audio.play(fields.ready?'ready':'undo',{gesture:true});
     else if(type==='pause' && view?.phase!=='paused')audio.play(fields.agree===false?'undo':'ready',{gesture:true});
     return true; }
-  catch(error) { if(roomSession.current(fence)) { audio.play('invalid',{gesture:true});toast(gameErrorMessage(error));feedback(gameErrorMessage(error)); } return false; }
-  finally { if(roomSession.current(fence)) { busy=false; renderRoom(); if(!selected) feedback(`${accepted && view?.game?.lastAction?.playerId===view.selfId?armyLastActionText(view):''}${turnText()}`); } }
+  catch(error) { if(roomSession.passive(fence)) { audio.play('invalid',{gesture:true});toast(gameErrorMessage(error));feedback(gameErrorMessage(error)); } return false; }
+  finally { if(roomSession.passive(fence)) { busy=false; renderRoom(); if(!selected) feedback(`${accepted && view?.game?.lastAction?.playerId===view.selfId?armyLastActionText(view):''}${turnText()}`); } }
 }
 function clearPrivate(error = {}, {preserveDraft=error.status===503} = {}) {
   objectMotion.cancel();
@@ -338,16 +341,16 @@ function bootRoom(verifiedState) {
       if (!membership) { location.replace(`./?room=${roomCode}`); return; }
       $('room-account-recover').hidden=true; $('room-account-logout').hidden=legacy;
       const nextClient = new RoomClient(roomCode,membership,{
-        onView: next => { if (roomSession.current(clientFence)) applyView(next); },
+        onView: next => { if (roomSession.passive(clientFence)) applyView(next); },
         onConnection: status => {
-          if (!roomSession.current(clientFence)) return;
+          if (!roomSession.passive(clientFence)) return;
           if (status!=='online') { baseline=true; selected=null; }
           connection=status; chat?.connection(status);
           $('connection-label').textContent=`${status==='online'?'已连接':'重连中'} · ${roomCode}`; renderRoom();
         },
-        onChat: packet => { if (roomSession.current(clientFence)) chat?.receive(packet); },
+        onChat: packet => { if (roomSession.passive(clientFence)) chat?.receive(packet); },
         onError: error => {
-          if (!roomSession.current(clientFence)) return;
+          if (!roomSession.passive(clientFence)) return;
           if (leaving&&error.status===404) return;
           if (error.status===404&&view) forgetMembership(roomCode,view.selfId);
           if (error.status===404||!legacy&&[401,503].includes(error.status)) clearPrivate(error);
@@ -404,6 +407,16 @@ $('copy-invite').addEventListener('click',async()=>{const invitation=new URL(`./
 $('room-account-logout').addEventListener('click',async()=>{clearPrivate();try{await logoutAccount();location.href='./';}catch(error){clearPrivate({status:503});toast(gameErrorMessage(error));}});
 chat=mountRoomChat({onCue:kind=>audio.play(kind),onUnavailable:error=>clearPrivate(error.status===403?{...error,status:404}:error)});
 onAccountChange(()=>{const state=accountState();if(!state.authenticated&&state.mode!=='legacy'||client&&client.accountEpoch!==accountGeneration())clearPrivate({status:state.failureStatus===503?503:401});});
-const lifecycle=watchAccountLifecycle({onSuspend:()=>clearPrivate({message:'正在重新核验账号…'},{preserveDraft:true}),onVerified:state=>{if(!client)bootRoom(state);},onError:error=>clearPrivate(error)});
+const lifecycle=watchAccountLifecycle({onSuspend:()=>clearPrivate({message:'正在重新核验账号…'},{preserveDraft:true}),onVerified:(state,{reason}={})=>{
+  if(!client){void bootRoom(state);return;}
+  if(!['return','focus'].includes(reason))return;
+  const current=client,fence=roomSession.capture(current);
+  void current.refresh().catch(error=>{
+    if(!roomSession.passive(fence))return;
+    if([401,503,404].includes(error.status))clearPrivate(error);
+    else toast(gameErrorMessage(error));
+  });
+},onError:error=>clearPrivate(error)});
 $('room-account-recover').addEventListener('click',event=>{if($('room-account-recover').textContent==='重新连接 →'){event.preventDefault();lifecycle.refresh();}});
 lifecycle.refresh();
+

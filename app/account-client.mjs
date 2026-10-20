@@ -1,7 +1,7 @@
 import { entryBase, gamePath, entryStorageKey } from './entry-path.mjs';
 import { normalizeRecentRoom } from './lobby-model.mjs';
 
-const EMPTY = { mode: 'legacy', loginReady: false, drawingEnabled: false, poker414Enabled: false, hyakkiEnabled: false, parksEnabled: false, authenticated: false, userKey: null,
+const EMPTY = { voiceEnabled:false, voiceKind:null, mode: 'legacy', loginReady: false, drawingEnabled: false, poker414Enabled: false, hyakkiEnabled: false, parksEnabled: false, authenticated: false, userKey: null,
   csrf: null, profile: null, recentRooms: [], failureStatus: null, reauthReady: false, reauthHref: null };
 export const ACCOUNT_CHECK_INTERVAL_MS = 15000;
 export const ACCOUNT_CHECK_TIMEOUT_MS = 10000;
@@ -79,7 +79,7 @@ function normalize(value) {
   } : null;
   const recentRooms = authenticated && Array.isArray(value.recentRooms)
     ? value.recentRooms.map(normalizeRecentRoom).filter(Boolean).slice(0, 8) : [];
-  return { mode: value.mode, loginReady: value.loginReady === true, drawingEnabled: value.drawingEnabled === true,
+  return { voiceEnabled:value.voiceEnabled===true, voiceKind:value.voiceKind==='sfu-v1'?'sfu-v1':null, mode: value.mode, loginReady: value.loginReady === true, drawingEnabled: value.drawingEnabled === true,
     poker414Enabled: value.poker414Enabled === true, hyakkiEnabled: value.hyakkiEnabled === true, parksEnabled: value.parksEnabled === true, authenticated,
     userKey: authenticated ? value.userKey : null, csrf: authenticated ? value.csrf : null,
     profile, recentRooms, expiresAt: authenticated ? value.expiresAt : null,
@@ -141,6 +141,7 @@ export function watchAccountLifecycle({ windowRef = globalThis.window, documentR
   let running = null;
   let requested = false;
   let timer=null;
+  let pageSuspended=false;
   function suspend(reason='checking') {
     loadSequence++;
     retainDraftOwner(state.userKey || retainedDraftOwner);
@@ -150,12 +151,12 @@ export function watchAccountLifecycle({ windowRef = globalThis.window, documentR
   }
   function schedule() {
     timers.clearTimeout(timer);timer=null;
-    if(stopped || documentRef?.hidden) return;
+    if(stopped || pageSuspended) return;
     timer=timers.setTimeout(()=>refresh({conceal:false,reason:'periodic'}),intervalMs);
     timer?.unref?.();
   }
   function refresh({conceal=true,reason='checking'}={}) {
-    if (stopped || documentRef?.hidden) return Promise.resolve(accountState());
+    if (stopped || pageSuspended) return Promise.resolve(accountState());
     if(conceal) suspend(reason);
     if (running) { requested = {conceal:requested?.conceal===true || conceal,reason}; return running; }
     running = Promise.resolve().then(() => loadAccount()).catch((error) => {
@@ -171,18 +172,21 @@ export function watchAccountLifecycle({ windowRef = globalThis.window, documentR
     });
     return running;
   }
-  const revalidate = () => { refresh({reason:'return'}); };
+  // Ordinary backgrounding keeps the verified cookie/room stream and continues
+  // real periodic checks. Only pagehide/stop suspend output; a return from that
+  // boundary still conceals until a fresh own-cookie response is accepted.
+  const revalidate = () => { pageSuspended=false;refresh({conceal:verification!=='verified',reason:'return'}); };
   // Window activation alone is not background restoration. Recheck freshly,
   // but keep a still-verified visible table until the response proves a failure.
-  const focus = () => { refresh({conceal:verification!=='verified',reason:'focus'}); };
-  const visibility = () => {if(documentRef?.hidden) {requested=false;suspend('hidden');} else revalidate();};
-  const pagehide = () => {requested=false;suspend('hidden');};
+  const focus = () => { pageSuspended=false;refresh({conceal:verification!=='verified',reason:'focus'}); };
+  const visibility = () => {if(!documentRef?.hidden) revalidate();};
+  const pagehide = () => {pageSuspended=true;requested=false;suspend('hidden');};
   windowRef?.addEventListener?.('pageshow', revalidate);
   windowRef?.addEventListener?.('focus', focus);
   windowRef?.addEventListener?.('pagehide', pagehide);
   documentRef?.addEventListener?.('visibilitychange', visibility);
   return { refresh, stop() {
-    stopped = true; requested = false;
+    stopped = true; pageSuspended=true; requested = false;
     suspend('hidden');
     windowRef?.removeEventListener?.('pageshow', revalidate);
     windowRef?.removeEventListener?.('focus', focus);

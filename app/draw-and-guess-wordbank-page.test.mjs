@@ -186,7 +186,9 @@ test('browser UI builds all untrusted word, alias, pack, actor and error content
     constructor(tag, document) { super(); this.tagName = tag.toUpperCase(); this.ownerDocument = document; this.children = []; this.dataset = {}; this.style = {}; this.hidden = false; this.disabled = false; this.value = ''; this._text = ''; this.classList = { add() {} }; }
     set textContent(value) { this._text = String(value); this.children = []; } get textContent() { return this._text + this.children.map(node => node.textContent).join(''); }
     set innerHTML(value) { throw new Error(`Unsafe HTML sink: ${value}`); }
-    append(...nodes) { this.children.push(...nodes); } replaceChildren(...nodes) { this._text = ''; this.children = nodes; }
+    append(...nodes) { for (const node of nodes) { if (node.parentNode) node.parentNode.children.splice(node.parentNode.children.indexOf(node), 1); node.parentNode = this; this.children.push(node); } }
+    insertBefore(node, reference) { if (node === reference) return node; if (node.parentNode) node.parentNode.children.splice(node.parentNode.children.indexOf(node), 1); node.parentNode = this; const index = this.children.indexOf(reference); this.children.splice(index < 0 ? this.children.length : index, 0, node); return node; }
+    replaceChildren(...nodes) { for (const child of this.children) child.parentNode = null; this._text = ''; this.children = []; this.append(...nodes); }
     setAttribute() {} querySelectorAll(tag) { return this.children.flatMap(node => [...(node.tagName.toLowerCase() === tag ? [node] : []), ...node.querySelectorAll(tag)]); }
     focus() {}
   }
@@ -214,4 +216,173 @@ test('public page ships no seed corpus, uses account fences and allows scrolling
   assert.ok(source.includes('accountGeneration')); assert.ok(source.includes("cache: 'no-store'"));
   assert.ok(css.includes('min-height:44px')); assert.ok(css.includes('font-size:16px')); assert.ok(css.includes('safe-area-inset-bottom'));
   assert.equal(/\.wordbank-page\s*\{[^}]*overflow\s*:\s*hidden/u.test(css), false);
+});
+
+// This minimal document drives the shipped mount and controller, without a browser
+// or production identity. Browser geometry/materials are checked separately.
+function wordbankDocument({ confirm = () => true } = {}) {
+  class Element extends EventTarget {
+    constructor(tag, document) {
+      super(); this.tagName = tag.toUpperCase(); this.ownerDocument = document; this.children = []; this.dataset = {}; this.style = {}; this.hidden = false; this.disabled = false; this.value = ''; this._text = ''; this.className = ''; this.attributes = new Map();
+      this.classList = { add: (...names) => { this.className = [...new Set([...this.className.split(' '), ...names])].filter(Boolean).join(' '); } };
+    }
+    set textContent(value) { this._text = String(value); this.children = []; }
+    get textContent() { return this._text + this.children.map(node => node.textContent).join(''); }
+    append(...nodes) { for (const node of nodes) { if (node.parentNode) node.parentNode.children.splice(node.parentNode.children.indexOf(node), 1); node.parentNode = this; this.children.push(node); } }
+    insertBefore(node, reference) { if (node === reference) return node; if (node.parentNode) node.parentNode.children.splice(node.parentNode.children.indexOf(node), 1); node.parentNode = this; const index = this.children.indexOf(reference); this.children.splice(index < 0 ? this.children.length : index, 0, node); return node; }
+    replaceChildren(...nodes) { for (const child of this.children) child.parentNode = null; this._text = ''; this.children = []; this.append(...nodes); }
+    setAttribute(name, value) { this.attributes.set(name, String(value)); }
+    getAttribute(name) { return this.attributes.get(name) ?? null; }
+    querySelectorAll(tag) { return this.children.flatMap(node => [...(node.tagName.toLowerCase() === tag ? [node] : []), ...node.querySelectorAll(tag)]); }
+    focus() { this.ownerDocument.activeElement = this; }
+  }
+  const document = { defaultView: { confirm }, createElement(tag) { return new Element(tag, this); } };
+  const root = new Element('main', document);
+  const all = () => { const visit = node => [node, ...node.children.flatMap(visit)]; return visit(root); };
+  return { root, document, all, byClass: name => all().filter(node => node.className.split(' ').includes(name)),
+    button: name => all().find(node => node.tagName === 'BUTTON' && node.textContent === name),
+    input: placeholder => all().find(node => node.tagName === 'INPUT' && node.placeholder === placeholder),
+    async click(node) { assert.ok(node); assert.equal(node.disabled, false); node.dispatchEvent(new Event('click')); await settle(); } };
+}
+
+test('wordbank workbench paginates 5600 words, filters all content, and resets page without rendering thousands of rows', async () => {
+  const dom = wordbankDocument(), account = { authenticated: true, verification: 'verified', userKey: identity(0) };
+  const pack = { id: 'dg-large-synthetic', name: '虚构大词库', visibility: 'shared', draftRevision: 1, publishedHead: 1, retired: false, versions: [], history: [],
+    draft: { categories: [{ id: 'first', name: '测试分类甲', status: 'active' }, { id: 'second', name: '测试分类乙', status: 'active' }],
+      words: Array.from({ length: 5600 }, (_, index) => ({ id: `dg-synthetic-${index}`, answer: `虚构词${String(index).padStart(4, '0')}`, aliases: index === 5599 ? ['虚构尾词别称'] : [], tags: [], category: index % 2 ? 'second' : 'first', difficulty: index % 3 ? 'normal' : 'easy', status: 'reviewed', hintLength: 7 })) } };
+  const view = mountWordbankPage(dom.root, { getAccount: () => account, getGeneration: () => 0, onAccountChange: () => () => {}, watchLifecycle: false,
+    request: async path => path.includes(pack.id) ? structuredClone(pack) : { packs: [pack] }, cryptoRef: webcrypto, storage: sessionStorage() });
+  try {
+    await settle(); await view.controller.openPack(pack.id);
+    assert.equal(dom.byClass('wordbank-word-row').length, 30);
+    assert.equal(dom.button('上一页').disabled, true);
+    assert.ok(dom.byClass('wordbank-pager')[0].textContent.includes('5600词 · 1 / 187页'));
+    await dom.click(dom.button('下一页'));
+    assert.equal(dom.byClass('wordbank-term')[0].children[0].textContent, '虚构词0030');
+    assert.equal(dom.button('上一页').disabled, false);
+    const search = dom.input('搜索正文、别名或标签'); search.value = '虚构尾词别称'; search.dispatchEvent(new Event('input'));
+    assert.equal(dom.byClass('wordbank-word-row').length, 1);
+    assert.ok(dom.byClass('wordbank-pager')[0].textContent.includes('1词 · 1 / 1页'));
+    assert.equal(dom.button('下一页').disabled, true);
+    await dom.click(dom.button('编辑'));
+    assert.equal(dom.document.activeElement, dom.input('例如：自行车'));
+    assert.equal(dom.input('例如：自行车').value, '虚构词5599');
+    assert.equal(dom.byClass('wordbank-bulk')[0].hidden, true);
+    assert.ok(dom.byClass('wordbank-composer')[0].textContent.includes('修改词语'));
+    assert.equal(dom.byClass('wordbank-management')[0].children.every(node => !node.open), true);
+    search.value = '没有这个词'; search.dispatchEvent(new Event('input'));
+    assert.equal(dom.byClass('wordbank-word-row').length, 0); assert.equal(dom.byClass('wordbank-empty')[0].hidden, false);
+  } finally { view.destroy(); }
+});
+
+test('one composer preserves both input modes and drives real service save, preview and explicit publish from adjacent actions', async t => {
+  const f = fixture(t), dom = wordbankDocument();
+  const created = await f.service.create(actor(0), { requestId: f.requestId(), name: '虚构工作台验收', visibility: 'private' });
+  const view = mountWordbankPage(dom.root, { request: f.request, getAccount: f.account, getGeneration: f.generation, now: f.now,
+    onAccountChange: () => () => {}, watchLifecycle: false, cryptoRef: webcrypto, storage: f.browserStorage });
+  t.after(() => view.destroy()); await settle(); await view.controller.openPack(created.packId);
+  assert.equal(dom.button('保存草稿').disabled, true); assert.equal(dom.button('确认发布当前预览').hidden, true);
+  const answer = dom.input('例如：自行车'); answer.value = '纸船'; answer.dispatchEvent(new Event('input'));
+  await dom.click(dom.button('批量录入'));
+  const bulk = dom.byClass('wordbank-bulk')[0].querySelectorAll('textarea')[0]; bulk.value = '风车'; bulk.dispatchEvent(new Event('input'));
+  await dom.click(dom.button('逐个添加')); assert.equal(answer.value, '纸船');
+  const single = dom.byClass('wordbank-editor')[0], bulkSection = dom.byClass('wordbank-bulk')[0];
+  const difficulty = dom.byClass('wordbank-editor-fields')[0].querySelectorAll('select')[1]; difficulty.value = 'easy'; difficulty.dispatchEvent(new Event('input'));
+  await dom.click(single.querySelectorAll('button').find(node => node.textContent === '加入待保存'));
+  assert.equal(view.controller.snapshot().operations[0].answer, '纸船');
+  assert.equal(dom.button('保存草稿').disabled, false); assert.equal(dom.button('校验并预览发布').disabled, true);
+  await dom.click(dom.button('批量录入')); assert.equal(bulk.value, '风车');
+  await dom.click(dom.button('预览这批词'));
+  await dom.click(bulkSection.querySelectorAll('button').find(node => node.textContent === '加入待保存'));
+  assert.equal(view.controller.snapshot().operations.length, 2);
+  assert.ok(dom.byClass('wordbank-save-actions')[0].textContent.includes('保存草稿'));
+  await dom.click(dom.button('保存草稿')); assert.equal(view.controller.snapshot().operations.length, 0);
+  assert.deepEqual((await f.service.get(actor(0), created.packId)).draft.words.map(word => word.answer), ['纸船', '风车']);
+  await dom.click(dom.button('校验并预览发布')); assert.equal(view.controller.snapshot().preview.report.valid, true);
+  assert.equal(view.controller.snapshot().pack.publishedHead, null); assert.equal(dom.button('确认发布当前预览').hidden, false);
+  await dom.click(dom.button('确认发布当前预览')); assert.equal(view.controller.snapshot().pack.publishedHead, 1);
+  assert.equal(f.calls.filter(call => call.path.endsWith('/publish')).length, 1);
+});
+
+
+test('mobile task navigation keeps filters, unsaved text and bulk input while editing opens optional values and saving keeps the task', async t => {
+  const f = fixture(t), dom = wordbankDocument();
+  const created = await f.service.create(actor(0), { requestId: f.requestId(), name: '虚构手机词库', visibility: 'private' });
+  await f.service.change(actor(0), created.packId, { requestId: f.requestId(), expectedDraftRevision: 0, operations: [{ type: 'word.add', id: 'dg-mobile-original', answer: '松鼠', aliases: ['小松鼠'], tags: ['林间'], category: 'custom', difficulty: 'easy' }] });
+  const view = mountWordbankPage(dom.root, { request: f.request, getAccount: f.account, getGeneration: f.generation, now: f.now,
+    onAccountChange: () => () => {}, watchLifecycle: false, cryptoRef: webcrypto, storage: f.browserStorage });
+  t.after(() => view.destroy()); await settle(); await view.controller.openPack(created.packId);
+  const workspace = dom.byClass('wordbank-workspace')[0], library = dom.byClass('wordbank-library')[0];
+  assert.equal(workspace.dataset.mobileView, 'browse'); assert.equal(library.dataset.open, 'false');
+  assert.equal(dom.button('找词').getAttribute('aria-pressed'), 'true');
+  await dom.click(dom.button('添加')); assert.equal(workspace.dataset.mobileView, 'compose');
+  const difficulty = dom.byClass('wordbank-editor-fields')[0].querySelectorAll('select')[1]; difficulty.value = 'easy'; difficulty.dispatchEvent(new Event('input'));
+  const answer = dom.input('例如：自行车'); answer.value = '纸风车'; answer.dispatchEvent(new Event('input'));
+  await dom.click(dom.button('批量录入')); const bulk = dom.byClass('wordbank-bulk')[0].querySelectorAll('textarea')[0];
+  bulk.value = '纸船'; bulk.dispatchEvent(new Event('input'));
+  await dom.click(dom.button('找词')); const search = dom.input('搜索正文、别名或标签'); search.value = '小松鼠'; search.dispatchEvent(new Event('input'));
+  assert.equal(workspace.dataset.mobileView, 'browse'); assert.equal(dom.byClass('wordbank-word-row').length, 1);
+  await dom.click(dom.button('添加')); assert.equal(bulk.value, '纸船');
+  await dom.click(dom.button('逐个添加')); assert.equal(answer.value, '纸风车');
+  await dom.click(dom.byClass('wordbank-editor')[0].querySelectorAll('button').find(node => node.textContent === '加入待保存'));
+  await dom.click(dom.button('找词')); await dom.click(dom.button('编辑'));
+  assert.equal(workspace.dataset.mobileView, 'compose'); assert.equal(dom.document.activeElement, answer);
+  assert.equal(dom.byClass('wordbank-extra-fields')[0].open, true); assert.equal(dom.input('例如：脚踏车｜自行車').value, '小松鼠');
+  assert.equal(dom.input('维护标签，用｜分开').value, '林间');
+  await dom.click(dom.button('找词')); await dom.click(dom.button('保存草稿'));
+  assert.equal(workspace.dataset.mobileView, 'browse'); assert.equal(search.value, '小松鼠');
+  assert.equal(view.controller.snapshot().form.answer, '松鼠'); assert.equal(view.controller.snapshot().bulk, '纸船');
+  assert.equal(view.controller.snapshot().operations.length, 0); assert.equal(view.controller.snapshot().pack.draft.words.length, 2);
+  assert.equal(dom.button('确认发布当前预览').hidden, true, 'Saving still does not publish');
+});
+
+test('single and bulk modes move one live category/difficulty group outside the hidden editor and save current bulk choices', async t => {
+  const f = fixture(t), dom = wordbankDocument();
+  const created = await f.service.create(actor(0), { requestId: f.requestId(), name: '虚构批量控件验收', visibility: 'private' });
+  await f.service.change(actor(0), created.packId, { requestId: f.requestId(), expectedDraftRevision: 0,
+    operations: [{ type: 'category.add', id: 'dg-mobile-alternate', name: '另一分类' }] });
+  const view = mountWordbankPage(dom.root, { request: f.request, getAccount: f.account, getGeneration: f.generation, now: f.now,
+    onAccountChange: () => () => {}, watchLifecycle: false, cryptoRef: webcrypto, storage: f.browserStorage });
+  t.after(() => view.destroy()); await settle(); await view.controller.openPack(created.packId); await dom.click(dom.button('添加'));
+  const fields = dom.byClass('wordbank-editor-fields')[0], [category, difficulty] = fields.querySelectorAll('select');
+  const single = dom.byClass('wordbank-editor')[0], bulkSection = dom.byClass('wordbank-bulk')[0];
+  assert.equal(fields.parentNode, dom.byClass('wordbank-editor-inputs')[0]);
+  await dom.click(dom.button('批量录入'));
+  assert.equal(single.hidden, true); assert.equal(bulkSection.hidden, false);
+  assert.equal(fields.parentNode, bulkSection); assert.equal(bulkSection.children[0], fields);
+  assert.equal(dom.byClass('wordbank-editor-fields').length, 1, 'The same fields are moved, never cloned');
+  for (let ancestor = fields; ancestor; ancestor = ancestor.parentNode) assert.equal(ancestor.hidden, false, 'The bulk controls have no hidden DOM ancestor');
+  category.value = 'dg-mobile-alternate'; category.dispatchEvent(new Event('input'));
+  difficulty.value = 'hard'; difficulty.dispatchEvent(new Event('input'));
+  const bulk = bulkSection.querySelectorAll('textarea')[0]; bulk.value = '旋转木马'; bulk.dispatchEvent(new Event('input'));
+  await dom.click(dom.button('逐个添加')); assert.equal(fields.parentNode, dom.byClass('wordbank-editor-inputs')[0]);
+  assert.equal(category.value, 'dg-mobile-alternate'); assert.equal(difficulty.value, 'hard');
+  await dom.click(dom.button('批量录入')); assert.equal(fields.parentNode, bulkSection);
+  await dom.click(dom.button('预览这批词')); await dom.click(bulkSection.querySelectorAll('button').find(node => node.textContent === '加入待保存'));
+  assert.equal(view.controller.snapshot().operations[0].category, 'dg-mobile-alternate');
+  assert.equal(view.controller.snapshot().operations[0].difficulty, 'hard');
+  await dom.click(dom.button('保存草稿'));
+  const [saved] = (await f.service.get(actor(0), created.packId)).draft.words;
+  assert.equal(saved.answer, '旋转木马'); assert.equal(saved.category, 'dg-mobile-alternate'); assert.equal(saved.difficulty, 'hard');
+});
+
+test('page recreation restores optional aliases and tags visibly, while a recovered bulk-only draft retains reachable live fields', async t => {
+  const f = fixture(t), created = await f.service.create(actor(0), { requestId: f.requestId(), name: '虚构输入恢复验收', visibility: 'private' });
+  const options = { request: f.request, getAccount: f.account, getGeneration: f.generation, now: f.now,
+    onAccountChange: () => () => {}, watchLifecycle: false, cryptoRef: webcrypto, storage: f.browserStorage };
+  const saved = f.model(); await saved.openPack(created.packId);
+  saved.setBuffer({ form: { editingId: null, answer: '小纸船', aliases: '折纸船', tags: '纸艺', category: 'custom', difficulty: 'normal' } }); saved.destroy();
+  const dom = wordbankDocument(), view = mountWordbankPage(dom.root, options); await settle();
+  await dom.click(dom.button('添加'));
+  assert.equal(dom.input('例如：自行车').value, '小纸船'); assert.equal(dom.input('例如：脚踏车｜自行車').value, '折纸船');
+  assert.equal(dom.input('维护标签，用｜分开').value, '纸艺'); assert.equal(dom.byClass('wordbank-extra-fields')[0].open, true);
+  view.controller.setBuffer({ form: { editingId: null, answer: '', aliases: '', tags: '', category: 'custom', difficulty: 'hard' }, bulk: '折纸风车' }); view.destroy();
+  const bulkDom = wordbankDocument(), restored = mountWordbankPage(bulkDom.root, options); t.after(() => restored.destroy()); await settle();
+  await bulkDom.click(bulkDom.button('添加'));
+  const bulkSection = bulkDom.byClass('wordbank-bulk')[0], fields = bulkDom.byClass('wordbank-editor-fields')[0];
+  assert.equal(bulkSection.hidden, false); assert.equal(bulkDom.byClass('wordbank-editor')[0].hidden, true);
+  assert.equal(fields.parentNode, bulkSection); assert.equal(fields.querySelectorAll('select')[1].value, 'hard');
+  assert.equal(bulkSection.querySelectorAll('textarea')[0].value, '折纸风车');
+  assert.equal(bulkDom.byClass('wordbank-workspace')[0].dataset.mobileView, 'compose');
+  for (let ancestor = fields; ancestor; ancestor = ancestor.parentNode) assert.equal(ancestor.hidden, false);
 });

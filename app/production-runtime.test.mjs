@@ -54,7 +54,9 @@ test('first drawing boot awaits wordbank and canvas initialization before accept
   const dir=directory(t),env={...base(),GAME_ROOM_DRAWING_ENABLED:'1',GAME_ROOM_STORE_PATH:path.join(dir,'drawing.sqlite'),GAME_ROOM_STORE_KEY:randomBytes(32).toString('base64url')};
   const a=await prepareProduction(env);
   try {assert.equal(a.liveStoreValidation.counts['wordbank-releases'],1);assert.equal(a.liveStoreValidation.counts['draw-canvases'],1);
-    assert.equal((await a.wordbanks.getRelease({userKey:'a'.repeat(64),member:true},'dg-base',1)).words.length,560);
+    // New installations publish the requested expanded pool; old 560-word
+    // releases remain covered by the wordbank migration compatibility tests.
+    assert.equal((await a.wordbanks.getRelease({userKey:'a'.repeat(64),member:true},'dg-base',1)).words.length,11560);
   }finally{a.preview?.close();await a.canvases.close();await a.chat.close();await a.rooms.close();a.storage.close();}
 });
 

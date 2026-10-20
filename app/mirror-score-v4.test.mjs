@@ -79,7 +79,7 @@ test('other joker scoring, validity and settled hand penalties stay unchanged un
   }
   const legacy=createGame([{id:'a',name:'甲'},{id:'b',name:'乙'}],{firstTurnIndex:0});
   assert.equal(legacy.ruleVersion,'friends-v2');
-  const current=createGame([{id:'a',name:'甲'},{id:'b',name:'乙'}],{jokerConfig,firstTurnIndex:0});
+  const current=createGame([{id:'a',name:'甲'},{id:'b',name:'乙'}],{jokerConfig,firstTurnIndex:0,ruleVersion:'friends-v4'});
   assert.equal(current.ruleVersion,'friends-v4');
   current.players[0].rack=tiles(['red-10-a','blue-10-a','black-10-a']);current.players[1].rack=tiles(['joker-mirror-1']);
   const used=new Set(current.players.flatMap(player=>player.rack).map(tile=>tile.id));current.pool=deck.filter(tile=>!used.has(tile.id));
@@ -142,7 +142,7 @@ test('v4 schema8 handles clockless, timed and paused states and cannot be disgui
   }
 });
 
-test('schema7 v3 imports and exports unchanged and only a genuinely new rematch adopts v4',()=>{
+test('schema7 v3 imports and exports unchanged and only a genuinely new rematch adopts v5',()=>{
   const f=room({version:'friends-v3'}),old=f.store.exportSnapshot('123456');assert.equal(old.schemaVersion,7);
   const current=createRoomStore({now:()=>100000,turnTimeoutMs:60000,gameOptions:{firstTurnIndex:0}});current.importSnapshot(old);
   assert.deepEqual(current.exportSnapshot('123456'),old);
@@ -151,7 +151,7 @@ test('schema7 v3 imports and exports unchanged and only a genuinely new rematch 
   let n=0;
   const act=(index,type,fields={})=>current.trustedAction('123456',users[index],{type,requestId:`rematch-v4-${++n}`,expectedRevision:current.getTrustedView('123456',users[index]).revision,...fields});
   act(1,'leave');act(0,'rematch');current.joinTrustedRoom('123456',users[1],'乙');act(0,'ready',{ready:true});act(1,'ready',{ready:true});act(0,'start');
-  assert.equal(current.getTrustedView('123456',users[0]).game.ruleVersion,'friends-v4');assert.equal(current.exportSnapshot('123456').schemaVersion,8);
+  assert.equal(current.getTrustedView('123456',users[0]).game.ruleVersion,'friends-v5');assert.equal(current.exportSnapshot('123456').schemaVersion,20);
   assert.deepEqual(old.game.ruleVersion,'friends-v3');current.close();f.store.close();
 });
 

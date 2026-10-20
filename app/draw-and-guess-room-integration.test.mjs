@@ -66,8 +66,11 @@ test('durable room freezes selected release and keeps candidates, wrong guesses 
   assert.equal(right.guessResult.correct,true);assert.equal(right.view.game.stage,'reveal');
   assert.deepEqual((await f.rooms.action(f.code,identities[1],body)).guessResult,{correct:false,points:0});
   const record=(await f.storage.scan('rooms'))[0].value.snapshot;
-  assert.equal(record.schemaVersion,10);assert.equal(record.game.frozenCandidates.length,12);
-  assert.equal(JSON.stringify(record).includes('此题错误答案'),false);
+  assert.equal(record.schemaVersion,19);assert.equal(record.game.frozenCandidates.length,12);
+  assert.equal(JSON.stringify(record).includes('此题错误答案'),true);
+  for(const user of identities)assert.deepEqual((await f.rooms.getView(f.code,user)).game.turnResult.guesses,
+    [{playerId:view.selfId,attempts:[{text:'此题错误答案',correct:false},{text:answer,correct:true}]}]);
+  assert.equal(record.game.guessAttempts.length,2,'retrying the same request does not duplicate its saved answer');
 });
 test('staged room clocks pause without reset and complete durable ranked history without secret words',async t=>{
   const f=await waiting(t);

@@ -1,3 +1,4 @@
+import {withRoomVoice} from './platform/room-voice-session.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
@@ -87,7 +88,7 @@ async function fixture(t, options = {}) {
   if (options.entry) {
     const source = (await readFile(new URL('./games/poker414-2/game-page.mjs', import.meta.url), 'utf8')).replace(/^import[\s\S]*?;\s*/gm, '');
     document.querySelector = () => ({ syntheticRoot: true });
-    const entryContext = vm.createContext({ ...dependencies, location: window.location, navigator: {}, URLSearchParams,
+    const entryContext = vm.createContext({ ...dependencies, BaseRoomClient:dependencies.RoomClient,withRoomVoice, location: window.location, navigator: {}, URLSearchParams,
       entryBase: () => '/game/', mountPoker414Page: value => { stats.uiBindings = value; return ui; }, mountRoomChat: value => { stats.chatBindings = value; return chat; },
       createPoker414RoomController: value => { controller = createPoker414RoomController(value); return controller; },
     });
@@ -101,6 +102,10 @@ async function fixture(t, options = {}) {
     setAction(fn) { actionHandler = fn; }, setRead(fn) { readHandler = fn; }, setScores(fn) { scoreHandler = fn; }, setLogout(fn) { logoutHandler = fn; },
     changeAccount, context };
 }
+
+// Ordinary hidden now retains verified passive output. Keep every strong
+// cancellation assertion below on the still-destructive pagehide boundary.
+const dispatchPagehide=window=>{const event=new Event('pagehide');Object.defineProperty(event,'persisted',{value:true});window.dispatchEvent(event);};
 
 test('business actions freeze match, round, target, window and selected cards before an overlapping view arrives', async t => {
   for (const type of ['play', 'pass', 'hook', 'fork']) {
@@ -119,17 +124,19 @@ test('business actions freeze match, round, target, window and selected cards be
   }
 });
 
-test('visible focus performs the existing fresh account check without rebuilding the client or hiding the table', async t => {
+test('visible focus confirms the account and re-renders the current room without rebuilding or concealing', async t => {
   const f = await fixture(t), current = f.clients[0], before = f.stats.views.length, gates = f.stats.gates.length, reads = f.accountReads;
+  const roomReads=f.calls.filter(call=>call.path==='/api/rooms/123456').length,writes=f.calls.filter(call=>call.method==='POST').length;
   f.window.dispatchEvent(new Event('focus')); await settle();
   assert.equal(f.accountReads, reads + 1); assert.equal(f.clients.length, 1); assert.equal(current.stopped, false);
-  assert.equal(current.connects, 1); assert.equal(f.stats.gates.length, gates); assert.equal(f.stats.views.length, before);
+  assert.equal(current.connects, 1); assert.equal(f.stats.gates.length, gates); assert.equal(f.stats.views.length, before+2);
+  assert.equal(f.calls.filter(call=>call.path==='/api/rooms/123456').length,roomReads+1);assert.equal(f.calls.filter(call=>call.method==='POST').length,writes);
 });
 
-test('hidden page drops late private views, chat and balances; foreground restores the same seat with a new client', async t => {
+test('pagehide drops late private views, chat and balances; foreground restores the same seat with a new client', async t => {
   const f = await fixture(t), old = f.clients[0], pending = deferred(); f.setScores(() => pending.promise);
   const refresh = f.controller.refresh(); await settle();
-  f.document.hidden = true; f.document.dispatchEvent(new Event('visibilitychange'));
+  f.document.hidden = true; dispatchPagehide(f.window);
   const rendered = f.stats.views.length, chatted = f.stats.chats.length;
   old.onView(room({ revision: 9 })); old.onChat({ text: 'late private message' }); old.onConnection('online');
   pending.resolve(scores(room(), 99)); await refresh;

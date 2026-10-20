@@ -11,7 +11,7 @@ import { createUnifiedServer } from '../../server/unified-http.mjs';
 // These are real HTTP, SessionService, encrypted storage, room and SSE paths.
 // Only the upstream identity provider is synthetic; this is not real SSO evidence.
 export async function createHyakkiHttpFixture(t, { enabled = true, storagePath = null, wallClock = false,
-  serverRandomInt = max => max - 1 } = {}) {
+  serverRandomInt = max => max - 1, gameRegistry } = {}) {
   let at = Date.now(); const origin = at, now = () => wallClock ? Date.now() + at - origin : at;
   const settings = readSettings({ GAME_ROOM_AUTH_MODE: 'mock', GAME_ROOM_HYAKKI_ENABLED: enabled ? '1' : '0' });
   const storage = new EncryptedStore(storagePath ? new SQLiteAdapter(storagePath, { now }) : new MemoryAdapter({ now }), randomBytes(32), now);
@@ -20,7 +20,7 @@ export async function createHyakkiHttpFixture(t, { enabled = true, storagePath =
     accessToken: 'synthetic-private-room-token', expiresAt: now() + 3600000 });
   const metrics = { identityChecks: 0, requests: 0, requestBytes: 0, responseBytes: 0, latencies: [] };
   provider.check = async identity => { metrics.identityChecks++; if (provider.unavailable) throw Object.assign(new Error('synthetic unavailable'), { status: 503 }); return { sub: identity.sub }; };
-  const runtime = createRuntime(settings, { storage, provider, now,
+  const runtime = createRuntime(settings, { storage, provider, now, ...(gameRegistry ? { gameRegistry } : {}),
     roomOptions: { pollIntervalMs: wallClock ? 1000 : 0, serverRandomInt },
     chatOptions: { pollIntervalMs: 0 } });
   const events = runtime.hyakkiEvents, hooks = {};

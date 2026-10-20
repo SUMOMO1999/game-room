@@ -31,9 +31,9 @@ const containsSecret=(view,game)=>game.frozenCandidates.some(word=>JSON.stringif
 
 test('complete isolated server adapter contract, phase clock v2 seam and native results',()=>{
   assert.equal(requireAdapter(adapter),adapter);assert.equal(Object.isFrozen(adapter),true);
-  assert.deepEqual(adapter.actionTypes,['choose','guess']);assert.deepEqual(adapter.concurrentActionTypes,['guess']);
-  assert.deepEqual(adapter.configurationFields,['drawConfig']);assert.equal(adapter.snapshotSchema(),10);
-  assert.deepEqual(adapter.roomDefaults(),{drawConfig:{rounds:2,drawingSeconds:120,contentSelection:null},turnClock:null});
+  assert.deepEqual(adapter.actionTypes,['choose','guess','skip']);assert.deepEqual(adapter.concurrentActionTypes,['guess']);
+  assert.deepEqual(adapter.configurationFields,['drawConfig']);assert.equal(adapter.snapshotSchema(),19);
+  assert.deepEqual(adapter.roomDefaults(),{drawConfig:{rounds:2,drawingSeconds:120,candidateCount:3,contentSelection:null},turnClock:null});
   assert.equal(drawConfigProblem(adapter.roomDefaults().drawConfig),null);
   assert.ok(drawConfigProblem(adapter.roomDefaults().drawConfig,{allowUnselected:false}));
   const g=create(),c=adapter.gameClock(g);assert.equal(c.key,`${matchId}:dg-turn-1:choosing`);assert.equal(c.durationMs,15000);
@@ -63,7 +63,7 @@ test('exact action and configuration boundaries reject candidate injection, stal
   assert.equal(adapter.applyGameAction(g,g.turnPlayerId,action,{now:1100,phase:'paused'}).ok,false);
   assert.equal(adapter.applyGameAction(g,ids(2)[1],action,{now:1100}).ok,false);
   const d=choose(g);assert.equal(adapter.applyGameAction(d,ids(2)[1],{type:'guess',matchId,turnId:'dg-turn-2',text:'秘密1'},{now:1100}).ok,false);
-  const changed=adapter.configure(waiting(),{type:'configure',drawConfig:config()});assert.deepEqual(changed,{updates:{drawConfig:config()}});
+  const changed=adapter.configure(waiting(),{type:'configure',drawConfig:config()});assert.deepEqual(changed,{updates:{drawConfig:{candidateCount:3,...config()}}});
   for(const invalid of [{...config(),frozenCandidates:words(12)},{...config(),drawingSeconds:29},{...config(),contentSelection:{...config().contentSelection,version:0}},
     {...config(),contentSelection:{...config().contentSelection,categoryIds:[]}}, {...config(),contentSelection:{...config().contentSelection,categoryIds:Array(1)}},
     {...config(),contentSelection:{...config().contentSelection,difficulties:['easy','easy']}}])assert.ok(adapter.configure(waiting(),{drawConfig:invalid}).problem);
@@ -97,6 +97,23 @@ test('wrong guesses remain private and only accepted correct guess produces anno
   assert.equal(adapter.describeAction({action:{type:'guess'},player:{id:ids(3)[1],name:'乙'},afterGame:yes.state,guessResult:yes.guessResult}),'乙猜中了，加175分。');
   assert.equal(adapter.spectatorView(yes.state,{now:31000}).lastAction.playerId,ids(3)[1]);
   assert.equal(adapter.privateView(yes.state,ids(3)[1],{now:31000}).canGuess,false);
+});
+
+test('reveal publishes each player attempts to players and spectators, then removes them on next turn',()=>{
+  let g=choose(create(3));
+  const submit=(id,text)=>{g=checked(adapter.applyGameAction(g,id,{type:'guess',matchId,turnId:g.turnId,text},{now:1100}));};
+  submit(ids(3)[1],'小猫');submit(ids(3)[1],'认可1');submit(ids(3)[2],'小狗');
+  for(const v of [...ids(3).map(id=>adapter.privateView(g,id,{now:1100})),adapter.spectatorView(g,{now:1100})]) {
+    assert.equal(JSON.stringify(v).includes('小猫'),false);assert.equal(JSON.stringify(v).includes('小狗'),false);
+    assert.equal(v.guessAttempts,undefined);assert.equal(v.turnResult,undefined);
+  }
+  g=checked(adapter.applyTimeout(g,g.turnPlayerId,{now:g.stageClock.deadlineAt}));
+  const expected=[{playerId:ids(3)[1],attempts:[{text:'小猫',correct:false},{text:'认可1',correct:true}]},
+    {playerId:ids(3)[2],attempts:[{text:'小狗',correct:false}]}];
+  for(const v of [...ids(3).map(id=>adapter.privateView(g,id)),adapter.spectatorView(g)])assert.deepEqual(v.turnResult.guesses,expected);
+  const copy=adapter.spectatorView(g);copy.turnResult.guesses[0].attempts[0].text='改动';assert.equal(g.guessAttempts[0].text,'小猫');
+  g=checked(adapter.applyTimeout(g,g.turnPlayerId,{now:g.stageClock.deadlineAt}));
+  assert.equal(adapter.spectatorView(g).turnResult,undefined);assert.deepEqual(g.guessAttempts,[]);
 });
 
 test('ordinary chat does not bypass private guessed answer or accepted aliases; revealed chat resumes',()=>{

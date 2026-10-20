@@ -146,7 +146,7 @@ html:has(.p414-body) { background:var(--theme-base,#173a31); }
   .p414-actions button { padding:8px 6px; }
 }
 @media (orientation:landscape) and (max-height:540px) {
-  .p414-shell { display:grid; grid-template-columns:128px minmax(0,1fr); grid-template-rows:44px minmax(0,1fr) 44px auto 15px; gap:2px 10px; }
+  .p414-shell { display:grid; grid-template-columns:128px minmax(0,1fr); grid-template-rows:var(--room-header-height,44px) minmax(0,1fr) 44px auto 15px; gap:2px 10px; }
   .p414-header { grid-column:1 / -1; grid-row:1; }
   .p414-brand { display:flex; align-items:baseline; gap:12px; }
   .p414-brand>span { font-size:10px; }
@@ -189,7 +189,7 @@ html:has(.p414-body) { background:var(--theme-base,#173a31); }
   .p414-card__center { bottom:11px; }
   .p414-card__caption { font-size:7px; }
   .p414-feedback { grid-column:2; grid-row:5; }
-  .p414-shell:has(#p414-waiting:not([hidden])), .p414-shell:has(#p414-result:not([hidden])) { grid-template-rows:44px minmax(0,1fr) 15px; }
+  .p414-shell:has(#p414-waiting:not([hidden])), .p414-shell:has(#p414-result:not([hidden])) { grid-template-rows:var(--room-header-height,44px) minmax(0,1fr) 15px; }
   .p414-shell:has(#p414-waiting:not([hidden])) .p414-table, .p414-shell:has(#p414-result:not([hidden])) .p414-table { grid-row:2; }
   .p414-shell:has(#p414-waiting:not([hidden])) .p414-roster, .p414-shell:has(#p414-result:not([hidden])) .p414-roster { grid-row:2; }
   .p414-shell:has(#p414-waiting:not([hidden])) .p414-room-line, .p414-shell:has(#p414-result:not([hidden])) .p414-room-line, .p414-shell:has(#p414-waiting:not([hidden])) .p414-feedback, .p414-shell:has(#p414-result:not([hidden])) .p414-feedback { grid-row:3; }
@@ -249,4 +249,21 @@ html:has(.p414-body) { background:var(--theme-base,#173a31); }
 }
 @media (max-width:600px) and (orientation:portrait) {
   .p414-practice .p414-roster { grid-template-columns:repeat(3,minmax(0,1fr)); }
+}
+
+/* Mobile header budget — geometry only; game controls and dialogs stay full size. */
+@media(max-width:600px),(max-width:1000px) and (max-height:600px){
+  .p414-shell .p414-header{height:var(--room-header-height);min-height:var(--room-header-height);max-height:var(--room-header-height);gap:5px}
+  .p414-header .p414-brand strong{font-size:15px;line-height:15px;letter-spacing:0}
+  .p414-header .p414-brand small{font-size:10px;line-height:12px}
+  .p414-header .p414-brand>span{display:none}
+  .p414-header .p414-toolbar{gap:4px}
+  .p414-header .p414-toolbar>button{padding:4px 6px;font-size:var(--room-header-control-font-size)}
+
+}
+
+/* These two actions join the top row only in the existing short-landscape
+   composition. Their ordinary portrait/table-zone controls remain full size. */
+@media(orientation:landscape) and (max-height:540px) and (max-width:1000px){
+  .p414-shell .p414-table-heading>#p414-inspect,.p414-shell .p414-hand-heading>#p414-clear{height:var(--room-header-control-height,31px);min-height:var(--room-header-control-height,31px);min-width:var(--room-header-control-size,31px);padding:4px 6px;font-size:var(--room-header-control-font-size,11px);line-height:1.2}
 }

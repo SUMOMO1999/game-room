@@ -153,13 +153,14 @@ test('SQLite: one remaining device keeps a seat online; final disconnect freezes
 
 test('SQLite: start saves lease evidence and heartbeat checkpoints do not renew activity or business TTL', async t => {
   const f = await fixture(t), { view } = await f.start();
-  const initial = (await f.storage.read('rooms', view.roomId)).value.snapshot;
+  const initialRecord = await f.storage.read('rooms', view.roomId), initial = initialRecord.value.snapshot;
   assert.equal(initial.game.checkpoint.length, 2); assert.ok(initial.game.checkpoint.every(seat => seat.leaseExpiresAt === 1050));
   f.advance(10); await f.rooms.sweep();
   const next = (await f.storage.read('rooms', view.roomId)).value.snapshot;
   assert.ok(next.game.checkpoint.every(seat => seat.leaseExpiresAt === 1060));
   assert.equal(next.lastActiveAt, initial.lastActiveAt); assert.deepEqual(next.activity, initial.activity);
-  assert.ok(next.revision > initial.revision); assert.equal((await f.rooms.getView(view.roomCode, users[0])).expiresAt, view.expiresAt);
+  assert.equal(next.revision, initial.revision);
+  assert.notEqual((await f.storage.read('rooms', view.roomId)).version, initialRecord.version); assert.equal((await f.rooms.getView(view.roomCode, users[0])).expiresAt, view.expiresAt);
 });
 
 test('SQLite: late disconnect callbacks preserve the expired lease as the absence origin', async t => {

@@ -6,7 +6,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { createHyakkiHttpFixture } from './test-support/hyakki-http-fixture.mjs';
-import { createDeck, getCard, DIGITAL_RULE_VERSION, MULTIPLAYER_RULE_VERSION } from './games/hyakki-trading/content/definitions.mjs';
+import { CONTENT_VERSION, createDeck, getCard, DIGITAL_RULE_VERSION, MULTIPLAYER_RULE_VERSION } from './games/hyakki-trading/content/definitions.mjs';
+import { createGameRegistry, defaultGameRegistry } from './game-registry.mjs';
 import { currentDecision } from './games/hyakki-trading/rules.mjs';
 import { gameProblem } from './games/hyakki-trading/validation.mjs';
 import { createHyakkiAdapter } from '../server/games/hyakki-trading/adapter.mjs';
@@ -35,7 +36,13 @@ function openingShuffle(codes, placements = []) {
   return maximum => { const value = choices.length ? choices.shift() : maximum - 1; assert.ok(value >= 0 && value < maximum); return value; };
 }
 async function table(t, codes, storagePath = null, placements = []) {
-  const fixture = await createHyakkiHttpFixture(t, { storagePath, serverRandomInt: openingShuffle(codes, placements) });
+  // Preserve the original 110-card HTTP/recovery trajectory and schema14 assertions.
+  const current = createHyakkiAdapter(), legacy = { ...current,
+    roomDefaults: () => ({ turnClock: null, hyakkiConfig: { actionLimit: 5, goodsPerType: 8 } }),
+    createGame: (players, options) => current.createGame(players, { ...options, contentVersion: CONTENT_VERSION }) };
+  const gameRegistry = createGameRegistry(defaultGameRegistry.knownTypes().map(type => type === 'hyakki-trading' ? legacy : defaultGameRegistry.gameAdapter(type)),
+    { creationTypes: defaultGameRegistry.creationTypes() });
+  const fixture = await createHyakkiHttpFixture(t, { storagePath, gameRegistry, serverRandomInt: openingShuffle(codes, placements) });
   const members = [];
   // Provider.complete's selected mock identity is intentionally serialized.
   for (let index = 0; index < 9; index++) members.push(await fixture.login(`multi-${index}`));

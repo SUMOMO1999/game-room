@@ -1,3 +1,4 @@
+import {withRoomVoice} from './platform/room-voice-session.mjs';
 import { mountRummikubMotion, placementCue } from './games/rummikub/motion-ui.mjs';
 import { mountArmyMotion } from './games/army-flip/motion-ui.mjs';
 import * as roomClock from './platform/room-clock.mjs';
@@ -120,6 +121,7 @@ async function moduleIn(context,file,extra='') {
   });
   const source=await readFile(file==='app.mjs'?jokerRegressionSource(file):new URL(file,import.meta.url),'utf8');
   const names=[...source.matchAll(/^export (?:async )?(?:function|class|const)\s+(\w+)/gm)].map(match=>match[1]);
+  Object.assign(context,{withRoomVoice,BaseRoomClient:context.RoomClient});
   const code=source.replace(/^import[\s\S]*?;\s*/gm,'').replace(/^export /gm,'');
   return vm.runInContext(`(async()=>{${code}\n${extra}\nreturn {${names.join(',')}};})()`,context,{filename:file});
 }
@@ -1143,6 +1145,24 @@ function openingRoomFixture({version='friends-v4',rack=['red-13-a','joker-mirror
   store.importSnapshot(saved);
   return {store,act,view:()=>store.getTrustedView(CODE,USER)};
 }
+
+test('actual room page distinguishes v5 interior-only colour changes from saved v4 endpoints and submits legal v5',async t=>{
+  for(const [version,ids,valid] of [
+    ['friends-v5',['red-11-a','red-12-a','joker-color-change-1'],false],
+    ['friends-v4',['red-11-a','red-12-a','joker-color-change-1'],true],
+    ['friends-v5',['red-9-a','joker-color-change-1','blue-11-a'],true],
+  ]) {
+    const real=openingRoomFixture({version,rack:[...ids,'black-13-a']});t.after(()=>real.store.close());
+    const f=await fixture(t,{initialView:real.view()});f.pageAPI.move(ids);
+    assert.equal(f.get('commit').disabled,!valid);
+    assert.match(f.get('twist-rule').textContent,version==='friends-v5'?/必须夹在.*不同颜色.*不能放在两端/:/旧规则.*可放顺子两端/);
+    if(valid) {
+      f.setAction(options=>json(real.store.trustedAction(CODE,USER,JSON.parse(options.body))));
+      f.get('commit').dispatchEvent(new Event('click'));await settle();
+      assert.equal(real.view().game.opened,true);assert.deepEqual(real.view().game.board.flat().map(tile=>tile.id),ids);
+    }
+  }
+});
 
 test('actual new v4 opening shows mirror 13 as 39, submits through the real RoomStore and restores the normal opened hint',async t=>{
   const real=openingRoomFixture();t.after(()=>real.store.close());

@@ -3,14 +3,14 @@
 html.drawing-root{width:100%;height:100%;overflow:hidden;overflow:clip;background:var(--theme-base,#173d31);overscroll-behavior:none}
 body.drawing-body{margin:0;padding:0;background:var(--theme-base,#173d31);color:var(--theme-ink,#f7f2e7);width:100vw;height:100dvh;overflow:hidden;overflow:clip;overscroll-behavior:none;font-family:system-ui,-apple-system,"PingFang SC",sans-serif}
 #drawing-root{position:fixed;left:var(--drawing-left,0px);top:var(--drawing-top,0px);width:var(--drawing-width,100vw);height:var(--drawing-height,100dvh);min-width:0;min-height:0;overflow:hidden;overflow:clip}
-.drawing-page{box-sizing:border-box;display:grid;grid-template-rows:44px auto minmax(0,1fr) 24px;gap:6px;width:100%;height:100%;padding:max(5px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(5px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));overflow:hidden;overflow:clip}
+.drawing-page{box-sizing:border-box;display:grid;grid-template-rows:var(--room-header-height,44px) auto minmax(0,1fr) 24px;gap:6px;width:100%;height:100%;padding:max(5px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(5px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));overflow:hidden;overflow:clip}
 .drawing-page *,.drawing-page *::before,.drawing-page *::after{box-sizing:border-box}.drawing-page [hidden]{display:none!important}
 .drawing-page h1,.drawing-page h2,.drawing-page h3,.drawing-page p{margin:0}.drawing-page h1,.drawing-page h2{font-size:20px;line-height:1.35}
-.drawing-page button,.drawing-page input,.drawing-page select{font:inherit}.drawing-page button,.drawing-page a{touch-action:manipulation}
-.drawing-page button{min-height:44px;min-width:44px;padding:8px 11px;border:1px solid color-mix(in srgb,var(--theme-muted,#c8d7c0) 45%,transparent);border-radius:9px;background:var(--theme-surface,#315b49);color:var(--theme-ink,#f7f2e7);font-size:13px;cursor:pointer;line-height:1.3}
-.drawing-page button:disabled{cursor:default;opacity:.65}.drawing-page .primary-button{font-weight:750;background:var(--theme-accent,#ead39a);color:var(--theme-base,#173d31);border-color:var(--theme-accent,#ead39a)}
-.drawing-page input,.drawing-page select{min-height:44px;min-width:0;border:1px solid #bbc7b7;border-radius:7px;background:#fffdf4;color:#203b31;padding:8px;font-size:16px}
-.drawing-page button:focus-visible,.drawing-page a:focus-visible,.drawing-page input:focus-visible{outline:3px solid var(--theme-accent,#ffe29c);outline-offset:2px}
+.drawing-page button:not(.drawing-editor *),.drawing-page input:not(.drawing-editor *),.drawing-page select:not(.drawing-editor *){font:inherit}.drawing-page button:not(.drawing-editor *),.drawing-page a{touch-action:manipulation}
+.drawing-page button:not(.drawing-editor *){min-height:44px;min-width:44px;padding:8px 11px;border:1px solid color-mix(in srgb,var(--theme-muted,#c8d7c0) 45%,transparent);border-radius:9px;background:var(--theme-surface,#315b49);color:var(--theme-ink,#f7f2e7);font-size:13px;cursor:pointer;line-height:1.3}
+.drawing-page button:not(.drawing-editor *):disabled{cursor:default;opacity:.65}.drawing-page .primary-button{font-weight:750;background:var(--theme-accent,#ead39a);color:var(--theme-base,#173d31);border-color:var(--theme-accent,#ead39a)}
+.drawing-page input:not(.drawing-editor *),.drawing-page select:not(.drawing-editor *){min-height:44px;min-width:0;border:1px solid #bbc7b7;border-radius:7px;background:#fffdf4;color:#203b31;padding:8px;font-size:16px}
+.drawing-page button:not(.drawing-editor *):focus-visible,.drawing-page a:focus-visible,.drawing-page input:not(.drawing-editor *):focus-visible{outline:3px solid var(--theme-accent,#ffe29c);outline-offset:2px}
 .drawing-page a{color:inherit}.drawing-header{min-width:0;min-height:44px;display:flex;align-items:center;justify-content:space-between;gap:8px;border:0;margin:0;padding:0;height:44px}
 .drawing-brand{flex:none;display:flex;align-items:baseline;gap:8px;font-size:16px;font-weight:750;white-space:nowrap;text-decoration:none}.drawing-brand small{font-size:12px;font-weight:500;color:var(--theme-muted,#c8d7c0)}
 .drawing-connection{font-size:11px;color:var(--theme-muted,#c8d7c0);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -21,77 +21,165 @@ body.drawing-body{margin:0;padding:0;background:var(--theme-base,#173d31);color:
 .drawing-canvas-slot{grid-row:1;min-width:0;min-height:0;width:100%;height:100%;display:grid;place-items:center;background:transparent!important;overflow:hidden;overflow:clip}
 .drawing-paper{position:relative;flex:none;background:#fff;box-shadow:0 6px 22px #061e2433;border-radius:4px;overflow:hidden;max-width:100%;max-height:100%}
 #drawing-canvas{display:block;position:absolute;inset:0;width:100%;height:100%;touch-action:none;background:#fff}.drawing-empty{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;color:#839189;font-size:16px;letter-spacing:.12em}
-.drawing-stage-bar .drawing-hint{flex:0 1 auto;max-width:55%;min-width:0;font-size:13px;line-height:1.5;text-align:center;color:var(--theme-ink,#f7f2e7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.drawing-stage-bar .drawing-hint.private-word{color:var(--theme-accent,#ffe29c);font-weight:750}.drawing-paint-status{flex:none;min-width:0;font-size:10px;line-height:1.5;white-space:normal;overflow-wrap:anywhere;color:var(--theme-muted,#c8d7c0)}
-.drawing-sidebar{min-width:0;min-height:0;display:flex;flex-direction:column;gap:8px;overflow:hidden;overflow:clip}.drawing-card,.drawing-tools,.drawing-guess-form,.drawing-recovery{flex:none;min-width:0;padding:12px;border:1px solid #d5dfbd50;border-radius:10px;background:var(--theme-surface,#315b49);display:flex;flex-direction:column;gap:9px;font-size:13px;line-height:1.5;overflow:hidden;overflow:clip}
+.drawing-stage-bar .drawing-hint{flex:0 1 auto;max-width:55%;min-width:0;font-size:13px;line-height:1.5;text-align:center;color:var(--theme-ink,#f7f2e7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.drawing-stage-bar .drawing-hint.private-word{color:var(--theme-accent,#ffe29c);font-weight:750}.drawing-paint-status{flex:none;min-width:0;height:15px;min-height:15px;font-size:10px;line-height:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--theme-muted,#c8d7c0)}
+.drawing-sidebar{min-width:0;min-height:0;display:flex;flex-direction:column;gap:8px;overflow:auto;overscroll-behavior:contain}.drawing-card,.drawing-tools,.drawing-guess-form,.drawing-recovery{flex:none;min-width:0;padding:12px;border:1px solid #d5dfbd50;border-radius:10px;background:var(--theme-surface,#315b49);display:flex;flex-direction:column;gap:9px;font-size:13px;line-height:1.5;overflow:hidden;overflow:clip}
 .drawing-actions{display:flex;flex-wrap:wrap;gap:6px}.drawing-actions button{flex:1 0 auto;white-space:nowrap}.drawing-candidates{display:grid;gap:8px}.drawing-candidate{display:grid;gap:3px;text-align:left;min-height:64px!important;font-size:18px!important;font-weight:750}.drawing-candidate small{font-size:10px;font-weight:400}
 .drawing-tool-heading,.drawing-tool-row{display:flex;gap:5px;min-width:0}.drawing-tool-heading button{flex:1}.drawing-tool-row>button,.drawing-tool-row>select{flex:1;min-width:0;padding:7px;font-size:12px}
 .drawing-tool-row button[aria-pressed=true]{background:var(--theme-accent,#ead39a);color:var(--theme-base,#173d31)}#drawing-tool-panel{display:grid;gap:6px}.drawing-palette{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
 .drawing-page .drawing-color-chip{background:#f7f5ed;position:relative;padding:5px;min-height:44px}.drawing-color-chip::before{content:"";display:block;width:24px;height:24px;margin:auto;border-radius:50%;background:var(--paint-color);border:1px solid #52615a}.drawing-color-chip[aria-pressed=true]{outline:2px solid var(--theme-accent,#ffe29c);outline-offset:0;box-shadow:inset 0 0 0 2px #264b3e}
-.drawing-guess-form label{font-size:12px;color:var(--theme-muted,#c8d7c0)}.drawing-guess-row{min-width:0;display:flex;gap:5px}.drawing-guess-row input{width:100%;flex:1}.drawing-guess-row button{flex:none;min-width:54px}.drawing-guess-form p{font-size:12px;line-height:1.45;min-height:18px}
+.drawing-guess-form label{font-size:12px;color:var(--theme-muted,#c8d7c0)}.drawing-guess-row{min-width:0;display:flex;gap:5px}.drawing-guess-row input{width:100%;flex:1}.drawing-guess-row button{flex:none;min-width:54px}.drawing-guess-form p{font-size:12px;line-height:18px;height:36px;min-height:36px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .drawing-players{display:grid;gap:5px;min-height:0;flex:1;overflow:hidden;overflow:clip}.drawing-player{min-width:0;min-height:0;border:1px solid #d5dfbd35;border-radius:7px;padding:6px 9px;display:flex;align-items:center;justify-content:space-between;gap:6px;background:var(--theme-surface,#315b49)}.drawing-player.current{border:2px solid var(--theme-accent,#ead39a);padding:5px 8px}.drawing-player.self{box-shadow:inset 3px 0 0 var(--theme-accent,#ead39a)}.drawing-player strong{min-width:0;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.drawing-player small{flex:none;font-size:10px;color:var(--theme-muted,#c8d7c0)}
 .drawing-feedback{flex:none;min-width:0;font-size:11px;line-height:1.45;max-height:36px;overflow:hidden;overflow:clip;color:var(--theme-accent,#ead39a)}
 .drawing-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;font-size:10px;color:var(--theme-muted,#c8d7c0)}.drawing-footer span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .drawing-page>.app-shell-tools{display:none!important}.drawing-is-practice .drawing-players,.drawing-is-practice #drawing-roster-open{display:none}.drawing-is-practice .drawing-sidebar{justify-content:flex-start}
 .drawing-page dialog{max-width:calc(var(--drawing-width,100vw) - 24px);width:520px;max-height:calc(var(--drawing-height,100dvh) - 24px);border:1px solid #cbd2ba;border-radius:12px;padding:16px;background:#fbf7eb;color:#233c31;box-shadow:0 14px 60px #001f2570;font-size:13px;line-height:1.65}.drawing-page dialog::backdrop{background:#09221ac9}.drawing-page dialog[open]{display:flex;flex-direction:column;gap:12px}.drawing-page dialog h2{font-size:19px}.drawing-page dialog button{background:#e5ebde;color:#254234;border-color:#c5d0bd}.drawing-page dialog .primary-button{background:#ebd49c;color:#203b31}.drawing-dialog .dialog-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;flex:none}.drawing-dialog-body{min-height:0;overflow:auto;overscroll-behavior:contain;display:grid;gap:12px}.drawing-dialog-body label{display:grid;gap:4px}.drawing-dialog .drawing-player{background:#e7edde;color:#284233}.drawing-dialog .drawing-player small{color:#52614d}.drawing-page #drawing-results{margin:0;padding-left:20px;max-height:180px;overflow:auto}.drawing-page #drawing-result-title{font-size:18px}
-@media (orientation:portrait){
-  .drawing-main{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;gap:7px}.drawing-sidebar{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;overflow:hidden}
-  .drawing-players{display:none}.drawing-card,.drawing-tools,.drawing-guess-form,.drawing-recovery{padding:8px;gap:6px}.drawing-candidates{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}.drawing-candidate{font-size:15px!important;min-height:64px!important;padding:8px!important}
-  .drawing-tool-heading{justify-content:center}.drawing-tool-heading button{flex:0 1 180px}#drawing-tool-panel{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center}.drawing-palette{grid-column:1 / -1;grid-row:2;grid-template-columns:repeat(8,minmax(0,1fr))}.drawing-palette .drawing-color-chip{padding:4px;min-width:0}.drawing-tool-row button,.drawing-tool-row select{padding:6px 4px;font-size:11px}
-  .drawing-guess-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 6px}.drawing-guess-form label{grid-column:1 / -1}.drawing-guess-row{grid-column:1 / -1}.drawing-guess-form p{align-self:center}.drawing-guess-form>button{font-size:11px}
-  .drawing-is-practice .drawing-sidebar{max-height:none}.drawing-stage-bar{gap:5px}.drawing-stage-bar strong{font-size:12px}.drawing-stage-bar>span{font-size:10px}.drawing-stage-bar #drawing-round{display:none}
-}
-@media (max-width:500px){.drawing-brand{font-size:14px;flex-direction:column;align-items:flex-start;gap:0}.drawing-brand small{font-size:10px}.drawing-page{gap:5px;padding-left:max(8px,env(safe-area-inset-left));padding-right:max(8px,env(safe-area-inset-right));}.drawing-canvas-panel{padding:5px;gap:4px}}
-/* Narrow phones use the full-width native color selector. The auxiliary color
-   chips disappear rather than reducing touch targets or the paper area. */
-@media (orientation:portrait) and (max-width:500px){#drawing-tool-panel{grid-template-columns:minmax(0,1fr)}#drawing-tool-panel .drawing-palette{display:none}.drawing-paint-controls>button,.drawing-paint-controls>select{min-width:44px}}
-@media (orientation:landscape) and (max-height:500px){
-  .drawing-page{grid-template-rows:44px 22px minmax(0,1fr);gap:4px;padding-top:max(3px,env(safe-area-inset-top));padding-bottom:max(3px,env(safe-area-inset-bottom))}.drawing-main{grid-template-columns:minmax(0,1fr) clamp(180px,25vw,250px);gap:7px}.drawing-footer{display:none}.drawing-connection{display:none}.drawing-brand small{font-size:10px}.drawing-canvas-panel{padding:4px;gap:2px}.drawing-paint-status{font-size:9px}.drawing-sidebar{gap:5px}.drawing-card,.drawing-tools,.drawing-guess-form,.drawing-recovery{padding:7px;gap:5px}.drawing-players{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;align-content:start}.drawing-player{min-height:30px;padding:3px 5px;gap:3px}.drawing-player.current{padding:2px 4px}.drawing-player strong{font-size:11px}.drawing-player small{font-size:9px}.drawing-feedback{font-size:10px}.drawing-card h1,.drawing-card h2{font-size:16px}.drawing-card p{font-size:11px}.drawing-candidate{min-height:44px!important;font-size:15px!important;display:flex;align-items:center;justify-content:space-between}.drawing-candidate small{font-size:9px}.drawing-palette{display:none}
-}
-@media (orientation:landscape) and (max-height:320px){.drawing-players{display:none}}
-@media (orientation:landscape) and (max-height:360px){#drawing-tool-panel .drawing-palette{display:none}.drawing-header{height:44px}.drawing-stage-bar strong{font-size:11px}.drawing-stage-bar .drawing-hint{font-size:11px}.drawing-stage-bar #drawing-round{display:none}.drawing-page .drawing-tools{gap:4px}.drawing-card{gap:4px}.drawing-guess-form label{display:none}}
-@media (orientation:landscape) and (max-width:1000px) and (max-height:500px){.drawing-paint-controls{display:grid;grid-template-columns:repeat(2,minmax(44px,1fr))}#drawing-tool-panel .drawing-palette{display:none}}
-.drawing-keyboard-open .drawing-players,.drawing-keyboard-open .drawing-feedback,.drawing-keyboard-open .drawing-footer{display:none}.drawing-keyboard-open .drawing-page{grid-template-rows:44px 22px minmax(0,1fr)}
-.drawing-keyboard-open .drawing-sidebar{max-height:none}.drawing-keyboard-open .drawing-guess-form{padding:7px}.drawing-keyboard-open .drawing-canvas-panel{padding:4px}
 .drawing-dialog-body label.drawing-check{display:flex;align-items:center;gap:8px}.drawing-check input{width:22px;min-height:22px;height:22px;padding:0;flex:none}
-/* Strokes and undo stay one tap away. The anchored palette never changes the
-   paper geometry. The canvas dismisses it before accepting the next mark. */
-.drawing-tools{position:relative;overflow:visible;z-index:3}
-.drawing-sidebar{overflow:visible}
-.drawing-main{grid-template-columns:minmax(0,1fr) clamp(200px,18vw,270px)}
-.drawing-tool-heading{align-items:stretch}
-.drawing-tool-heading>button{min-width:0;padding:7px 5px;font-size:12px;flex:1}
-.drawing-tool-heading #drawing-tools-toggle{flex:1.4}
-.drawing-tool-heading button[aria-pressed=true]{background:var(--theme-accent,#ead39a);color:var(--theme-base,#173d31);font-weight:750;box-shadow:inset 0 -3px 0 #0002}
-.drawing-page #drawing-tool-panel{position:absolute;inset:auto 0 auto 0;top:calc(100% + 6px);padding:10px;border:1px solid var(--theme-muted,#c8d7c0);border-radius:12px;background:var(--theme-surface,#315b49);box-shadow:0 8px 22px #071e2540;grid-template-columns:minmax(0,1fr);z-index:5}
-#drawing-tool-panel .drawing-palette{grid-column:auto;grid-row:auto}
+.drawing-config-version{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}.drawing-config-version button{min-height:44px;flex:none}
 .drawing-score-gain{color:var(--theme-accent,#ead39a);font-weight:800;font-size:13px;white-space:nowrap;flex:none}
 .drawing-player strong{flex:1}
 .drawing-page #drawing-reveal{border-color:var(--theme-accent,#ead39a);background:color-mix(in srgb,var(--theme-surface,#315b49) 86%,var(--theme-accent,#ead39a))}
-#drawing-answer{font-size:clamp(22px,3vw,32px);color:var(--theme-accent,#ead39a);line-height:1.2}
-.drawing-candidate{border-color:var(--theme-accent,#ead39a)!important;box-shadow:inset 0 -2px 0 #0002;text-wrap:balance}
-@media (prefers-reduced-motion:no-preference){
-  .drawing-page button{transition:background-color 100ms,box-shadow 100ms,transform 100ms}
-  .drawing-tool-heading button[data-tool]{transition:box-shadow 100ms,transform 100ms}
-  .drawing-page button:active:not(:disabled){transform:translateY(1px);box-shadow:inset 0 2px 4px #0002}
-  .drawing-player.current{transition:background-color .2s,border-color .2s}
+.drawing-page #drawing-reveal{flex:0 1 auto;min-height:0;max-height:100%;overflow:auto;overscroll-behavior:contain}
+.drawing-revealed-guesses{display:grid;gap:7px;border-top:1px solid var(--theme-border,#d5dfbd50);padding-top:7px}
+.drawing-guesser{display:grid;grid-template-columns:minmax(0,1fr);gap:2px;min-width:0}
+.drawing-guesser>strong{overflow-wrap:anywhere;font-size:12px}
+.drawing-guesser-answers{display:flex;flex-wrap:wrap;gap:4px;margin:0;min-width:0}
+.drawing-guesser-answers>span{padding:2px 6px;border-radius:5px;background:var(--theme-surface,#315b49);overflow-wrap:anywhere;max-width:100%;white-space:pre-wrap}
+.drawing-guesser-answers>.drawing-guess-correct{font-weight:700;border:1px solid var(--theme-accent,#ead39a)}
+.drawing-is-finished .drawing-sidebar{overflow:auto;overscroll-behavior:contain}
+.drawing-is-finished #drawing-reveal{flex:none;max-height:none;overflow:visible}
+
+/* Canvas first: one header, a member rail, and one role-specific bottom bar.
+   Choosing/reveal/recovery occupy temporary task panels, never a voice column. */
+.drawing-page{grid-template-columns:148px minmax(0,1fr);grid-template-rows:var(--room-header-height,44px) minmax(0,1fr) 48px 16px;gap:6px}
+.drawing-topbar{grid-column:1/-1;display:flex;flex-direction:row-reverse;gap:12px;min-width:0;align-items:center}
+.drawing-header{flex:none;gap:0}.drawing-header-actions,.drawing-header .room-toolbar-actions{display:flex;align-items:center;gap:6px;min-width:0}
+.drawing-header .room-toolbar-actions{display:flex;justify-content:flex-end}
+#drawing-voice-join-slot{grid-column:1}#chat-toggle{grid-column:2}#drawing-focus{grid-column:3}#drawing-settings{grid-column:4}#drawing-exit{grid-column:5}
+.drawing-brand{display:none}.drawing-connection{max-width:120px}.drawing-header .room-toolbar-action{white-space:nowrap;padding:6px 10px}
+.drawing-stage-bar{flex:1;min-width:0;min-height:44px;gap:10px}.drawing-stage-bar strong{font-size:13px;flex:0 1 auto}
+.drawing-stage-bar .drawing-hint{flex:1;max-width:none;text-align:left;font-size:14px}
+.drawing-stage-bar .private-word{font-weight:750}.drawing-page .drawing-skip{flex:none;padding:5px 10px}
+.drawing-page #drawing-focus{font-size:22px;width:44px;padding:4px}
+.drawing-players{grid-column:1;grid-row:2/4;display:flex;flex-direction:column;gap:6px;overflow:auto;overscroll-behavior:contain;min-width:0;min-height:0;scrollbar-width:thin;flex:none}
+.drawing-player{flex:none;min-height:56px;padding:5px 7px;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:22px 18px;gap:0 3px;align-content:center}
+.drawing-player.current{padding:4px 6px}.drawing-player strong{grid-row:1;grid-column:1;font-size:11px}.drawing-player small{grid-row:2;grid-column:1;font-size:10px;white-space:nowrap}
+.drawing-player .room-voice-indicator{grid-row:1/3;grid-column:2;display:grid;place-items:center;width:44px;min-width:44px;height:44px;padding:0;font-size:10px;text-align:center;line-height:1.2}
+.drawing-score-gain{grid-row:1/3;grid-column:2}.drawing-dialog .drawing-player{min-height:56px;max-width:none}
+.drawing-main{grid-column:2;grid-row:2;position:relative;display:block;overflow:visible}
+.drawing-page .drawing-canvas-panel{position:absolute;inset:0;display:block;padding:0;border:0!important;border-radius:0!important;box-shadow:none!important;background:transparent!important;overflow:visible}
+.drawing-page .drawing-tools,.drawing-page .drawing-guess-form{border:0!important;box-shadow:none!important;background:transparent!important}
+.drawing-canvas-slot{height:100%;width:100%}.drawing-paper{box-shadow:0 3px 14px #061e241a}
+.drawing-page .drawing-canvas-slot{border:0!important;border-radius:0!important;box-shadow:none!important;background:transparent!important}
+.drawing-sidebar{position:absolute;inset:8px;z-index:4;display:none;max-width:640px;margin:auto;max-height:100%;overflow:auto;overscroll-behavior:contain;pointer-events:none;gap:8px;justify-content:center}
+.drawing-sidebar:has(>.drawing-card:not([hidden]),>.drawing-recovery:not([hidden])){display:flex}
+.drawing-sidebar>*{pointer-events:auto;flex:none;max-height:100%;overflow:auto;box-shadow:0 5px 22px #061e2420}
+.drawing-candidates{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.drawing-candidate{font-size:17px!important}
+.drawing-bottom-bar{grid-column:2;grid-row:3;display:flex;align-items:center;justify-content:center;gap:8px;min-width:0;position:relative;z-index:12}
+.drawing-has-voice .drawing-bottom-bar{padding-right:52px}
+#drawing-voice-microphone-slot{position:absolute;right:0;top:50%;transform:translateY(-50%)}
+.drawing-tools{position:relative;flex:0 1 auto;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:10px;padding:0;border:0;background:transparent!important;overflow:visible}
+.drawing-tool-heading,.drawing-tool-row{display:flex;align-items:center;gap:4px;min-width:0}
+.drawing-tool-heading>button,.drawing-tools>.drawing-tool-row>button{flex:none;width:44px;min-width:44px;padding:3px;font-size:24px;line-height:1}
+.drawing-tool-heading>button[aria-pressed=true]{background:var(--theme-accent,#ead39a);color:var(--theme-base,#173d31)}
+.drawing-tools>.drawing-tool-row{padding-left:10px;border-left:1px solid var(--theme-border,#d5dfbd50)}
+.drawing-page #drawing-tools-toggle{font-size:12px;line-height:1.25;width:82px;white-space:nowrap;padding:4px}
+.drawing-page #drawing-tool-panel{position:absolute;bottom:54px;left:0;width:min(320px,calc(var(--drawing-width,100vw) - 20px));display:grid;gap:8px;padding:12px;border:1px solid var(--theme-border,#bbc7b7);border-radius:12px;background:var(--theme-surface,#315b49);box-shadow:0 8px 26px #061e2433}
+.drawing-paint-controls>*{flex:1;min-width:0}.drawing-page .drawing-palette{grid-template-columns:repeat(4,minmax(0,1fr))}
+.drawing-guess-form{flex:1;max-width:720px;position:relative;padding:0;border:0;background:transparent!important;overflow:visible;gap:0}
+.drawing-guess-form label{display:none}.drawing-guess-row{gap:6px}.drawing-guess-row input{min-width:0}.drawing-guess-form p{position:absolute;bottom:52px;left:4px;height:18px;min-height:18px;max-width:100%;font-size:11px;background:var(--theme-base,#173d31);-webkit-line-clamp:1;border-radius:4px;padding:0 5px;pointer-events:none}
+.drawing-footer{grid-column:2;grid-row:4;min-height:16px;gap:12px}.drawing-paint-status,.drawing-page .room-voice-status{display:block;height:16px;min-height:16px;line-height:16px;max-width:100%;font-size:10px}
+#drawing-voice-status-slot{min-width:0;flex:1}.drawing-feedback:empty{display:none}.drawing-feedback{height:16px;line-height:16px;white-space:nowrap}
+#drawing-voice-join-slot,#drawing-voice-microphone-slot{display:flex;align-items:center;flex:none}
+.drawing-is-practice .drawing-page{grid-template-columns:minmax(0,1fr)}.drawing-is-practice .drawing-main,.drawing-is-practice .drawing-bottom-bar,.drawing-is-practice .drawing-footer{grid-column:1}
+.drawing-is-practice .drawing-header .room-toolbar-actions{display:flex}
+.drawing-is-practice .drawing-players{display:none}.drawing-is-practice .drawing-stage-bar strong{display:block;flex:1}
+/* Native Excalidraw properties stay native. Infinite-canvas, imports and
+   whole-object tools are outside the fixed-paper game contract. */
+.drawing-editor{position:absolute;inset:0;color:#1b1b1f;font-family:system-ui,sans-serif}#drawing-canvas.drawing-legacy-canvas{visibility:hidden;pointer-events:none}
+.drawing-editor .excalidraw{--color-primary:#008472;--color-primary-darker:#006d5e;--color-primary-light:#dceee9}
+.drawing-editor .App-menu_top__left,.drawing-editor .App-menu_top__right,.drawing-editor .App-toolbar,.drawing-editor .layer-ui__wrapper__footer,.drawing-editor .help-icon,.drawing-editor .mobile-misc-tools-container{display:none!important}
+.drawing-properties-open .drawing-editor .App-menu_top__left{display:flex!important}.drawing-editor-readonly .App-menu_top__left{display:none!important}
+.drawing-editor :is(.HintViewer,.library-button,.sidebar-trigger__label-element,.sidebar,[data-testid=main-menu-trigger]){display:none!important}
+.drawing-editor .drawing-quick-colors{display:grid;grid-template-columns:repeat(auto-fit,minmax(44px,1fr));gap:4px;margin:4px 0 8px}
+.drawing-editor .drawing-quick-colors button{display:grid;place-items:center;min-width:44px;width:100%;height:44px;min-height:44px;padding:6px;border:2px solid transparent;border-radius:6px;background:transparent;cursor:pointer}
+.drawing-editor .drawing-quick-colors button::before{content:"";display:block;width:26px;height:26px;border-radius:5px;background:var(--drawing-swatch);box-shadow:inset 0 0 0 1px #182a3340}
+.drawing-editor .drawing-quick-colors button[aria-pressed=true]{border-color:#008472;background:#e5f3ef}
+.drawing-editor .drawing-quick-colors button:focus-visible{outline:3px solid #008472;outline-offset:1px}
+.drawing-editor .color-picker__top-picks{display:none}
+.drawing-editor .panelColumn>:has([aria-label="背景"]),.drawing-editor .panelColumn>:has([data-testid=opacity]),.drawing-editor .panelColumn>:has(.zIndexButton){display:none!important}
+.drawing-properties-open .drawing-canvas-slot,.drawing-properties-open .drawing-paper,.drawing-properties-open .drawing-editor .excalidraw{overflow:visible}
+.drawing-properties-open .drawing-editor{z-index:10}
+.drawing-properties-open .drawing-editor :is(.App-menu__left,.Island:has(>.App-mobile-menu)){position:fixed;left:max(12px,env(safe-area-inset-left));bottom:var(--drawing-properties-bottom,76px);top:auto;width:min(340px,calc(var(--drawing-width,100vw) - 24px));min-width:0;max-width:calc(var(--drawing-width,100vw) - 24px);max-height:calc(var(--drawing-height,100dvh) - 80px);overflow:auto;z-index:20}
+.drawing-editor button:not(.panelColumn button):not(.color-picker-content button):not([role=dialog] button){display:none!important}
+/* Radix places the native color popup against window.innerHeight. During an
+   on-screen keyboard, constrain that popup to the actual visual viewport. */
+.drawing-properties-keyboard .drawing-editor [data-radix-popper-content-wrapper]{position:fixed!important;left:calc(var(--drawing-left,0px) + 8px)!important;top:calc(var(--drawing-top,0px) + 8px)!important;transform:none!important;max-height:calc(var(--drawing-height,100dvh) - 16px);max-width:calc(var(--drawing-width,100vw) - 16px);overflow:auto;z-index:30!important}
+.drawing-properties-keyboard .drawing-editor{z-index:30}
+@media(max-width:1100px){
+ .drawing-stage-bar strong,#drawing-round,.drawing-connection{display:none}.drawing-stage-bar .drawing-hint{font-size:13px}
+ .drawing-topbar{gap:6px}.drawing-header .room-toolbar-actions{gap:6px}#drawing-progress{display:none}
 }
-@media (orientation:portrait){
-  .drawing-main{grid-template-columns:minmax(0,1fr)}
-  .drawing-tools{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:6px;padding:7px}
-  #drawing-acquire{grid-column:1/-1}
-  .drawing-tool-heading{justify-content:stretch}
-  .drawing-tool-heading>button{flex:1;min-width:44px}
-  .drawing-page #drawing-tool-panel{top:auto;bottom:calc(100% + 7px);left:0;right:0;grid-template-columns:minmax(0,1fr)}
-  #drawing-tool-panel .drawing-palette{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px}
-  #drawing-tool-panel .drawing-color-chip{min-height:44px;min-width:0;padding:4px}
-  .drawing-tool-row{display:flex}
+@media(orientation:portrait){
+ .drawing-page{grid-template-columns:minmax(0,1fr);grid-template-rows:calc(var(--room-header-height,44px) + 34px) auto minmax(0,1fr) 48px 16px;gap:5px;padding-left:max(5px,env(safe-area-inset-left));padding-right:max(5px,env(safe-area-inset-right))}
+ .drawing-topbar{display:grid;grid-template-rows:var(--room-header-height,44px) 29px;gap:5px}.drawing-header{grid-row:1;justify-content:flex-end;width:100%}.drawing-header-actions{width:100%;justify-content:flex-end}
+ .drawing-header .room-toolbar-actions{width:auto;justify-content:flex-end;gap:6px}#drawing-voice-join-slot{margin-right:0}
+ .drawing-stage-bar{grid-row:2;min-height:29px}.drawing-stage-bar .drawing-skip{min-height:29px;height:29px;padding:2px 8px}
+ .drawing-players{grid-column:1;grid-row:3;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:52px;align-content:start;overflow:auto;gap:5px}
+ .drawing-player{min-height:50px;grid-template-rows:20px 18px}.drawing-player strong{font-size:12px}
+ .drawing-main{grid-column:1;grid-row:2;width:100%;aspect-ratio:var(--drawing-paper-aspect,16 / 9)}.drawing-bottom-bar{grid-column:1;grid-row:4}.drawing-footer{grid-column:1;grid-row:5}
+ .drawing-tools{gap:5px}.drawing-tools>.drawing-tool-row{padding-left:5px}.drawing-page #drawing-tools-toggle{width:66px;font-size:11px}
+ .drawing-sidebar{inset:4px;justify-content:flex-start}.drawing-card,.drawing-recovery{padding:10px;gap:7px}
+ .drawing-is-practice .drawing-page{grid-template-rows:calc(var(--room-header-height,44px) + 34px) minmax(0,1fr) 48px 16px}.drawing-is-practice .drawing-main{grid-row:2;aspect-ratio:auto}.drawing-is-practice .drawing-bottom-bar{grid-row:3}.drawing-is-practice .drawing-footer{grid-row:4}
 }
-@media (orientation:landscape) and (max-height:500px){
-  .drawing-main{grid-template-columns:minmax(0,1fr) clamp(190px,24vw,240px)}
-  .drawing-paint-controls{display:flex!important}
-  .drawing-page #drawing-tool-panel{padding:7px}
-  #drawing-tool-panel .drawing-palette{display:none}
+@media(max-width:360px){
+ .drawing-bottom-bar,.drawing-tools,.drawing-tool-heading,.drawing-tool-row{gap:0}.drawing-tools>.drawing-tool-row{padding-left:0;border-left:0}.drawing-page #drawing-tools-toggle{width:44px;min-width:44px;font-size:10px}
+ .drawing-header .room-toolbar-action{padding:6px 8px}.drawing-header .room-toolbar-actions{gap:6px}.drawing-page #drawing-focus{display:none}
+ .drawing-has-voice .drawing-bottom-bar{padding-right:46px}
+ .drawing-footer #drawing-save-note{display:none}
 }
-@media (orientation:portrait) and (max-width:500px){
-  #drawing-tool-panel .drawing-palette{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(orientation:landscape) and (max-height:500px){
+ .drawing-page{grid-template-columns:148px minmax(0,1fr);grid-template-rows:var(--room-header-height,44px) minmax(0,1fr) 44px;gap:4px;padding-top:max(3px,env(safe-area-inset-top));padding-bottom:max(3px,env(safe-area-inset-bottom))}
+ .drawing-footer{position:absolute;bottom:0;left:0;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+ .drawing-player{min-height:52px;padding:3px 5px}.drawing-player.current{padding:2px 4px}.drawing-tools{gap:6px}.drawing-tools>.drawing-tool-row{padding-left:6px}
+ .drawing-sidebar{inset:4px}.drawing-card,.drawing-recovery{padding:8px;gap:6px}
+}
+/* Focus keeps all controls and members; only secondary title text steps aside. */
+.drawing-focus .drawing-stage-bar strong,.drawing-focus #drawing-round,.drawing-focus .drawing-connection{display:none}
+/* Guess keyboard has its own compact layout. Native color input never hides
+   the editor underneath its properties panel. */
+.drawing-keyboard-open .drawing-page{grid-template-rows:var(--room-header-height,44px) minmax(44px,1fr) 44px;grid-template-columns:96px minmax(0,1fr);gap:3px}
+.drawing-keyboard-open .drawing-topbar{display:flex;flex-direction:row-reverse}.drawing-keyboard-open .drawing-header{width:auto}.drawing-keyboard-open .drawing-header-actions,.drawing-keyboard-open .room-toolbar-actions{width:auto}.drawing-keyboard-open #drawing-voice-join-slot{margin-right:0}
+.drawing-keyboard-open .drawing-stage-bar{min-height:44px}.drawing-keyboard-open #drawing-focus,.drawing-keyboard-open #drawing-progress,.drawing-keyboard-open .drawing-stage-bar strong{display:none}
+.drawing-keyboard-open .drawing-players{display:flex;grid-row:2/4;grid-column:1;flex-direction:column;overflow:auto}.drawing-keyboard-open .drawing-player{flex:none;min-height:48px}
+.drawing-keyboard-open .drawing-main{grid-column:2;grid-row:2;aspect-ratio:auto}.drawing-keyboard-open .drawing-bottom-bar{grid-column:2;grid-row:3}.drawing-keyboard-open .drawing-footer{display:none}
+.drawing-keyboard-compact .drawing-page{grid-template-columns:minmax(0,1fr);grid-template-rows:var(--room-header-height,44px) 28px minmax(44px,1fr)}
+.drawing-keyboard-compact .drawing-topbar{grid-column:1;gap:4px}.drawing-keyboard-compact .drawing-header .room-toolbar-action{padding:4px 7px}.drawing-keyboard-compact #drawing-hint{font-size:11px}.drawing-keyboard-compact .drawing-stage-bar{gap:3px}
+.drawing-keyboard-compact .drawing-players{grid-column:1;grid-row:2;flex-direction:row;overflow-x:auto;overflow-y:hidden}.drawing-keyboard-compact .drawing-player{flex:0 0 100px;min-height:26px;padding:2px 5px;grid-template-rows:20px}.drawing-keyboard-compact .drawing-player small,.drawing-keyboard-compact .room-voice-indicator{display:none}
+.drawing-keyboard-compact .drawing-main{display:none}.drawing-keyboard-compact .drawing-bottom-bar{grid-column:1;grid-row:3;align-self:start}.drawing-keyboard-compact .drawing-guess-form p{display:none}
+@media(prefers-reduced-motion:no-preference){.drawing-page button:not(.drawing-editor *){transition:background-color 100ms,box-shadow 100ms}.drawing-player.current{transition:background-color .2s,border-color .2s}}
+
+/* Mobile header budget — geometry only; game controls and dialogs stay full size. */
+@media(max-width:600px),(max-width:1000px) and (max-height:600px){
+  .drawing-page .drawing-header{height:var(--room-header-height);min-height:var(--room-header-height);gap:4px}
+  .drawing-page .drawing-topbar{min-height:0}
+  .drawing-header .drawing-header-actions,.drawing-page .drawing-header .room-toolbar-actions{gap:4px;min-width:0}
+  .drawing-page .drawing-header .room-toolbar-action{height:var(--room-header-control-height);min-height:var(--room-header-control-height);min-width:var(--room-header-control-size);padding:4px 6px;font-size:var(--room-header-control-font-size)}
+  .drawing-header .drawing-brand{font-size:12px;line-height:14px}
+  .drawing-header .drawing-brand small{font-size:10px}
+
+}
+
+@media(max-width:600px),(max-width:1000px) and (max-height:600px){
+  .drawing-page .drawing-topbar>.drawing-stage-bar{min-height:var(--room-header-height);height:var(--room-header-height);max-height:var(--room-header-height)}
+  .drawing-page .drawing-topbar .drawing-skip{height:31px;min-height:31px;padding:4px 6px;font-size:11px}
+}
+@media(max-width:600px) and (orientation:portrait){
+  .drawing-page .drawing-topbar>.drawing-stage-bar{min-height:29px;height:29px;max-height:29px}
+  .drawing-page .drawing-topbar .drawing-skip{height:29px;min-height:29px;padding:2px 8px}
+}
+
+/* ID-owned focus glyph must follow the header geometry, not the 44px editor
+   controls. The bottom bar and its microphone do not match this selector. */
+@media(max-width:600px),(max-width:1000px) and (max-height:600px){
+  .drawing-page .drawing-header #drawing-focus{width:var(--room-header-control-size);min-width:var(--room-header-control-size);max-width:var(--room-header-control-size);height:var(--room-header-control-height);min-height:var(--room-header-control-height);font-size:var(--room-header-icon-size);line-height:1;padding:0}
 }

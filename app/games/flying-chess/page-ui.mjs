@@ -5,6 +5,7 @@ import { createFlyingMotion, flyingMotionPlan } from './motion-ui.mjs';
 import { createGameAudio } from '../../game-audio.mjs';
 import { mountRoomAudioControls } from '../../platform/room-audio-controls.mjs';
 import { mountRoomSettings } from '../../platform/room-settings.mjs';
+import { mountGameAppearancePicker } from '../../platform/game-appearance.mjs';
 import { mountGameViewport } from '../../platform/room-viewport.mjs';
 import { createRoomClock } from '../../platform/room-clock.mjs';
 import { orderedRoomPlayers, roomExitExplanation, gameErrorMessage } from '../../platform/room-presentation.mjs';
@@ -195,6 +196,7 @@ export function mountFlyingPage({ mode = 'room', session = null, lessonOptions =
   const detail=node('p','');detail.id='flying-board-detail';$('flying-board-dialog').append(detail);
   listen('flying-enlarge','click',()=>{$('flying-board-dialog').showModal();render();});listen('flying-zoom','input',()=>render());
   const settings=mountRoomSettings({document,buttonId:'flying-options',dialogId:'flying-options-dialog',closeButtonId:'flying-settings-close',containerId:'flying-settings-tools',controlIds:['sound-toggle','flying-rules'],dismissIds:['flying-rules','flying-restart']});
+  const removeAppearance=mountGameAppearancePicker(document,$('flying-options-dialog'),{scope:'flying-chess'});
   listen('flying-options','click',()=>{if(practice&&view?.game&&$('flying-options-dialog').open){$('flying-practice-count').value=String(view.game.players.length);$('flying-practice-lesson').value=view.lessonId||'';}});
   const audioControls=mountRoomAudioControls({audio,document});
   const viewport=mountGameViewport({window,document,recoveryDelays:[0,100,300],sync(){const editing=['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName);const frame=gameViewport({width:window.innerWidth,height:window.innerHeight,visual:window.visualViewport,editing});document.body.style.setProperty('--flying-height',`${frame.height}px`);document.body.style.setProperty('--flying-width',`${frame.width}px`);if(frame.resetScroll)window.scrollTo(0,0);}});
@@ -202,5 +204,5 @@ export function mountFlyingPage({ mode = 'room', session = null, lessonOptions =
   render();import('../../app-shell.mjs').catch(()=>{});
   return {audio,applyView,view:()=>view,setConnection(value){connection=value;if(value!=='online'){stopDiceAnimation();flight.cancel({notify:false});}render();},conceal,
     setMessage(message){notice=message;render();},leaveFailure(message){$('flying-leave-status').textContent=message;},
-    destroy(){destroyed=true;++sequence;stopDiceAnimation();flight.destroy();unmountPracticeExit();document.removeEventListener('visibilitychange',stopHiddenDice);window.removeEventListener('pagehide',stopDiceAnimation);reducedMotion?.removeEventListener?.('change',stopDiceAnimation);unsubscribe?.();session?.destroy();clock.destroy();settings.destroy();audioControls.destroy();viewport.destroy();audio.close?.();}};
+    destroy(){destroyed=true;++sequence;stopDiceAnimation();flight.destroy();unmountPracticeExit();document.removeEventListener('visibilitychange',stopHiddenDice);window.removeEventListener('pagehide',stopDiceAnimation);reducedMotion?.removeEventListener?.('change',stopDiceAnimation);unsubscribe?.();session?.destroy();clock.destroy();removeAppearance();settings.destroy();audioControls.destroy();viewport.destroy();audio.close?.();}};
 }

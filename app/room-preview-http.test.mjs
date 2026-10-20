@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
+import { createDeck } from './rules.mjs';
+import { gameProblem } from './multiplayer-rules.mjs';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { readSettings, SHARED_ISSUER } from '../server/config.mjs';
 import { EncryptedStore, MemoryAdapter } from '../server/storage.mjs';
@@ -10,7 +12,7 @@ import { createUnifiedServer } from '../server/unified-http.mjs';
 
 const CLIENT='27oe1fs5shskll808e733lqm65';
 const deferred=()=>{let resolve;const promise=new Promise(yes=>{resolve=yes;});return {promise,resolve};};
-async function fixture(t,{gameType='rummikub'}={}) {
+async function fixture(t,{gameType='rummikub',jokerConfig,rack}={}) {
   let time=Date.now();const settings=readSettings({GAME_ROOM_AUTH_MODE:'mock'}),provider=new MockProvider(settings);
   settings.mode='cognito';settings.issuer=SHARED_ISSUER;settings.clientId=CLIENT;provider.member='a';provider.checks=[];provider.failOn=null;
   provider.complete=async()=>({issuer:SHARED_ISSUER,sub:provider.member,accessToken:`private-token-${provider.member}`,
@@ -39,8 +41,19 @@ async function fixture(t,{gameType='rummikub'}={}) {
     const current=await runtime.rooms.getView(code,member.state.userKey);
     return request(`/api/rooms/${code}/actions`,{...member,method:'POST',body:{...fields,type,requestId:randomUUID(),expectedRevision:current.revision}});
   }
+  if(jokerConfig) assert.equal((await action(a,'configure',{jokerConfig})).response.status,200);
   assert.equal((await action(a,'ready',{ready:true})).response.status,200);assert.equal((await action(b,'ready',{ready:true})).response.status,200);
   assert.equal((await action(a,'start')).response.status,200);
+  if(rack) {
+    // Seed only this test's synthetic private hands, conserving the complete deck.
+    const roomId=create.body.view.roomId,record=await storage.read('rooms',roomId),snapshot=record.value.snapshot;
+    const deck=createDeck({copies:2,jokerConfig}),lookup=new Map(deck.map(tile=>[tile.id,tile]));
+    const make=ids=>ids.map(id=>structuredClone(lookup.get(id)));
+    snapshot.game.players.forEach((player,index)=>{player.rack=make(index===snapshot.game.turnIndex?rack:['black-1-a','black-2-a']);player.opened=true;});
+    const used=new Set(snapshot.game.players.flatMap(player=>player.rack).map(tile=>tile.id));
+    snapshot.game.pool=deck.filter(tile=>!used.has(tile.id));assert.equal(gameProblem(snapshot.game),null);
+    assert.equal(await storage.replaceCAS('rooms',roomId,record.version,{...record.value,snapshot},Number.MAX_SAFE_INTEGER),true);
+  }
   const views=await Promise.all([runtime.rooms.getView(code,a.state.userKey),runtime.rooms.getView(code,b.state.userKey)]);
   const owner=views[0].game.turnPlayerId===views[0].selfId?a:b,other=owner===a?b:a,ownerView=views[owner===a?0:1];
   const body={previewId:randomUUID(),sequence:1,matchId:ownerView.matchId,gameRevision:ownerView.game.revision,
@@ -218,4 +231,27 @@ test('HTTP host configuration is a normal E3 business write: readiness resets, a
   assert.equal(configured.response.status,503);assert.equal(configured.body.view,undefined);f.provider.failOn=null;
   const current=(await f.request(`/api/rooms/${code}`,f.a)).body.view;assert.deepEqual(current.jokerConfig,jokerConfig);assert.equal(current.players[0].ready,false);
   assert.equal(current.game,null);assert.equal(current.revision,first.body.view.revision+1);
+});
+
+
+test('v5 real HTTP preview, peer read and submit apply the same interior colour-change rule',async t=>{
+  const jokerConfig={normal:2,mirror:1,colorChange:1,double:1};
+  for(const [ids,valid] of [
+    [['red-1-a','red-2-a','joker-color-change-1'],false],
+    [['red-1-a','joker-color-change-1','blue-3-a'],true],
+  ]) {
+    const f=await fixture(t,{jokerConfig,rack:[...ids,'black-13-a']});
+    assert.equal(f.ownerView.game.ruleVersion,'friends-v5');
+    const before=await f.runtime.rooms.getView(f.code,f.owner.state.userKey);
+    const posted=await f.post({...f.body,boardIds:[ids]});assert.equal(posted.response.status,200);
+    f.advance();const peer=await f.request(`/api/rooms/${f.code}/preview`,f.other);
+    assert.equal(peer.response.status,200);assert.equal(peer.body.preview.valid,valid);
+    assert.deepEqual(peer.body.preview.board.flat().map(tile=>tile.id),ids);
+    assert.equal(JSON.stringify(peer.body).includes('black-13-a'),false);
+    const submitted=await f.action(f.owner,'submit',{boardIds:[ids],rackIds:['black-13-a']});
+    assert.equal(submitted.response.status,valid?200:409);
+    const after=await f.runtime.rooms.getView(f.code,f.owner.state.userKey);
+    if(valid) {assert.deepEqual(after.game.board.flat().map(tile=>tile.id),ids);assert.equal(after.game.rack.length,1);}
+    else {assert.deepEqual(after.game,before.game);assert.equal(after.revision,before.revision);}
+  }
 });

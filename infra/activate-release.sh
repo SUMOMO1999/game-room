@@ -40,6 +40,14 @@ if [ -e "$identity_key" ] || [ -L "$identity_key" ]; then
   preflight_credentials+=("--property=LoadCredential=identity-batch-key:$identity_key"
     "--setenv=GAME_ROOM_IDENTITY_BATCH_KEY_FILE=/run/credentials/$preflight_unit.service/identity-batch-key")
 fi
+# A dedicated audio credential is optional; its presence never enables voice.
+voice_key=/etc/game-room/voice-key.json
+if [ -e "$voice_key" ] || [ -L "$voice_key" ]; then
+  [[ -f "$voice_key" && ! -L "$voice_key" ]] || { echo 'Invalid voice key source' >&2; exit 1; }
+  voice_key_info=$(stat -c '%u:%a' "$voice_key")
+  case "$voice_key_info" in 0:400|0:600) ;; *) echo 'Voice key must be a root-private file' >&2; exit 1 ;; esac
+  preflight_credentials+=("--property=LoadCredential=voice-key:$voice_key")
+fi
 # Starting an already-running oneshot joins its existing invocation. Do not
 # mistake a timer's pre-stop snapshot for this release's final business backup.
 read_backup_state() {

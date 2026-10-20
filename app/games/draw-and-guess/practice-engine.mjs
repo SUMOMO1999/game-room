@@ -47,7 +47,7 @@ export function createDrawingPracticeSession({storage=globalThis.localStorage,no
     if(type==='append') {
       if(drawingPacketProblem({...canvas,operations:input.operations},{snapshot:false}))throw new Error('笔画格式无效。');
       for(const part of input.operations){const existing=canvas.strokes.find(stroke=>stroke.strokeId===part.strokeId);
-        if(existing){if(existing.tool!==part.tool||existing.color!==part.color||existing.width!==part.width||existing.points.length+part.points.length>4096)throw new Error('单笔格式或长度无效。');existing.points.push(...clone(part.points));}
+        if(existing){if(existing.tool!==part.tool||existing.color!==part.color||existing.width!==part.width||existing.points.length+part.points.length>50000)throw new Error('单笔格式或长度无效。');existing.points.push(...clone(part.points));}
         else canvas.strokes.push(clone(part));}next.undone=[];
     }else if(type==='undo'){if(canvas.strokes.length)next.undone.push(canvas.strokes.pop());}
     else if(type==='redo'){if(next.undone.length)canvas.strokes.push(next.undone.pop());}

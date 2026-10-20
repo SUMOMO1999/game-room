@@ -23,6 +23,13 @@
   font: 14px/1.2 system-ui, sans-serif;
   touch-action: manipulation;
 }
+/* Face children must participate in their owner card's width. A short stock
+   may reduce the complete card budget, never leave an unbounded text item. */
+.yousei-card > :is(.yousei-card__heading,.yousei-card__name,.yousei-card__goods,
+  .yousei-card__portrait,.yousei-card__effect,.yousei-card__cost,.yousei-card__prices) {
+  min-width:0;
+  box-sizing:border-box;
+}
 button.yousei-card { cursor: pointer; }
 .yousei-card:focus-visible { outline: 3px solid #78c6cc; outline-offset: 3px; }
 .yousei-card.is-selected { border-color: #176b65; box-shadow: 0 0 0 3px #f5dda0, 0 0 0 5px #176b65; }
@@ -45,7 +52,7 @@ button.yousei-card { cursor: pointer; }
 .yousei-card__goods--1 .yousei-card__good b,.yousei-card__goods--2 .yousei-card__good b { font-size:20px; }
 .yousei-art { position: relative; display: flex; width: 100%; height: 100%; min-height: 0; align-items: center; justify-content: center; overflow: hidden; border-radius: 4px; }
 .yousei-art img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; }
-.yousei-art__fallback { visibility: visible; display: block; text-align: center; font-size: 14px; line-height: 1.3; }
+.yousei-art__fallback { visibility: hidden; display: block; text-align: center; font-size: 14px; line-height: 1.3; }
 .yousei-art.is-loaded .yousei-art__fallback { visibility: hidden; }
 .yousei-art.is-missing img, .yousei-missing-art .yousei-art img { visibility: hidden; }
 .yousei-art.is-missing .yousei-art__fallback, .yousei-missing-art .yousei-art__fallback { visibility: visible; }

@@ -1,5 +1,6 @@
 /** UI input contracts consume only the current role projection. No hidden rules/state. */
 import { GOODS, getCard } from './content/definitions.mjs';
+import { profileForPlayerCount } from './content/player-count-profile.mjs';
 const ids = GOODS.map(good => good.id);
 const copy = value => structuredClone(value);
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -7,6 +8,15 @@ const fail = message => { throw new RangeError(message); };
 const quantity = value => Number.isSafeInteger(value) && value >= 0;
 export const goodsTotal = goods => ids.reduce((n, id) => n + (goods?.[id] ?? 0), 0);
 export const cardKey = card => card.cardId ?? card.ref ?? card.id;
+/** A setup display, not the authority that freezes materials when a match starts. */
+export function supplySetup(playerCount, configuration = {}) {
+  const profile = Number.isSafeInteger(playerCount) && playerCount >= 2 && playerCount <= 6 ? profileForPlayerCount(playerCount) : null;
+  const goodsSupplyMode = configuration.goodsSupplyMode === 'recommended' ? 'recommended' : 'custom';
+  const saved = Number.isSafeInteger(configuration.goodsPerType) ? configuration.goodsPerType : 6;
+  return { playerCount, deckSize: profile?.deckSize ?? null, stallBoards: profile?.stallBoards ?? null,
+    goodsSupplyMode, goodsPerTypeRecommended: profile?.goodsPerTypeRecommended ?? null,
+    goodsPerType: goodsSupplyMode === 'recommended' && profile ? profile.goodsPerTypeRecommended : saved };
+}
 const targetedCharacters = new Set(['C01','C08','M01','M02','M03','M04','M05','M06','M07','M08']);
 export const requiresOpponent = (face, type) => type === 'play-character' && targetedCharacters.has(face.sourceCode)
   || type === 'activate-tool' && ['T02','T04'].includes(face.sourceCode);
@@ -124,7 +134,10 @@ export function actionDraft(game, selfId, card, type, input = {}) {
   if (!game || game.status !== 'playing' || game.turnPlayerId !== selfId || game.pending || game.clock?.paused) return fail('现在不是你的可操作阶段。');
   const self = game.players.find(player => player.id === selfId);
   const key = cardKey(card), face = getCard(card.definitionId);
-  const peer = requiresOpponent(face,type) ? opponentForDraft(game,selfId,input.targetId) : null;
+  // The legacy effect envelope carries a peer even for C08's self-only draw.
+  // Resolve that unused field without asking the player to target an opponent.
+  const selfDraw=face.sourceCode==='C08'&&input.initialChoices?.[0]?.selection?.branch==='draw';
+  const peer = requiresOpponent(face,type) ? opponentForDraft(game,selfId,selfDraw?game.players.find(player=>player.id!==selfId)?.id:input.targetId) : null;
   const params = peer && game.version>=2 ? { targetId:peer.id } : {};
   if (type === 'activate-tool') {
     if (!self.tools.some(tool => cardKey(tool) === key && !tool.exhausted)) return fail('该道具目前不可使用。');
@@ -163,14 +176,31 @@ export function actionDraft(game, selfId, card, type, input = {}) {
 }
 export function tableProjection(room) {
   const game = room.game, self = game?.players.find(player => player.id === room.selfId);
+  const setup = supplySetup(room.players.length, room.hyakkiConfig);
   const players = (game?.players ?? room.players).map(player => ({...player, name: [...room.players,...(room.matchPlayers??[])].find(member => member.id === player.id)?.name ?? player.name ?? '伙伴',
     ready: !!room.players.find(member => member.id === player.id)?.ready, silver: player.silver ?? 20, handCount: player.handCount ?? 0, ordinaryCapacity: player.ordinaryCapacity ?? 5,
     goods: GOODS.map(good => ({id: good.id, count: player.goods?.[good.id] ?? 0})), tools: (player.tools ?? []).map(tool => ({...tool,id:cardKey(tool),tapped:tool.exhausted})) }));
   while (players.length < 2) players.push({ id: 'empty-seat', name: '等待伙伴', ready: false, silver: 0, handCount: 0, ordinaryCapacity: 5, goods: GOODS.map(good => ({id:good.id,count:0})),tools:[] });
   return {roomId:room.roomId ?? room.code,matchId:game?.matchId ?? room.matchId,selfId:room.selfId,selfRole:room.selfRole,roomCode:room.roomCode ?? room.code,
     scene: 'active',phase:room.phase,players,currentPlayerId:game?.turnPlayerId ?? room.selfId,decision:null,decisionActorId:game?.pending?.actorId??null,bookLayers:game?.bookLayers??0,closing:game?.closing??null,
-    hand:(self?.hand??[]).map(card=>({...card,id:cardKey(card)})),actionLimit:game?.actionLimit??room.hyakkiConfig?.actionLimit??5,actionsUsed:game?.actionsUsed??0,goodsPerType:game?.goodsPerType??room.hyakkiConfig?.goodsPerType??6,
+    hand:(self?.hand??[]).map(card=>({...card,id:cardKey(card)})),actionLimit:game?.actionLimit??room.hyakkiConfig?.actionLimit??5,actionsUsed:game?.actionsUsed??0,goodsPerType:game?.goodsPerType??setup.goodsPerType,
     clock:'--:--',deckCount:game?.deckCount??0,discardCount:game?.discard?.length??0,discard:game?.discard?.at(-1)?{...game.discard.at(-1),id:cardKey(game.discard.at(-1))}:null,
-    market:GOODS.map(good=>({...good,count:game?.bankGoods?.[good.id]??room.hyakkiConfig?.goodsPerType??6})),spectatorCount:room.spectators?.length??0,
-    temporaryPaid:!!self?.temporaryOccupied,expansionStock:game?.availableStalls??5,expansionPrice:game?.purchasedStalls?3:6,resultReason:''};
+    market:GOODS.map(good=>({...good,count:game?.bankGoods?.[good.id]??setup.goodsPerType})),spectatorCount:room.spectators?.length??0,
+    temporaryPaid:!!self?.temporaryOccupied,expansionStock:game?.availableStalls??setup.stallBoards??5,expansionPrice:game?.purchasedStalls?3:6,resultReason:''};
+}
+
+/** Only newly confirmed public events may enter the opponent's table scene.
+ * A refresh/reconnect never replays history, and kept/private cards stay backs. */
+export function opponentTableEvent(before,next,previous=null) {
+  if(!before?.game||!next?.game||before.game.matchId!==next.game.matchId||before.selfId!==next.selfId||before.selfRole!==next.selfRole||next.phase!=='playing'||next.game.turnPlayerId===next.selfId)return null;
+  const retained=before.game.turnId===next.game.turnId?previous:null;
+  if(next.game.publicEventSequence<=before.game.publicEventSequence)return retained;
+  const types=new Set(['draw-peeked','draw-kept','draw-discarded','character-played','trade-bought','trade-sold','tool-installed','tool-activated','response-played']);
+  const event=[...(next.game.lastPublicEvents??[])].reverse().find(event=>event.actorSeatId&&event.actorSeatId!==next.selfId&&types.has(event.type));
+  if(!event)return retained;
+  // These private draw events intentionally carry no face, even if a malformed
+  // caller supplied one. Do not infer a face from hand differences or deck data.
+  const publicEvent={...event};
+  if(['draw-peeked','draw-kept'].includes(event.type))delete publicEvent.cardId;
+  return {event:publicEvent,sequence:next.game.publicEventSequence,turnId:next.game.turnId};
 }
