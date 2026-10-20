@@ -13,7 +13,16 @@ export function mountTableMotion({root,onError=error=>root.ownerDocument.default
     // A confirmed destination may be temporarily hidden by the previous flight.
     // The travelling copy always paints independently of that presentation state.
     copy.style.visibility='';
-    for(const item of [copy,...copy.querySelectorAll('*')]){
+    const originals=[node,...node.querySelectorAll('*')];
+    const copies=[copy,...copy.querySelectorAll('*')];
+    for(const [index,item] of copies.entries()){
+      // The flight leaves its hand/source stock. Carry the rendered card budget
+      // with it so the face does not revert to a different ancestor's defaults.
+      if(originals[index]?.matches?.('.yousei-card')&&window.getComputedStyle){
+        const size=window.getComputedStyle(originals[index]);
+        item.style.setProperty('--hyakki-card-width',size.width);
+        item.style.setProperty('--hyakki-card-height',size.height);
+      }
       item.removeAttribute('id');item.removeAttribute('data-entity-id');item.removeAttribute('data-hy-action');
       item.removeAttribute('data-hy-fields');item.removeAttribute('data-card-id');item.setAttribute('tabindex','-1');
     }

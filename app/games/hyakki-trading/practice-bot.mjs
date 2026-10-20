@@ -1,5 +1,6 @@
 /** Ordinary practice decisions use only the deciding seat's private projection. */
 import { GOODS, getCard, DIGITAL_RULE_VERSION, MULTIPLAYER_RULE_VERSION } from './content/definitions.mjs';
+import { qualifiesForIdleReward } from './model.mjs';
 
 const count = vector => Object.values(vector).reduce((sum, value) => sum + value, 0);
 const covers = (stock, recipe) => Object.entries(recipe).every(([id, amount]) => stock[id] >= amount);
@@ -158,7 +159,7 @@ function ordinaryScore(view, action) {
   const owner = view.players.find(item => item.id === view.viewerId), peer = view.players.find(item => item.id === action.params?.targetId)
     ?? view.players.find(item => item.id !== view.viewerId);
   const card = [...owner.hand, ...owner.tools].find(item => item.cardId === action.cardId), face = card && getCard(card.definitionId);
-  if (action.type === 'end-turn') return owner.silver >= 60 ? 1000 : view.remainingActions >= 2
+  if (action.type === 'end-turn') return owner.silver >= 60 ? 1000 : qualifiesForIdleReward(view)
     && jitter(`${view.matchId}:${view.turnId}`) % 24 === 0 ? 95 : 0;
   if (action.type === 'sell') return 115 + face.sellSilver;
   if (action.type === 'buy') {

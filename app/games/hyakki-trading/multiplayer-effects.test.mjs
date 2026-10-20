@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createGame, applyGameAction, currentDecision, gameProblem } from './rules.mjs';
-import { createDeck, GOODS } from './content/definitions.mjs';
+import { CONTENT_VERSION, PLAYER_COUNT_CONTENT_VERSION, createDeck, GOODS } from './content/definitions.mjs';
 import { definition, emptyGoods, refreshTemporary } from './model.mjs';
 import { characterProblem } from './effects.mjs';
 import { toolProblem } from './tools.mjs';
@@ -10,8 +10,9 @@ import { privateView, spectatorView } from './view.mjs';
 const ids = Array.from({ length: 6 }, (_, index) => (index + 1).toString(16).padStart(32, '0'));
 const targetIndex = 4, ctx = { now: 1000, randomInt: limit => limit - 1 };
 const others = [1, 2, 3, 5];
-function fixture(code) {
-  const state = createGame(ids, { ...ctx, matchId: 'c'.repeat(32), actionLimit: 10, goodsPerType: 20, firstPlayerId: ids[0] });
+function fixture(code, contentVersion = CONTENT_VERSION) {
+  // Old multiplayer effects must remain playable with their frozen 110 cards.
+  const state = createGame(ids, { ...ctx, contentVersion, matchId: 'c'.repeat(32), actionLimit: 10, goodsPerType: 20, firstPlayerId: ids[0] });
   state.deck.push(...state.players.flatMap(owner => owner.hand)); state.deck.sort();
   state.players.forEach(owner => { owner.hand = []; }); state.stage = 'use'; state.drawStarted = true;
   const f = { state, owner: state.players[0], target: state.players[targetIndex], params: { targetId: ids[targetIndex] } };
@@ -52,7 +53,8 @@ function accept(state, type, fields = {}, actorId = currentDecision(state)?.acto
 function conserved(state) {
   const cards = [...state.deck, ...state.discard, ...state.players.flatMap(owner => [...owner.hand, ...owner.tools.map(tool => tool.cardId)]),
     ...(state.pending?.sourceCards ?? []), ...(state.pending?.poolCards ?? [])];
-  assert.deepEqual([...cards].sort(), createDeck().map(card => card.id).sort()); assert.equal(new Set(cards).size, 110);
+  assert.deepEqual([...cards].sort(), createDeck({ contentVersion: state.contentVersion, playerCount: 6 }).map(card => card.id).sort());
+  assert.equal(new Set(cards).size, state.contentVersion === CONTENT_VERSION ? 110 : 246);
   for (const good of GOODS) assert.equal(state.bankGoods[good.id] + state.players.reduce((sum, owner) => sum + owner.goods[good.id], 0)
     + (state.pending?.goods[good.id] ?? 0), 20);
 }
@@ -68,14 +70,14 @@ function settle(state) {
   return state;
 }
 
-for (const code of ['C01', 'C08', 'M01', 'M02', 'M03', 'M04', 'M05', 'M06', 'M07', 'M08']) {
-  test(`${code}: six-player effect changes only the selected pair and conserves all material`, () => {
-    const f = fixture(code), before = unaffected(f.state);
+for (const contentVersion of [CONTENT_VERSION, PLAYER_COUNT_CONTENT_VERSION]) for (const code of ['C01', 'C08', 'M01', 'M02', 'M03', 'M04', 'M05', 'M06', 'M07', 'M08']) {
+  test(`${contentVersion} ${code}: six-player effect changes only the selected pair and conserves all material`, () => {
+    const f = fixture(code, contentVersion), before = unaffected(f.state);
     assert.equal(characterProblem(f.state, ids[0], f.cardId, f.params), null);
     const state = settle(start(f)); assert.deepEqual(unaffected(state), before); assert.equal(state.actionsUsed, 1);
   });
-  test(`${code}: three-plus player activation requires a valid other participant before charging`, () => {
-    const f = fixture(code);
+  test(`${contentVersion} ${code}: three-plus player activation requires a valid other participant before charging`, () => {
+    const f = fixture(code, contentVersion);
     for (const targetId of [undefined, ids[0], 'f'.repeat(32)]) {
       const params = { ...f.params }; if (targetId === undefined) delete params.targetId; else params.targetId = targetId;
       assert.notEqual(characterProblem(f.state, ids[0], f.cardId, params), null);
@@ -142,9 +144,9 @@ for (const code of ['T02', 'T04']) test(`${code}: target-only parameters open a 
   state = settle(state); assert.deepEqual(unaffected(state), before);
 });
 
-for (const code of ['M01', 'M02', 'M03', 'M04', 'M05', 'M06', 'M07', 'M08']) {
-  test(`${code}: only the selected target may counter before any random draw or material transfer`, () => {
-    const f = fixture(code), counter = f.hand(f.target, 'C07'), before = structuredClone(f.state);
+for (const contentVersion of [CONTENT_VERSION, PLAYER_COUNT_CONTENT_VERSION]) for (const code of ['M01', 'M02', 'M03', 'M04', 'M05', 'M06', 'M07', 'M08']) {
+  test(`${contentVersion} ${code}: only the selected target may counter before any random draw or material transfer`, () => {
+    const f = fixture(code, contentVersion), counter = f.hand(f.target, 'C07'), before = structuredClone(f.state);
     let state = start(f); assert.equal(currentDecision(state).actorId, ids[targetIndex]);
     assert.deepEqual(state.deck, before.deck); assert.deepEqual(state.discard, before.discard);
     assert.deepEqual(state.players[targetIndex], before.players[targetIndex]); assert.deepEqual(unaffected(state), unaffected(before));

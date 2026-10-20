@@ -10,6 +10,9 @@ export function createRoomSession({ document, accountGeneration, accountState, g
       && (!visible || !document.hidden)
       && (!Object.hasOwn(fence, 'source') || fence.source === getClient());
   }
+  // Passive room/canvas/chat output may continue while hidden. This never
+  // grants a business write: current() retains its visible-by-default guard.
+  const passive = fence => current(fence, { visible: false });
   function invalidate() {
     ++sequence;
     const previous = pending; pending = null;
@@ -29,7 +32,7 @@ export function createRoomSession({ document, accountGeneration, accountState, g
     return task.promise;
   }
   function destroy() { invalidate(); destroyed = true; }
-  return { capture, current, invalidate, bootstrap, destroy };
+  return { capture, current, passive, invalidate, bootstrap, destroy };
 }
 
 // Explicit leave is a business write. Unknown outcomes keep the exact request
@@ -40,7 +43,7 @@ export function createRoomExit({ session, roomCode, getClient, getView, forgetMe
   let pending = null, active = null;
   function reset() { pending = null; active = null; }
   function run() {
-    if (active && session.current(active.fence)) return active.promise;
+    if (active && session.passive(active.fence)) return active.promise;
     const client = getClient(), view = getView();
     if (!client || !view) return Promise.resolve(false);
     const task = { fence: session.capture(client), promise: null };
@@ -54,14 +57,14 @@ export function createRoomExit({ session, roomCode, getClient, getView, forgetMe
         const result = await client.request(`/api/rooms/${roomCode}/actions`, {
           method:'POST', token:client.membership.token, body,
         }, client.epoch());
-        if (!session.current(task.fence)) return false;
+        if (!session.passive(task.fence)) return false;
         if (requireAcknowledgement && result?.left !== true) throw new Error('退出结果暂时无法确认，请重试。');
         client.stop(); forgetMembership(roomCode,selfId); onLeft?.(); return true;
       } catch (error) {
-        if (!session.current(task.fence)) return false;
+        if (!session.passive(task.fence)) return false;
         if ([400,403,409].includes(error.status)) pending = null;
         onFailure?.(error);
-        if (session.current(task.fence)) client.connect();
+        if (session.passive(task.fence)) client.connect();
         return false;
       } finally { if (active === task) active = null; }
     })();

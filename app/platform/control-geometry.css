@@ -185,3 +185,26 @@ select:not([multiple]):not([size]):focus-visible {
     content: none;
   }
 }
+
+/* Mobile header budget — geometry only; game controls and dialogs stay full size. */
+@media(max-width:600px),(max-width:1000px) and (max-height:600px){
+  :root{--room-header-height:33px}
+  :is(.room-header,.pg-header){--room-header-control-size:31px;--room-header-control-height:31px;--room-header-control-font-size:11px;--room-header-control-gap:4px;--room-header-icon-size:15px;--room-header-join-width:54px}
+  body .room-header .room-toolbar,body .room-header .room-toolbar-actions{gap:var(--room-header-control-gap);min-width:0;align-items:center}
+  body .room-header .room-toolbar-actions>:is(button.room-toolbar-action,a.room-toolbar-action,button,a),body .pg-header button{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;height:var(--room-header-control-height);min-height:var(--room-header-control-height);min-width:var(--room-header-control-size);margin-block:0;padding:4px 6px;font-size:var(--room-header-control-font-size);line-height:1.2;white-space:nowrap;flex:none}
+  body .room-header .room-toolbar-status{min-width:0;max-width:150px;font-size:10px;line-height:1.2;letter-spacing:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  :is(.room-header,.pg-header) :is(#leave-room,#exit-practice,#flying-exit,#drawing-exit,#p414-exit,#pg-exit,#yg-exit,.room-toolbar-exit){position:relative;display:inline-grid;place-items:center;box-sizing:border-box;width:var(--room-header-control-size);min-width:var(--room-header-control-size);max-width:var(--room-header-control-size);height:var(--room-header-control-height);min-height:var(--room-header-control-height);max-height:var(--room-header-control-height);flex:0 0 var(--room-header-control-size);margin-inline-start:0;padding:0!important;font-size:0!important;line-height:1}
+  :is(.room-header,.pg-header) :is(#leave-room,#exit-practice,#flying-exit,#drawing-exit,#p414-exit,#pg-exit,#yg-exit,.room-toolbar-exit)::before,:is(.room-header,.pg-header) :is(#leave-room,#exit-practice,#flying-exit,#drawing-exit,#p414-exit,#pg-exit,#yg-exit,.room-toolbar-exit)::after{content:"";position:absolute;left:50%;top:50%;width:var(--room-header-icon-size);height:2px;border-radius:2px;background:currentColor;transform:translate(-50%,-50%) rotate(45deg);pointer-events:none}
+  :is(.room-header,.pg-header) :is(#leave-room,#exit-practice,#flying-exit,#drawing-exit,#p414-exit,#pg-exit,#yg-exit,.room-toolbar-exit)::after{transform:translate(-50%,-50%) rotate(-45deg)}
+  :is(.room-header,.pg-header) .room-toolbar-exit>span{display:none}
+  :is(.room-header,.pg-header) :is(button,a):focus-visible{outline-width:2px;outline-offset:2px}
+
+}
+
+/* Mobile header budget — geometry only; game controls and dialogs stay full size. */
+@media(max-width:600px),(max-width:1000px) and (max-height:600px){
+  :is(.game-screen,.army-screen) .shell:not(.lobby-shell)>.site-header.room-header{height:var(--room-header-height);min-height:var(--room-header-height);flex:0 0 var(--room-header-height);gap:6px}
+  .game-screen .shell:not(.lobby-shell)>.room-header .brand{max-height:31px}
+  .game-screen .shell:not(.lobby-shell)>.room-header .brand-mark{--brand-scale:.55;max-height:28px}
+
+}

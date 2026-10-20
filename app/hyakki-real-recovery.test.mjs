@@ -6,24 +6,32 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createGameRegistry, defaultGameRegistry } from './game-registry.mjs';
-import { createDeck, getCard, DIGITAL_RULE_VERSION } from './games/hyakki-trading/content/definitions.mjs';
+import { createDeck, getCard, CONTENT_VERSION, DIGITAL_RULE_VERSION } from './games/hyakki-trading/content/definitions.mjs';
 import { createHyakkiAdapter, createHyakkiTransitionPreparers } from '../server/games/hyakki-trading/adapter.mjs';
 import { EncryptedStore, SQLiteAdapter } from '../server/storage.mjs';
 import { readSettings } from '../server/config.mjs';
 import { createRuntime } from '../server/runtime.mjs';
+import { createHyakkiEventStore } from '../server/games/hyakki-trading/event-store.mjs';
 import { backupStore, verifyBackup, restoreStore } from '../server/backup.mjs';
 
 function registry(open, legacy = false) {
   const actual = createHyakkiAdapter();
+  // This suite is the historical 110-card/schema12-14 recovery contract.
+  // New profile/group3 recovery is independently covered by the player-count
+  // tests, rather than rewriting these old data and assertion expectations.
+  const historical = { ...actual,
+    roomDefaults: () => ({ turnClock: null, hyakkiConfig: { actionLimit: 5, goodsPerType: 8 } }),
+    gameOptions(room, options) { return { ...actual.gameOptions(room, options), contentVersion: CONTENT_VERSION }; },
+    createGame(players, options) { return actual.createGame(players, { ...options, contentVersion: CONTENT_VERSION }); } };
   // Historical writers reach pending states through real v1 rules and durable
   // commits. Schema12 lacks stock metadata; schema13 retains configured stock.
   const schema = legacy === true ? 12 : legacy === 13 ? 13 : null;
-  const adapter = schema ? { ...actual, roomDefaults: schema === 12
-    ? () => ({ turnClock: null, hyakkiConfig: { actionLimit: 5 } }) : actual.roomDefaults,
+  const adapter = schema ? { ...historical, roomDefaults: schema === 12
+    ? () => ({ turnClock: null, hyakkiConfig: { actionLimit: 5 } }) : historical.roomDefaults,
     snapshotSchema: () => schema, createGame(players, options) {
-      const game = actual.createGame(players, { ...options, ruleVersion: DIGITAL_RULE_VERSION });
+      const game = historical.createGame(players, { ...options, ruleVersion: DIGITAL_RULE_VERSION });
       if (schema === 12) delete game.goodsPerType; return game;
-    } } : actual;
+    } } : historical;
   return createGameRegistry([...defaultGameRegistry.knownTypes().filter(type => type !== 'hyakki-trading').map(type => defaultGameRegistry.gameAdapter(type)), adapter],
     { creationTypes: [...defaultGameRegistry.creationTypes(), ...(open ? ['hyakki-trading'] : [])] });
 }
@@ -33,6 +41,12 @@ function shuffleFor(code) {
   const cards = createDeck(), moving = cards.map(card => card.id), desired = [...moving];
   const index = cards.findIndex(card => getCard(card.definitionId).sourceCode === code);
   [desired[0], desired[index]] = [desired[index], desired[0]];
+  // Response windows now skip seats without a usable response. Give the
+  // defender a real C07 through the original shuffle seam, not saved-state edits.
+  if (code === 'M02') {
+    const guard = desired.findIndex(id => getCard(cards.find(card => card.id === id).definitionId).sourceCode === 'C07');
+    [desired[5], desired[guard]] = [desired[guard], desired[5]];
+  }
   const choices = [0];
   for (let i = moving.length - 1; i > 0; i--) {
     const target = moving.indexOf(desired[i]); choices.push(target); [moving[i], moving[target]] = [moving[target], moving[i]];
@@ -44,16 +58,34 @@ const scenarios = [
   ['C02', 'C02'], ['C10', 'C10'], ['peek', 'C01'], ['counter', 'M02'], ['public-draft', 'M02'],
   ['auction-bid', 'C12'], ['tool-private-pool', 'T04'], ['tool-payment', 'T08'],
   ['manual-auction', 'C12'], ['absence-peek', 'C01'], ['final-round', 'T08'],
-  ['legacy-six', 'C02'], ['legacy-schema13', 'C02', 8], ['configured-four', 'C02', 4], ['configured-twenty', 'C10', 20],
+  ['mixed-group1-group2', 'C02'], ['legacy-six', 'C02'], ['legacy-schema13', 'C02', 8], ['configured-four', 'C02', 4], ['configured-twenty', 'C10', 20],
 ];
 for (const [scenario, code, goodsPerType] of scenarios) test(`real SQLite ${scenario} restores in a new process with receipts and event material intact`, async t => {
   const directory = mkdtempSync(join(tmpdir(), 'hyakki-real-recovery-')), sourcePath = join(directory, 'source.sqlite');
   let at = 10000;
   const key = randomBytes(32), now = () => at, users = ['1'.repeat(64), '2'.repeat(64)];
   const storage = new EncryptedStore(new SQLiteAdapter(sourcePath, { now }), key, now);
+  let legacyEvents = scenario === 'mixed-group1-group2';
+  const transitionPreparers = createHyakkiTransitionPreparers(storage, { now });
+  if (legacyEvents) {
+    const upgraded = transitionPreparers.get('hyakki-trading');
+    // Exact historical group1 writer contract. Only initial commits use it;
+    // neither their fields nor their fingerprints are rewritten on upgrade.
+    const original = createHyakkiEventStore({ storage, now }).transitionPreparer(({ previous, next }) => {
+      const room = next.snapshot, game = room?.game;
+      if (!game || game.publicEventSequence === previous?.snapshot?.game?.publicEventSequence) return null;
+      return { match: { roomId: room.roomId, matchId: room.matchId, ruleVersion: game.ruleVersion,
+        contentVersion: game.contentVersion, startedAt: room.matchStartedAt,
+        participants: room.matchParticipants.map(player => ({ seatId: player.playerId, userKey: player.userKey })) },
+        sequence: game.publicEventSequence, commitId: `${room.matchId}-${game.publicEventSequence}`, committedAt: game.committedAt,
+        mode: 'normal', events: game.lastPublicEvents };
+    });
+    transitionPreparers.set('hyakki-trading', { scopes: upgraded.scopes,
+      prepare: context => (legacyEvents ? original : upgraded).prepare(context) });
+  }
   const gameRegistry = registry(true, scenario === 'legacy-six' ? true : scenario === 'legacy-schema13' ? 13 : false), runtime = createRuntime(readSettings({ GAME_ROOM_AUTH_MODE: 'mock' }), {
     storage, sessions: {}, now, gameRegistry, chatOptions: { pollIntervalMs: 0 },
-    roomOptions: { pollIntervalMs: 0, serverRandomInt: shuffleFor(code), transitionPreparers: createHyakkiTransitionPreparers(storage, { now }) },
+    roomOptions: { pollIntervalMs: 0, serverRandomInt: shuffleFor(code), transitionPreparers },
   });
   const streams = [];
   t.after(async () => { runtime.preview.close(); await runtime.chat.close(); for (const stop of streams) await stop();
@@ -71,7 +103,7 @@ for (const [scenario, code, goodsPerType] of scenarios) test(`real SQLite ${scen
   }
   if (goodsPerType !== undefined) await action(users[0], 'configure', { hyakkiConfig: { actionLimit: 7, goodsPerType } });
   for (const user of users) await action(user, 'ready', { ready: true });
-  await action(users[0], 'start'); at += 500;
+  await action(users[0], 'start'); legacyEvents = false; at += 500;
   const view = await runtime.rooms.getView(host.roomCode, users[0]);
   const card = view.game.players.find(player => player.id === view.selfId).hand.find(card => getCard(card.definitionId).sourceCode === code);
   assert.ok(card);
@@ -120,6 +152,10 @@ for (const [scenario, code, goodsPerType] of scenarios) test(`real SQLite ${scen
   if (scenario === 'final-round') { assert.ok(snapshot.game.closing); assert.ok(snapshot.game.players[0].silver >= 60); }
   await storage.put('sessions', 'synthetic-cookie', { token: 'synthetic-secret' }, 20000);
   const eventRows = (await storage.scan('hyakki-events')).map(row => row.value).sort((a, b) => a.sequence - b.sequence);
+  if (scenario === 'mixed-group1-group2') {
+    assert.equal(eventRows[0].schemaVersion, 1); assert.equal(Object.hasOwn(eventRows[0], 'turn'), false);
+    assert(eventRows.slice(1).every(row => row.schemaVersion === 2));
+  }
   const artifact = join(directory, 'backup.sqlite'), restored = join(directory, 'new-path.sqlite'), keyPath = join(directory, 'key'), fixturePath = join(directory, 'fixture.json');
   await backupStore({ sourcePath, destinationPath: artifact, key, now, gameRegistry });
   const readRegistry = registry(false);

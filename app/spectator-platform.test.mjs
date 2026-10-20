@@ -117,7 +117,7 @@ test('draw commits only public geometry with CAS, idempotency, observer privacy 
   const backup=join(f.directory,'draw-layout-backup.sqlite'),destination=join(f.directory,'draw-layout-recovered.sqlite');
   await backupStore({sourcePath:f.path,destinationPath:backup,key:f.key,now:f.now});restoreStore({sourcePath:backup,destinationPath:destination,key:f.key,offline:true});
   const restored=f.open(destination),recovered=await restored.rooms.getView(f.host.roomCode,users[1]);
-  assert.equal(recovered.selfId,before.selfId);assert.deepEqual(recovered.game,drawn.view.game);assert.equal(recovered.game.ruleVersion,'friends-v4');
+  assert.equal(recovered.selfId,before.selfId);assert.deepEqual(recovered.game,drawn.view.game);assert.equal(recovered.game.ruleVersion,'friends-v5');
 });
 
 test('spectators chat under server identity, do not enter match history, and cannot keep an empty player room alive',async t=>{
@@ -154,7 +154,7 @@ test('only the waiting Rummikub host configures ghosts; settings reset readiness
   assert.throws(()=>f.action(2,'configure',{jokerConfig}),error=>error.code==='SPECTATOR_READ_ONLY');
   const configured=f.action(0,'configure',{jokerConfig}).view;assert.deepEqual(configured.jokerConfig,jokerConfig);assert.ok(configured.players.every(player=>!player.ready));
   assert.equal(f.rooms.exportSnapshot(f.host.roomCode).schemaVersion,4);f.start();
-  const started=f.rooms.getTrustedView(f.host.roomCode,users[0]);assert.equal(started.game.ruleVersion,'friends-v4');assert.equal(started.game.jokerCount,5);
+  const started=f.rooms.getTrustedView(f.host.roomCode,users[0]);assert.equal(started.game.ruleVersion,'friends-v5');assert.equal(started.game.jokerCount,5);
   assert.equal(started.game.tileCount,109);assert.deepEqual(started.game.jokerConfig,jokerConfig);
   assert.throws(()=>f.action(0,'configure',{jokerConfig:{...jokerConfig,normal:3}}),error=>error.code==='ROOM_LOCKED');
   assert.deepEqual(f.rooms.getTrustedView(f.host.roomCode,users[0]).game,started.game);f.rooms.close();
@@ -173,8 +173,8 @@ test('malformed, missing, over-limit and forged game settings are atomic failure
 test('custom ghost settings persist through SQLite, rematch, nine-scope restore and strict schema validation',async t=>{
   const f=await durableFixture(t);await f.join(1);const jokerConfig={normal:0,mirror:0,colorChange:0,double:0};
   await f.action(0,'configure',{jokerConfig});await f.start();const second=f.open(),current=await second.rooms.getView(f.host.roomCode,users[0]);
-  assert.equal(current.game.ruleVersion,'friends-v4');assert.equal(current.game.tileCount,104);assert.equal(current.game.jokerCount,0);
-  const saved=(await second.storage.read('rooms',f.host.view.roomId)).value.snapshot;assert.equal(saved.schemaVersion,8);
+  assert.equal(current.game.ruleVersion,'friends-v5');assert.equal(current.game.tileCount,104);assert.equal(current.game.jokerCount,0);
+  const saved=(await second.storage.read('rooms',f.host.view.roomId)).value.snapshot;assert.equal(saved.schemaVersion,20);
   for(const edit of [data=>data.jokerConfig.normal=9,data=>data.jokerConfig.normal=1,data=>{delete data.jokerConfig;},data=>data.schemaVersion=2]) {
     const bad=structuredClone(saved);edit(bad);assert.throws(()=>createRoomStore().importSnapshot(bad),error=>error.code==='INVALID_SNAPSHOT');
   }

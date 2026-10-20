@@ -1,7 +1,9 @@
-import { createDrawingCanvasView, DRAW_COLORS, DRAW_WIDTHS, DRAW_BATCH_MS } from './canvas-view.mjs';
+import { createDrawingCanvasView, DRAW_COLORS, DRAW_WIDTHS, DRAW_ERASER_WIDTHS, DRAW_BATCH_MS } from './canvas-view.mjs';
+import { createExcalidrawSurface } from './excalidraw-surface.mjs';
 import { createGameAudio } from '../../game-audio.mjs';
 import { mountRoomAudioControls } from '../../platform/room-audio-controls.mjs';
 import { mountRoomSettings } from '../../platform/room-settings.mjs';
+import { mountGameAppearancePicker } from '../../platform/game-appearance.mjs';
 import { mountGameViewport } from '../../platform/room-viewport.mjs';
 import { createRoomClock } from '../../platform/room-clock.mjs';
 import { gameViewport } from '../../game-viewport.mjs';
@@ -15,6 +17,8 @@ import { accountState, accountGeneration, onAccountChange, loadAccount, watchAcc
 import { roomHref } from '../../game-routing.mjs';
 import { entryStorageKey } from '../../entry-path.mjs';
 import { normalizeDrawAndGuessGuess } from './matcher.mjs';
+import { defaultDrawingCategoryIds } from './content-defaults.mjs';
+import { mountRoomVoiceControls } from '../../platform/room-voice-controls.mjs';
 import { createDrawingExperience } from './experience-ui.mjs';
 
 const node=(document,tag,className,text)=>{const item=document.createElement(tag);if(className)item.className=className;if(text!==undefined)item.textContent=text;return item;};
@@ -51,50 +55,56 @@ export function createDrawingGamePage({mode='room',root=globalThis.document?.get
   if(!root)throw new Error('找不到你画我猜页面。');
   const practice=mode==='practice';doc.documentElement.classList.add('drawing-root');doc.body.classList.add('drawing-body','in-game');
   root.innerHTML=`<div class="drawing-page">
-    <header class="drawing-header site-header room-header"><a href="./" ${practice?'data-practice-exit':''} class="drawing-brand">棋牌室 <small>你画我猜</small></a>
+    <div class="drawing-topbar"><header class="drawing-header site-header room-header"><a href="./" ${practice?'data-practice-exit':''} class="drawing-brand">棋牌室 <small>你画我猜</small></a>
       <nav class="drawing-header-actions room-toolbar" data-chat-notice-anchor><span id="drawing-connection" class="drawing-connection room-toolbar-status"></span><div class="room-toolbar-actions">
-      <button id="chat-toggle" class="chat-toggle room-toolbar-action" aria-controls="room-chat" aria-expanded="false" hidden>聊两句 <span id="chat-unread" class="chat-unread" hidden></span></button>
-      <button id="drawing-settings" class="room-toolbar-action" type="button">设置</button><button id="drawing-exit" class="room-toolbar-action room-toolbar-exit" type="button" aria-label="${practice?'返回大厅':'退出房间'}">×</button></div></nav></header>
+      <span id="drawing-voice-join-slot" hidden></span><button id="chat-toggle" class="chat-toggle room-toolbar-action" aria-controls="room-chat" aria-expanded="false" hidden>聊两句 <span id="chat-unread" class="chat-unread" hidden></span></button>
+      <button id="drawing-focus" class="room-toolbar-action" type="button" aria-label="专注画布" aria-pressed="false" title="专注画布" hidden>⛶</button><button id="drawing-settings" class="room-toolbar-action" type="button">设置</button><button id="drawing-exit" class="room-toolbar-action room-toolbar-exit" type="button" aria-label="${practice?'返回大厅':'退出房间'}">×</button></div></nav></header>
     <div class="drawing-stage-bar"><span id="drawing-room-code" class="drawing-room-code" hidden></span><strong id="drawing-stage" role="status">正在恢复…</strong><span id="drawing-hint" class="drawing-hint" hidden></span><span id="drawing-progress" role="status" hidden></span><span id="drawing-round"></span>
-      <span id="turn-clock" hidden><span id="turn-clock-time"></span><small id="turn-clock-action"></small></span></div>
+      <span id="turn-clock" hidden><span id="turn-clock-time"></span><small id="turn-clock-action"></small></span><button id="drawing-skip" type="button" class="drawing-skip" hidden>跳过</button></div></div><div id="drawing-players" class="drawing-players" aria-label="绘画顺序与分数"></div>
     <main class="drawing-main"><section class="drawing-canvas-panel" aria-label="共享画布" data-chat-dismiss-notices>
       <div id="drawing-canvas-slot" class="canvas-slot drawing-canvas-slot">
-      <div class="drawing-paper"><canvas id="drawing-canvas" width="1024" height="768" aria-label="画布，所有设备保持相同比例"></canvas><span id="drawing-empty" class="drawing-empty">从一笔开始。</span></div></div></section>
+      <div class="drawing-paper"><canvas id="drawing-canvas" width="1024" height="768" aria-label="画布，所有设备保持相同比例"></canvas><span id="drawing-empty" class="drawing-empty">从一笔开始。</span></div></div>
+
+      </section>
       <aside class="drawing-sidebar"><section id="drawing-gate" class="drawing-card"><h1>你画我猜</h1><p id="drawing-gate-text">正在核验账号…</p>
         <a id="drawing-login" hidden>登录并恢复</a><a id="drawing-reauth" class="account-reauth-link" hidden>去 Agora 验证账号</a><button id="drawing-recover" hidden>重新连接</button></section>
       <section id="drawing-waiting" class="drawing-card" hidden><h2>轮流画，大家一起猜。</h2><p id="drawing-waiting-text"></p>
         <div class="drawing-actions"><button id="drawing-ready" class="primary-button">准备好了</button><button id="drawing-start" class="primary-button">开始游戏</button><button id="drawing-role">改为观战</button><button id="drawing-waiting-copy">复制邀请</button></div>
         <p id="drawing-waiting-config"></p><button id="drawing-config-open">房间玩法设置</button><a href="./words">管理词库 →</a></section>
       <section id="drawing-choosing" class="drawing-card" hidden><h2>选一个，画给朋友看。</h2><div id="drawing-candidates" class="drawing-candidates"></div></section>
-      <section id="drawing-tools" class="drawing-tools" hidden><button id="drawing-acquire" class="primary-button">拿起画笔</button><div class="drawing-tool-heading"><button data-tool="pen" aria-pressed="true">画笔</button><button data-tool="eraser" aria-pressed="false">橡皮</button><button id="drawing-tools-toggle" aria-expanded="false" aria-controls="drawing-tool-panel">颜色 / 粗细</button></div>
-        <div id="drawing-tool-panel" hidden><div class="drawing-tool-row drawing-paint-controls">
-          <select id="drawing-color" aria-label="画笔颜色"></select><select id="drawing-width" aria-label="画笔粗细"><option value="4">细</option><option value="10" selected>中</option><option value="22">粗</option></select></div>
-          <div id="drawing-palette" class="drawing-palette"></div></div><div class="drawing-tool-row"><button id="drawing-undo" title="撤销最后一笔" aria-label="撤销最后一笔">撤销</button><button id="drawing-redo" title="恢复刚刚撤销的一笔" aria-label="恢复刚刚撤销的一笔">恢复</button><button id="drawing-clear" title="清空整张画布，重新画" aria-label="清空整张画布，重新画">清空</button></div>
-      </section>
-      <form id="drawing-guess-form" class="drawing-guess-form" hidden><label for="drawing-guess-input">输入答案</label><div class="drawing-guess-row"><input id="drawing-guess-input" maxlength="128" autocomplete="off" spellcheck="false" enterkeyhint="send" aria-describedby="drawing-guess-feedback"><button id="drawing-guess-send" class="primary-button" type="submit">猜！</button><button id="drawing-hide-keyboard" type="button" aria-label="收起键盘">收起</button></div><p id="drawing-guess-feedback" role="status" aria-live="polite"></p></form>
-      <section id="drawing-reveal" class="drawing-card" hidden><p>本题答案</p><h2 id="drawing-answer"></h2><p id="drawing-aliases"></p><p id="drawing-turn-result"></p></section>
+
+      <section id="drawing-reveal" class="drawing-card" hidden><p>本题答案</p><h2 id="drawing-answer"></h2><p id="drawing-aliases"></p><p id="drawing-turn-result"></p><div id="drawing-guesses" class="drawing-revealed-guesses" aria-label="大家猜过的答案"></div></section>
       <section id="drawing-result" class="drawing-card" hidden><h2 id="drawing-result-title"></h2><ol id="drawing-results"></ol><button id="drawing-rematch" class="primary-button">再来一局</button></section>
       <section id="drawing-recovery" class="drawing-recovery" hidden><p id="drawing-recovery-text" role="status"></p><div class="drawing-actions"><button id="drawing-refresh">查看结果</button><button id="drawing-retry">重试原操作</button></div></section>
-      <span id="drawing-paint-status" class="drawing-paint-status" role="status">已确认的画布会自动保存。</span><div id="drawing-players" class="drawing-players" aria-label="绘画顺序与分数"></div><p id="drawing-feedback" class="drawing-feedback" role="status"></p></aside></main>
-    <footer class="drawing-footer"><span id="drawing-save-note"></span></footer>
+      </aside></main>
+    <div class="drawing-bottom-bar">
+      <section id="drawing-tools" class="drawing-tools" hidden><div class="drawing-tool-heading"><button data-tool="pen" aria-pressed="true" aria-label="画笔" title="画笔">✎</button><button data-tool="eraser" aria-pressed="false" aria-label="橡皮" title="橡皮">▱</button><button id="drawing-tools-toggle" aria-expanded="false" aria-controls="drawing-tool-panel">颜色 / 粗细</button></div>
+        <div id="drawing-tool-panel" hidden><div class="drawing-tool-row drawing-paint-controls">
+          <select id="drawing-color" aria-label="画笔颜色"></select><select id="drawing-width" aria-label="画笔粗细"><option value="4">细</option><option value="10" selected>中</option><option value="22">粗</option></select></div>
+          <div id="drawing-palette" class="drawing-palette"></div></div><div class="drawing-tool-row"><button id="drawing-undo" title="撤销最后一笔" aria-label="撤销最后一笔">↶</button><button id="drawing-redo" title="恢复刚刚撤销的一笔" aria-label="恢复刚刚撤销的一笔">↷</button><button id="drawing-clear" title="清空整张画布，重新画" aria-label="清空整张画布，重新画">↻</button></div>
+      </section>
+      <form id="drawing-guess-form" class="drawing-guess-form" hidden><label for="drawing-guess-input">输入答案</label><div class="drawing-guess-row"><input id="drawing-guess-input" maxlength="128" autocomplete="off" spellcheck="false" enterkeyhint="send" aria-describedby="drawing-guess-feedback"><button id="drawing-guess-send" class="primary-button" type="submit">猜！</button></div><p id="drawing-guess-feedback" role="status" aria-live="polite"></p></form>
+      <span id="drawing-voice-microphone-slot" hidden></span></div>
+    <footer class="drawing-footer"><span id="drawing-paint-status" class="drawing-paint-status" role="status">已确认的画布会自动保存。</span><span id="drawing-voice-status-slot"></span><p id="drawing-feedback" class="drawing-feedback" role="status"></p><span id="drawing-save-note"></span></footer>
     <dialog id="drawing-settings-dialog" class="drawing-dialog"><div class="dialog-heading"><h2>设置</h2><button id="drawing-settings-close" aria-label="关闭设置">×</button></div>
       <div class="game-settings-body"><section><h3>声音与玩法</h3><div class="game-settings-controls"><button id="sound-toggle">点按启声</button><button id="drawing-rules-open">玩法说明</button></div>
       <div class="sound-settings"><label for="sound-volume">音效音量</label><input id="sound-volume" type="range" min="0" max="100" step="5" value="45"><select id="sound-preview-kind" aria-label="音效种类"><option value="turn">轮到你画</option><option value="commit">猜中</option><option value="restore">揭晓</option><option value="win">整局结束</option><option value="chat">发言</option><option value="invalid">失败</option></select><button id="sound-preview">试听</button><span id="sound-preview-status" role="status"></span></div></section>
-      <section><h3>${practice?'本机练画':'房间安排'}</h3><div class="room-menu-actions"><p ${practice?'':'hidden'}>自由练画只练画笔，不判答案、不计战绩，也没有联网聊天。图保存在这台设备。</p>
+      <section><h3>${practice?'本机练画':'房间安排'}</h3><div id="drawing-voice-slot" hidden></div><div class="room-menu-actions" data-app-shell-tools-slot><p ${practice?'':'hidden'}>自由练画只练画笔，不判答案、不计战绩，也没有联网聊天。图保存在这台设备。</p>
         <p id="chat-legacy-note" hidden>当前本机预览不提供联网聊天；正式登录后的朋友房间可聊天。</p><button id="drawing-roster-open" ${practice?'hidden':''}>成员与分数</button><a href="./" ${practice?'data-practice-exit':''}>${practice?'返回大厅':'返回大厅，保留席位'}</a><button id="drawing-copy" ${practice?'hidden':''}>复制邀请</button><button id="drawing-pause" ${practice?'hidden':''}>同意暂停</button>
         <button id="drawing-resume" hidden>继续对局</button><button id="drawing-host" hidden>接任房主</button><label id="drawing-transfer-label" hidden>转交房主<select id="drawing-next-host"></select><button id="drawing-transfer">转交</button></label>
         <button id="drawing-logout" ${practice?'hidden':''}>退出棋牌室登录</button><p id="drawing-menu-status" role="status"></p></div></section></div></dialog>
-    <dialog id="drawing-rules-dialog" class="drawing-dialog"><div class="dialog-heading"><h2>经典你画我猜</h2><button data-close="drawing-rules-dialog" aria-label="关闭规则">×</button></div><div class="drawing-dialog-body"><p>2～8人，每人轮流画，其他人同时猜。默认每人2题，选词15秒，绘画120秒，揭晓8秒。</p><p>选一个词后用画表达。不能直接写答案、拼音或通过聊天透题。所有猜者答对，或时间到，就揭晓。</p><p>首次猜中得100～200分，越早猜中分越多。每有一人猜中，画者得25分。同题只计一次；相同总分并列，全局无人猜中则没有赢家。</p><p>猜词只匹配正文及明确别名。答案请用猜词框；普通聊天不判答案。观众可看图和聊天，不能画或猜。</p><p>画者可使用画笔、橡皮、颜色、粗细。撤销移除最后一笔；恢复放回刚刚撤销的一笔；清空清除整张画布及撤销记录，可重新画。断线未确认笔迹丢弃，恢复先取已保存画布。换设备需明确接管。</p><p>返回大厅保留席位；进行中玩家明确退出房间会中止本局。暂停须全体玩家同意，继续使用剩余时间。</p></div></dialog>
+    <dialog id="drawing-rules-dialog" class="drawing-dialog"><div class="dialog-heading"><h2>经典你画我猜</h2><button data-close="drawing-rules-dialog" aria-label="关闭规则">×</button></div><div class="drawing-dialog-body"><p>2～8人，每人轮流画，其他人同时猜。默认每人2题，选词15秒，绘画120秒，揭晓8秒。</p><p>选一个词后用画表达。不能直接写答案、拼音或通过聊天透题。所有猜者答对，或时间到，就揭晓。</p><p>首次猜中得100～200分，越早猜中分越多。每有一人猜中，画者得25分。同题只计一次；相同总分并列，全局无人猜中则没有赢家。</p><p>猜词只匹配正文及明确别名。答案请用猜词框；普通聊天不判答案。观众可看图和聊天，不能画或猜。</p><p>画者可使用画笔、橡皮、颜色、粗细。撤销移除最后一笔；恢复放回刚刚撤销的一笔；清空清除整张画布及撤销记录，可重新画。断线未确认笔迹丢弃，恢复先取已保存画布。换设备直接落笔接管，打开页面不会接管画笔。</p><p>返回大厅保留席位；进行中玩家明确退出房间会中止本局。暂停须全体玩家同意，继续使用剩余时间。</p></div></dialog>
     <dialog id="drawing-leave-dialog" class="drawing-dialog"><h2>${practice?'返回大厅？':'退出房间？'}</h2><p id="drawing-leave-note"></p><p id="drawing-leave-status" role="status"></p><div class="drawing-actions"><button data-close="drawing-leave-dialog">继续留在这里</button><button id="drawing-leave-confirm" class="primary-button">${practice?'返回大厅':'确认退出'}</button></div></dialog>
     <dialog id="drawing-clear-dialog" class="drawing-dialog"><h2>清空这张画布？</h2><p>清除已确认的笔迹和撤销记录。题目、分数与时间保持。</p><div class="drawing-actions"><button data-close="drawing-clear-dialog">继续画</button><button id="drawing-clear-confirm">确认清空</button></div></dialog>
     <dialog id="drawing-roster-dialog" class="drawing-dialog"><div class="dialog-heading"><h2>绘画顺序与分数</h2><button data-close="drawing-roster-dialog" aria-label="关闭成员">×</button></div><div id="drawing-roster-full" class="drawing-dialog-body"></div></dialog>
-    <dialog id="drawing-config-dialog" class="drawing-dialog"><div class="dialog-heading"><h2>房间玩法设置</h2><button data-close="drawing-config-dialog" aria-label="关闭配置">×</button></div><div class="drawing-dialog-body"><label>每人绘画次数<select id="drawing-rounds"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option></select></label><label>绘画秒数<input id="drawing-seconds" type="number" min="30" max="600" value="120"></label><label>发布词包<select id="drawing-pack"></select></label><p>采用确定发布版本。词包更新不会改变已开局题目。</p><div id="drawing-config-content"></div><p id="drawing-config-status" role="status"></p><button id="drawing-config-save" class="primary-button">保存设置，重新准备</button></div></dialog>
+    <dialog id="drawing-config-dialog" class="drawing-dialog"><div class="dialog-heading"><h2>房间玩法设置</h2><button data-close="drawing-config-dialog" aria-label="关闭配置">×</button></div><div class="drawing-dialog-body"><label>每人绘画次数<select id="drawing-rounds"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option></select></label><label>每题候选词数量<select id="drawing-candidate-count"><option value="2">2 个</option><option value="3" selected>3 个</option><option value="4">4 个</option><option value="5">5 个</option><option value="6">6 个</option><option value="7">7 个</option><option value="8">8 个</option><option value="9">9 个</option><option value="10">10 个</option></select></label><label>绘画秒数<select id="drawing-seconds"><option value="30">30 秒</option><option value="45">45 秒</option><option value="60">60 秒</option><option value="90">90 秒</option><option value="120" selected>120 秒</option><option value="150">150 秒</option><option value="180">180 秒</option><option value="210">210 秒</option><option value="240">240 秒</option><option value="270">270 秒</option><option value="300">300 秒</option><option value="330">330 秒</option><option value="360">360 秒</option><option value="390">390 秒</option><option value="420">420 秒</option><option value="450">450 秒</option><option value="480">480 秒</option><option value="510">510 秒</option><option value="540">540 秒</option><option value="570">570 秒</option><option value="600">600 秒</option></select></label><label>发布词包<select id="drawing-pack"></select></label><div class="drawing-config-version"><span id="drawing-pack-version"></span><button id="drawing-use-latest" type="button" hidden>采用最新发布版</button></div><p>采用确定发布版本。词包更新不会改变已开局题目。</p><div id="drawing-config-content"></div><p id="drawing-config-status" role="status"></p><button id="drawing-config-save" class="primary-button">保存设置，重新准备</button></div></dialog>
     ${practice?'':roomChatMarkup()}</div>`;
   const $=id=>doc.getElementById(id),audio=createGameAudio(),listeners=[];
   const experience=createDrawingExperience({root,document:doc,window:win}),rosterSignatures=new WeakMap();
   const listen=(target,type,handler,options)=>{target?.addEventListener?.(type,handler,options);listeners.push(()=>target?.removeEventListener?.(type,handler,options));};
+  let voiceControls=null,voiceState=null;
   let view=null,connection=practice?'online':'offline',busy=false,leaving=false,destroyed=false,baseline=true,scope=null,composing=false,inputSerial=0,guessFeedback='',guessSubmission=null;
-  let paintState={},draftStorage,configEpoch=0,configRelease=null,packs=[];try{draftStorage=win.sessionStorage;}catch{}
+  let paintState={},draftStorage,configEpoch=0,configRelease=null,packs=[],focused=false;try{draftStorage=win.sessionStorage;}catch{}
   const draftKey=()=>practice?null:drawingGuessDraftKey(scope);
   function saveDraft(){try{const key=draftKey();if(key)draftStorage?.setItem(key,$('drawing-guess-input').value);}catch{}}
   function setScope(next) {
@@ -111,47 +121,77 @@ export function createDrawingGamePage({mode='room',root=globalThis.document?.get
     phase:view?.phase??'waiting',stage:view?.game?.stage??'choosing',drawer:practice||view?.selfId===view?.game?.turnPlayerId,
     enabled:allow&&!clock.display().expired&&view?.phase==='playing'});
   const paint=createDrawingCanvasView({canvas:$('drawing-canvas'),slot:$('drawing-canvas-slot'),empty:$('drawing-empty'),window:win,document:doc,
+    surfaceFactory:doc.defaultView?.HTMLCanvasElement?createExcalidrawSurface:undefined,
     batchMs:practice?DRAW_BATCH_MS:1000,
-    practice,request:canvasRequest,onStatus:text=>{$('drawing-paint-status').textContent=text;},onError:onCanvasError,
-    onState:value=>{paintState=value;renderTools();}});
+    fitPaper:geometry=>{root.style.setProperty('--drawing-paper-aspect',`${geometry.width} / ${geometry.height}`);return undefined;},
+    practice,request:canvasRequest,onStatus:text=>{$('drawing-paint-status').textContent=text;},onError:error=>{if(focused)setFocused(false);onCanvasError(error);},
+    onState:value=>{
+      const wasLoaded=paintState.loaded;paintState=value;
+      $('drawing-empty').textContent=value.loaded?'从一笔开始。':'正在同步画布…';
+      if(!value.loaded)$('drawing-paint-status').textContent='正在同步画布。';
+      else if(!wasLoaded)$('drawing-paint-status').textContent=practice||view?.selfId===view?.game?.turnPlayerId?'直接落笔，确认后自动保存。':'画布已同步。';
+      renderTools();if(doc.defaultView?.HTMLCanvasElement&&value.loaded)syncColors();}});
   function renderTools() {
-    $('drawing-acquire').hidden=paintState.ready;
-    $('drawing-acquire').textContent=paintState.pointCount?'继续绘画 / 接管':'拿起画笔';
-    $('drawing-acquire').disabled=!paintState.canAcquire;
-    for(const name of ['undo','redo','clear'])$('drawing-'+name).disabled=!paintState.ready||paintState.busy||paintState.pending>0;
+    for(const name of ['undo','redo','clear'])$('drawing-'+name).disabled=!paintState.canEdit;
+    $('drawing-skip').disabled=!available()||!view?.game?.canSkip;
   }
+  function setFocused(value){
+    focused=!!value;paint.finishPointer();closeTools();root.classList.toggle('drawing-focus',focused);
+    $('drawing-focus').setAttribute('aria-pressed',String(focused));$('drawing-focus').title=focused?'退出专注':'专注画布';
+    $('drawing-focus').setAttribute('aria-label',focused?'退出专注画布':'专注画布');fit();
+  }
+  listen($('drawing-focus'),'click',()=>setFocused(!focused));
+  listen(doc,'keydown',event=>{if(event.key==='Escape'&&focused&&$('drawing-tools-toggle').getAttribute('aria-expanded')!=='true'&&!root.querySelector('dialog[open]'))setFocused(false);});
   for(const [color,name]of DRAW_COLORS){const option=node(doc,'option','',name+'色');option.value=color;$('drawing-color').append(option);
     const button=node(doc,'button','drawing-color-chip');button.type='button';button.style.setProperty('--paint-color',color);button.dataset.color=color;button.title=name+'色';button.setAttribute('aria-label',name+'色画笔');button.setAttribute('aria-pressed',String(color==='#182a33'));
     listen(button,'click',()=>{paint.setColor(color);$('drawing-color').value=color;syncColors();});$('drawing-palette').append(button);}
   $('drawing-color').value='#182a33';
   function syncColors(){for(const item of $('drawing-palette').children)item.setAttribute('aria-pressed',String(item.dataset.color===$('drawing-color').value));
-    const color=DRAW_COLORS.find(([value])=>value===$('drawing-color').value)?.[1]??'黑';
-    const width=$('drawing-width').options?.[$('drawing-width').selectedIndex]?.textContent??'中';
-    $('drawing-tools-toggle').textContent=`${color} · ${width}`;$('drawing-tools-toggle').style.setProperty('--paint-color',$('drawing-color').value);}
+    const color=DRAW_COLORS.find(([value])=>value===paint.brushStyle().color)?.[1]??'自选色';
+    const style=paint.brushStyle(),eraser=style.tool==='eraser',widths=eraser?DRAW_ERASER_WIDTHS:DRAW_WIDTHS;
+    if([...$('drawing-width').children].map(option=>option.value).join()!==widths.join()){
+      $('drawing-width').replaceChildren(...widths.map((value,index)=>{const option=node(doc,'option','',['细','中','粗'][index]);option.value=String(value);return option;}));}
+    $('drawing-width').value=String(style.width);$('drawing-width').setAttribute('aria-label',eraser?'橡皮粗细':'画笔粗细');
+    $('drawing-color').hidden=eraser;$('drawing-palette').hidden=eraser;
+    const width=['细','中','粗'][widths.indexOf(style.width)]??`${style.width}px`;
+    $('drawing-tools-toggle').textContent=`${eraser?'橡皮':color} · ${width}`;
+    $('drawing-tools-toggle').setAttribute('aria-label',eraser?'橡皮粗细':'画笔颜色与粗细');
+    $('drawing-tools-toggle').style.setProperty('--paint-color',eraser?'#ffffff':$('drawing-color').value);}
   listen($('drawing-color'),'change',()=>{paint.setColor($('drawing-color').value);syncColors();});
   listen($('drawing-width'),'change',()=>{paint.setWidth(Number($('drawing-width').value));syncColors();});syncColors();
-  for(const item of root.querySelectorAll('[data-tool]'))listen(item,'click',()=>{paint.setTool(item.dataset.tool);for(const button of root.querySelectorAll('[data-tool]'))button.setAttribute('aria-pressed',String(button===item));});
-  listen($('drawing-acquire'),'click',()=>paint.acquire());
-  function closeTools(){ $('drawing-tool-panel').hidden=true;$('drawing-tools-toggle').setAttribute('aria-expanded','false'); }
-  listen($('drawing-tools-toggle'),'click',()=>{paint.finishPointer();$('drawing-tool-panel').hidden=!$('drawing-tool-panel').hidden;$('drawing-tools-toggle').setAttribute('aria-expanded',String(!$('drawing-tool-panel').hidden));});
-  listen($('drawing-canvas'),'pointerdown',closeTools,{capture:true});
-  listen(doc,'keydown',event=>{if(event.key==='Escape'&&!$('drawing-tool-panel').hidden){closeTools();$('drawing-tools-toggle').focus();}});
+  for(const item of root.querySelectorAll('[data-tool]'))listen(item,'click',()=>{paint.finishPointer();closeTools();paint.setTool(item.dataset.tool);for(const button of root.querySelectorAll('[data-tool]'))button.setAttribute('aria-pressed',String(button===item));syncColors();});
+  function closeTools(){ paint.setProperties(false);root.classList.remove('drawing-properties-open');$('drawing-tool-panel').hidden=true;$('drawing-tools-toggle').setAttribute('aria-expanded','false'); }
+  listen($('drawing-tools-toggle'),'click',()=>{
+    paint.finishPointer();const native=!!doc.defaultView?.HTMLCanvasElement&&paint.brushStyle().tool==='pen';
+    const opened=$('drawing-tools-toggle').getAttribute('aria-expanded')==='true';closeTools();
+    if(!opened){if(native){root.classList.add('drawing-properties-open');fit();paint.setProperties(true);}else $('drawing-tool-panel').hidden=false;$('drawing-tools-toggle').setAttribute('aria-expanded','true');}
+  });
+  listen($('drawing-canvas-slot'),'pointerdown',event=>{if(event.target.tagName==='CANVAS')closeTools();},{capture:true});
+  listen(doc,'keydown',event=>{if(event.key==='Escape'&&$('drawing-tools-toggle').getAttribute('aria-expanded')==='true'){closeTools();$('drawing-tools-toggle').focus();}});
   for(const name of ['undo','redo'])listen($('drawing-'+name),'click',async()=>{paint.finishPointer();if(await paint[name]())audio.play(name==='redo'?'restore':'undo',{gesture:true});});
   const open=id=>{paint.finishPointer();$('drawing-guess-input').blur();if(!$(id).open)$(id).showModal();};
   for(const button of root.querySelectorAll('[data-close]'))listen(button,'click',()=>$(button.dataset.close).close());
   listen($('drawing-clear'),'click',()=>open('drawing-clear-dialog'));
   listen($('drawing-clear-confirm'),'click',async()=>{$('drawing-clear-dialog').close();if(await paint.clear())audio.play('restore',{gesture:true});});
   function renderRoster(target,full=false) {
-    const players=practice?[]:orderedRoomPlayers(view);
-    const signature=JSON.stringify([full,view?.selfId,view?.phase,view?.game?.turnPlayerId,players,view?.game?.players,view?.game?.guessedPlayerIds,view?.spectators,view?.selfRole]);
+    const players=practice?[]:[...orderedRoomPlayers(view),...(full&&voiceControls?(view?.spectators??[]).map(p=>({...p,voiceSpectator:true})):[])];
+    const signature=JSON.stringify([!!voiceControls,full,view?.selfId,view?.phase,view?.game?.turnPlayerId,players,view?.game?.players,view?.game?.guessedPlayerIds,view?.spectators,view?.selfRole]);
     if(rosterSignatures.get(target)===signature)return;rosterSignatures.set(target,signature);
     target.replaceChildren(...players.map(player=>{const row=node(doc,'div',`drawing-player${player.id===view?.game?.turnPlayerId?' current':''}${player.id===view?.selfId?' self':''}`);
       row.dataset.playerId=player.id;
       const name=node(doc,'strong','',`${player.turnOrder??''} ${player.name}${player.id===view.selfId?' · 我':''}`.trim());name.title=player.name;
       const score=view?.game?.players.find(p=>p.id===player.id)?.score??0;
       const gain=node(doc,'span','drawing-score-gain');gain.hidden=true;
-      row.append(name,gain,node(doc,'small','',view.phase==='waiting'?(player.ready?'已准备':'未准备'):`${score}分${view.game?.guessedPlayerIds.includes(player.id)?' · 猜中了':''}`));return row;}));
+      row.append(name,gain,node(doc,'small','',player.voiceSpectator?'观众':view.phase==='waiting'?(player.ready?'已准备':'未准备'):`${score}分${view.game?.guessedPlayerIds.includes(player.id)?' · 猜中了':''}`));
+      if(voiceControls&&player.id!==view.selfId){const mute=node(doc,'button','room-voice-indicator');mute.type='button';mute.dataset.voicePlayer=player.id;row.append(mute);}return row;}));
+    syncVoiceRoster();
     if(full){target.append(node(doc,'p','',`${view?.spectators?.length??0} 位观众${view?.selfRole==='spectator'?' · 你在观战':''}`));}
+  }
+  listen(root,'click',event=>{const button=event.target.closest?.('[data-voice-player]');if(!button||!voiceControls)return;const playerId=button.dataset.voicePlayer,peer=voiceState?.peers.find(p=>p.playerId===playerId);voiceControls.voice.mute(playerId,!peer?.muted);});
+  function syncVoiceRoster(){
+    for(const button of root.querySelectorAll('[data-voice-player]')){const peer=voiceState?.peers.find(p=>p.playerId===button.dataset.voicePlayer);
+      button.hidden=!peer;button.textContent=peer?.muted?'已静音':peer?.speaking?'说话中':'语音';button.setAttribute('aria-pressed',String(!!peer?.muted));
+      button.setAttribute('aria-label',peer?.muted?'恢复收听这位朋友':'静音这位朋友');button.classList.toggle('speaking',!!peer?.speaking&&!peer?.muted);}
   }
   function render() {
     if(destroyed)return;
@@ -159,11 +199,12 @@ export function createDrawingGamePage({mode='room',root=globalThis.document?.get
     $('drawing-gate').hidden=!!view;$('drawing-waiting').hidden=view?.phase!=='waiting';
     $('drawing-choosing').hidden=view?.phase!=='playing'||game?.stage!=='choosing'||!drawer;
     $('drawing-tools').hidden=!practice&&(!game||game.stage!=='drawing'||!drawer||terminal);
+    if($('drawing-tools').hidden&&$('drawing-tools-toggle').getAttribute('aria-expanded')==='true')closeTools();
     $('drawing-guess-form').hidden=practice||!game||game.stage!=='drawing'||view.selfRole==='spectator'||drawer||terminal;
     $('drawing-guess-send').disabled=!available()||!game?.canGuess||clock.display().expired||composing;
     $('drawing-guess-input').disabled=!!view&&view.phase==='paused';
-    $('drawing-guess-feedback').textContent=guessFeedback||(game?.guessedPlayerIds?.includes(view?.selfId)?'你猜中了，等本题揭晓。':'只有你看见提交的答案。');
-    $('drawing-reveal').hidden=game?.stage!=='reveal'||terminal;
+    $('drawing-guess-feedback').textContent=guessFeedback||(game?.guessedPlayerIds?.includes(view?.selfId)?'你猜中了，等本题揭晓。':'猜测暂时保密，揭晓时大家一起看。');
+    $('drawing-reveal').hidden=!['reveal','finished'].includes(game?.stage)||view?.phase==='aborted';
     $('drawing-result').hidden=!terminal;
     $('drawing-stage').textContent=practice?'自由练画 · 不判答案，不计分':drawingStageText(view);
     $('drawing-stage').title=$('drawing-stage').textContent;
@@ -174,7 +215,12 @@ export function createDrawingGamePage({mode='room',root=globalThis.document?.get
     $('drawing-hint').classList.toggle('private-word',!!drawer&&game?.stage==='drawing');
     $('drawing-progress').hidden=practice||game?.stage!=='drawing';
     $('drawing-progress').textContent=!practice&&game?.stage==='drawing'?`${game.guessedPlayerIds.length}/${game.players.length-1}人猜中`:'';
+    $('drawing-skip').hidden=practice||!game?.canSkip;
+    $('drawing-focus').hidden=!practice&&(!drawer||game?.stage!=='drawing'||view?.phase!=='playing');
+    if(focused&&($('drawing-focus').hidden||!available()))setFocused(false);
     root.classList.toggle('drawing-is-drawer',!!drawer);root.classList.toggle('drawing-is-practice',practice);
+    root.classList.toggle('drawing-is-revealing',!$('drawing-reveal').hidden);
+    root.classList.toggle('drawing-is-finished',game?.stage==='finished');
     if(view?.phase==='waiting'){
       const me=view.players.find(p=>p.id===view.selfId),observer=view.selfRole==='spectator';
       $('drawing-waiting-text').textContent=`${view.players.length}/8位玩家 · ${view.spectators?.length??0}位观众`;
@@ -182,18 +228,28 @@ export function createDrawingGamePage({mode='room',root=globalThis.document?.get
       $('drawing-start').hidden=view.hostId!==view.selfId;$('drawing-start').disabled=!available()||view.players.length<2||!view.players.every(p=>p.ready)||!view.drawConfig?.contentSelection;
       $('drawing-role').textContent=observer?'加入对局':'改为观战';$('drawing-role').disabled=!available();
       const config=view.drawConfig;
-      $('drawing-waiting-config').textContent=config?`每人${config.rounds}题 · 绘画${config.drawingSeconds}秒 · ${config.contentSelection?'已选择发布词库':'房主需先选择词库'}`:'';
+      $('drawing-waiting-config').textContent=config?`每人${config.rounds}题 · 每题${config.candidateCount??3}个候选 · 绘画${config.drawingSeconds}秒 · ${config.contentSelection?'已选择发布词库':'房主需先选择词库'}`:'';
       $('drawing-config-open').disabled=!available()||view.hostId!==view.selfId;
     }
     const candidates=game?.candidates??[];
     if(!$('drawing-choosing').hidden){$('drawing-candidates').replaceChildren(...candidates.map(word=>{const button=node(doc,'button','drawing-candidate',word.answer);button.type='button';button.disabled=!available()||!game.canChoose;
       button.append(node(doc,'small','',word.categoryName));listen(button,'click',()=>act('choose',{matchId:view.matchId,turnId:game.turnId,candidateId:word.id}));return button;}));}
     else $('drawing-candidates').replaceChildren();
-    if(game?.word&&game.stage==='reveal'){$('drawing-answer').textContent=game.word.answer;$('drawing-aliases').textContent=game.word.aliases.length?'认可别名：'+game.word.aliases.join('、'):'';
-      $('drawing-turn-result').textContent=`${game.guessedPlayerIds.length}人猜中 · 画者+${game.turnResult?.drawerScore??0}分`;}
+    if(game?.word&&!$('drawing-reveal').hidden){$('drawing-answer').textContent=game.word.answer;$('drawing-aliases').textContent=game.word.aliases.length?'认可别名：'+game.word.aliases.join('、'):'';
+      $('drawing-turn-result').textContent=`${game.turnResult?.reason==='skipped'?'画者跳过此题 · ':''}${game.guessedPlayerIds.length}人猜中 · 画者+${game.turnResult?.drawerScore??0}分`;
+      $('drawing-guesses').replaceChildren(...(game.turnResult?.guesses??[]).map(guesser=>{
+        const row=node(doc,'div','drawing-guesser'),name=view.players.find(player=>player.id===guesser.playerId)?.name??'离席玩家';
+        row.append(node(doc,'strong','',name));
+        const answers=node(doc,'p','drawing-guesser-answers');
+        if(!guesser.attempts.length)answers.textContent='暂无猜测记录';
+        for(const attempt of guesser.attempts)answers.append(node(doc,'span',attempt.correct?'drawing-guess-correct':'',attempt.text+(attempt.correct?' ✓':'')));
+        row.append(answers);return row;
+      }));
+    } else {$('drawing-answer').textContent='';$('drawing-aliases').textContent='';$('drawing-turn-result').textContent='';$('drawing-guesses').replaceChildren();}
     if(terminal){$('drawing-result-title').textContent=view.phase==='aborted'?'本局中止，不计输赢':game.result.winnerIds.length?'本局成绩':'本局无人猜中';
       $('drawing-results').replaceChildren(...(game?.result?.scores??game?.players?.map(p=>({playerId:p.id,score:p.score,rank:null}))??[]).map(score=>{const name=view.players.find(p=>p.id===score.playerId)?.name??'离席玩家';return node(doc,'li','',`${score.rank===null?'':score.rank+'名 · '}${name} · ${score.score}分`);}));
       $('drawing-rematch').disabled=!available()||view.hostId!==view.selfId;}
+    voiceControls?.setMembers([...(view?.players??[]),...(view?.spectators??[])]);
     renderRoster($('drawing-players'));if($('drawing-roster-dialog').open)renderRoster($('drawing-roster-full'),true);
     $('drawing-connection').textContent=practice?'仅本机':`${connection==='online'?'已连接':'连接恢复中'}${view?.roomCode?' · '+view.roomCode:''}`;
     const showRoomCode=!practice&&view?.phase==='waiting'&&!!view.roomCode;
@@ -210,19 +266,45 @@ export function createDrawingGamePage({mode='room',root=globalThis.document?.get
     const chosen=$('drawing-next-host').value;$('drawing-next-host').replaceChildren(...(view?.players??[]).filter(p=>p.id!==view.selfId).map(p=>{const option=node(doc,'option','',p.name);option.value=p.id;return option;}));
     if([...$('drawing-next-host').options].some(option=>option.value===chosen))$('drawing-next-host').value=chosen;
     $('drawing-save-note').textContent=practice?(view?.storageAvailable?'本机自由练画 · 自动保存':'仅保留本次窗口 · 浏览器不允许保存'):view?.selfRole==='spectator'?'观战 · 只读画布':'确认后自动保存';
-    const unknown=!!getPending(),storage=!getStorageReady();$('drawing-recovery').hidden=!unknown&&!storage;
+    const unknown=!busy&&!!getPending(),storage=!getStorageReady();$('drawing-recovery').hidden=!unknown&&!storage;
     $('drawing-recovery-text').textContent=storage?'浏览器无法保存操作，请允许本站存储后继续。':'上一操作尚未确认。先查看结果；重试保留原编号，不重复计分。';
     $('drawing-retry').hidden=!unknown;$('drawing-retry').disabled=!active()||busy;$('drawing-refresh').disabled=busy;
     paint.setContext(canvasContext());renderTools();fit();
   }
-  function fit(){const frame=gameViewport({width:win.innerWidth,height:win.innerHeight,visual:win.visualViewport,
-    editing:['INPUT','TEXTAREA','SELECT'].includes(doc.activeElement?.tagName)});
+  let keyboardWidth=null;
+  function fit(){
+    const editing=['INPUT','TEXTAREA','SELECT'].includes(doc.activeElement?.tagName),visual=win.visualViewport;
+    const normalScale=!visual||Math.abs((visual.scale??1)-1)<.01;
+    let frame=gameViewport({width:win.innerWidth,height:win.innerHeight,visual,editing});
+    const compressed=frame.height<win.innerHeight*.78;
+    if(normalScale&&editing&&compressed)keyboardWidth=frame.width;
+    // WebKit can retain its keyboard-sized visual viewport after blur without
+    // another resize event. Only repair a compression observed while editing,
+    // at the same width and normal scale; genuine zoom/rotation stays intact.
+    if(normalScale&&!editing&&keyboardWidth!==null&&Math.abs(keyboardWidth-frame.width)<4&&compressed)
+      frame=gameViewport({width:win.innerWidth,height:win.innerHeight,editing:false});
+    if(normalScale&&!editing&&(!compressed||keyboardWidth!==null&&Math.abs(keyboardWidth-frame.width)>=4))keyboardWidth=null;
     for(const [name,value]of Object.entries({width:frame.width,height:frame.height,top:frame.top,left:frame.left}))root.style.setProperty('--drawing-'+name,`${value}px`);
-    root.classList.toggle('drawing-keyboard-open',frame.height<win.innerHeight*.78&&doc.activeElement?.tagName==='INPUT');
+    const keyboardOpen=normalScale&&compressed&&doc.activeElement===$('drawing-guess-input');
+    root.classList.toggle('drawing-keyboard-open',keyboardOpen);
+    root.classList.toggle('drawing-keyboard-compact',keyboardOpen&&frame.height<360);
+    const propertiesKeyboard=normalScale&&compressed&&editing&&!!doc.activeElement?.closest?.('.drawing-editor');
+    root.classList.toggle('drawing-properties-keyboard',propertiesKeyboard);
+    const bar=root.querySelector('.drawing-bottom-bar')?.getBoundingClientRect?.();
+    if(bar)root.style.setProperty('--drawing-properties-bottom',`${Math.max(8,win.innerHeight-bar.top+8)}px`);
+    if(propertiesKeyboard){
+      const field=doc.activeElement,popup=field.closest('[data-radix-popper-content-wrapper]');
+      if(popup){const box=popup.getBoundingClientRect(),input=field.getBoundingClientRect();
+        if(input.bottom>box.bottom-8)popup.scrollTop+=input.bottom-box.bottom+8;
+        else if(input.top<box.top+8)popup.scrollTop-=box.top-input.top+8;}
+    }
     paint.fit();}
-  const viewport=mountGameViewport({window:win,document:doc,sync:fit,recoveryDelays:[0,100,350],onRecover:()=>paint.finishPointer()});
+  // Viewport recovery only refits the same logical paper. Hiding, losing the
+  // writer or changing tools ends ink at its own owner, not on rotation.
+  const viewport=mountGameViewport({window:win,document:doc,sync:fit,recoveryDelays:[0,100,350]});
   const audioControls=mountRoomAudioControls({audio,document:doc});
   const settings=mountRoomSettings({document:doc,buttonId:'drawing-settings',dialogId:'drawing-settings-dialog',closeButtonId:'drawing-settings-close'});
+  const removeAppearance=mountGameAppearancePicker(doc,$('drawing-settings-dialog'),{scope:'draw-and-guess'});
   const removePractice=practice?mountPracticeExit({document:doc,location:win.location}):()=>{};
   listen($('drawing-settings'),'click',()=>paint.finishPointer(),{capture:true});
   listen($('chat-toggle'),'click',()=>{paint.finishPointer();$('drawing-guess-input').blur();},{capture:true});
@@ -241,30 +323,36 @@ export function createDrawingGamePage({mode='room',root=globalThis.document?.get
   async function copyInvitation(){if(!view?.roomCode)return;const href=new URL(`./?room=${view.roomCode}`,win.location.href).href;try{await win.navigator.clipboard.writeText(href);feedback('邀请链接已复制。');}catch{feedback('房间号 '+(view?.roomCode??''));}}
   listen($('drawing-copy'),'click',copyInvitation);listen($('drawing-waiting-copy'),'click',copyInvitation);
   listen($('drawing-recover'),'click',onRecover);listen($('drawing-refresh'),'click',onRefresh);listen($('drawing-retry'),'click',onRetry);
-  async function loadConfigRelease() {
+  async function loadConfigRelease(requestedVersion) {
     const epoch=++configEpoch,pack=packs.find(pack=>pack.id===$('drawing-pack').value),roomId=view?.roomId;configRelease=null;$('drawing-config-save').disabled=true;
+    $('drawing-pack-version').textContent='';$('drawing-use-latest').hidden=true;
     if(!pack){$('drawing-config-status').textContent='请先在词库页发布可采用的词包。';return;}
-    const saved=view.drawConfig?.contentSelection,version=saved?.packId===pack.id?saved.version:pack.publishedHead;
+    const saved=view.drawConfig?.contentSelection,version=Number.isSafeInteger(requestedVersion)&&requestedVersion>0?requestedVersion:saved?.packId===pack.id?saved.version:pack.publishedHead;
     try {
       const release=await api(`/api/wordbanks/${pack.id}/releases/${version}`);
       if(epoch!==configEpoch||destroyed||view?.roomId!==roomId||view.phase!=='waiting'||!$('drawing-config-dialog').open)return;
       const categories=release.categories.filter(category=>category.status==='active'),counts={};
       for(const word of release.words??[])if(word.status==='reviewed')counts[word.category]=(counts[word.category]??0)+1;
-      configRelease={packId:pack.id,version,categories,counts};
-      const checked=saved?.packId===pack.id&&saved.version===version?saved.categoryIds:['daily','nature','food','action-job','place-transport'];
+      configRelease={packId:pack.id,version,categories,counts,words:(release.words??[]).filter(word=>word.status==='reviewed')};
+      $('drawing-pack-version').textContent=`当前采用版本 ${version} · 最新版本 ${pack.publishedHead}`;
+      $('drawing-use-latest').hidden=version===pack.publishedHead;
+      const checked=saved?.packId===pack.id&&saved.version===version?saved.categoryIds:defaultDrawingCategoryIds(categories,pack.id);
       const difficulties=saved?.packId===pack.id&&saved.version===version?saved.difficulties:['easy','normal'];
       const panel=$('drawing-config-content');panel.replaceChildren(node(doc,'p','',`${pack.name} · 已发布版本${version}`));
       const categoryTitle=node(doc,'strong','','分类');panel.append(categoryTitle);
       for(const category of categories){const label=node(doc,'label','drawing-check');const input=node(doc,'input');input.type='checkbox';input.dataset.drawingCategory=category.id;
-        input.checked=checked.includes(category.id);label.append(input,node(doc,'span','',`${category.name} · ${counts[category.id]??0}词`));panel.append(label);}
-      if(!categories.some(category=>checked.includes(category.id)))panel.querySelector('[data-drawing-category]')?.click();
+        input.checked=checked.includes(category.id);const countLabel=node(doc,'span','',category.name);countLabel.dataset.drawingCategoryCount=category.id;label.append(input,countLabel);panel.append(label);}
       panel.append(node(doc,'strong','','难度'));
       for(const [value,name]of [['easy','简单'],['normal','普通'],['hard','挑战']]){const label=node(doc,'label','drawing-check'),input=node(doc,'input');input.type='checkbox';input.dataset.drawingDifficulty=value;input.checked=difficulties.includes(value);label.append(input,node(doc,'span','',name));panel.append(label);}
-      $('drawing-config-status').textContent='每题需3个不同候选，服务器开局时再次检查所选范围的词量。';$('drawing-config-save').disabled=false;
+      showCandidateCountHint();$('drawing-config-save').disabled=false;
     }catch(error){if(epoch===configEpoch){$('drawing-config-status').textContent=gameErrorMessage(error);onCanvasError(error);}}
   }
   listen($('drawing-config-open'),'click',async()=>{
-    if(!view?.drawConfig||view.hostId!==view.selfId)return;$('drawing-rounds').value=String(view.drawConfig.rounds);$('drawing-seconds').value=String(view.drawConfig.drawingSeconds);open('drawing-config-dialog');
+    if(!view?.drawConfig||view.hostId!==view.selfId)return;$('drawing-rounds').value=String(view.drawConfig.rounds);$('drawing-candidate-count').value=String(view.drawConfig.candidateCount??3);const seconds=$('drawing-seconds');
+    for(const option of [...seconds.options])if(option.dataset.currentSetting)option.remove();
+    const value=String(view.drawConfig.drawingSeconds);
+    if(![...seconds.options].some(option=>option.value===value)){const option=node(doc,'option','',`${value} 秒（当前设置）`);option.value=value;option.dataset.currentSetting='true';seconds.append(option);}
+    seconds.value=value;open('drawing-config-dialog');
     const epoch=++configEpoch,roomId=view.roomId;$('drawing-config-save').disabled=true;$('drawing-config-status').textContent='正在读取可采用的发布词包…';
     try{const data=await api('/api/wordbanks?limit=100');if(epoch!==configEpoch||destroyed||view?.roomId!==roomId||view.phase!=='waiting'||!$('drawing-config-dialog').open)return;
       packs=data.packs.filter(pack=>!pack.retired&&Number.isInteger(pack.publishedHead)&&pack.publishedHead>0);
@@ -273,15 +361,30 @@ export function createDrawingGamePage({mode='room',root=globalThis.document?.get
       await loadConfigRelease();
     }catch(error){if(epoch===configEpoch){$('drawing-config-status').textContent=gameErrorMessage(error);onCanvasError(error);}}
   });
+  function showCandidateCountHint(){
+    const count=Number($('drawing-candidate-count').value);
+    const categories=[...$('drawing-config-content').querySelectorAll('[data-drawing-category]:checked')].map(input=>input.dataset.drawingCategory);
+    const difficulties=[...$('drawing-config-content').querySelectorAll('[data-drawing-difficulty]:checked')].map(input=>input.dataset.drawingDifficulty);
+    const eligible=(configRelease?.words??[]).filter(word=>difficulties.includes(word.difficulty));
+    for(const category of configRelease?.categories??[]){const label=$('drawing-config-content').querySelector(`[data-drawing-category-count="${category.id}"]`);if(label)label.textContent=`${category.name} · ${eligible.filter(word=>word.category===category.id).length}词可用`;} 
+    const words=eligible.filter(word=>categories.includes(word.category)).length,needed=(view?.players?.length??0)*Number($('drawing-rounds').value)*count;
+    $('drawing-config-status').textContent=Number.isInteger(count)&&count>=2&&count<=10
+      ?`每题${count}个不同候选 · 当前${words}词可用，本局需${needed}词。普通优先常见词，挑战包含细分题目。`:'候选词数量需要2～10之间的整数。';
+  }
+  listen($('drawing-candidate-count'),'input',()=>{if(configRelease)showCandidateCountHint();});
+  listen($('drawing-rounds'),'change',()=>{if(configRelease)showCandidateCountHint();});
+  listen($('drawing-config-content'),'change',()=>{if(configRelease)showCandidateCountHint();});
+  listen($('drawing-use-latest'),'click',()=>{const pack=packs.find(pack=>pack.id===$('drawing-pack').value);if(pack)loadConfigRelease(pack.publishedHead);});
   listen($('drawing-pack'),'change',loadConfigRelease);listen($('drawing-config-dialog'),'close',()=>{++configEpoch;configRelease=null;});
   listen($('drawing-config-save'),'click',async()=>{if(!view?.drawConfig||!configRelease||view.phase!=='waiting')return;
     const categoryIds=[...$('drawing-config-content').querySelectorAll('[data-drawing-category]:checked')].map(input=>input.dataset.drawingCategory);
     const difficulties=[...$('drawing-config-content').querySelectorAll('[data-drawing-difficulty]:checked')].map(input=>input.dataset.drawingDifficulty);
     if(!categoryIds.length||!difficulties.length){$('drawing-config-status').textContent='请至少选一个分类和一种难度。';return;}
-    const value={rounds:Number($('drawing-rounds').value),drawingSeconds:Number($('drawing-seconds').value),contentSelection:{packId:configRelease.packId,version:configRelease.version,categoryIds,difficulties}};
+    const value={rounds:Number($('drawing-rounds').value),candidateCount:Number($('drawing-candidate-count').value),drawingSeconds:Number($('drawing-seconds').value),contentSelection:{packId:configRelease.packId,version:configRelease.version,categoryIds,difficulties}};
+    if(!Number.isInteger(value.candidateCount)||value.candidateCount<2||value.candidateCount>10){$('drawing-config-status').textContent='候选词数量需要2～10之间的整数。';return;}
     if(!Number.isInteger(value.drawingSeconds)||value.drawingSeconds<30||value.drawingSeconds>600){$('drawing-config-status').textContent='绘画时间需要30～600秒。';return;}
     if(await act('configure',{drawConfig:value}))$('drawing-config-dialog').close();});
-  listen($('drawing-hide-keyboard'),'click',()=>{$('drawing-guess-input').blur();fit();});
+  listen($('drawing-skip'),'click',()=>{if(!available()||!view?.game?.canSkip)return;paint.finishPointer();act('skip',{matchId:view.matchId,turnId:view.game.turnId});});
   // Retain input focus during pointer submission. Removing keyboard chrome on
   // blur can move a mobile button between pointerdown and pointerup.
   listen($('drawing-guess-send'),'pointerdown',event=>{if(event.button===0&&doc.activeElement===$('drawing-guess-input'))event.preventDefault();});
@@ -319,29 +422,36 @@ export function createDrawingGamePage({mode='room',root=globalThis.document?.get
     const previous=view,silent=baseline||initial||doc.hidden||connection!=='online';setScope(next);view=next;
     const receipt=guessSubmission?.requestId&&latestGuessReceipt(next,guessSubmission.before,guessSubmission.turnId,guessSubmission.requestId);if(receipt)confirmGuess(receipt);
     clock.receive(next);baseline=false;render();
+    if(previous?.matchId!==next.matchId||previous?.game?.turnId!==next.game?.turnId||previous?.game?.stage!==next.game?.stage) {
+      $('drawing-reveal').scrollTop=0;root.querySelector('.drawing-sidebar').scrollTop=0;
+    }
     experience.apply(previous,next,{baseline:silent});
     if(!silent&&previous?.matchId===next.matchId&&previous?.game?.revision<next.game?.revision) {
       if(next.game.stage==='finished')audio.play(next.game.result.winnerIds.includes(next.selfId)?'win':'draw-result');
       else if(previous.game.turnId!==next.game.turnId&&next.game.turnPlayerId===next.selfId)audio.play('turn');
       else if(previous.game.stage!==next.game.stage)audio.play(next.game.stage==='reveal'?'restore':next.game.stage==='drawing'?'start':'select');
-      else if(next.game.lastAction?.type==='guess')audio.play('commit');
+      else if(next.game.lastAction?.type==='guess'&&next.game.guessedPlayerIds.length>previous.game.guessedPlayerIds.length)audio.play('commit');
     }
     const cue=audio.phaseCue(previous,next,{baseline:silent});if(cue)audio.play(cue);
   }
-  const page={audio,paint,applyView,setMessage:feedback,setConnection(value){connection=value;if(value!=='online'){baseline=true;experience.cancel();paint.setContext(canvasContext(false));}render();},
+  const page={audio,paint,applyView,
+    attachVoice(transport){if(practice||voiceControls)return;voiceControls=mountRoomVoiceControls({root:$('drawing-voice-slot'),transport,document:doc,window:win,compact:{joinRoot:$('drawing-voice-join-slot'),microphoneRoot:$('drawing-voice-microphone-slot'),statusRoot:$('drawing-voice-status-slot')},onState:state=>{voiceState=state;syncVoiceRoster();}});root.classList.add('drawing-has-voice');for(const id of ['drawing-voice-slot','drawing-voice-join-slot','drawing-voice-microphone-slot'])$(id).hidden=false;voiceControls.setAvailable(connection==='online'&&!!view);render();},
+    setMessage:feedback,setConnection(value){connection=value;voiceControls?.setAvailable(value==='online'&&!!view);if(value!=='online'){baseline=true;experience.cancel();paint.setContext(canvasContext(false));}render();},
     conceal({message='正在恢复账号与席位…',loginHref:href,reauthHref:reauth,preserveDraft=false}={}) {
+      $('drawing-leave-confirm').removeAttribute('aria-busy');
       if(preserveDraft)saveDraft();else{try{const key=draftKey();if(key)draftStorage?.removeItem(key);}catch{}}
-      scope=null;guessSubmission=null;inputSerial++;view=null;baseline=true;connection='offline';experience.cancel();closeTools();paint.conceal();clock.reset();
+      voiceControls?.setAvailable(false);scope=null;guessSubmission=null;inputSerial++;view=null;baseline=true;connection='offline';experience.cancel();setFocused(false);closeTools();paint.conceal();clock.reset();
       for(const dialog of root.querySelectorAll('dialog[open]'))dialog.close();
       $('drawing-guess-input').value='';$('drawing-candidates').replaceChildren();$('drawing-answer').textContent='';$('drawing-hint').textContent='';
-      for(const id of ['drawing-roster-full','drawing-results','drawing-config-content','drawing-pack'])$(id).replaceChildren();
-      for(const id of ['drawing-aliases','drawing-turn-result','drawing-waiting-text','drawing-waiting-config','drawing-config-status'])$(id).textContent='';
+      for(const id of ['drawing-roster-full','drawing-results','drawing-config-content','drawing-pack','drawing-guesses'])$(id).replaceChildren();
+      for(const id of ['drawing-aliases','drawing-turn-result','drawing-waiting-text','drawing-waiting-config','drawing-config-status','drawing-pack-version'])$(id).textContent='';
+      $('drawing-use-latest').hidden=true;
       ++configEpoch;configRelease=null;packs=[];
       $('drawing-gate-text').textContent=message;$('drawing-login').hidden=!href;$('drawing-login').href=href??'#';$('drawing-reauth').hidden=!reauth;$('drawing-reauth').href=reauth??'#';$('drawing-recover').hidden=!!href;render();
     },
-    leaveFailure(error){leaving=false;$('drawing-leave-status').textContent=typeof error==='string'?error:gameErrorMessage(error);render();},
-    leaving(){leaving=true;experience.cancel();paint.conceal();$('drawing-leave-status').textContent='正在确认退出…';render();},
-    destroy(){if(destroyed)return;saveDraft();destroyed=true;experience.destroy();paint.destroy();clock.destroy();viewport.destroy();settings.destroy();audioControls.destroy();audio.close();removePractice();listeners.forEach(remove=>remove());},
+    leaveFailure(error){leaving=false;$('drawing-leave-confirm').removeAttribute('aria-busy');$('drawing-leave-status').textContent=typeof error==='string'?error:gameErrorMessage(error);render();},
+    leaving(){leaving=true;$('drawing-leave-confirm').setAttribute('aria-busy','true');voiceControls?.setAvailable(false);experience.cancel();paint.conceal();$('drawing-leave-status').textContent='正在确认退出…';render();},
+    destroy(){if(destroyed)return;saveDraft();$('drawing-leave-confirm').removeAttribute('aria-busy');destroyed=true;voiceControls?.destroy();experience.destroy();paint.destroy();clock.destroy();viewport.destroy();removeAppearance();settings.destroy();audioControls.destroy();audio.close();removePractice();listeners.forEach(remove=>remove());},
   };
   render();return page;
 }
@@ -360,17 +470,23 @@ export function showDrawingBootFailure({document:doc=globalThis.document,window:
 
 export async function bootDrawingRoom({document:doc=globalThis.document,window:win=globalThis.window}={}) {
   const roomCode=new URLSearchParams(win.location.search).get('code')??'';
+  let voiceReceive=null;
   let client=null,view=null,chat=null,baseline=true,leaving=false,scope=null;
   const session=createRoomSession({document:doc,accountGeneration,accountState,getClient:()=>client});
   let lifecycle,fatal=false,removeAccount=()=>{};
   const ui=createDrawingGamePage({document:doc,window:win,mode:'room',
     onAction:async(type,fields)=>{const current=client,fence=session.capture(current);if(!current||!session.current(fence))throw new Error('请恢复房间后继续。');
       try{return await current.action(type,fields);}catch(error){if(session.current(fence)&&[401,503].includes(error.status))clearPrivate(error);throw error;}},
-    canvasRequest:async(type,body)=>{const current=client,fence=session.capture(current);if(!current||!session.current(fence))throw new Error('请恢复账号与画布后继续。');
+    canvasRequest:async(type,body)=>{const current=client,fence=session.capture(current);if(!current||!(type==='read'?session.passive(fence):session.current(fence)))throw new Error('请恢复账号与画布后继续。');
       return current.request(`/api/rooms/${roomCode}/canvas${type==='read'?'':'/'+type}`,{...(type==='read'?{}:{method:'POST',body}),token:current.membership.token},current.epoch());},
     onCanvasError:error=>{if([401,503].includes(error.status))clearPrivate(error);else ui.setMessage(gameErrorMessage(error));},
     getPending:()=>client?.pendingAction(),getStorageReady:()=>client?.actionStorageReady()??true,
-    onRefresh:()=>client?.refresh(),onRetry:()=>client?.retryAction(),onRecover:()=>lifecycle?.refresh(),onLeave:()=>exit.run()});
+    onRefresh:()=>client?.refresh(),onRetry:()=>{const current=client;if(current&&session.current(session.capture(current)))return current.retryAction();},onRecover:()=>lifecycle?.refresh(),onLeave:()=>exit.run()});
+  let voiceClientId=null;
+  const voiceTransport={subscribe(fn){voiceReceive=fn;return()=>{if(voiceReceive===fn)voiceReceive=null;};},
+    join:()=>{voiceClientId??=win.crypto.randomUUID();return voiceRequest('join',{clientId:voiceClientId});},leave:body=>voiceRequest('leave',{...body,clientId:voiceClientId})};
+  function voiceRequest(action,body){const current=client,fence=session.capture(current);if(!current||!session.current(fence))return Promise.reject(new Error('请恢复原房间后加入语音。'));
+    return current.request(`/api/rooms/${roomCode}/voice/${action}`,{method:'POST',body},current.epoch());}
   const exit=createRoomExit({session,roomCode,getClient:()=>client,getView:()=>view,forgetMembership,requireAcknowledgement:true,
     onPending:()=>{leaving=true;ui.leaving();},onFailure:error=>{leaving=false;ui.leaveFailure(error);},onLeft:()=>{exit.reset();scope=null;clearPrivate();win.location.href='./';}});
   function clearPrivate(error={},{preserveDraft=error.status===503}={}) {
@@ -396,20 +512,20 @@ export async function bootDrawingRoom({document:doc=globalThis.document,window:w
         catch(error){if(!session.current(task))return;if([403,404].includes(error.status)){win.location.replace(`./?room=${roomCode}`);return;}throw error;}}
       if(!session.current(task))return;if(!membership){win.location.replace(`./?room=${roomCode}`);return;}
       const nextScope=JSON.stringify([state.userKey??'legacy',roomCode,membership.playerId]);if(scope!==null&&scope!==nextScope)exit.reset();scope=nextScope;
-      const next=new RoomClient(roomCode,membership,{onView:guarded(value=>{if(!session.current(fence))return;if(value.gameType!=='draw-and-guess'){win.location.replace(roomHref(roomCode,value.gameType));return;}view=value;ui.applyView(value,{baseline});baseline=false;}),
-        onConnection:guarded(value=>{if(!session.current(fence))return;if(value!=='online')baseline=true;ui.setConnection(value);chat?.connection(value);}),
-        onCanvas:guarded(packet=>{if(session.current(fence))ui.paint.receive(packet);}),onChat:guarded(packet=>{if(session.current(fence))chat?.receive(packet);}),
-        onError:guarded(error=>{if(!session.current(fence)||leaving&&error.status===404)return;if(error.status===404&&view)forgetMembership(roomCode,view.selfId);
+      const next=new RoomClient(roomCode,membership,{onVoice:guarded(packet=>{if(session.passive(fence))voiceReceive?.(packet);}),onView:guarded(value=>{if(!session.passive(fence))return;if(value.gameType!=='draw-and-guess'){win.location.replace(roomHref(roomCode,value.gameType));return;}view=value;ui.applyView(value,{baseline});baseline=false;}),
+        onConnection:guarded(value=>{if(!session.passive(fence))return;if(value!=='online')baseline=true;ui.setConnection(value);chat?.connection(value);}),
+        onCanvas:guarded(packet=>{if(session.passive(fence))ui.paint.receive(packet);}),onChat:guarded(packet=>{if(session.passive(fence))chat?.receive(packet);}),
+        onError:guarded(error=>{if(!session.passive(fence)||leaving&&error.status===404)return;if(error.status===404&&view)forgetMembership(roomCode,view.selfId);
           if(error.status===404||!legacy&&[401,503].includes(error.status))clearPrivate(error);else ui.setMessage(gameErrorMessage(error));})});
       client=next;const fence=session.capture(next);if(firstView)next.receive(firstView);else await next.refresh();
-      if(session.current(fence)){chat.attach(next,next.view,state);next.connect();}
+      if(session.current(fence)){if(state.voiceEnabled&&state.voiceKind==='sfu-v1')ui.attachVoice(voiceTransport);chat.attach(next,next.view,state);next.connect();}
     }catch(error){if(session.current(task,{verified:false}))clearPrivate(error);}
   });}
   chat=mountRoomChat({onCue:kind=>ui.audio.play(kind),onUnavailable:error=>clearPrivate(error.status===403?{...error,status:404}:error)});
   doc.getElementById('drawing-logout').addEventListener('click',async()=>{exit.reset();scope=null;clearPrivate();try{await logoutAccount();win.location.href='./';}catch{clearPrivate({status:503});}});
   removeAccount=onAccountChange(guarded(state=>{if(!state.authenticated&&state.mode!=='legacy'||client&&client.accountEpoch!==accountGeneration())clearPrivate({status:state.failureStatus===503?503:401});}));
   lifecycle=watchAccountLifecycle({windowRef:win,documentRef:doc,onSuspend:guarded(()=>clearPrivate({message:'正在重新核验账号…'},{preserveDraft:true})),
-    onVerified:guarded(state=>{if(!client&&!fatal)Promise.resolve(boot(state)).catch(failBootstrap);}),onError:guarded(clearPrivate)});
+    onVerified:guarded((state,{reason}={})=>{if(!client&&!fatal)Promise.resolve(boot(state)).catch(failBootstrap);else if(client&&['return','focus'].includes(reason)){const current=client,fence=session.capture(current);current.refresh().catch(error=>{if(session.passive(fence)&&[401,503,404].includes(error.status))clearPrivate(error);});}}),onError:guarded(clearPrivate)});
   win.addEventListener('pagehide',event=>{if(!event.persisted){client?.stop();session.destroy();ui.destroy();}});
   // Installation controls never gate the authenticated room bootstrap.
   import('../../app-shell.mjs').catch(()=>{if(!fatal)ui.setMessage('安装说明暂未打开，房间可以继续使用。');});

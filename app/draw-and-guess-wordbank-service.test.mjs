@@ -7,6 +7,8 @@ import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { EncryptedStore, MemoryAdapter, SQLiteAdapter, identityKey } from '../server/storage.mjs';
 import { createDrawAndGuessWordbank, createWordbankRequestId, validateDrawAndGuessWordbankSnapshot, validateDrawAndGuessWordbankState } from '../server/content/draw-and-guess-wordbank.mjs';
+import { DRAW_AND_GUESS_CATEGORIES, DRAW_AND_GUESS_ORIGINAL_SEED, DRAW_AND_GUESS_PREVIOUS_6408_SEED, DRAW_AND_GUESS_PREVIOUS_14400_SEED, DRAW_AND_GUESS_PREVIOUS_CLASSIFIED_SEED, DRAW_AND_GUESS_PREVIOUS_CATEGORIES, DRAW_AND_GUESS_SEED } from '../server/content/draw-and-guess-seed.mjs';
+import { DRAW_AND_GUESS_QUALITY_REMOVALS } from '../server/content/draw-and-guess-quality-replacements.mjs';
 import { createRuntime } from '../server/runtime.mjs';
 import { readSettings } from '../server/config.mjs';
 import { validateDrawingRecoveryReferences, verifyLiveStore, backupStore, verifyBackup, restoreStore } from '../server/backup.mjs';
@@ -256,7 +258,7 @@ for (const sqlite of [false, true]) {
     const f = fixture(t, { sqlite });
     const first = await f.service.ensureSeed({ publishInitial: true }); assert.equal(first.publishedHead, 1);
     const release = await f.service.getRelease(actors[0], 'dg-base', 1);
-    assert.equal(release.words.length, 560); assert.equal(release.publicationSource, 'system-seed'); assert.equal(release.publisher.displayCode, 'system-seed');
+    assert.equal(release.words.length, DRAW_AND_GUESS_SEED.length); assert.equal(release.publicationSource, 'system-seed'); assert.equal(release.publisher.displayCode, 'system-seed');
     await f.change('dg-base', [{ type: 'word.update', id: release.words[0].id, patch: { answer: '晴雨伞' } }], actors[1]);
     const current = await f.service.get(actors[0], 'dg-base'); const restarted = f.reopen();
     assert.equal((await restarted.ensureSeed({ publishInitial: true })).imported, false);
@@ -511,4 +513,402 @@ test('a genuinely fresh Node process reopens encrypted SQLite and preserves seed
   const output = execFileSync(process.execPath, ['--input-type=module', '-e', source],
     { cwd: new URL('..', import.meta.url), input: JSON.stringify({ path, keyHex: key.toString('hex'), time, actor: actors[0], input }), encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
   assert.deepEqual(JSON.parse(output), { imported: false, draft: '晴雨伞', old: '雨伞', revision: 1, receipt: 'committed' });
+});
+
+// A real schema-1 legacy snapshot, not the new ensureSeed path, drives upgrades.
+const contentCanonical = value => Array.isArray(value) ? `[${value.map(contentCanonical).join(',')}]`
+  : value && typeof value === 'object' ? `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${contentCanonical(value[key])}`).join(',')}}` : JSON.stringify(value);
+const contentHash = value => createHash('sha256').update(contentCanonical(value)).digest('hex');
+function assertProtectedDifficultyMerge(actual,before) {
+  const previous=new Map(DRAW_AND_GUESS_PREVIOUS_14400_SEED.map(word=>[word.id,word]));
+  const current=new Map(DRAW_AND_GUESS_SEED.map(word=>[word.id,word])),actualById=new Map(actual.map(word=>[word.id,word]));
+  const removed=new Set(DRAW_AND_GUESS_QUALITY_REMOVALS.map(word=>word.id));
+  for(const saved of before) {
+    if(contentCanonical(saved)===contentCanonical(previous.get(saved.id))) {
+      if(removed.has(saved.id))assert.equal(actualById.has(saved.id),false,'approved unchanged rejected word is absent');
+      else assert.deepEqual(actualById.get(saved.id),current.get(saved.id));
+    } else assert.deepEqual(actualById.get(saved.id),saved,'member changes must be preserved');
+  }
+}
+async function legacySeed(f, { published = true, retired = false, expanded6408 = false, expanded14400 = false, classified14400 = false } = {}) {
+  const categories=structuredClone(expanded6408||expanded14400||classified14400 ? DRAW_AND_GUESS_PREVIOUS_CATEGORIES : DRAW_AND_GUESS_PREVIOUS_CATEGORIES.slice(0,8)),
+    words=structuredClone(classified14400?DRAW_AND_GUESS_PREVIOUS_CLASSIFIED_SEED:expanded14400?DRAW_AND_GUESS_PREVIOUS_14400_SEED:expanded6408 ? DRAW_AND_GUESS_PREVIOUS_6408_SEED : DRAW_AND_GUESS_ORIGINAL_SEED);
+  const release={schemaVersion:1,packId:'dg-base',version:1,name:'基础词库',categories,words,
+    contentHash:contentHash({name:'基础词库',categories,words}),publishedAt:f.now(),publicationSource:'system-seed',
+    publisher:{displayName:'系统基础词库',displayCode:'system-seed'}};
+  const pack={schemaVersion:1,id:'dg-base',name:'基础词库',visibility:'shared',ownerKey:null,retired,draftRevision:0,
+    draft:{categories,words},publishedHead:published?1:null,versions:published?[{version:1,hash:release.contentHash,publishedAt:f.now()}]:[],references:[],history:[],
+    seed:{version:1,hash:contentHash({categories,words}),...(published?{initialPublished:true}:{})},...(published?{lastPublishedVersion:1}:{})};
+  const quota={schemaVersion:1,usedBytes:0,packs:[{packId:'dg-base',visibility:'shared',ownerKey:null}]};
+  const size=value=>Buffer.byteLength(JSON.stringify(value));
+  for(let n=0;n<10;n++)quota.usedBytes=size(pack)+(published?size(release):0)+size(quota);
+  await f.storage.put('wordbank-packs','dg-base',pack);
+  if(published)await f.storage.put('wordbank-releases','dg-base:1',release);
+  await f.storage.put('wordbank-index','quota',quota);
+  await f.verifyQuota(); return release;
+}
+for(const sqlite of [false,true]) {
+  test(`${sqlite?'SQLite':'Memory'}: seed expansion merges pending draft and published head independently and is a zero-write restart`,async t=>{
+    const f=fixture(t,{sqlite}),old=await legacySeed(f);
+    await f.change('dg-base',[
+      {type:'word.update',id:'dg-base-0001',patch:{answer:'发布晴雨伞',aliases:['晴雨两用伞']}},
+      {type:'word.retire',id:'dg-base-0002',confirmed:true},
+    ]);await f.publish('dg-base');
+    const published=await f.service.getRelease(actors[0],'dg-base',2);
+    const newWord=DRAW_AND_GUESS_SEED[560];
+    await f.change('dg-base',[
+      {type:'word.update',id:'dg-base-0001',patch:{answer:'未发布晴雨伞',aliases:['本人待定伞']}},
+      {type:'word.add',id:'partner-existing-term',answer:newWord.answer,aliases:[],category:'daily',difficulty:'normal',tags:[]},
+      {type:'category.add',id:'home',name:'伙伴已改居家分类'},
+    ]);
+    const before=await f.service.get(actors[0],'dg-base');
+    const result=await f.reopen().ensureSeed({publishInitial:true});assert.equal(result.upgraded,true);assert.equal(result.publishedHead,3);
+    assert.equal(result.draft.semanticCollision,1);assert.equal(result.draft.retiredPreserved,1);
+    const after=await f.service.get(actors[0],'dg-base'),release=await f.service.getRelease(actors[0],'dg-base',3);
+    assert.equal(after.draft.words.find(w=>w.id==='dg-base-0001').answer,'未发布晴雨伞');
+    assert.deepEqual(after.draft.words.find(w=>w.id==='dg-base-0001'),before.draft.words.find(w=>w.id==='dg-base-0001'));
+    assert.equal(release.words.find(w=>w.id==='dg-base-0001').answer,'发布晴雨伞');
+    assert.equal(after.draft.words.find(w=>w.id==='dg-base-0002').status,'retired');
+    assert.equal(release.words.find(w=>w.id==='dg-base-0002').status,'retired');
+    assert.equal(after.draft.words.some(w=>w.id===newWord.id),false);
+    assert.equal(after.draft.words.find(w=>w.id==='partner-existing-term').status,'draft');
+    assert.equal(release.words.some(w=>w.id===newWord.id),true);
+    assert.equal(after.draft.categories.find(c=>c.id==='home').name,'伙伴已改居家分类');
+    assert.equal(release.categories.find(c=>c.id==='home').name,DRAW_AND_GUESS_CATEGORIES.find(c=>c.id==='home').name);
+    assert.deepEqual(await f.service.getRelease(actors[0],'dg-base',1),old);
+    assert.deepEqual(await f.service.getRelease(actors[0],'dg-base',2),published);
+    const stable=await f.storage.read('wordbank-packs','dg-base'),stableQuota=await f.storage.read('wordbank-index','quota');
+    assert.equal((await f.reopen().ensureSeed({publishInitial:true})).imported,false);
+    assert.deepEqual(await f.storage.read('wordbank-packs','dg-base'),stable);assert.deepEqual(await f.storage.read('wordbank-index','quota'),stableQuota);
+    await f.verifyQuota();
+    const state={packs:(await f.storage.scan('wordbank-packs')).map(r=>r.value),releases:(await f.storage.scan('wordbank-releases')).map(r=>r.value),index:(await f.storage.scan('wordbank-index')).map(r=>r.value)};
+    assert.doesNotThrow(()=>validateDrawAndGuessWordbankState(state));
+    if(sqlite){
+      const backup=join(f.directory,'expanded-backup.sqlite'),restored=join(f.directory,'expanded-restored.sqlite');
+      await backupStore({sourcePath:f.storePath,destinationPath:backup,key:f.key,now:f.now});
+      restoreStore({sourcePath:backup,destinationPath:restored,key:f.key,offline:true});
+      const storage=new EncryptedStore(new SQLiteAdapter(restored,{now:f.now}),f.key,f.now);t.after(()=>storage.close());
+      const reopened=createDrawAndGuessWordbank({storage,now:f.now});
+      assert.deepEqual(await reopened.getRelease(actors[0],'dg-base',1),old);
+      assert.deepEqual(await reopened.get(actors[0],'dg-base'),after);
+      assert.equal((await reopened.ensureSeed({publishInitial:true})).imported,false);
+    }
+  });
+  test(`${sqlite?'SQLite':'Memory'}: legacy expansion CAS race commits exactly once and preserves old retained release`,async t=>{
+    const f=fixture(t,{sqlite});const old=await legacySeed(f);
+    await f.service.retainRelease(actors[0],'dg-base',1,{referenceId:'room-legacy-waiting',expiresAt:f.now()+3600000});
+    const result=await Promise.all([f.service.ensureSeed({publishInitial:true}),f.reopen().ensureSeed({publishInitial:true})]);
+    assert.equal(result.filter(r=>r.upgraded).length,1);
+    assert.equal((await f.service.get(actors[0],'dg-base')).publishedHead,2);
+    assert.deepEqual(await f.service.getRelease(actors[0],'dg-base',1),old);
+    assert.equal((await f.storage.get('wordbank-packs','dg-base')).references[0].version,1);
+    await f.verifyQuota();
+  });
+}
+test('seed upgrade capacity or CAS rejection leaves the complete legacy state unchanged',async t=>{
+  const f=fixture(t);await legacySeed(f);
+  const before=await f.storage.read('wordbank-packs','dg-base'),quota=await f.storage.read('wordbank-index','quota');
+  const capped=createDrawAndGuessWordbank({storage:f.storage,now:f.now,limits:{sharedWords:600}});
+  await assert.rejects(capped.ensureSeed({publishInitial:true}),code('PACK_COUNT_LIMIT'));
+  const neverCommit=f.wrap(()=>Promise.resolve(false));await assert.rejects(neverCommit.ensureSeed({publishInitial:true}),code('CONTENT_BUSY'));
+  assert.deepEqual(await f.storage.read('wordbank-packs','dg-base'),before);assert.deepEqual(await f.storage.read('wordbank-index','quota'),quota);
+  assert.equal(await f.storage.get('wordbank-releases','dg-base:2'),null);await f.verifyQuota();
+});
+test('a deliberately unpublished or retired legacy pack stays unpublished or retired after expansion',async t=>{
+  for(const options of [{published:false},{retired:true}]){
+    const f=fixture(t);await legacySeed(f,options);await f.service.ensureSeed({publishInitial:true});
+    const pack=await f.service.get(actors[0],'dg-base');
+    assert.equal(pack.publishedHead,options.published===false?null:1);assert.equal(pack.retired,options.retired===true);
+    assert.equal(await f.storage.get('wordbank-releases','dg-base:2'),null);await f.verifyQuota();
+  }
+});
+test('new rooms use expanded normal categories; an already selected room keeps its exact version and categories',async t=>{
+  const f=fixture(t);await f.service.ensureSeed({publishInitial:true});
+  // Use the production defaults for all non-content fields, not a second config schema.
+  const runtime=createRuntime(readSettings({GAME_ROOM_AUTH_MODE:'mock'}),{storage:f.storage,now:f.now,wordbanks:f.service,drawingEnabled:true,roomOptions:{pollIntervalMs:0},chatOptions:{pollIntervalMs:0}});
+  t.after(async()=>{await runtime.canvases.close();await runtime.chat.close();await runtime.rooms.close();});
+  await runtime.wordbankReady;
+  const created=await runtime.rooms.createRoom(actors[0].userKey,'虚构扩量画者','expanded-default-room','draw-and-guess');
+  const selection=created.view.drawConfig.contentSelection;
+  assert.ok(selection.categoryIds.includes('life-action'));assert.ok(selection.categoryIds.includes('fruit-veg'));assert.ok(selection.categoryIds.length>5);
+  const release=await f.service.getRelease(actors[0],'dg-base',selection.version);
+  const eligible=release.words.filter(w=>selection.categoryIds.includes(w.category)&&selection.difficulties.includes(w.difficulty)&&w.status==='reviewed');
+  assert.ok(eligible.length>=1000);
+  const persisted=await f.storage.read('rooms',created.view.roomId);
+  await f.service.ensureSeed({publishInitial:true});
+  assert.deepEqual(await f.storage.read('rooms',created.view.roomId),persisted);
+});
+
+test('a live legacy match and a waiting version remain frozen while a clean upgraded new room receives the full expanded default pool',async t=>{
+  const f=fixture(t),runtime=createRuntime(readSettings({GAME_ROOM_AUTH_MODE:'mock'}),{storage:f.storage,now:f.now,wordbanks:f.service,drawingEnabled:true,
+    roomOptions:{pollIntervalMs:0,serverRandomInt:()=>0},chatOptions:{pollIntervalMs:0}});
+  t.after(async()=>{await runtime.canvases.close();await runtime.chat.close();await runtime.rooms.close();});
+  await runtime.wordbankReady;await runtime.canvases.ready;await legacySeed(f);
+  const ongoing=await runtime.rooms.createRoom(actors[0].userKey,'旧版画者','legacy-live-create','draw-and-guess');
+  await runtime.rooms.joinRoom(ongoing.roomCode,actors[1].userKey,'旧版猜者','legacy-live-join');
+  const act=async(user,type,fields={})=>{
+    const view=await runtime.rooms.getView(ongoing.roomCode,user);
+    return runtime.rooms.action(ongoing.roomCode,user,{type,requestId:randomBytes(16).toString('hex'),expectedRevision:view.revision,...fields});
+  };
+  await act(actors[0].userKey,'ready',{ready:true});await act(actors[1].userKey,'ready',{ready:true});await act(actors[0].userKey,'start');
+  const waiting=await runtime.rooms.createRoom(actors[2].userKey,'旧版等待','legacy-wait-create','draw-and-guess');
+  const oldLive=await f.storage.read('rooms',ongoing.view.roomId),oldWaiting=await f.storage.read('rooms',waiting.view.roomId);
+  const frozen=structuredClone(oldLive.value.snapshot.game.frozenCandidates);
+  assert.equal(frozen.length,12);assert.equal(oldLive.value.snapshot.drawConfig.contentSelection.version,1);
+  const oldRelease=await f.service.getRelease(actors[0],'dg-base',1);
+  const upgraded=await f.reopen().ensureSeed({publishInitial:true});assert.equal(upgraded.publishedHead,2);
+  assert.deepEqual(await f.storage.read('rooms',ongoing.view.roomId),oldLive);
+  assert.deepEqual(await f.storage.read('rooms',waiting.view.roomId),oldWaiting);
+  assert.deepEqual(await f.service.getRelease(actors[0],'dg-base',1),oldRelease);
+  const added=await runtime.rooms.createRoom(actors[0].userKey,'新版画者','expanded-after-upgrade','draw-and-guess');
+  assert.equal(added.view.drawConfig.contentSelection.version,2);
+  const selection=added.view.drawConfig.contentSelection,release=await f.service.getRelease(actors[0],'dg-base',2);
+  assert.equal(release.words.length,DRAW_AND_GUESS_SEED.length);
+  const eligible=release.words.filter(w=>selection.categoryIds.includes(w.category)&&selection.difficulties.includes(w.difficulty));
+  const expected=DRAW_AND_GUESS_SEED.filter(w=>!['friends','screen','idiom-abstract'].includes(w.category)&&['easy','normal'].includes(w.difficulty));
+  assert.equal(eligible.length,expected.length);assert.ok(eligible.length>=1000);
+  const choose=await runtime.rooms.getView(ongoing.roomCode,actors[0].userKey);
+  await act(actors[0].userKey,'choose',{matchId:choose.matchId,turnId:choose.game.turnId,candidateId:choose.game.candidates[0].id});
+  assert.deepEqual((await f.storage.get('rooms',ongoing.view.roomId)).snapshot.game.frozenCandidates,frozen);
+  await f.verifyQuota();
+});
+
+for (const sqlite of [false,true]) {
+  test(`${sqlite?'SQLite':'Memory'}: exact 6408 predecessor upgrades current quality content independently without changing old versions`,async t=>{
+    const f=fixture(t,{sqlite}),initial=await legacySeed(f,{expanded6408:true});
+    assert.equal(initial.words.length,6408);
+    const originalSaved=await f.storage.get('wordbank-packs','dg-base');
+    assert.equal(originalSaved.seed.hash,'65bd1fd391bb324a1ba84e2777e47e3b439a4a0bed8450c314d160f67d2d58bd');
+    await f.change('dg-base',[
+      {type:'word.update',id:'dg-base-0001',patch:{answer:'已发布晴雨两用大伞'}},
+      {type:'word.retire',id:'dg-base-0002',confirmed:true},
+    ]);await f.publish('dg-base');
+    const published=await f.service.getRelease(actors[0],'dg-base',2);
+    await f.service.retainRelease(actors[0],'dg-base',2,{referenceId:'room-6408-frozen',expiresAt:f.now()+3600000});
+    const oldIds=new Set(DRAW_AND_GUESS_PREVIOUS_6408_SEED.map(word=>word.id));
+    const additions=DRAW_AND_GUESS_SEED.filter(word=>!oldIds.has(word.id)),addition=additions[0];
+    await f.change('dg-base',[
+      {type:'word.update',id:'dg-base-0001',patch:{answer:'还没发布的雨伞'}},
+      {type:'word.add',id:'partner-400-collision',answer:addition.answer,category:'friends',difficulty:'normal',aliases:[],tags:[]},
+    ]);
+    const draftBefore=await f.service.get(actors[0],'dg-base');
+    const upgraded=await f.reopen().ensureSeed({publishInitial:true});
+    assert.equal(upgraded.upgraded,true);assert.equal(upgraded.publishedHead,3);
+    assert.equal(upgraded.release.added,additions.length);assert.equal(upgraded.draft.added,additions.length-1);
+    assert.equal(upgraded.draft.semanticCollision,1);assert.equal(upgraded.draft.retiredPreserved,1);
+    const after=await f.service.get(actors[0],'dg-base'),release=await f.service.getRelease(actors[0],'dg-base',3);
+    assert.equal(release.words.length,DRAW_AND_GUESS_SEED.length);assert.equal(after.draft.words.length,DRAW_AND_GUESS_SEED.length);
+    assert.equal(release.words.find(w=>w.id==='dg-base-0001').answer,'已发布晴雨两用大伞');
+    assert.equal(after.draft.words.find(w=>w.id==='dg-base-0001').answer,'还没发布的雨伞');
+    assert.equal(after.draft.words.find(w=>w.id==='partner-400-collision').status,'draft');
+    assert.equal(release.words.some(w=>w.id==='partner-400-collision'),false);
+    assertProtectedDifficultyMerge(after.draft.words,draftBefore.draft.words.slice(0,6408));
+    assertProtectedDifficultyMerge(release.words,published.words);
+    assert.deepEqual(await f.service.getRelease(actors[0],'dg-base',1),initial);
+    assert.deepEqual(await f.service.getRelease(actors[0],'dg-base',2),published);
+    assert.equal((await f.storage.get('wordbank-packs','dg-base')).references[0].version,2);
+    const saved=await f.storage.read('wordbank-packs','dg-base'),quota=await f.storage.read('wordbank-index','quota');
+    const noWrites=f.wrap(()=>{throw Error('Restart must not write');});
+    assert.equal((await noWrites.ensureSeed({publishInitial:true})).imported,false);
+    assert.deepEqual(await f.storage.read('wordbank-packs','dg-base'),saved);
+    assert.deepEqual(await f.storage.read('wordbank-index','quota'),quota);
+    // Quality removal intentionally reduces bytes; exact content and quota remain verified.
+    await f.verifyQuota();
+    const state={packs:(await f.storage.scan('wordbank-packs')).map(r=>r.value),releases:(await f.storage.scan('wordbank-releases')).map(r=>r.value),index:(await f.storage.scan('wordbank-index')).map(r=>r.value)};
+    assert.doesNotThrow(()=>validateDrawAndGuessWordbankState(state));
+    if (sqlite) {
+      const backup=join(f.directory,'400-backup.sqlite'),restored=join(f.directory,'400-restored.sqlite');
+      await backupStore({sourcePath:f.storePath,destinationPath:backup,key:f.key,now:f.now});
+      restoreStore({sourcePath:backup,destinationPath:restored,key:f.key,offline:true});
+      const storage=new EncryptedStore(new SQLiteAdapter(restored,{now:f.now}),f.key,f.now);t.after(()=>storage.close());
+      const reopened=createDrawAndGuessWordbank({storage,now:f.now});
+      assert.deepEqual(await reopened.get(actors[0],'dg-base'),after);
+      assert.deepEqual(await reopened.getRelease(actors[0],'dg-base',2),published);
+      assert.equal((await reopened.ensureSeed({publishInitial:true})).imported,false);
+    }
+  });
+}
+test('6408 upgrade rejects unknown source hashes and failed transactions with zero partial additions',async t=>{
+  const f=fixture(t);await legacySeed(f,{expanded6408:true});
+  const before=await f.storage.read('wordbank-packs','dg-base'),quota=await f.storage.read('wordbank-index','quota');
+  await assert.rejects(f.wrap(()=>false).ensureSeed({publishInitial:true}),code('CONTENT_BUSY'));
+  assert.deepEqual(await f.storage.read('wordbank-packs','dg-base'),before);
+  assert.deepEqual(await f.storage.read('wordbank-index','quota'),quota);
+  const unknown=structuredClone(before.value);unknown.seed.hash='f'.repeat(64);
+  await f.storage.put('wordbank-packs','dg-base',unknown);
+  const unknownSaved=await f.storage.read('wordbank-packs','dg-base');
+  await assert.rejects(f.service.ensureSeed({publishInitial:true}),code('SEED_VERSION_UNKNOWN'));
+  assert.deepEqual(await f.storage.read('wordbank-packs','dg-base'),unknownSaved);
+  assert.equal(await f.storage.get('wordbank-releases','dg-base:2'),null);
+});
+
+for(const sqlite of [false,true])test(`${sqlite?'SQLite':'Memory'}: approved common difficulty upgrade protects full member definitions and merges draft/publication independently`,async t=>{
+  const f=fixture(t,{sqlite}),initial=await legacySeed(f,{expanded14400:true});
+  assert.equal((await f.storage.get('wordbank-packs','dg-base')).seed.hash,'50d838083e330dda763175023669168fce483b383ea0704f9ca9c65c46031554');
+  const previous=new Map(DRAW_AND_GUESS_PREVIOUS_14400_SEED.map(word=>[word.id,word]));
+  const demoted=DRAW_AND_GUESS_SEED.filter(word=>word.difficulty==='hard'&&previous.get(word.id).difficulty!=='hard');
+  const promoted=DRAW_AND_GUESS_SEED.find(word=>word.difficulty==='normal'&&previous.get(word.id).difficulty==='hard');
+  assert.ok(demoted.length>1000);assert.ok(promoted);
+  await f.change('dg-base',[
+    {type:'word.update',id:demoted[0].id,patch:{answer:'会员发布的独有词条'}},
+    {type:'word.update',id:demoted[1].id,patch:{aliases:[...demoted[1].aliases,'会员发布的独有别名']}},
+    {type:'word.update',id:demoted[2].id,patch:{tags:['会员独有标签']}},
+    {type:'word.update',id:demoted[3].id,patch:{category:'friends'}},
+    {type:'word.update',id:demoted[4].id,patch:{difficulty:'easy'}},
+    {type:'word.retire',id:demoted[5].id,confirmed:true},
+    {type:'word.add',id:'quality-member-published',answer:'会员发布的小纸灯',category:'friends',difficulty:'normal',aliases:[],tags:[]},
+  ]);await f.publish('dg-base');
+  const published=await f.service.getRelease(actors[0],'dg-base',2),oldRecords=await Promise.all([1,2].map(version=>f.storage.read('wordbank-releases',`dg-base:${version}`)));
+  await f.change('dg-base',[
+    {type:'word.update',id:demoted[0].id,patch:{answer:'会员尚未发布的独有词条'}},
+    {type:'word.update',id:demoted[6].id,patch:{tags:['尚未发布的标签']}},
+    {type:'word.add',id:'quality-member-draft',answer:'会员尚未发布的小风车',category:'friends',difficulty:'normal',aliases:[],tags:[]},
+  ]);
+  const draftBefore=await f.service.get(actors[0],'dg-base'),result=await f.reopen().ensureSeed({publishInitial:true});
+  assert.equal(result.upgraded,true);assert.equal(result.publishedHead,3);assert.equal(result.draft.added,0);assert.equal(result.release.added,0);
+  assert.ok(result.draft.difficultyUpdated>1000);assert.ok(result.release.difficultyUpdated>1000);
+  const after=await f.service.get(actors[0],'dg-base'),release=await f.service.getRelease(actors[0],'dg-base',3);
+  assert.equal(after.draft.words.length,DRAW_AND_GUESS_SEED.length+2);assert.equal(release.words.length,DRAW_AND_GUESS_SEED.length+1);
+  assertProtectedDifficultyMerge(after.draft.words,draftBefore.draft.words);assertProtectedDifficultyMerge(release.words,published.words);
+  assert.equal(after.draft.words.find(word=>word.id===demoted[0].id).answer,'会员尚未发布的独有词条');
+  assert.equal(release.words.find(word=>word.id===demoted[0].id).answer,'会员发布的独有词条');
+  assert.equal(release.words.find(word=>word.id===demoted[6].id).difficulty,'hard');
+  assert.equal(after.draft.words.find(word=>word.id===demoted[6].id).status,'draft');
+  assert.equal(release.words.some(word=>word.id==='quality-member-draft'),false);
+  assert.equal(after.draft.words.find(word=>word.id==='quality-member-draft').status,'draft');
+  for(const value of [after.draft,release])assert.equal(value.words.find(word=>word.id===promoted.id).difficulty,'normal');
+  assert.deepEqual(await f.service.getRelease(actors[0],'dg-base',1),initial);assert.deepEqual(await f.service.getRelease(actors[0],'dg-base',2),published);
+  for(const [index,saved]of oldRecords.entries())assert.deepEqual(await f.storage.read('wordbank-releases',`dg-base:${index+1}`),saved);
+  const pack=await f.storage.read('wordbank-packs','dg-base'),quota=await f.storage.read('wordbank-index','quota');
+  assert.equal((await f.wrap(()=>{throw Error('quality restart must not write');}).ensureSeed({publishInitial:true})).imported,false);
+  assert.deepEqual(await f.storage.read('wordbank-packs','dg-base'),pack);assert.deepEqual(await f.storage.read('wordbank-index','quota'),quota);await f.verifyQuota();
+  if(sqlite) {
+    const backup=join(f.directory,'quality.sqlite'),restored=join(f.directory,'quality-restored.sqlite');
+    await backupStore({sourcePath:f.storePath,destinationPath:backup,key:f.key,now:f.now});restoreStore({sourcePath:backup,destinationPath:restored,key:f.key,offline:true});
+    const child=`import{EncryptedStore,SQLiteAdapter}from'./server/storage.mjs';import{createDrawAndGuessWordbank}from'./server/content/draw-and-guess-wordbank.mjs';
+      const[path,key,actor]=process.argv.slice(1),now=()=>1791300000000,storage=new EncryptedStore(new SQLiteAdapter(path,{now}),Buffer.from(key,'base64url'),now);
+      const service=createDrawAndGuessWordbank({storage,now});await service.ensureSeed({publishInitial:true});
+      process.stdout.write(JSON.stringify({pack:await service.get(JSON.parse(actor),'dg-base'),release:await service.getRelease(JSON.parse(actor),'dg-base',3)}));storage.close();`;
+    const recovered=JSON.parse(execFileSync(process.execPath,['--input-type=module','-e',child,restored,f.key.toString('base64url'),JSON.stringify(actors[0])],{cwd:process.cwd(),encoding:'utf8',maxBuffer:16*1024*1024}));
+    // JSON transport preserves content, not the summarizer's null prototypes.
+    assert.deepEqual(recovered.pack,JSON.parse(JSON.stringify(after)));assert.deepEqual(recovered.release,release);
+  }
+});
+
+test('known 14400 quality source rejects unknown hashes and failed CAS without partial difficulty changes',async t=>{
+  const f=fixture(t);await legacySeed(f,{expanded14400:true});
+  const before=await f.storage.read('wordbank-packs','dg-base'),quota=await f.storage.read('wordbank-index','quota'),release=await f.storage.read('wordbank-releases','dg-base:1');
+  await assert.rejects(f.wrap(()=>false).ensureSeed({publishInitial:true}),code('CONTENT_BUSY'));
+  assert.deepEqual(await f.storage.read('wordbank-packs','dg-base'),before);assert.deepEqual(await f.storage.read('wordbank-index','quota'),quota);
+  assert.deepEqual(await f.storage.read('wordbank-releases','dg-base:1'),release);assert.equal(await f.storage.get('wordbank-releases','dg-base:2'),null);
+  const unknown=structuredClone(before.value);unknown.seed.hash='f'.repeat(64);await f.storage.put('wordbank-packs','dg-base',unknown);
+  const saved=await f.storage.read('wordbank-packs','dg-base');await assert.rejects(f.service.ensureSeed({publishInitial:true}),code('SEED_VERSION_UNKNOWN'));
+  assert.deepEqual(await f.storage.read('wordbank-packs','dg-base'),saved);assert.equal(await f.storage.get('wordbank-releases','dg-base:2'),null);
+});
+
+test('quality upgrade preserves a real waiting version and an active frozen normal word that is now a challenge',async t=>{
+  const f=fixture(t);await legacySeed(f,{expanded14400:true});
+  const [{createDurableRoomStore},{createDrawingContentAssembly}]=await Promise.all([import('../server/durable-rooms.mjs'),import('../server/games/draw-and-guess/content-assembly.mjs')]);
+  const home=DRAW_AND_GUESS_PREVIOUS_14400_SEED.filter(word=>word.category==='home'&&['easy','normal'].includes(word.difficulty)),
+    target=home.findIndex(word=>word.answer==='真空压缩收纳袋');assert.ok(target>=0);let samples=0;
+  const assembly=createDrawingContentAssembly({wordbanks:f.service,ready:Promise.resolve(),enabled:true,now:f.now,serverRandomInt:()=>samples++===0?target:0});
+  const rooms=createDurableRoomStore({storage:f.storage,now:f.now,...assembly,pollIntervalMs:0,serverRandomInt:()=>0});t.after(()=>rooms.close());
+  const created=await rooms.createRoom(actors[0].userKey,'旧画者','quality-live-room','draw-and-guess'),roomCode=created.roomCode;
+  await rooms.joinRoom(roomCode,actors[1].userKey,'旧猜者','quality-live-peer');
+  const action=async(user,type,extra={})=>rooms.action(roomCode,user,{type,requestId:randomBytes(16).toString('hex'),expectedRevision:(await rooms.getView(roomCode,user)).revision,...extra});
+  await action(actors[0].userKey,'configure',{drawConfig:{...(await rooms.getView(roomCode,actors[0].userKey)).drawConfig,rounds:1,candidateCount:5,
+    contentSelection:{packId:'dg-base',version:1,categoryIds:['home'],difficulties:['easy','normal']}}});
+  for(const actor of actors.slice(0,2))await action(actor.userKey,'ready',{ready:true});await action(actors[0].userKey,'start');
+  const choice=await rooms.getView(roomCode,actors[0].userKey);assert.equal(choice.game.candidates[0].answer,'真空压缩收纳袋');
+  await action(actors[0].userKey,'choose',{matchId:choice.matchId,turnId:choice.game.turnId,candidateId:choice.game.candidates[0].id});
+  const waiting=await rooms.createRoom(actors[2].userKey,'旧等待者','quality-waiting-room','draw-and-guess');
+  const frozen=await f.storage.read('rooms',created.view.roomId),wait=await f.storage.read('rooms',waiting.view.roomId),oldRelease=await f.storage.read('wordbank-releases','dg-base:1');
+  assert.equal((await f.service.ensureSeed({publishInitial:true})).publishedHead,2);
+  assert.deepEqual(await f.storage.read('rooms',created.view.roomId),frozen);assert.deepEqual(await f.storage.read('rooms',waiting.view.roomId),wait);
+  assert.deepEqual(await f.storage.read('wordbank-releases','dg-base:1'),oldRelease);
+  const resumed=await rooms.getView(roomCode,actors[0].userKey);assert.equal(resumed.game.word.answer,'真空压缩收纳袋');
+  assert.equal(resumed.game.word.difficulty,'normal');assert.equal((await rooms.getView(waiting.roomCode,actors[2].userKey)).drawConfig.contentSelection.version,1);
+  const fresh=await rooms.createRoom(actors[1].userKey,'新等待者','quality-new-room','draw-and-guess'),selection=fresh.view.drawConfig.contentSelection;
+  assert.equal(selection.version,2);const release=await f.service.getRelease(actors[1],'dg-base',2),word=release.words.find(word=>word.answer==='真空压缩收纳袋');
+  assert.equal(word,undefined,'the awkward answer is replaced, not merely moved to hard');await f.verifyQuota();
+});
+
+for (const sqlite of [false, true]) test(`${sqlite ? 'SQLite' : 'Memory'}: shipped classified seed replaces and removes rejected system words while preserving member content`, async t => {
+  const f = fixture(t, { sqlite }), old = await legacySeed(f, { classified14400: true });
+  const previous = new Map(DRAW_AND_GUESS_PREVIOUS_CLASSIFIED_SEED.map(word => [word.id, word]));
+  const replacements = DRAW_AND_GUESS_SEED.filter(word => word.answer !== previous.get(word.id).answer);
+  assert.ok(replacements.length >= 10, 'a difficulty-only update is not a content replacement');
+  const [edited, retired, conflict, pending, untouched] = replacements;
+  const [removeEdited,removeRetired,removePending,removeUntouched]=DRAW_AND_GUESS_QUALITY_REMOVALS;
+  assert.ok(removeUntouched);
+  await f.change('dg-base', [
+    { type: 'word.update', id: edited.id, patch: { answer: '朋友保存的独有词目', aliases: ['朋友独有别名'] } },
+    { type: 'word.retire', id: retired.id, confirmed: true },
+    { type: 'word.add', id: 'member-replacement-alias', answer: '朋友自己添加的题目', aliases: [conflict.answer], category: 'friends', difficulty: 'normal', tags: [] },
+    { type: 'category.rename', id: 'home', name: '朋友自定的居家类' },
+    { type: 'word.update', id: removeEdited.id, patch: { answer: '朋友改好的独立题目' } },
+    { type: 'word.retire', id: removeRetired.id, confirmed: true },
+  ]);
+  await f.publish('dg-base');
+  const memberPublication = await f.service.getRelease(actors[0], 'dg-base', 2);
+  await f.change('dg-base', [
+    { type: 'word.update', id: pending.id, patch: { tags: ['仅草稿修改'] } },
+    { type: 'word.update', id: removePending.id, patch: { answer: '只在草稿里的朋友新词' } },
+  ]);
+  const before = await f.service.get(actors[0], 'dg-base');
+  const privatePack = await f.create(actors[1], 'private');
+  const privateBefore = await f.service.get(actors[1], privatePack.packId);
+  const result = await f.reopen().ensureSeed({ publishInitial: true });
+  const after = await f.service.get(actors[0], 'dg-base'), release = await f.service.getRelease(actors[0], 'dg-base', 3);
+  assert.equal(after.draft.words.length,DRAW_AND_GUESS_SEED.length+4); assert.equal(release.words.length,DRAW_AND_GUESS_SEED.length+3);
+  assert.equal(result.draft.removed,DRAW_AND_GUESS_QUALITY_REMOVALS.length-3);
+  assert.equal(result.release.removed,DRAW_AND_GUESS_QUALITY_REMOVALS.length-2);
+  assert.equal(after.draft.words.some(word=>word.id===removeUntouched.id),false);
+  assert.equal(release.words.some(word=>word.id===removePending.id),false);
+  for(const id of [removeEdited.id,removeRetired.id,removePending.id])assert.deepEqual(after.draft.words.find(word=>word.id===id),before.draft.words.find(word=>word.id===id));
+  for(const id of [removeEdited.id,removeRetired.id])assert.deepEqual(release.words.find(word=>word.id===id),memberPublication.words.find(word=>word.id===id));
+  assert.equal(result.draft.replacementConflicts, 1); assert.equal(result.release.replacementConflicts, 1);
+  assert.equal(result.draft.replaced, replacements.length - 4);
+  assert.equal(result.release.replaced, replacements.length - 3);
+  for (const id of [edited.id, retired.id, pending.id, conflict.id, 'member-replacement-alias'])
+    assert.deepEqual(after.draft.words.find(word => word.id === id), before.draft.words.find(word => word.id === id), id);
+  assert.deepEqual(after.draft.words.find(word => word.id === untouched.id), untouched);
+  assert.deepEqual(release.words.find(word => word.id === pending.id), pending);
+  assert.equal(after.draft.categories.find(category => category.id === 'home').name, '朋友自定的居家类');
+  assert.deepEqual(await f.service.getRelease(actors[0], 'dg-base', 1), old);
+  assert.deepEqual(await f.service.getRelease(actors[0], 'dg-base', 2), memberPublication);
+  assert.deepEqual(await f.service.get(actors[1], privatePack.packId), privateBefore);
+  assert.equal((await f.wrap(() => { throw Error('repeat must not write'); }).ensureSeed({ publishInitial: true })).imported, false);
+  await f.verifyQuota();
+});
+
+// Default selection is immutable release metadata, not a room-wide toggle.
+for (const sqlite of [false, true]) test(`${sqlite ? 'SQLite' : 'Memory'}: category defaults publish explicitly and preserve old rooms and release contents`, async t => {
+  const {defaultDrawingCategoryIds} = await import('./games/draw-and-guess/content-defaults.mjs');
+  const f=fixture(t,{sqlite});await f.service.ensureSeed({publishInitial:true});
+  const oldRelease=await f.service.getRelease(actors[0],'dg-base',1);
+  const [{createDurableRoomStore},{createDrawingContentAssembly}]=await Promise.all([import('../server/durable-rooms.mjs'),import('../server/games/draw-and-guess/content-assembly.mjs')]);
+  const assembly=createDrawingContentAssembly({wordbanks:f.service,ready:Promise.resolve(),enabled:true,now:f.now,serverRandomInt:()=>0});
+  const rooms=createDurableRoomStore({storage:f.storage,now:f.now,...assembly,pollIntervalMs:0,serverRandomInt:()=>0});t.after(()=>rooms.close());
+  const waiting=await rooms.createRoom(actors[0].userKey,'原房间','default-original-room','draw-and-guess');
+  const oldRoom=await f.storage.read('rooms',waiting.view.roomId);
+  const revision=(await f.service.get(actors[0],'dg-base')).draftRevision;
+  await assert.rejects(f.change('dg-base',[{type:'category.default',id:'screen',selected:'yes'}]),code('CATEGORY_DEFAULT'));
+  assert.equal((await f.service.get(actors[0],'dg-base')).draftRevision,revision);
+  await f.change('dg-base',[{type:'category.default',id:'daily',selected:false},{type:'category.default',id:'screen',selected:true},{type:'category.default',id:'idiom-abstract',selected:true}]);
+  assert.deepEqual(await f.service.getRelease(actors[0],'dg-base',1),oldRelease);
+  assert.equal((await f.service.get(actors[0],'dg-base')).publishedHead,1);
+  await f.publish('dg-base');const release=await f.service.getRelease(actors[0],'dg-base',2);
+  assert.deepEqual(release.words,oldRelease.words);assert.deepEqual(await f.service.getRelease(actors[0],'dg-base',1),oldRelease);
+  const selected=defaultDrawingCategoryIds(release.categories);assert.ok(selected.includes('screen'));assert.ok(selected.includes('idiom-abstract'));assert.ok(!selected.includes('daily'));
+  const fresh=await rooms.createRoom(actors[1].userKey,'新房间','default-new-room','draw-and-guess');
+  assert.equal(fresh.view.drawConfig.contentSelection.version,2);assert.deepEqual(fresh.view.drawConfig.contentSelection.categoryIds,selected);
+  assert.deepEqual(await f.storage.read('rooms',waiting.view.roomId),oldRoom);
+  validateDrawAndGuessWordbankSnapshot('wordbank-packs',await f.storage.get('wordbank-packs','dg-base'));
+  validateDrawAndGuessWordbankSnapshot('wordbank-releases',await f.storage.get('wordbank-releases','dg-base:2'));
+  const active=release.categories.filter(c=>c.status==='active');await f.change('dg-base',active.map(c=>({type:'category.default',id:c.id,selected:false})));
+  const current=await f.service.get(actors[0],'dg-base'),preview=await f.service.preview(actors[0],'dg-base',{expectedDraftRevision:current.draftRevision,expectedPublishedHead:2});
+  assert.ok(preview.report.errors.some(e=>e.code==='empty-default-categories'));
+  await assert.rejects(f.publish('dg-base'),code('CONTENT_INVALID'));
+  assert.equal((await f.service.get(actors[0],'dg-base')).publishedHead,2);await f.verifyQuota();
 });

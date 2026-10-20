@@ -50,7 +50,7 @@ export function cardDraftChoices(game, selfId, detail) {
       ids.filter(toGoodsId => toGoodsId !== fromGoodsId && game.bankGoods[toGoodsId] >= self.goods[fromGoodsId])
         .map(toGoodsId => ({ fromGoodsId, toGoodsId }))), '整类库存换成同数的另一类')];
     case 'C08': return [options('hand-branch', [...(hand.length < 5 && game.deckCount + game.discard.length ? [{ branch: 'draw' }] : []),
-      ...((peer?.handCount ?? peer?.hand?.length ?? 0) > 3 ? [{ branch: 'discard' }] : [])], '自己补牌，或让对手弃牌')];
+      ...(peers.some(player => (player.handCount ?? player.hand?.length ?? 0) > 3) ? [{ branch: 'discard' }] : [])], '自己补牌，或让对手弃牌')];
     case 'C09': return [goods('auction-goods', game.bankGoods, 2, 2, '选择2件货物作为整组拍品')];
     case 'C10': return [options('artisan-good', ids.filter(id => game.bankGoods[id] >= 2).map(goodsId => ({ goodsId })), '付2两，取得同种货物2件')];
     case 'C11': return [options('recover-tool', game.discard.filter(card => getCard(card.definitionId).category === 'tool')

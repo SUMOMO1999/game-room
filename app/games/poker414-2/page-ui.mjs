@@ -6,6 +6,7 @@ import { createPoker414Motion, poker414MotionPlan } from './motion-ui.mjs';
 import { createGameAudio } from '../../game-audio.mjs';
 import { mountRoomAudioControls } from '../../platform/room-audio-controls.mjs';
 import { mountRoomSettings } from '../../platform/room-settings.mjs';
+import { mountGameAppearancePicker } from '../../platform/game-appearance.mjs';
 import { mountGameViewport } from '../../platform/room-viewport.mjs';
 import { gameViewport } from '../../game-viewport.mjs';
 import { roomChatMarkup } from '../../room-chat.mjs';
@@ -66,6 +67,7 @@ export function mountPoker414Page({ root, preview = false, practice = false, onA
   const audioControls = mountRoomAudioControls({ audio, document });
   const settings = mountRoomSettings({ document, buttonId: 'p414-settings', dialogId: 'p414-options-dialog', closeButtonId: 'p414-settings-close',
     dismissIds: ['p414-rules', 'p414-members', 'p414-exit-settings', ...(!local ? ['p414-logout', 'p414-agora'] : [])] });
+  const removeAppearance = mountGameAppearancePicker(document, $('p414-options-dialog'), { scope: 'poker414-2' });
   const dialogs = ['rules', 'leave', 'inspector'];
   function openDialog(name) {
     for (const dialog of document.querySelectorAll('dialog[open]')) dialog.close();
@@ -313,7 +315,7 @@ export function mountPoker414Page({ root, preview = false, practice = false, onA
   listen($('p414-stay'), 'click', () => $('p414-leave-dialog').close());
   function leaveFailure(message) {
     if (destroyed) return;
-    leaveWorking = false; $('p414-leave-confirm').disabled = false; $('p414-leave-confirm').textContent = '确认退出';
+    leaveWorking = false; $('p414-leave-confirm').removeAttribute('aria-busy'); $('p414-leave-confirm').disabled = false; $('p414-leave-confirm').textContent = '确认退出';
     const error = $('p414-leave-error');
     if (message || error.hidden || !error.textContent) error.textContent = message || '退出结果尚未确认。请恢复连接后核对，不会重复扣分。';
     error.hidden = false;
@@ -321,8 +323,8 @@ export function mountPoker414Page({ root, preview = false, practice = false, onA
   listen($('p414-leave-confirm'), 'click', async () => {
     if (leaveWorking) return;
     const fence = generation;
-    leaveWorking = true; $('p414-leave-confirm').disabled = true; $('p414-leave-confirm').textContent = '正在确认…';
-    try { const left = await onLeave({ destination: exitDestination }); if (destroyed || generation !== fence) return; if (left === false) leaveFailure(); else $('p414-leave-dialog').close(); }
+    leaveWorking = true; $('p414-leave-confirm').setAttribute('aria-busy', 'true'); $('p414-leave-confirm').disabled = true; $('p414-leave-confirm').textContent = '正在确认…';
+    try { const left = await onLeave({ destination: exitDestination }); if (destroyed || generation !== fence) return; if (left === false) leaveFailure(); else { $('p414-leave-confirm').removeAttribute('aria-busy'); $('p414-leave-dialog').close(); } }
     catch (error) { if (!destroyed && generation === fence && error?.name !== 'AbortError') leaveFailure(error.message); }
   });
   listen($('p414-rules'), 'click', () => openDialog('rules'));
@@ -338,7 +340,7 @@ export function mountPoker414Page({ root, preview = false, practice = false, onA
     if (destroyed) return;
     objectMotion.cancel();
     const { message = '', loginHref = null, reauthHref = null, preserveSelection = false } = typeof options === 'string' ? { message: options } : options;
-    generation += 1; leaveWorking = false; $('p414-leave-confirm').disabled = false; $('p414-leave-confirm').textContent = '确认退出';
+    generation += 1; leaveWorking = false; $('p414-leave-confirm').removeAttribute('aria-busy'); $('p414-leave-confirm').disabled = false; $('p414-leave-confirm').textContent = '确认退出';
     savedSelection = preserveSelection && view ? { scope: selectionScope(view), ids: [...selected] } : preserveSelection ? savedSelection : null;
     concealMessage = message; connection = loginHref ? 'unauthorized' : 'unavailable'; pending = false;
     for (const [id, href] of [['p414-login', loginHref], ['p414-reauth', reauthHref]]) {
@@ -361,7 +363,7 @@ export function mountPoker414Page({ root, preview = false, practice = false, onA
     setPending(value) { if (!destroyed) { pending = Boolean(value); connectionState(); } },
     destroy() {
       if (destroyed) return;
-      conceal(); destroyed = true; objectMotion.destroy(); window.clearInterval(clockTimer); observer.disconnect(); viewport.destroy(); settings.destroy(); audioControls.destroy(); audio.close(); disposers.forEach(dispose => dispose());
+      conceal(); destroyed = true; objectMotion.destroy(); window.clearInterval(clockTimer); observer.disconnect(); viewport.destroy(); removeAppearance(); settings.destroy(); audioControls.destroy(); audio.close(); disposers.forEach(dispose => dispose());
     },
   };
 }

@@ -152,6 +152,31 @@ test('global stall price is six then three, with five finite permits/boards', ()
   for (let i = 1; i <= 5; i++) state = accept(state, 'buy-stall', { cardId: copy('stall-permit', i) });
   assert.equal(state.players[0].silver, 2); assert.equal(state.availableStalls, 0); assert.equal(state.players[0].stallCount, 5);
 });
+test('temporary space charges two again after release, while permanent +3 boards are separate purchases', () => {
+  let state = arrangeHands(fresh({ actionLimit:10 }), [[copy('g19',1),copy('g19',2),copy('g19',3),copy('g01'),copy('stall-permit',1),copy('stall-permit',2)], []]);
+  state = enterUse(state);
+  state = settle(accept(state,'buy',{cardId:copy('g19',1)}));
+  assert.equal(state.players[0].silver,8, 'six goods cost10 plus2 temporary fee');
+  assert.equal(state.players[0].temporaryOccupied,true);
+  state = settle(accept(state,'sell',{cardId:copy('g19',2)}));
+  assert.equal(state.players[0].silver,26, 'sale pays18 without refunding temporary fee');
+  assert.equal(state.players[0].temporaryOccupied,false);
+  state = JSON.parse(JSON.stringify(state));
+  state = settle(accept(state,'buy',{cardId:copy('g19',3)}));
+  assert.equal(state.players[0].silver,14, 'reoccupying the sixth position pays2 again after restore');
+  assert.equal(state.players[0].temporaryOccupied,true);
+  state = accept(state,'buy-stall',{cardId:copy('stall-permit',1)});
+  assert.equal(state.players[0].silver,8, 'permanent board costs6, no temporary fee refund');
+  assert.equal(state.players[0].stallCount,1);
+  assert.equal(state.players[0].temporaryOccupied,false, 'six goods fit ordinary capacity8 after expansion');
+  state = settle(accept(state,'buy',{cardId:copy('g01')}));
+  assert.equal(state.players[0].silver,3, 'nine goods use8 ordinary plus1 temporary, costing3 plus2');
+  assert.equal(state.players[0].temporaryOccupied,true);
+  state = accept(state,'buy-stall',{cardId:copy('stall-permit',2)});
+  assert.equal(state.players[0].silver,0, 'second permanent board separately costs3');
+  assert.equal(state.players[0].stallCount,2);
+  assert.equal(state.players[0].temporaryOccupied,false);
+});
 test('last-step trade stays pending through merchant response; response freezes and resumes actual time', () => {
   let state = arrangeHands(fresh({ actionLimit: 2 }), [[copy('g01')], [copy('c04')]]);
   state = enterUse(state, { ...ctx, now: 1100 });

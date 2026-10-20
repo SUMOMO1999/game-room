@@ -1,3 +1,4 @@
+import {supportsRoomVoice,roomVoicePages} from '../app/platform/room-voice-policy.mjs';
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -20,6 +21,8 @@ import { createCanvasHttp } from './games/draw-and-guess/canvas-http.mjs';
 import { WordbankError } from './content/draw-and-guess-wordbank.mjs';
 import { createGameScoresHttp } from './game-scores-http.mjs';
 import { createGameScores } from './game-scores.mjs';
+import {createRoomVoiceProxy} from './room-voice-proxy.mjs';
+import { createRoomVoiceHttp, voiceAuthority } from './room-voice-http.mjs';
 import { createHyakkiEventHttp } from './games/hyakki-trading/event-http.mjs';
 
 const root = fileURLToPath(new URL('../app/', import.meta.url));
@@ -77,6 +80,7 @@ async function readJson(req, maxBytes = 32768) {
 export function createUnifiedServer(options) {
   const runtime=options.sessions && options.rooms ? options : createRuntime(options.settings,options);
   const {settings,sessions,rooms,storage,chat,wordbanks,wordbankReady,canvases,drawingEnabled=false,poker414Enabled=false,hyakkiEnabled=false,parksEnabled=false}=runtime;
+  const voice=options.voiceHub??runtime.voiceHub??null;
   const configuredEntries=makeEntries(settings,options.entries);
   if(!configuredEntries.some(entry=>entry.direct)) throw new TypeError('The original direct game entry must remain enabled');
   // Explicit dual-entry configuration is immutable. The legacy one-entry API
@@ -88,7 +92,7 @@ export function createUnifiedServer(options) {
   // Startup recovery may fail temporarily; the committed room outbox remains retryable.
   const historyRecovery=Promise.resolve().then(()=>rooms.flushPendingRecords?.()).catch(()=>{});
   const security={...baseHeaders,...(settings.production?{'Strict-Transport-Security':'max-age=31536000'}:{})};
-  const accountPublic={mode:settings.mode,loginReady:sessions.loginReady,drawingEnabled,poker414Enabled,hyakkiEnabled,parksEnabled,reauthReady:settings.mode==='cognito',...(settings.mode==='cognito'?{reauthHref}:{})};
+  const accountPublic={voiceEnabled:!!voice,voiceKind:voice?.kind??null,mode:settings.mode,loginReady:sessions.loginReady,drawingEnabled,poker414Enabled,hyakkiEnabled,parksEnabled,reauthReady:settings.mode==='cognito',...(settings.mode==='cognito'?{reauthHref}:{})};
   const connections=new Set();const buckets=new Map();
   let queuedCanvasBytes=0;
   const maxQueuedCanvasBytes=2*1024*1024;
@@ -107,13 +111,15 @@ export function createUnifiedServer(options) {
   }
   const wordbankRoute = wordbanks && drawingEnabled ? createWordbankHttp({sessions,rooms,wordbanks,ready:wordbankReady,limit,reply,readJson:req=>readJson(req,65536)}) : null;
   const canvasRoute = canvases && drawingEnabled ? createCanvasHttp({sessions,rooms,canvases,limit,reply,readJson}) : null;
+  const voiceProxy=voice?createRoomVoiceProxy({sessions,rooms,voice,entries:()=>entries||makeEntries(settings),origin:options.voiceOrigin??'http://127.0.0.1:7880',limit}):null;
+  const voiceRoute=voice?createRoomVoiceHttp({sessions,rooms,voice,limit,reply,readJson}):null;
   let scoresRoute = null;
   const hyakkiEventRoute = runtime.hyakkiEvents ? createHyakkiEventHttp({ sessions, rooms, events: runtime.hyakkiEvents, limit, reply }) : null;
-  const unsubscribeInvalidation=sessions.subscribeInvalidation(({sessionId,userKey,status})=>{preview.clearSession(sessionId);if(userKey) canvases?.invalidateActor(userKey);canvases?.invalidateAuthorization?.(sessionId);for(const connection of connections) if(connection.id===sessionId) connection.end(status);});
+  const unsubscribeInvalidation=sessions.subscribeInvalidation(({sessionId,userKey,status})=>{preview.clearSession(sessionId);voice?.invalidateSession(sessionId);if(userKey) canvases?.invalidateActor(userKey);canvases?.invalidateAuthorization?.(sessionId);for(const connection of connections) if(connection.id===sessionId) connection.end(status);});
   const viewSignature=value=>{const {serverTime,...stable}=value || {};return JSON.stringify(stable);};
-  async function stream(webRequest,res,code,session,roomId,withPreview=false,setupContext=null) {
+  async function stream(webRequest,res,code,session,roomId,withPreview=false,setupContext=null,streamGameType=null) {
     if (res.destroyed || res.writableEnded) return;
-    let alive=true,unsubscribe=null,unsubscribeChat=null,unsubscribePreview=null,unsubscribeCanvas=null,heartbeat=null,watchdog=null,queue=Promise.resolve(),canvasQueue=Promise.resolve(),queued=0,checking=false,pendingView=null,viewQueued=false,lastViewSignature=null,previewQueued=false,previewDirty=false,lastPreviewSignature=null;
+    let alive=true,unsubscribe=null,unsubscribeChat=null,unsubscribePreview=null,unsubscribeCanvas=null,unsubscribeVoice=null,heartbeat=null,watchdog=null,queue=Promise.resolve(),canvasQueue=Promise.resolve(),queued=0,checking=false,pendingView=null,viewQueued=false,lastViewSignature=null,previewQueued=false,previewDirty=false,lastPreviewSignature=null;
     const cancellation = new AbortController();
     let canvasLease=null,canvasLeaseGeneration=0,legacyCanvas=false;
     const identityNow=typeof sessions.now==='function'?sessions.now:Date.now;
@@ -175,7 +181,7 @@ export function createUnifiedServer(options) {
       Promise.resolve(unsubscribe?.()).catch(()=>{});
       Promise.resolve(unsubscribeChat?.()).catch(()=>{});
       unsubscribePreview?.();
-      Promise.resolve(unsubscribeCanvas?.()).catch(()=>{});
+      Promise.resolve(unsubscribeCanvas?.()).catch(()=>{});unsubscribeVoice?.();
       // A null status is only transport backpressure: EOF uses the client's
       // existing reconnect path. Identity failures still send 401/503 below.
       if(status!==null && !res.destroyed && res.headersSent && !res.writableEnded) res.write(`event: closed\ndata: ${JSON.stringify({status,error:error || message({status})})}\n\n`);
@@ -233,6 +239,7 @@ export function createUnifiedServer(options) {
         else if(type==='canvas') {
           await wait(() => context ? rooms.getGameContext(code,session.userKey,{includeView:false}) : rooms.getView(code,session.userKey));
         }
+        else if(type==='voice') {await wait(()=>rooms.getGameContext(code,session.userKey,{includeView:false}));}
         else {
           await wait(() => type==='chat' && context ? rooms.getGameContext(code,session.userKey,{includeView:false}) : rooms.getView(code,session.userKey));
           value=await wait(() => chat.preparePacket(code,session.userKey,value));
@@ -250,7 +257,7 @@ export function createUnifiedServer(options) {
         // Online checks can wait. Fence the project seat again after that wait;
         // a valid shared account cannot authorize an already abandoned seat.
         const prepare=async attempt=>{
-          const authorityOnly=type==='canvas' || type==='chat';
+          const authorityOnly=type==='canvas' || type==='chat' || type==='voice';
           const outputContext = context ? await wait(() => rooms.getGameContext(code,session.userKey,{includeView:!authorityOnly})) : null;
           // Batch chat and canvas need current authority, not a discarded
           // private game projection. Other events and legacy keep full views.
@@ -271,6 +278,7 @@ export function createUnifiedServer(options) {
             outputValue=preview.packet(liveView,{forStream:true});signature=JSON.stringify(outputValue);
             if(signature===lastPreviewSignature) return null;
           }
+          if(type==='voice'){outputValue=voice.packet(voiceAuthority(authorized,liveRoom,code),originalValue);if(!outputValue)return null;}
           if(type==='view') signature=viewSignature(outputValue);
           if(!alive || res.destroyed || res.writableEnded) return null;
           if(res.writableLength>524288) {connection.end(null);return null;}
@@ -331,13 +339,14 @@ export function createUnifiedServer(options) {
           if(!alive) {await unsubscribeCanvas();return;}
         }
       }
+      if(voice&&supportsRoomVoice(streamGameType)){const room=await prepare(()=>rooms.getGameContext(code,session.userKey,{includeView:false}));if(supportsRoomVoice(room.gameType))unsubscribeVoice=voice.subscribe(voiceAuthority(session,room,code),value=>send('voice',value),()=>connection.end(null));}
       setupContext?.assert();
       if(!alive || res.destroyed || res.writableEnded) {connection.end(null);return;}
       heartbeat=setInterval(()=>{if(alive && !res.destroyed) res.write(': ping\n\n');},options.heartbeatMs || 20000);heartbeat.unref();
       watchdog=setInterval(()=>{
         if(!alive || checking) return;checking=true;
         // This check cannot wait behind private event preparation or sending.
-        Promise.resolve().then(()=>{if(alive) return legacyCanvas?refreshCanvasLease():check();}).catch(error=>connection.end(error.status===401?401:503)).finally(()=>{checking=false;});
+        Promise.resolve().then(async()=>{if(!alive)return;const current=legacyCanvas?(await refreshCanvasLease(),canvasLease?.session):await check();if(voice&&current&&alive&&voice.active(roomId,current.id)){const room=await rooms.getGameContext(code,current.userKey,{includeView:false});if(room.roomId===roomId&&supportsRoomVoice(room.gameType))voice.renew(voiceAuthority(current,room,code));}}).catch(error=>connection.end(error.status===401?401:503)).finally(()=>{checking=false;});
       },legacyCanvas?Math.min(options.watchdogMs || publicCanvasWatchdogMs,publicCanvasWatchdogMs):options.watchdogMs || 15000);watchdog.unref();
     } catch(error) {connection.end(error.status || 503,message(error));}
   }
@@ -352,11 +361,14 @@ export function createUnifiedServer(options) {
       const webRequest=new Request(externalUrl,{method:req.method,headers:req.headers});
       bindEntry(webRequest,entry,logicalPath);
       res.gameEntry=entry;
+      if(url.pathname.startsWith('/voice/')){if(voiceProxy)return await voiceProxy.http(req,res);return reply(res,404,{error:'语音未启用。'});}
       const peer=req.headers['x-game-room-peer'];
       const localPeer=['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
       const clientAddress=settings.production && localPeer && typeof peer==='string' && isIP(peer)?peer:req.socket.remoteAddress;
       const canvasPath=/^\/api\/rooms\/\d{6}\/canvas(?:\/(?:acquire|append|undo|redo|clear))?$/.test(url.pathname);
+      const voicePath=!!voice&&/^\/api\/rooms\/\d{6}\/voice\/(?:join|signal|leave)$/.test(url.pathname);
       if(canvasPath) {limit(`canvas-ip:${clientAddress}`,360);limit('canvas-global',300);}
+      else if(voicePath){limit(`voice-ip:${clientAddress}`,360);limit('voice-global',120);}
       else if(url.pathname.startsWith('/auth/') || url.pathname.startsWith('/api/')) limit(`ip:${clientAddress}`);
       if(url.pathname==='/healthz') {
         if(!['GET','HEAD'].includes(req.method)) return reply(res,405,{error:'请使用 GET。'},{Allow:'GET, HEAD'});
@@ -432,6 +444,7 @@ export function createUnifiedServer(options) {
         const after=await sessions.authorize(webRequest,{touch:false});await fence(after);
         return reply(res,200,result);
       }
+      if(voiceRoute&&await voiceRoute({req,res,url,webRequest,context:identityContext}))return;
       if(url.pathname.startsWith('/api/rooms')) {
         const route=/^\/api\/rooms\/(\d{6})(?:\/(join|events|actions|chat|preview))?$/.exec(url.pathname),create=url.pathname==='/api/rooms';
         if(!create && !route) return reply(res,404,{error:'接口不存在。'});
@@ -453,11 +466,11 @@ export function createUnifiedServer(options) {
           const initialView=await wait(() => rooms.getView(code,session.userKey));
           // A stream owns new per-event contexts after this initial request.
           // Its handshake context must not be reused for the connection lifetime.
-          return await stream(webRequest,res,code,session,initialView.roomId,url.searchParams.get('preview')==='1',identityContext);
+          return await stream(webRequest,res,code,session,initialView.roomId,url.searchParams.get('preview')==='1',identityContext,initialView.gameType);
         }
         if(endpoint==='preview') {
           const initialView=await wait(() => rooms.getView(code,session.userKey));
-          if(initialView.gameType!=='rummikub' || !['friends-v1','friends-v2','friends-v3','friends-v4'].includes(initialView.game?.ruleVersion)) throw new RoomError(400,'PREVIEW_UNSUPPORTED','本游戏没有桌面整理预览。');
+          if(initialView.gameType!=='rummikub' || !['friends-v1','friends-v2','friends-v3','friends-v4','friends-v5'].includes(initialView.game?.ruleVersion)) throw new RoomError(400,'PREVIEW_UNSUPPORTED','本游戏没有桌面整理预览。');
           const prepared=write?preview.prepare(initialView,body,session.id):null;
           const after=await sessions.authorize(webRequest,{touch:false});
           const outputContext=identityContext?await wait(() => rooms.getGameContext(code,session.userKey)):null;
@@ -476,7 +489,7 @@ export function createUnifiedServer(options) {
             if(Object.keys(body).some(key=>!fields.includes(key))) throw new RoomError(400,'INVALID_BODY','创建只需要称呼、游戏类型和请求编号；加入使用已有房间的游戏。');
             limit(`${create?'create':'join'}:${session.userKey}`,create?20:40);
             result=await wait(() => create?rooms.createRoom(session.userKey,body.name,body.requestId,body.gameType,body.initialConfiguration):rooms.joinRoom(code,session.userKey,body.name,body.requestId,body.role));
-          } else result=await wait(() => rooms.action(code,session.userKey,body));
+          } else result=await wait(() => rooms.action(code,session.userKey,body,{signal:identityContext?.signal}));
         } else result={view:await wait(() => rooms.getView(code,session.userKey))};
         const after=await sessions.authorize(webRequest,{touch:false});
         if(identityContext && endpoint==='chat' && write) {
@@ -509,12 +522,14 @@ export function createUnifiedServer(options) {
           if(endpoint!=='chat') result={...result,...(result.playerId?{playerId:currentView.selfId}:{}),view:currentView};
         }
         await fence(after,outputContext?[outputContext.roomGuard,outputContext.presenceGuard,...(outputContext.invitationGuard?[outputContext.invitationGuard]:[])]:[]);
-        return reply(res,create || endpoint==='join'?201:200,result);
+        return reply(res,create || endpoint==='join'?201:result?.pending === true ? 202 : 200,result);
       }
       if(url.pathname.startsWith('/api/')) return reply(res,404,{error:'接口不存在。'});
       if(!['GET','HEAD'].includes(req.method)) return reply(res,405,{error:'请求方法不支持。'},{Allow:'GET, HEAD'});
       const filename=url.pathname==='/'?'index.html':url.pathname==='/words'?'words.html':url.pathname.slice(1);if(!files.has(filename)) return reply(res,404,{error:'页面不存在。'});
-      const body=await readFile(path.join(root,filename));res.writeHead(200,{...security,'Content-Type':mime[path.extname(filename)]});res.end(req.method==='HEAD'?undefined:body);
+      const body=await readFile(path.join(root,filename));
+      const pageSecurity=voice&&roomVoicePages.includes(filename)?{...security,'Content-Security-Policy':security['Content-Security-Policy'].replace("connect-src 'self';","connect-src 'self' "+entry.origin.replace(/^http/,'ws')+entryPath(entry,'/voice/')+';')}:security;
+      res.writeHead(200,{...pageSecurity,'Content-Type':mime[path.extname(filename)]});res.end(req.method==='HEAD'?undefined:body);
     } catch(error) {
       const known=error instanceof RoomError || error instanceof IdentityFailure || error instanceof WordbankError;
       reply(res,known?error.status:503,{error:known?(error instanceof WordbankError?error.message:message(error)):'服务暂时无法完成操作。',code:known?error.code:'SERVICE_UNAVAILABLE',
@@ -526,6 +541,7 @@ export function createUnifiedServer(options) {
       identityContext?.dispose();
     }
   });
+  server.on('upgrade',(req,socket,head)=>{if(voiceProxy)voiceProxy.upgrade(req,socket,head);else socket.destroy();});
   let cleanupPromise;
   let sweepFlight=Promise.resolve();
   const sweep=setInterval(()=>{
@@ -541,11 +557,11 @@ export function createUnifiedServer(options) {
   },60000);sweep.unref();
   function cleanup() {
     if(!cleanupPromise) {
-      clearInterval(sweep);unsubscribeInvalidation();for(const connection of [...connections]) connection.end(503);
+      clearInterval(sweep);voiceProxy?.close();unsubscribeInvalidation();for(const connection of [...connections]) connection.end(503);
       preview.close();
       cleanupPromise=sweepFlight.then(()=>historyRecovery).then(async()=>{
-        await canvases?.close();
-        try {await chat?.close();} finally {await rooms.close();}
+        try{await voice?.close();}finally{await canvases?.close();
+        try {await chat?.close();} finally {await rooms.close();}}
       }).finally(async()=>{try {await runtime.identityRuntime?.close();} finally {storage?.close();}});
     }
     return cleanupPromise;
@@ -553,6 +569,7 @@ export function createUnifiedServer(options) {
   server.on('close',()=>{cleanup().catch(()=>{});});
   server.requestTimeout=10000;server.headersTimeout=10000;server.keepAliveTimeout=5000;
   server.shutdown=async()=>{
+    voiceProxy?.close();
     for(const connection of [...connections]) connection.end(503);server.closeIdleConnections();
     try {await new Promise((resolve,reject)=>server.close(error=>error && error.code!=='ERR_SERVER_NOT_RUNNING'?reject(error):resolve()));}
     finally {await cleanup();}

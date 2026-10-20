@@ -1,3 +1,4 @@
+import {withRoomVoice} from './platform/room-voice-session.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
@@ -80,7 +81,7 @@ async function fixture(t, options = {}) {
   if (options.entry) {
     const source = (await readFile(new URL('./games/hyakki-trading/game-page.mjs', import.meta.url), 'utf8')).replace(/^import[\s\S]*?;\s*/gm, '');
     document.querySelector = () => ({ syntheticRoot: true });
-    const entryContext = vm.createContext({ ...dependencies, location: window.location, navigator: {}, URLSearchParams,
+    const entryContext = vm.createContext({ ...dependencies, BaseRoomClient:dependencies.RoomClient,withRoomVoice, location: window.location, navigator: {}, URLSearchParams,
       entryBase: () => '/game/', mountHyakkiPage: value => { stats.uiBindings = value; return ui; }, mountRoomChat: value => { stats.chatBindings = value; return chat; },
       createHyakkiRoomController: value => { controller = createHyakkiRoomController(value); return controller; },
     });
@@ -144,11 +145,13 @@ test('identity errors conceal private state with invitation recovery, while dest
   }
 });
 
-test('visible focus performs the existing fresh account check without rebuilding the client or hiding the table', async t => {
+test('visible focus confirms the account and re-renders the current room without rebuilding or concealing', async t => {
   const f = await fixture(t), current = f.clients[0], before = f.stats.views.length, gates = f.stats.gates.length, reads = f.accountReads;
+  const roomReads=f.calls.filter(call=>call.path==='/api/rooms/123456').length,writes=f.calls.filter(call=>call.method==='POST').length;
   f.window.dispatchEvent(new Event('focus')); await settle();
   assert.equal(f.accountReads, reads + 1); assert.equal(f.clients.length, 1); assert.equal(current.stopped, false);
-  assert.equal(current.connects, 1); assert.equal(f.stats.gates.length, gates); assert.equal(f.stats.views.length, before);
+  assert.equal(current.connects, 1); assert.equal(f.stats.gates.length, gates); assert.equal(f.stats.views.length, before+1);
+  assert.equal(f.calls.filter(call=>call.path==='/api/rooms/123456').length,roomReads+1);assert.equal(f.calls.filter(call=>call.method==='POST').length,writes);
 });
 
 

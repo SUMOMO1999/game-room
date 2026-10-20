@@ -1,12 +1,15 @@
 /** Game-specific material operations. Call only on a candidate clone. */
-import { createDeck, getCard, GOODS, MULTIPLAYER_RULE_VERSION } from './content/definitions.mjs';
-const copies = new Map(createDeck().map(card => [card.id, card.definitionId]));
+import { definitionIdForCopy, materialProfileFor, getCard, GOODS, MULTIPLAYER_RULE_VERSION } from './content/definitions.mjs';
 export const DEFAULT_ACTION_LIMIT = 5;
 export const DEFAULT_GOODS_PER_TYPE = 8;
 export const LEGACY_GOODS_PER_TYPE = 6;
 export const MIN_GOODS_PER_TYPE = 4;
 export const MAX_GOODS_PER_TYPE = 20;
 export const validActionLimit = value => Number.isSafeInteger(value) && value >= 1 && value <= 10;
+export const idleRewardThreshold = actionLimit => Math.round(actionLimit / 2);
+// Eligibility is shared by authority, presentation and the practice bot;
+// voluntary ending and the mandatory first peek remain rule-layer guards.
+export const qualifiesForIdleReward = ({ actionLimit, actionsUsed }) => actionsUsed <= idleRewardThreshold(actionLimit);
 export const validGoodsPerType = value => Number.isSafeInteger(value) && value >= MIN_GOODS_PER_TYPE && value <= MAX_GOODS_PER_TYPE;
 // Absence identifies an old frozen configuration, never a request to refill it.
 export const goodsPerTypeOf = value => Object.hasOwn(value, 'goodsPerType') ? value.goodsPerType : LEGACY_GOODS_PER_TYPE;
@@ -15,7 +18,8 @@ export class RuleError extends Error {
 }
 export function requireRule(condition, message, code) { if (!condition) throw new RuleError(message, code); }
 export function definition(copyId) {
-  requireRule(copies.has(copyId), '这张牌不存在。'); return getCard(copies.get(copyId));
+  const id = definitionIdForCopy(copyId);
+  requireRule(id !== null, '这张牌不存在。'); return getCard(id);
 }
 export const emptyGoods = () => Object.fromEntries(GOODS.map(good => [good.id, 0]));
 export const goodsCount = vector => Object.values(vector).reduce((sum, count) => sum + count, 0);
@@ -113,7 +117,7 @@ export function shuffled(cards, randomInt) {
 }
 export const availableCards = state => state.deck.length + state.discard.length;
 export function drawCards(state, count, { randomInt }) {
-  requireRule(Number.isSafeInteger(count) && count >= 0 && count <= 110, '抽牌数量无效。');
+  requireRule(Number.isSafeInteger(count) && count >= 0 && count <= materialProfileFor(state).deckSize, '抽牌数量无效。');
   const result = [];
   while (result.length < count) {
     if (!state.deck.length) {

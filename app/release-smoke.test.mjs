@@ -239,7 +239,7 @@ test('extracted release enforces v3 settings, public observers and ephemeral pre
   assert.equal(premature.status,409);
   await action(a, 'ready', { ready: true }); await action(b, 'ready', { ready: true }); await action(a, 'start');
   const started=await view(f,a);
-  assert.equal(started.game.ruleVersion,'friends-v4');assert.deepEqual(started.game.jokerConfig,jokerConfig);
+  assert.equal(started.game.ruleVersion,'friends-v5');assert.deepEqual(started.game.jokerConfig,jokerConfig);
   assert.equal(started.game.jokerCount,5);assert.equal(started.game.tileCount,109);
   const c=await f.login('release-member-observer',`/room.html?code=${room.roomCode}`);
   const observed=await f.request(`/api/rooms/${room.roomCode}/join`,{method:'POST',...c,
@@ -276,7 +276,7 @@ test('extracted release enforces v3 settings, public observers and ephemeral pre
   assert.equal(beforeA.hostId, room.playerId); assert.equal(beforeA.game.turnPlayerId, joined.body.playerId);
   assert.deepEqual(beforeC.game.boardPositions,geometry);assert.equal(beforeC.selfRole,'spectator');
   const storedRoom=await f.runtime.storage.get('rooms',beforeA.roomId);
-  assert.equal(storedRoom.snapshot.schemaVersion,8);assert.deepEqual(storedRoom.snapshot.jokerConfig,jokerConfig);
+  assert.equal(storedRoom.snapshot.schemaVersion,20);assert.deepEqual(storedRoom.snapshot.jokerConfig,jokerConfig);
   for (const tile of beforeB.game.rack) assert.ok(!JSON.stringify(beforeA).includes(`"${tile.id}"`));
   for (const privateValue of [key.toString('base64url'), 'synthetic-release-server-only', a.state.userKey, b.state.userKey]) assert.ok(!JSON.stringify(beforeA).includes(privateValue));
   await stop();

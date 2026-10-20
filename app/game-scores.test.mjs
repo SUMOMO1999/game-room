@@ -175,7 +175,7 @@ test('missing quota, damaged encrypted values and wrong permanent TTL fail close
   await assert.rejects(scores.prepareReservation(descriptor(102)), code('SCORE_CORRUPT'));
   storage.adapter.records.set(metaKey, { ...raw, expiresAt: stamp + 180 * 86400000 });
   await assert.rejects(scores.prepareReservation(descriptor(102)), code('SCORE_CORRUPT'));
-  storage.adapter.records.set(metaKey, { ...raw, payload: `${raw.payload.slice(0, 10)}x${raw.payload.slice(11)}` });
+  storage.adapter.records.set(metaKey, { ...raw, payload: `${raw.payload.slice(0, 10)}${raw.payload[10]==='x'?'y':'x'}${raw.payload.slice(11)}` });
   await assert.rejects(scores.prepareReservation(descriptor(102)), code('SCORE_CORRUPT'));
 });
 

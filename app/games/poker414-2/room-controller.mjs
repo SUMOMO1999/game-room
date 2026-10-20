@@ -41,11 +41,11 @@ export function createPoker414RoomController({ roomCode, document, window, ui, c
     const sequence = ++scoreSequence, fence = session.capture(current);
     try {
       const packet = await current.request(`/api/rooms/${roomCode}/scores`, {}, current.epoch());
-      if (!session.current(fence) || sequence !== scoreSequence || !view || key !== scoreIdentity(view)) return;
+      if (!session.passive(fence) || sequence !== scoreSequence || !view || key !== scoreIdentity(view)) return;
       if (packet.roomId !== view.roomId || packet.matchId !== matchId(view)) return;
       scores = packet; render();
     } catch (error) {
-      if (!session.current(fence) || sequence !== scoreSequence) return;
+      if (!session.passive(fence) || sequence !== scoreSequence) return;
       scoreKey = null;
       if ([401, 403, 404, 503].includes(error.status)) unavailable(error);
       else ui.feedback('累计积分暂未读取成功；可以刷新核对，不会重新结算。');
@@ -81,19 +81,19 @@ export function createPoker414RoomController({ roomCode, document, window, ui, c
         seatScope = scope;
         const next = new RoomClient(roomCode, { roomCode, playerId: first.selfId, userKey: state.userKey }, {
           onView(value) {
-            if (!session.current(fence)) return;
+            if (!session.passive(fence)) return;
             if (value.gameType !== 'poker414-2') { window.location.replace(roomHref(roomCode, value.gameType)); return; }
             cues(view, value); view = value; baseline = false; render(); void refreshScores();
             if (!next.actionStorageReady()) ui.feedback('无法保存操作记录，请允许本站存储后重新进入房间；仍可查看牌局或退出。');
           },
           onConnection(status) {
-            if (!session.current(fence)) return;
+            if (!session.passive(fence)) return;
             if (status !== 'online') baseline = true;
             connection = status; chat.connection(status); render();
           },
-          onChat(packet) { if (session.current(fence)) chat.receive(packet); },
+          onChat(packet) { if (session.passive(fence)) chat.receive(packet); },
           onError(error) {
-            if (!session.current(fence) || leaving && error.status === 404) return;
+            if (!session.passive(fence) || leaving && error.status === 404) return;
             if (error.status === 404 && view) forgetMembership(roomCode, view.selfId);
             unavailable(error);
           },
@@ -115,22 +115,22 @@ export function createPoker414RoomController({ roomCode, document, window, ui, c
       ...(['hook', 'fork'].includes(type) ? { windowId: game?.responseWindow?.id } : {}) } : fields;
     busy = true; render();
     try { return await current.action(type, body); }
-    catch (error) { if (session.current(fence) && [401, 403, 404, 503].includes(error.status)) unavailable(error); throw error; }
-    finally { if (session.current(fence)) { busy = false; render(); } }
+    catch (error) { if (session.passive(fence) && [401, 403, 404, 503].includes(error.status)) unavailable(error); throw error; }
+    finally { if (session.passive(fence)) { busy = false; render(); } }
   }
   async function readRoom() {
     const current = client, fence = session.capture(current);
-    if (!current || !session.current(fence)) return lifecycle.refresh();
-    try { await current.refresh(); if (session.current(fence)) await refreshScores({ force: true }); }
-    catch (error) { if (session.current(fence)) unavailable(error); }
+    if (!current || !session.passive(fence)) return lifecycle.refresh();
+    try { await current.refresh(); if (session.passive(fence)) await refreshScores({ force: true }); }
+    catch (error) { if (session.passive(fence)) unavailable(error); }
   }
   async function retry() {
     const current = client, fence = session.capture(current);
     if (!current || !session.current(fence) || busy || leaving) return;
     busy = true; render();
     try { await current.retryAction(); }
-    catch (error) { if (session.current(fence)) unavailable(error); }
-    finally { if (session.current(fence)) { busy = false; render(); } }
+    catch (error) { if (session.passive(fence)) unavailable(error); }
+    finally { if (session.passive(fence)) { busy = false; render(); } }
   }
   const exit = createRoomExit({ session, roomCode, getClient: () => client, getView: () => view, forgetMembership,
     requireAcknowledgement: true, onPending: () => { leaving = true; render(); },
@@ -155,7 +155,10 @@ export function createPoker414RoomController({ roomCode, document, window, ui, c
   });
   const lifecycle = watchAccountLifecycle({ windowRef: window, documentRef: document,
     onSuspend: () => clearPrivate({ message: '正在重新核验账号…' }, { preserveDraft: true }),
-    onVerified: state => { if (!client) void boot(state); }, onError: unavailable });
+    onVerified: (state, { reason } = {}) => {
+      if (!client) void boot(state);
+      else if (reason === 'return' || reason === 'focus') void readRoom();
+    }, onError: unavailable });
   function destroy() {
     if (disposed) return;
     disposed = true; lifecycle.stop(); unsubscribe(); session.destroy(); client?.stop(); chat.clear(); ui.destroy();

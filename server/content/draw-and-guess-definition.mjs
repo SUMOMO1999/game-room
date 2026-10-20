@@ -119,6 +119,7 @@ export function validateDrawAndGuessWordbank(words, { categories = [], requireBa
     try { normalizeDrawAndGuessAnswer(category.name); }
     catch (error) { errors.push(diagnostic('category-name', `categories[${index}].name`, error.message)); }
     if (!['active', 'disabled'].includes(category.status)) errors.push(diagnostic('category-status', `categories[${index}].status`, '分类状态须为 active 或 disabled。'));
+    if (Object.hasOwn(category, 'defaultSelected') && typeof category.defaultSelected !== 'boolean') errors.push(diagnostic('category-default', `categories[${index}].defaultSelected`, '默认勾选须为布尔值。'));
   });
   words.forEach((word, index) => {
     const wordErrors = validateDrawAndGuessDefinition(word, { categoryIds, path: `words[${index}]` });

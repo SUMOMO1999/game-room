@@ -279,3 +279,23 @@ test('preparer scope escapes and duplicate identities cannot write any room or e
     assert.deepEqual((await f.storage.read('rooms', descriptor.roomId)).value, previous.value); assert.deepEqual(await rows(f.storage), []);
   }
 });
+
+test('group2 extends the strict public whitelist without changing legacy records or transaction capacity', async t => {
+ const f=fixture(t), descriptor=match(), base=append(descriptor); await apply(f.storage,await f.events.prepareAppend(base));
+ const original=structuredClone((await rows(f.storage)).find(row=>row.scope===scopes.events));
+ const metadata={turn:{id:'turn-1',number:1,round:1,ownerSeatId:hex(1)},sourceCardId:'yousei.g01',
+  changes:[{seatId:hex(1),silver:-4,goods:[{id:'firearms',delta:1}],handCount:-1,toolsAdded:[],toolsRemoved:[]}],
+  discard:{beforeCount:0,afterCount:1,removed:[],added:[{index:0,cardId:'yousei.g01',actorSeatId:hex(1),reason:'used',sourceCardId:'yousei.g01'}]}};
+ const input={...append(descriptor,2,'normal',[{type:'draw-kept',actorSeatId:hex(2)}]),schemaVersion:2,...metadata};
+ const before=await rows(f.storage);
+ for(const mutate of [v=>{v.turn.ownerSeatId=hex(99);},v=>{v.changes[0].hand=['secret'];},v=>{v.discard.added[0].copyId='private';},v=>{v.sourceCardId='goods-1:1';},v=>{v.turn.round=99;}]){
+  const invalid=structuredClone(input);mutate(invalid);await assert.rejects(f.events.prepareAppend(invalid),code('GAME_HISTORY_INVALID'));assert.deepEqual(await rows(f.storage),before);
+ }
+ const prepared=await f.events.prepareAppend(input);assert.equal(prepared.changes.length,3);await apply(f.storage,prepared);
+ const page=(await f.events.readPage({matchId:descriptor.matchId})).page;
+ assert.deepEqual(page.groups.map(g=>g.schemaVersion),[1,2]);assert.deepEqual(page.groups[1].turn,metadata.turn);assert.deepEqual(page.groups[1].changes,metadata.changes);
+ assert(!JSON.stringify(page).includes('commitId'));assert(!JSON.stringify(page).includes('userKey'));
+ const state=validateHyakkiEventState(await rows(f.storage));assert.equal(state.groups.length,2);
+ assert.deepEqual((await rows(f.storage)).find(row=>row.scope===scopes.events&&row.value.sequence===1),original);
+ assert.deepEqual((await f.events.prepareAppend(input)).changes,[]);
+});

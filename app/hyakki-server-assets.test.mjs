@@ -38,7 +38,8 @@ test('Hyakki browser closure contains real room, practice, catalog and every art
       : file.endsWith('.html') ? [...source.matchAll(/(?:src|href)=["'](\.[^"']+)["']/g)]
         : [...source.matchAll(/@import\s+["'](\.[^"']+)["']/g)];
     for (const match of references) {
-      const dependency = relative(join(root, 'app'), resolve(root, 'app', dirname(file), match[1])) || 'index.html';
+      // Cache-version queries belong to the URL, not the public filename.
+      const dependency = new URL(match[1], new URL(file, 'https://assets.invalid/')).pathname.slice(1) || 'index.html';
       assert.ok(assets.has(dependency), `${file} → ${dependency}`);
     }
   }

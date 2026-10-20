@@ -110,12 +110,51 @@ test('exact aliases, private wrong feedback, guessed player and illegal roles ne
   }
   for(const text of ['<script>','词\n1','']) assert.equal(guess(g,ids(3)[1],1100,text).ok,false);
   const wrong=guess(g,ids(3)[1],1100,'不是');assert.equal(wrong.ok,true);assert.deepEqual(wrong.guessResult,{correct:false,points:0});
-  assert.deepEqual(wrong.state,g);assert.deepEqual(g,before);
+  assert.deepEqual(wrong.state.guessAttempts,[{playerId:ids(3)[1],text:'不是',correct:false}]);
+  assert.deepEqual(wrong.state.stageClock,g.stageClock);assert.deepEqual(wrong.state.players,g.players);assert.deepEqual(g,before);
   const correct=guess(g,ids(3)[1],31000,`（ ${word.aliases[0]}！）`);g=checked(correct);
   assert.equal(correct.guessResult.points,175);assert.equal(g.players[0].score,25);assert.equal(g.players[1].score,175);
   assert.equal(guess(g,ids(3)[1],32000).ok,false);assert.equal(g.currentGuesses.length,1);
   assert.equal(JSON.stringify(g).includes('不是'),false);
   assert.equal(normalizeDrawAndGuessGuess('「ＡＢＣ１２！」'),'abc12');
+});
+
+test('turn attempts survive timeout, pause and JSON recovery; reset only on the next turn',()=>{
+  let g=choose(create(3));
+  g=checked(guess(g,ids(3)[1],1100,'  猫咪  '));
+  g=checked(guess(g,ids(3)[2],1200,'小狗'));
+  g=checked(guess(g,ids(3)[1],1300,'（别名1！）'));
+  const attempts=structuredClone(g.guessAttempts),clock=structuredClone(g.stageClock);
+  assert.deepEqual(attempts.map(a=>a.text),['猫咪','小狗','（别名1！）']);
+  assert.deepEqual(attempts.map(a=>a.correct),[false,false,true]);
+  assert.equal(guess(g,ids(3)[1],1400,'不能再猜').ok,false);
+  g=checked(core.pauseGame(g,2000));g=JSON.parse(JSON.stringify(g));
+  g=checked(core.resumeGame(g,10000));assert.deepEqual(g.guessAttempts,attempts);
+  assert.equal(g.stageClock.deadlineAt,clock.deadlineAt+8000);
+  g=timeout(g);assert.deepEqual(g.guessAttempts,attempts);
+  assert.deepEqual(g.turnResults[0].guesses,g.currentGuesses);
+  g=timeout(g);assert.deepEqual(g.guessAttempts,[]);assert.equal(g.turnNumber,2);
+});
+
+test('legacy active and completed saves remain valid without fabricating earlier guesses',()=>{
+  let g=choose(create());delete g.guessAttempts;assert.equal(core.gameProblem(g),null);
+  g=checked(guess(g,ids(2)[1],1100,'更新后提交'));
+  assert.equal(g.guessAttempts.length,1);
+  g=checked(guess(g,ids(2)[1],1200));delete g.guessAttempts;
+  assert.equal(core.gameProblem(g),null);assert.equal(g.stage,'reveal');
+  g=timeout(g);assert.deepEqual(g.guessAttempts,[]);
+});
+
+test('attempt validation rejects forged result, actor, unknown fields and unbounded input without mutation',()=>{
+  let g=choose(create());g=checked(guess(g,ids(2)[1],1100,'猫'));
+  for(const change of [a=>a.playerId=g.turnPlayerId,a=>a.playerId='outsider',a=>a.correct=true,
+    a=>a.text='词1',a=>a.text='<img>',a=>a.text='x'.repeat(65),a=>a.extra=true]) {
+    const bad=structuredClone(g);change(bad.guessAttempts[0]);assert.ok(core.gameProblem(bad));
+  }
+  for(let i=1;i<core.MAX_GUESS_ATTEMPTS;i++)g=checked(guess(g,ids(2)[1],1100,'猫'));
+  const before=structuredClone(g);assert.equal(guess(g,ids(2)[1],1100,'狗').code,'GUESS_LIMIT');
+  assert.deepEqual(g,before);assert.equal(g.players[0].score,0);
+  const bad=structuredClone(g);bad.guessAttempts.push({...bad.guessAttempts[0]});assert.ok(core.gameProblem(bad));
 });
 
 test('simultaneous guesses judged against latest state enter reveal once; deadline equality never scores',()=>{

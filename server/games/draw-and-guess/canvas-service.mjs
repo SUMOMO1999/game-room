@@ -6,7 +6,7 @@ export const CANVAS_SCOPE='draw-canvases';
 export const CANVAS_QUOTA_ID='quota';
 export const NEW_CANVAS_GEOMETRY=Object.freeze({width:1024,height:576});
 const LEGACY_CANVAS_GEOMETRY=Object.freeze({width:1024,height:768});
-export const CANVAS_LIMITS=Object.freeze({maxStrokes:1500,maxPoints:50000,maxStrokePoints:4096,maxCanvasBytes:2*1024*1024,
+export const CANVAS_LIMITS=Object.freeze({maxStrokes:1500,maxPoints:50000,maxStrokePoints:50000,maxCanvasBytes:2*1024*1024,
   maxBatchPoints:256,maxBodyBytes:32768,maxReceipts:128,maxCanvases:32,maxTotalBytes:16*1024*1024,
   leaseMs:15000,maxQueuedWrites:32,maxQueuedWriteBytes:1024*1024,maxWatchers:128,maxEventsPerWatcher:4,
   maxEventBytes:65536,maxQueuedOutputBytes:2*1024*1024});
@@ -166,7 +166,9 @@ export function createCanvasService({storage,rooms,now=Date.now,...overrides}={}
     return result.finally(()=>{queuedWrites--;queuedWriteBytes-=size;});
   }
   function checkedDevice(input,action) {
-    fields(input,action==='acquire'?['deviceId','canvasId','bootId']:['deviceId','canvasId','bootId','leaseGeneration','clearGeneration','expectedSequence','requestId',...(action==='append'?['operations']:[])]);
+    fields(input,action==='acquire'?['deviceId','canvasId','bootId']:['deviceId','canvasId','bootId','leaseGeneration','clearGeneration','expectedSequence','requestId',
+      ...(action==='append'?['operations']:[]),...(action==='clear'?['recoverWriter']:[])]);
+    if(input.recoverWriter!==undefined&&input.recoverWriter!==true)fail(400,'INVALID_CANVAS_BODY','恢复画笔只用于明确确认的清空操作。');
     if(typeof input.deviceId!=='string'||!token.test(input.deviceId)||input.deviceId.length>64)fail(400,'INVALID_CANVAS_DEVICE','画笔设备编号无效。');
     if(typeof input.canvasId!=='string'||!hex64.test(input.canvasId)||typeof input.bootId!=='string'||!uuid.test(input.bootId))
       fail(400,'INVALID_CANVAS_REQUEST','画笔操作需要当前画布与服务实例编号。');
@@ -175,19 +177,33 @@ export function createCanvasService({storage,rooms,now=Date.now,...overrides}={}
   }
   function ack(value,lease) {return {bootId,canvasId:value.canvasId,sequence:value.sequence,clearGeneration:value.clearGeneration,leaseGeneration:value.leaseGeneration,
     leaseValidUntil:lease.validUntil,persisted:true};}
+  function newWriter(ctx,userKey,input,trusted,generation) {
+    return {bootId,userKey,actorSeatId:ctx.seatId,deviceId:input.deviceId,generation,
+      authorizationId:trusted.authorizationId??null,validUntil:Math.min(now()+limits.leaseMs,ctx.deadline,ctx.expiresAt)};
+  }
   async function acquire(code,userKey,input,trusted={}) {
     checkedDevice(input,'acquire');return schedule(input,async()=>{
+      // A definite failed guard can be caused by a simultaneous guess. Re-read
+      // the current drawer before granting a lease, never bypass that guard.
+      for(let attempt=0;;attempt++) {
       const ctx=await context(code,userKey,true);
       if(input.canvasId!==canvasIdFor(ctx.roomId,ctx.matchId,ctx.turnId))fail(409,'CANVAS_TURN_CHANGED','题目已变化，请重新确认当前题拿笔。');
       if(input.bootId!==bootId)fail(409,'CANVAS_STALE_WRITER','画布服务已重启，请先读取并确认接管。');
       const saved=await load(ctx),value=copy(saved.value);
       if(value.leaseGeneration>=Number.MAX_SAFE_INTEGER)fail(503,'CANVAS_SEQUENCE_LIMIT','当前画布已到序号上限。');
       value.leaseGeneration++;value.updatedAt=now();
-      if(!await commit(ctx,saved,value,ctx.deadline))fail(409,'CANVAS_CONFLICT','房间或画布已变化，请先读取确认状态。');
-      const lease={bootId,userKey,actorSeatId:ctx.seatId,deviceId:input.deviceId,generation:value.leaseGeneration,
-        authorizationId:trusted.authorizationId??null,validUntil:Math.min(now()+limits.leaseMs,ctx.deadline,ctx.expiresAt)};
+      // A valid full image can exceed the byte cap through lease metadata
+      // alone. Report capacity, so an explicit clear remains available rather
+      // than turning this expected refusal into an identity/service failure.
+      try{validateCanvasRecord(value);}catch{fail(413,'CANVAS_LIMIT','当前图已到字节上限，请确认清空后继续画；已保存的图仍可读取。');}
+      if(!await commit(ctx,saved,value,ctx.deadline)) {
+        if(attempt<2)continue;
+        fail(409,'CANVAS_CONFLICT','房间或画布已变化，请先读取确认状态。');
+      }
+      const lease=newWriter(ctx,userKey,input,trusted,value.leaseGeneration);
       writers.set(value.canvasId,lease);await publish(ctx.roomId,{kind:'replace',...projection(ctx,value)});
       return {...ack(value,lease),validUntil:lease.validUntil};
+      }
     });
   }
   async function mutate(action,code,userKey,input,trusted={}) {
@@ -198,22 +214,39 @@ export function createCanvasService({storage,rooms,now=Date.now,...overrides}={}
       fail(413,'CANVAS_BATCH_TOO_LARGE','每批最多16笔和256点。');
     const operations=action==='append'?input.operations.map(checkedStroke):null;
     return schedule(input,async()=>{
+      // A guess or presence update can advance the guarded room while this
+      // append is being prepared. Only a definite atomic non-commit may retry.
+      // Each attempt reloads all authority, lease, sequence and quota checks;
+      // exceptions and unknown outcomes are never replayed here.
+      for(let attempt=0;;attempt++) {
       const ctx=await context(code,userKey,true);
       if(input.canvasId!==canvasIdFor(ctx.roomId,ctx.matchId,ctx.turnId))fail(409,'CANVAS_TURN_CHANGED','题目已变化，旧笔迹不能写入新题。');
       if(input.bootId!==bootId)fail(409,'CANVAS_STALE_WRITER','画布服务已重启，请先读取并确认接管。');
-      const saved=await load(ctx),lease=writers.get(saved.value.canvasId),value=copy(saved.value);
-      if(!lease||lease.bootId!==bootId||lease.userKey!==userKey||lease.actorSeatId!==ctx.seatId||lease.deviceId!==input.deviceId
-          ||lease.authorizationId!==(trusted.authorizationId??null)||lease.generation!==input.leaseGeneration||lease.generation!==value.leaseGeneration||now()>=lease.validUntil)
-        fail(409,'CANVAS_STALE_WRITER','画笔授权已过期或由其他设备接管，请先确认接管。');
-      const id=hash([ctx.seatId,input.requestId]),fingerprint=hash([action,input.canvasId,input.bootId,input.deviceId,input.leaseGeneration,input.clearGeneration,input.expectedSequence,operations]),previous=value.requests[id];
+      const saved=await load(ctx),value=copy(saved.value),recoverWriter=action==='clear'&&input.recoverWriter===true;
+      let lease=writers.get(saved.value.canvasId);
+      const ownsWriter=generation=>lease&&lease.bootId===bootId&&lease.userKey===userKey&&lease.actorSeatId===ctx.seatId&&lease.deviceId===input.deviceId
+        &&lease.authorizationId===(trusted.authorizationId??null)&&lease.generation===generation&&value.leaseGeneration===generation&&now()<lease.validUntil;
+      const staleWriter=()=>fail(409,'CANVAS_STALE_WRITER','画笔授权已过期或由其他设备接管，请先确认接管。');
+      if(!recoverWriter&&!ownsWriter(input.leaseGeneration))staleWriter();
+      // Existing fingerprints stay byte-for-byte compatible. Recovery receipts
+      // also bind the explicit intent and trusted login without storing it.
+      const id=hash([ctx.seatId,input.requestId]),fingerprint=hash([action,input.canvasId,input.bootId,input.deviceId,input.leaseGeneration,input.clearGeneration,input.expectedSequence,operations,
+        ...(recoverWriter?['recover-writer-clear',trusted.authorizationId??null]:[])]),previous=value.requests[id];
       if(previous) {
         if(previous.fingerprint!==fingerprint)fail(409,'CANVAS_REQUEST_REUSED','同一请求编号不能改成另一批笔迹。');
+        if(recoverWriter&&!ownsWriter(previous.ack.leaseGeneration))staleWriter();
         return {ack:{...previous.ack,bootId,leaseValidUntil:lease.validUntil},duplicate:true};
       }
+      if(recoverWriter&&input.leaseGeneration!==value.leaseGeneration)staleWriter();
       if(input.clearGeneration!==value.clearGeneration)fail(409,'CANVAS_STALE_CLEAR','画布已清空，请读取新画布。');
       if(input.expectedSequence!==value.sequence)fail(409,'CANVAS_SEQUENCE_GAP','画布序号不连续，请先读取确认状态。');
-      if(value.sequence>=Number.MAX_SAFE_INTEGER||value.clearGeneration>=Number.MAX_SAFE_INTEGER)fail(503,'CANVAS_SEQUENCE_LIMIT','当前画布已到序号上限。');
+      if(value.sequence>=Number.MAX_SAFE_INTEGER||value.clearGeneration>=Number.MAX_SAFE_INTEGER||recoverWriter&&value.leaseGeneration>=Number.MAX_SAFE_INTEGER)
+        fail(503,'CANVAS_SEQUENCE_LIMIT','当前画布已到序号上限。');
       value.sequence++;value.updatedAt=now();
+      // Explicit clear can recover an expired/missing writer at a full quota.
+      // Only the final cleared record is validated and atomically persisted;
+      // a separate acquire would need capacity before it could free any.
+      if(recoverWriter)value.leaseGeneration++;
       if(action==='append') {
         value.undone=[];
         for(const operation of operations) {
@@ -228,11 +261,16 @@ export function createCanvasService({storage,rooms,now=Date.now,...overrides}={}
       value.requests[id]={actorSeatId:ctx.seatId,fingerprint,ack:metadata};
       while(Object.keys(value.requests).length>limits.maxReceipts)delete value.requests[Object.keys(value.requests)[0]];
       try {validateCanvasRecord(value);} catch {fail(413,'CANVAS_LIMIT','当前图已到笔画、点数或字节上限，已确认的图仍可猜。');}
-      if(!await commitValidated(ctx,saved,value,Math.min(ctx.deadline,lease.validUntil)))fail(409,'CANVAS_CONFLICT','房间或画布已变化，请先读取确认状态。');
-      lease.validUntil=Math.min(now()+limits.leaseMs,ctx.deadline,ctx.expiresAt);
+      if(!await commitValidated(ctx,saved,value,recoverWriter?ctx.deadline:Math.min(ctx.deadline,lease.validUntil))) {
+        if(action==='append'&&attempt<2)continue;
+        fail(409,'CANVAS_CONFLICT','房间或画布已变化，请先读取确认状态。');
+      }
+      if(recoverWriter){lease=newWriter(ctx,userKey,input,trusted,value.leaseGeneration);writers.set(value.canvasId,lease);}
+      else lease.validUntil=Math.min(now()+limits.leaseMs,ctx.deadline,ctx.expiresAt);
       const packet=action==='append'?{kind:'append',bootId,canvasId:value.canvasId,roomId:ctx.roomId,matchId:ctx.matchId,turnId:ctx.turnId,
         sequence:value.sequence,clearGeneration:value.clearGeneration,leaseGeneration:value.leaseGeneration,operations,pointCount:pointCount(value)}:{kind:'replace',...projection(ctx,value)};
       await publish(ctx.roomId,packet);return {ack:ack(value,lease),duplicate:false};
+      }
     });
   }
   function end(listener,error) {if(!listener.active)return;listener.active=false;listeners.delete(listener);try{listener.onEnd?.(error.message,error.status??503);}catch{}}

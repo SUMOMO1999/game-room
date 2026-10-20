@@ -49,10 +49,23 @@ export function mountArtFallback(root) {
   const onLoad = event => update(event.target, false);
   root.addEventListener('error', onError, true);
   root.addEventListener('load', onLoad, true);
-  for (const image of root.querySelectorAll('img[data-yousei-art]')) {
-    if (image.complete) update(image, image.naturalWidth === 0);
-  }
+  const inspect = node => {
+    if (node.matches?.('img[data-yousei-art]') && node.complete) update(node, node.naturalWidth === 0);
+    for (const image of node.querySelectorAll?.('img[data-yousei-art]') ?? []) {
+      if (image.complete) update(image, image.naturalWidth === 0);
+    }
+  };
+  inspect(root);
+  // A decoded cache hit can finish while a replacement face is still detached.
+  // Captured load/error listeners cannot see that event; inspect each new face
+  // when it enters this root, including cached failures, without polling.
+  const Observer = root.ownerDocument?.defaultView?.MutationObserver;
+  const observer = Observer ? new Observer(records => {
+    for (const record of records) for (const node of record.addedNodes) inspect(node);
+  }) : null;
+  observer?.observe(root, { childList: true, subtree: true });
   return () => {
+    observer?.disconnect();
     root.removeEventListener('error', onError, true);
     root.removeEventListener('load', onLoad, true);
   };

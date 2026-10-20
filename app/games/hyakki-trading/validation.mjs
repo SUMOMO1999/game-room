@@ -1,5 +1,6 @@
 /** Persisted game validation. This module is pure and never repairs untrusted saves. */
-import { CARDS, GOODS, createDeck, CONTENT_VERSION, DIGITAL_RULE_VERSION, MULTIPLAYER_RULE_VERSION } from './content/definitions.mjs';
+import { CARDS, GOODS, definitionIdForCopy, materialProfile, materialProfileFor, CONTENT_VERSION,
+  PLAYER_COUNT_CONTENT_VERSION, DIGITAL_RULE_VERSION, MULTIPLAYER_RULE_VERSION } from './content/definitions.mjs';
 import { hyakkiTimingProblem } from './lifecycle.mjs';
 import { CHARACTER_PENDING_CONTRACTS } from './effects.mjs';
 import { TOOL_PENDING_CONTRACTS, toolProblem } from './tools.mjs';
@@ -14,19 +15,19 @@ export const exactFields = (value, fields) => plainObject(value) && Reflect.ownK
 export const integer = (value, min = 0, max = Number.MAX_SAFE_INTEGER) => Number.isSafeInteger(value) && value >= min && value <= max;
 export const seatId = value => typeof value === 'string' && /^[a-f0-9]{32}$/u.test(value);
 const identifier = value => typeof value === 'string' && value.length > 0 && value.length <= 180 && !/\p{Cc}/u.test(value);
-const copies = new Map(createDeck().map(copy => [copy.id, copy.definitionId]));
 const definitions = new Map(CARDS.map(card => [card.id, card]));
 const goodsIds = GOODS.map(good => good.id);
-export const validCopy = value => typeof value === 'string' && copies.has(value);
-export const cardDefinition = copyId => definitions.get(copies.get(copyId));
+export const validCopy = (value, profile) => definitionIdForCopy(value, profile) !== null;
+export const cardDefinition = copyId => definitions.get(definitionIdForCopy(copyId));
 export const goodsVector = value => exactFields(value, goodsIds) && goodsIds.every(id => integer(value[id], 0, MAX_GOODS_PER_TYPE));
 const countGoods = vector => goodsIds.reduce((total, id) => total + vector[id], 0);
-const uniqueCopies = value => Array.isArray(value) && value.length <= 110 && value.every(validCopy) && new Set(value).size === value.length;
-const boundedJson = (value, depth = 0) => depth <= 8 && (value === null || typeof value === 'boolean'
-  || typeof value === 'string' && value.length <= 256 || integer(value, -Number.MAX_SAFE_INTEGER)
-  || Array.isArray(value) && value.length <= 110 && value.every(item => boundedJson(item, depth + 1))
+const uniqueCopies = (value, profile) => Array.isArray(value) && value.length <= profile.deckSize
+  && value.every(id => validCopy(id, profile)) && new Set(value).size === value.length;
+const boundedJson = (value, profile, depth = 0) => depth <= 8 && (value === null || typeof value === 'boolean'
+  || typeof value === 'string' && value.length <= 256 && (!validCopy(value) || validCopy(value, profile)) || integer(value, -Number.MAX_SAFE_INTEGER)
+  || Array.isArray(value) && value.length <= profile.deckSize && value.every(item => boundedJson(item, profile, depth + 1))
   || plainObject(value) && Reflect.ownKeys(value).length <= 20 && Object.entries(value).every(([key, item]) =>
-    /^[A-Za-z0-9][A-Za-z0-9-]{0,63}$/u.test(key) && boundedJson(item, depth + 1)));
+    /^[A-Za-z0-9][A-Za-z0-9-]{0,63}$/u.test(key) && boundedJson(item, profile, depth + 1)));
 
 const eventFields = {
   'match-started': [], 'draw-peeked': ['actorSeatId'], 'draw-kept': ['actorSeatId'],
@@ -44,17 +45,17 @@ const eventFields = {
 };
 const endReasons = ['voluntary-leave', 'normal-close', 'absence-expired', 'room-expired', 'cancelled'];
 const eventReasons = [...endReasons, 'capacity', 'disconnected', 'server-recovery'];
-function publicEvent(value, ids, goodsPerType) {
+export function publicEvent(value, ids, goodsPerType, profile = materialProfile()) {
   const fields = eventFields[value?.type];
   if (!fields || !plainObject(value) || Object.keys(value).some(key => key !== 'type' && !fields.includes(key))) return false;
   if (fields.includes('actorSeatId') && !ids.includes(value.actorSeatId)) return false;
   for (const [key, item] of Object.entries(value)) {
     if (key.endsWith('SeatId') && !(key === 'winnerSeatId' && item === null) && !ids.includes(item)) return false;
     if (key === 'cardId' && !definitions.has(item)) return false;
-    if (key === 'cardIds' && (!Array.isArray(item) || item.length > 110 || !item.every(id => definitions.has(id)))) return false;
+    if (key === 'cardIds' && (!Array.isArray(item) || item.length > profile.deckSize || !item.every(id => definitions.has(id)))) return false;
     if (key === 'goods' && (!Array.isArray(item) || item.length > 6 || new Set(item.map(good => good?.id)).size !== item.length
       || item.some(good => !exactFields(good, ['id', 'count']) || !goodsIds.includes(good.id) || !integer(good.count, 0, goodsPerType)))) return false;
-    if (key === 'silver' && !integer(item) || key === 'count' && !integer(item, 0, 110) || key === 'reason' && !eventReasons.includes(item)) return false;
+    if (key === 'silver' && !integer(item) || key === 'count' && !integer(item, 0, profile.deckSize) || key === 'reason' && !eventReasons.includes(item)) return false;
   }
   return !['suspended', 'pending-closed', 'match-ended'].includes(value.type) || eventReasons.includes(value.reason);
 }
@@ -81,6 +82,7 @@ const legalPayment = (state, id, value) => exactFields(value, ['zone', 'cardId']
 const cardSelection = (value, zone) => exactFields(value, ['cardId']) && zone.includes(value.cardId);
 const goodSelection = (value, key, stock) => exactFields(value, [key]) && goodsIds.includes(value[key]) && stock[value[key]] > 0;
 function choiceProblem(state, pending) {
+  const profile = materialProfileFor(state);
   const choice = pending.choice; if (!choice) return null;
   const publicChoices = ['exchange', 'recover-tool', 'draft-card', 'keep-tool', 'draft-good', 'draft-tool',
     'tool-exchange', 'tool-goods-draw', 'tool-buy-good', 'borrowed-target'];
@@ -132,9 +134,9 @@ function choiceProblem(state, pending) {
       const cards = choice.kind === 'discard-hand' ? peer.hand : owner.hand, option = options[0];
       const required = choice.kind === 'discard-hand' ? cards.length - 3 : null;
       valid = options.length === 1 && exactFields(option, required === null ? ['cardIds', 'min', 'max'] : ['cardIds', 'count'])
-        && uniqueCopies(option.cardIds) && same([...option.cardIds].sort(), [...cards].sort())
+        && uniqueCopies(option.cardIds, profile) && same([...option.cardIds].sort(), [...cards].sort())
         && (required === null ? option.min === 1 && option.max === Math.min(2, cards.length) : option.count === required && actor.id === peer.id)
-        && exactFields(selected, ['cardIds']) && uniqueCopies(selected.cardIds) && selected.cardIds.every(card => cards.includes(card))
+        && exactFields(selected, ['cardIds']) && uniqueCopies(selected.cardIds, profile) && selected.cardIds.every(card => cards.includes(card))
         && integer(selected.cardIds.length, required ?? 1, required ?? Math.min(2, cards.length)); break;
     }
     case 'retain-goods': {
@@ -272,15 +274,16 @@ function branchProblem(state, pending) {
 /** Base pending envelope; the per-effect branch contracts below reject unsupported steps/data. */
 export function pendingProblem(state, pending) {
   const ids = state.players.map(player => player.id);
+  const profile = materialProfileFor(state);
   if (!exactFields(pending, pendingFields) || !identifier(pending.id) || !['peek', 'trade', 'character', 'tool', 'auction'].includes(pending.kind)
       || pending.ownerId !== state.turnPlayerId || !identifier(pending.stage) || !identifier(pending.code)
-      || !uniqueCopies(pending.sourceCards) || !uniqueCopies(pending.poolCards) || !goodsVector(pending.goods)
-      || !plainObject(pending.data) || !boundedJson(pending.data)) return '保存的待结算区无效。';
+      || !uniqueCopies(pending.sourceCards, profile) || !uniqueCopies(pending.poolCards, profile) || !goodsVector(pending.goods)
+      || !plainObject(pending.data) || !boundedJson(pending.data, profile)) return '保存的待结算区无效。';
   const choice = pending.choice, response = pending.response, receipt = pending.receipt;
   if (choice !== null && (!exactFields(choice, ['id', 'kind', 'actorId', 'visibility', 'options', 'defaultSelection'])
       || !identifier(choice.id) || !identifier(choice.kind) || !ids.includes(choice.actorId) || !['private', 'public'].includes(choice.visibility)
-      || !Array.isArray(choice.options) || !choice.options.length || choice.options.length > 110
-      || !boundedJson(choice.options) || !boundedJson(choice.defaultSelection))) return '保存的选择无效。';
+      || !Array.isArray(choice.options) || !choice.options.length || choice.options.length > profile.deckSize
+      || !boundedJson(choice.options, profile) || !boundedJson(choice.defaultSelection, profile))) return '保存的选择无效。';
   const responseFields = ['kind', 'actorId', 'tradeCardId', ...(response?.kind === 'merchant' && isMultiplayer(state) ? ['remainingIds', 'remainingMs'] : [])];
   if (response !== null && (!exactFields(response, responseFields) || !['counter', 'merchant'].includes(response.kind)
       || !ids.includes(response.actorId) || response.actorId === pending.ownerId
@@ -305,21 +308,23 @@ export function gameProblem(state) {
     const fields = plainObject(state) && (isMultiplayer(state) || Object.hasOwn(state, 'goodsPerType')) ? [...stateFields, 'goodsPerType'] : stateFields;
     const supported = state?.version === 1 && state.ruleVersion === DIGITAL_RULE_VERSION || state?.version === 2 && state.ruleVersion === MULTIPLAYER_RULE_VERSION;
     if (!exactFields(state, fields) || !supported || state.gameType !== 'hyakki-trading'
-        || state.contentVersion !== CONTENT_VERSION || !seatId(state.matchId)) return '不支持的幽街存档格式。';
+        || ![CONTENT_VERSION, PLAYER_COUNT_CONTENT_VERSION].includes(state.contentVersion)
+        || state.contentVersion === PLAYER_COUNT_CONTENT_VERSION && state.version !== 2 || !seatId(state.matchId)) return '不支持的幽街存档格式。';
+    const profile = materialProfileFor(state);
     const goodsPerType = goodsPerTypeOf(state);
     if (!validGoodsPerType(goodsPerType)) return '每类货物数量须为4～20件。';
     if (!Array.isArray(state.players) || state.players.length < 2 || state.players.length > (isMultiplayer(state) ? 6 : 2)
         || new Set(state.players.map(player => player?.id)).size !== state.players.length
-        || state.players.some(player => !exactFields(player, playerFields) || !seatId(player.id) || !uniqueCopies(player.hand)
+        || state.players.some(player => !exactFields(player, playerFields) || !seatId(player.id) || !uniqueCopies(player.hand, profile)
           || !Array.isArray(player.tools) || player.tools.length > 3 || player.tools.some(tool => !exactFields(tool, ['cardId', 'exhausted'])
-            || !validCopy(tool.cardId) || cardDefinition(tool.cardId).category !== 'tool' || typeof tool.exhausted !== 'boolean')
+            || !validCopy(tool.cardId, profile) || cardDefinition(tool.cardId).category !== 'tool' || typeof tool.exhausted !== 'boolean')
           || !goodsVector(player.goods) || !integer(player.silver) || !integer(player.stallCount, 0, 5) || typeof player.temporaryOccupied !== 'boolean'
           || countGoods(player.goods) > 6 + 3 * player.stallCount
           || player.temporaryOccupied !== (countGoods(player.goods) > 5 + 3 * player.stallCount))) return '保存的玩家材料无效。';
     const ids = state.players.map(player => player.id);
-    if (!uniqueCopies(state.deck) || !uniqueCopies(state.discard) || !goodsVector(state.bankGoods)
-        || !integer(state.availableStalls, 0, 5) || !integer(state.purchasedStalls, 0, 5)
-        || state.availableStalls + state.purchasedStalls !== 5 || state.players.reduce((sum, player) => sum + player.stallCount, 0) !== state.purchasedStalls) return '保存的公共材料无效。';
+    if (!uniqueCopies(state.deck, profile) || !uniqueCopies(state.discard, profile) || !goodsVector(state.bankGoods)
+        || !integer(state.availableStalls, 0, profile.stallBoards) || !integer(state.purchasedStalls, 0, profile.stallBoards)
+        || state.availableStalls + state.purchasedStalls !== profile.stallBoards || state.players.reduce((sum, player) => sum + player.stallCount, 0) !== state.purchasedStalls) return '保存的公共材料无效。';
     if (!['playing', 'finished', 'aborted'].includes(state.status) || !ids.includes(state.firstPlayerId) || !ids.includes(state.turnPlayerId)
         || !integer(state.turnIndex, 0, ids.length - 1) || state.players[state.turnIndex].id !== state.turnPlayerId
         || !integer(state.turnNumber, 1) || state.turnId !== `turn-${state.turnNumber}` || !integer(state.round, 1)
@@ -334,10 +339,10 @@ export function gameProblem(state) {
     if (state.pending !== null) { const issue = pendingProblem(state, state.pending); if (issue) return issue; }
     const material = [...state.deck, ...state.discard, ...state.players.flatMap(player => [...player.hand, ...player.tools.map(tool => tool.cardId)]),
       ...(state.pending ? [...state.pending.sourceCards, ...state.pending.poolCards] : [])];
-    if (material.length !== 110 || new Set(material).size !== 110 || material.some(card => !copies.has(card))) return '110张实体牌必须各处于一个材料区。';
+    if (material.length !== profile.deckSize || new Set(material).size !== profile.deckSize || material.some(card => !validCopy(card, profile))) return `${profile.deckSize}张实体牌必须各处于一个材料区。`;
     if (goodsIds.some(id => state.bankGoods[id] + state.players.reduce((sum, player) => sum + player.goods[id], 0) + (state.pending?.goods[id] ?? 0) !== goodsPerType)) return `六类货物必须各守恒${goodsPerType}件。`;
     if (!Array.isArray(state.lastPublicEvents) || !state.lastPublicEvents.length || state.lastPublicEvents.length > 64
-        || state.lastPublicEvents.some(event => !publicEvent(event, ids, goodsPerType))) return '保存的公开事件无效。';
+        || state.lastPublicEvents.some(event => !publicEvent(event, ids, goodsPerType, profile))) return '保存的公开事件无效。';
     const timing = hyakkiTimingProblem(state); if (timing) return timing;
     if (state.timing.active.id !== state.turnId || state.committedAt < state.lifecycle.startedAt) return '回合与时钟代际不一致。';
     const decision = currentDecision(state), expectedActor = decision?.actorId;

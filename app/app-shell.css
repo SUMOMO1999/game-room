@@ -32,3 +32,21 @@
   .shell:not(.lobby-shell) .app-shell-tools .app-shell-button { min-height: 22px; padding: 3px 7px; font-size: 9px; line-height: 1.2; }
   .app-shell-status { font-size: 9px; line-height: 1.4; }
 }
+
+/* Only the explicit lobby consumer opts in; all other headers keep their geometry. */
+body[data-compact-shell] .shell{width:100%;max-width:none;padding-inline:clamp(16px,2.5vw,48px)}
+body[data-compact-shell] .site-header{min-height:68px}
+.lobby-navigation{display:flex;align-items:center;gap:12px}
+.shell-more{position:relative;z-index:15;font-size:13px}
+.shell-more>summary{display:flex;gap:10px;align-items:center;justify-content:center;min-height:44px;min-width:68px;cursor:pointer;list-style:none;border:1px solid var(--line);border-radius:8px;padding:8px 12px}
+.shell-more>summary::-webkit-details-marker{display:none}
+.shell-more[open]>summary{background:#e8ece2}
+.shell-more-menu{display:flex;flex-direction:column;gap:4px;position:absolute;right:0;top:calc(100% + 8px);width:230px;max-width:calc(100vw - 32px);padding:8px;background:var(--paper,#fffdf6);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 36px #26362f26}
+.shell-more-menu #app-shell-tools{display:flex;flex-direction:column;align-items:stretch;padding:0;gap:4px;order:1}
+.shell-more-menu #app-shell-tools[hidden]{display:none}
+.shell-more-menu .app-shell-button,.shell-more-menu #account-logout,.shell-more-menu #back-to-agora{display:flex;align-items:center;justify-content:flex-start;text-align:left;min-height:44px;padding:10px 12px;border:0;border-radius:6px;background:transparent;font-size:13px;text-decoration:none}
+.shell-more-menu #account-logout[hidden]{display:none}
+.shell-more-menu .app-shell-button:hover,.shell-more-menu #account-logout:hover,.shell-more-menu #back-to-agora:hover{background:#edf0e7}
+.shell-more-menu #back-to-agora{order:2}
+.shell-more-menu #account-logout{order:3;color:#934d45;border-top:1px solid var(--line);border-radius:0}
+@media(max-width:700px){body[data-compact-shell] .site-header{min-height:62px}.lobby-navigation{gap:4px}.shell-more>summary{min-width:58px;padding-inline:9px}}

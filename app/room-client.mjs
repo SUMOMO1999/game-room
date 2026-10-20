@@ -132,11 +132,12 @@ export async function api(path, { method = 'GET', token, body, signal } = {}) {
 }
 
 export class RoomClient {
-  constructor(code, membership, { onView, onConnection, onError, onChat = () => {}, onPreview = null, onCanvas = null }) {
+  constructor(code, membership, { onView, onConnection, onError, onChat = () => {}, onPreview = null, onCanvas = null, onVoice = null }) {
     this.code = normalizeCode(code); this.membership = membership;
     this.onView = onView; this.onConnection = onConnection; this.onError = onError; this.onChat = onChat;
     this.onPreview = typeof onPreview==='function'?onPreview:null;this.previewPacket=null;this.previewTimer=null;this.previewSequences=new Map();this.previewGeneration=0;
     this.onCanvas = typeof onCanvas === 'function' ? onCanvas : null;
+    this.onVoice=typeof onVoice==='function'?onVoice:null;
     this.view = null; this.stopped = false; this.controller = null; this.retryTimer = null;
     this.generation = 0; this.streamGeneration = 0; this.accountEpoch = accountGeneration();
     this.requests = new Set();
@@ -378,7 +379,7 @@ export class RoomClient {
           if (packet.length > 1048576) throw new Error('房间消息格式无效。');
           const lines = packet.split(/\r?\n/);
           const event = lines.find(line => line.startsWith('event:'))?.slice(6).trim();
-          if (event !== 'view' && event !== 'closed' && event !== 'chat' && event !== 'preview' && event !== 'canvas') continue;
+          if (event !== 'view' && event !== 'closed' && event !== 'chat' && event !== 'preview' && event !== 'canvas' && event !== 'voice') continue;
           const data = lines.filter(line => line.startsWith('data:')).map(line => line.slice(5).trimStart()).join('\n');
           if (data) {
             const decoded = JSON.parse(data);
@@ -392,6 +393,7 @@ export class RoomClient {
             }
             if(event==='preview') this.receivePreview(parsed,epoch);
             else if (event === 'canvas') { if (isUnified && this.onCanvas && parsed.roomId === this.view?.roomId && parsed.matchId === this.view?.matchId && parsed.turnId === this.view?.game?.turnId) this.onCanvas(parsed); }
+            else if(event==='voice'){if(isUnified&&this.onVoice&&parsed.roomId===this.view?.roomId)this.onVoice(parsed);}
             else if (event === 'chat') {
               if (isUnified && this.view?.roomId && parsed.roomId === this.view.roomId) this.onChat(parsed);
             } else this.receive(parsed.view || parsed, epoch);

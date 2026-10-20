@@ -5,6 +5,7 @@ import { requireAdapter } from '../server/games/adapter-contract.mjs';
 import { createGameRegistry, defaultGameRegistry } from './game-registry.mjs';
 import { createRoomStore } from './rooms.mjs';
 import { createGame, applyGameAction, currentDecision } from './games/hyakki-trading/rules.mjs';
+import { CONTENT_VERSION } from './games/hyakki-trading/content/definitions.mjs';
 import { definition } from './games/hyakki-trading/model.mjs';
 import { privateView, spectatorView } from './games/hyakki-trading/view.mjs';
 import { gameProblem } from './games/hyakki-trading/validation.mjs';
@@ -82,8 +83,8 @@ test('real room configuration, business action, exported snapshot and closed-cre
   }
   action(actor, 'peek', { matchId: snapshot.matchId, turnId: snapshot.game.turnId });
   snapshot = rooms.exportSnapshot(host.roomCode);
-  assert.equal(snapshot.schemaVersion, 14); assert.equal(snapshot.hyakkiConfig.actionLimit, 4);
-  assert.equal(snapshot.hyakkiConfig.goodsPerType, 8); assert.equal(snapshot.game.goodsPerType, 8);
+  assert.equal(snapshot.schemaVersion, 21); assert.equal(snapshot.hyakkiConfig.actionLimit, 4);
+  assert.equal(snapshot.hyakkiConfig.goodsPerType, 6); assert.equal(snapshot.game.goodsPerType, 6);
   assert.equal(adapter.roomStateProblem(snapshot, true), null);
   assert.throws(() => action(users[0], 'configure', { hyakkiConfig: { actionLimit: 5, goodsPerType: 20 } }), { code: 'ROOM_LOCKED' });
   const rejected = rooms.exportSnapshot(host.roomCode);
@@ -162,7 +163,7 @@ test('adapter rejects extra network fields and resolves only current public targ
 function eventFixture() {
   const storage = new EncryptedStore(new MemoryAdapter({ now: () => 3000 }), Buffer.alloc(32, 91), () => 3000);
   const store = createHyakkiEventStore({ storage, now: () => 3000 });
-  const match = { roomId: 'd'.repeat(32), matchId, ruleVersion: fresh().ruleVersion, contentVersion: fresh().contentVersion, startedAt: 1000,
+  const match = { roomId: 'd'.repeat(32), matchId, ruleVersion: fresh().ruleVersion, contentVersion: CONTENT_VERSION, startedAt: 1000,
     participants: ids.map((seatId, i) => ({ seatId, userKey: users[i] })) };
   const append = (sequence, mode, events) => store.prepareAppend({ match, sequence, commitId: `test-${sequence}`, committedAt: 1000 + sequence, mode, events });
   return { storage, store, append };

@@ -59,7 +59,7 @@ async function fixture(t,kind) {
       }catch(error){if(error.name!=='AbortError')stream.error=error;}finally{stream.done=true;}})();
     await until(()=>stream.events.some(event=>event.type==='canvas')&&stream.events.some(event=>event.type==='view'),'mounted room SSE did not deliver its view and canvas snapshot');return stream;
   }
-  async function waiting() {
+  async function waiting({candidateCount}={}) {
     const host=await login('fictional-host'),peer=await login('fictional-peer'),viewer=await login('fictional-viewer');
     const created=await request('/api/rooms',host,{name:'画者',gameType:'draw-and-guess',requestId:randomUUID()});assert.equal(created.status,201,created.text);
     const code=created.body.roomCode;
@@ -68,6 +68,11 @@ async function fixture(t,kind) {
     async function action(member,type,fields={},requestId=randomUUID()) {
       const view=await request(`/api/rooms/${code}`,member);assert.equal(view.status,200,view.text);
       return request(`/api/rooms/${code}/actions`,member,{type,requestId,expectedRevision:view.body.view.revision,...fields});
+    }
+    if(candidateCount!==undefined) {
+      const current=(await request(`/api/rooms/${code}`,host)).body.view;
+      const configured=await action(host,'configure',{drawConfig:{...current.drawConfig,candidateCount}});
+      assert.equal(configured.status,200,configured.text);assert.equal(configured.body.view.drawConfig.candidateCount,candidateCount);
     }
     assert.equal((await action(host,'ready',{ready:true})).status,200);assert.equal((await action(peer,'ready',{ready:true})).status,200);
     const started=await action(host,'start');assert.equal(started.status,200,started.text);assert.equal(started.body.view.game.stage,'choosing');
@@ -85,6 +90,31 @@ async function fixture(t,kind) {
   }
   return {runtime,storage,provider,statuses,checks,request,login,openStream,waiting,choose,acquire,advance(ms){time+=ms;}};
 }
+
+test('mounted HTTP waiting configuration saves five candidates and keeps them private to the current drawer',async t=>{
+  const f=await fixture(t,'Memory'),room=await f.waiting({candidateCount:5});
+  const view=(await f.request(`/api/rooms/${room.code}`,room.drawer)).body.view;
+  assert.equal(view.drawConfig.candidateCount,5);assert.equal(view.game.settings.candidateCount,5);assert.equal(view.game.candidates.length,5);
+  const saved=(await f.storage.scan('rooms'))[0].value.snapshot;
+  assert.equal(saved.game.frozenCandidates.length,20);assert.equal(saved.schemaVersion,19);
+  for(const member of [room.guesser,room.viewer]) {
+    const result=await f.request(`/api/rooms/${room.code}`,member);assert.equal(result.body.view.game.candidates,undefined);
+    for(const word of saved.game.frozenCandidates)assert.equal(result.text.includes(JSON.stringify(word.answer)),false);
+  }
+  const fifth=view.game.candidates[4],selected=await room.action(room.drawer,'choose',{matchId:view.matchId,turnId:view.game.turnId,candidateId:fifth.id});
+  assert.equal(selected.status,200,selected.text);assert.equal(selected.body.view.game.word.answer,fifth.answer);
+  assert.equal((await f.request(`/api/rooms/${room.code}`,room.guesser)).body.view.game.word,undefined);
+  assert.equal(selected.body.view.game.canSkip,true);
+  const denied=await room.action(room.guesser,'skip',{matchId:view.matchId,turnId:view.game.turnId});assert.equal(denied.status,409);assert.equal(denied.body.code,'DRAWER_REQUIRED');
+  const current=(await f.request(`/api/rooms/${room.code}`,room.drawer)).body.view;
+  const skip={type:'skip',matchId:view.matchId,turnId:view.game.turnId,requestId:randomUUID(),expectedRevision:current.revision};
+  for(let attempt=0;attempt<2;attempt++) {
+    const skipped=await f.request(`/api/rooms/${room.code}/actions`,room.drawer,skip);
+    assert.equal(skipped.status,200,skipped.text);assert.equal(skipped.body.view.game.stage,'reveal');
+    assert.equal(skipped.body.view.game.turnResult.reason,'skipped');assert.equal(skipped.body.view.game.turnNumber,1);
+    assert.equal(skipped.body.view.game.canSkip,false);
+  }
+});
 
 for(const kind of ['Memory','SQLite'])test(`${kind}: real unified drawing HTTP mounts content, private guesses, canvas persistence, SSE and permission recovery`,async t=>{
   const f=await fixture(t,kind),room=await f.waiting(),streams={drawer:await f.openStream(room.code,room.drawer),guesser:await f.openStream(room.code,room.guesser),viewer:await f.openStream(room.code,room.viewer)};
@@ -112,7 +142,7 @@ for(const kind of ['Memory','SQLite'])test(`${kind}: real unified drawing HTTP m
   for(const member of [room.drawer,room.viewer])assert.equal((await f.request(`/api/rooms/${room.code}`,member)).body.view.actionReceipts.some(receipt=>receipt.requestId===wrongId),false);
   for(const stream of [streams.drawer,streams.viewer])assert.equal(JSON.stringify(stream.events).includes(wrongId),false);
   for(const stream of Object.values(streams))assert.equal(JSON.stringify(stream.events).includes(wrongText),false);
-  assert.equal(JSON.stringify((await f.storage.scan('rooms')).map(record=>record.value)).includes(wrongText),false,'wrong text remains only in the sender local input, never saved or broadcast');
+  assert.equal(JSON.stringify((await f.storage.scan('rooms')).map(record=>record.value)).includes(wrongText),true,'attempts persist privately until reveal');
   const blockedChat=await f.request(`/api/rooms/${room.code}/chat`,room.viewer,{requestId:randomUUID(),text:`答案是${selected.answer}`});
   assert.equal(blockedChat.status,400);assert.equal(blockedChat.body.code,'ANSWER_IN_CHAT');assert.equal(JSON.stringify((await f.storage.scan('room-chat')).map(record=>record.value)).includes(selected.answer),false);
   assert.equal((await room.action(room.viewer,'guess',{matchId:selected.matchId,turnId:selected.turnId,text:wrongText})).status,403);
@@ -144,6 +174,13 @@ for(const kind of ['Memory','SQLite'])test(`${kind}: real unified drawing HTTP m
   const right=await room.action(room.guesser,'guess',{matchId:selected.matchId,turnId:selected.turnId,text:selected.answer});assert.equal(right.status,200,right.text);
   assert.equal(right.body.guessResult.correct,true);assert.equal(right.body.view.game.stage,'reveal');
   await until(()=>streams.viewer.events.some(event=>event.type==='view'&&event.data.game?.stage==='reveal'),'correct guess did not publish the reveal stage to the observer');
+  const expectedGuesses=[{playerId:wrong.body.view.selfId,attempts:[{text:wrongText,correct:false},{text:selected.answer,correct:true}]}];
+  for(const member of [restored,room.guesser,room.viewer]) {
+    const revealed=(await f.request(`/api/rooms/${room.code}`,member)).body.view;
+    assert.deepEqual(revealed.game.turnResult.guesses,expectedGuesses);
+  }
+  const revealEvent=streams.viewer.events.find(event=>event.type==='view'&&event.data.game?.stage==='reveal');
+  assert.deepEqual(revealEvent.data.game.turnResult.guesses,expectedGuesses);
   assert.equal((await f.request(room.path+'/append',restored,appendBody(after401.body,3))).body.code,'CANVAS_STAGE_CLOSED');
   assert.equal((await f.request(room.path,room.viewer)).body.pointCount,9);
   t.diagnostic(JSON.stringify({adapter:kind,freshSyntheticChecks:f.checks.length,confirmedPoints:9,canvasSequence:3,restoredSameSeat:true,stage:'reveal'}));

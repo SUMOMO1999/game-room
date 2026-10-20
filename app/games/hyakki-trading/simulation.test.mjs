@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createGame, applyGameAction, gameProblem } from './rules.mjs';
 import { privateView, spectatorView } from './view.mjs';
 import { createDeck, getCard, GOODS } from './content/definitions.mjs';
+import { qualifiesForIdleReward } from './model.mjs';
 
 // A bounded synthetic command generator, not a practice opponent or a balance
 // model. Candidate generation receives only one seat's lawful projection.
@@ -68,7 +69,7 @@ function useCandidates(view, choose) {
   }
   // The explicit idle reward is a legal fall-back, with a small sampled chance
   // to take it early. Limit-one games must instead find material-based income.
-  if (view.actionLimit > 1 && remaining >= 2 && (choose(24) === 0 || view.turnNumber > 200)) add({ type: 'end-turn' }, 95);
+  if (qualifiesForIdleReward(view) && (choose(24) === 0 || view.turnNumber > 200)) add({ type: 'end-turn' }, 95);
   add({ type: 'end-turn' }, 0);
   return entries.sort((a, b) => b.priority - a.priority).map(entry => entry.command);
 }

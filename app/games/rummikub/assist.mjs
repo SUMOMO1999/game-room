@@ -1,7 +1,7 @@
 /** Browser-safe, bounded presentation assistance. Authoritative rules stay in rules.mjs. */
 import { COLORS, validateMeld, normalizeMeld, evaluateDraft, JOKER_TYPES, jokerCountOf } from './rules.mjs';
 
-const RULES = new Set(['practice-v1', 'practice-v2', 'friends-v1', 'friends-v2', 'friends-v3', 'friends-v4']);
+const RULES = new Set(['practice-v1', 'practice-v2', 'friends-v1', 'friends-v2', 'friends-v3', 'friends-v4', 'friends-v5']);
 const MAX_CANDIDATES = 128;
 const BEAM_WIDTH = 20;
 const BEAM_DEPTH = 12;
@@ -34,7 +34,7 @@ function tilesProblem(tiles) {
 }
 function settings(options) {
   if (!options || typeof options !== 'object' || Array.isArray(options)) throw new TypeError('整理选项无效。');
-  const twist = ['friends-v3', 'friends-v4'].includes(options.ruleVersion) || options.jokerConfig !== undefined;
+  const twist = ['friends-v3', 'friends-v4', 'friends-v5'].includes(options.ruleVersion) || options.jokerConfig !== undefined;
   const maxJokers = options.maxJokers ?? options.jokerCount ?? (options.jokerConfig === undefined ? 2 : jokerCountOf(options.jokerConfig));
   if (!Number.isInteger(maxJokers) || maxJokers < 0 || maxJokers > (twist ? 24 : 4)) throw new TypeError('鬼牌数量配置无效。');
   if (options.jokerConfig !== undefined && jokerCountOf(options.jokerConfig) !== maxJokers) throw new TypeError('鬼牌数量与配置不一致。');

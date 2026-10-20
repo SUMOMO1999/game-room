@@ -5,6 +5,7 @@ import { createParksDraft, actionIdentity, parksViewScope, parksStageProfiles, c
 import { createGameAudio } from '../../game-audio.mjs';
 import { mountRoomAudioControls } from '../../platform/room-audio-controls.mjs';
 import { mountRoomSettings } from '../../platform/room-settings.mjs';
+import { mountGameAppearancePicker } from '../../platform/game-appearance.mjs';
 import { mountGameStageFit } from '../../platform/game-stage-fit.mjs';
 import { createObjectMotion } from '../../platform/object-motion.mjs';
 import { roomChatMarkup } from '../../room-chat.mjs';
@@ -77,6 +78,7 @@ export function mountParksPage({ root, practice = false, tutorial = false, onAct
   const listen = (node, type, callback, options) => { node?.addEventListener(type, callback, options); listeners.push(() => node?.removeEventListener(type, callback, options)); };
   const settings = mountRoomSettings({ document: doc, buttonId: 'pg-settings', dialogId: 'pg-options', closeButtonId: null,
     dismissIds: ['pg-rules', 'pg-history', 'pg-restart', 'pg-invite', 'pg-hint', 'pg-activity'].filter(id => $(id)) });
+  const removeAppearance = mountGameAppearancePicker(doc, $('pg-options'), { scope: 'parks' });
   const audioControls = mountRoomAudioControls({ audio, document: doc }), removeFallback = mountImageFallback(root);
   const fit = mountGameStageFit({ host: $('pg-host'), stage: $('pg-stage'), profiles: parksStageProfiles(), minScale: .85, window: win,
     onFit(value) { motion.cancel(); $('pg-too-small').hidden = !value.unsupported; orient(); } });
@@ -319,5 +321,5 @@ export function mountParksPage({ root, practice = false, tutorial = false, onAct
   listen(doc, 'visibilitychange', () => { if (doc.hidden) motion.cancel(); });
   function conceal({ message, loginHref, reauthHref } = {}) { ++generation; ++activeRequest; localBusy = false; room = null; scope = null; draft.clear(); displayClock.clear(); motion.cancel(); for (const node of root.querySelectorAll('dialog[open]')) node.close(); $('pg-content').hidden = true; recoveryFeedback = String(message || ''); feedback(recoveryFeedback); $('pg-rotate').hidden = false; $('pg-rotate').innerHTML = `<div><h2>${esc(message || '正在恢复旅程…')}</h2>${loginHref ? `<a href="${esc(loginHref)}">重新登录</a>` : ''}${reauthHref ? `<a href="${esc(reauthHref)}">重新核验账号</a>` : ''}${button('重新连接', 'id="pg-refresh"')}</div>`; }
   return { audio, applyView, feedback, hint, leaveFailure: feedback, conceal, settings, hasOpenPanel: () => Boolean(root.querySelector('dialog[open]')), isObscured: () => win.innerHeight > win.innerWidth || !$('pg-too-small').hidden,
-    destroy() { if (closed) return; closed = true; ++generation; win.clearInterval(clockTimer); displayClock.clear(); draft.clear(); motion.destroy(); fit.destroy(); settings.destroy(); audioControls.destroy(); audio.close(); removeFallback(); listeners.forEach(remove => remove()); for (const node of root.querySelectorAll('dialog[open]')) node.close(); } };
+    destroy() { if (closed) return; closed = true; ++generation; win.clearInterval(clockTimer); displayClock.clear(); draft.clear(); motion.destroy(); fit.destroy(); removeAppearance(); settings.destroy(); audioControls.destroy(); audio.close(); removeFallback(); listeners.forEach(remove => remove()); for (const node of root.querySelectorAll('dialog[open]')) node.close(); } };
 }

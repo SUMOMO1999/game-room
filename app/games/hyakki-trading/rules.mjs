@@ -1,10 +1,11 @@
 /** Authoritative pure rules. One accepted command creates one validated revision. */
-import { createDeck, GOODS, CONTENT_VERSION, DIGITAL_RULE_VERSION, MULTIPLAYER_RULE_VERSION, RULE_VERSIONS } from './content/definitions.mjs';
+import { createDeck, GOODS, CONTENT_VERSION, PLAYER_COUNT_CONTENT_VERSION, materialProfile, DIGITAL_RULE_VERSION, MULTIPLAYER_RULE_VERSION, RULE_VERSIONS } from './content/definitions.mjs';
+import { recommendedGoodsPerType } from './content/player-count-profile.mjs';
 import { RuleError, requireRule, definition, player, opponent, emptyGoods, goodsCount, goodsEntries, addSilver,
   moveGoods, removeCard, discardCards, drawCards, availableCards, shuffled, canReceive, ordinaryCapacity,
   refreshTemporary, createPending, completePending, resolveReceipt, resolveActionReferences, emit,
   DEFAULT_ACTION_LIMIT, DEFAULT_GOODS_PER_TYPE, validActionLimit, validGoodsPerType, isMultiplayer, beginMerchantResponse,
-  legalResponseCards, skipUnavailableMerchantResponses, closeWinnerId } from './model.mjs';
+  legalResponseCards, skipUnavailableMerchantResponses, closeWinnerId, qualifiesForIdleReward } from './model.mjs';
 import { characterProblem, startCharacter, continueCharacter, chooseCharacter } from './effects.mjs';
 import { toolProblem, startTool, continueTool, chooseTool } from './tools.mjs';
 import { bid, passBid, continueAuction } from './auction.mjs';
@@ -20,16 +21,20 @@ function check(state) { const issue = gameProblem(state); requireRule(!issue, is
 const runningClock = state => state.timing.decision ?? state.timing.active;
 
 export function createGame(playerIds, { matchId, now, randomInt, actionLimit = DEFAULT_ACTION_LIMIT,
-  goodsPerType = DEFAULT_GOODS_PER_TYPE, firstPlayerId = playerIds?.[0], presence, ruleVersion = MULTIPLAYER_RULE_VERSION } = {}) {
+  goodsPerType, firstPlayerId = playerIds?.[0], presence, ruleVersion = MULTIPLAYER_RULE_VERSION,
+  contentVersion = ruleVersion === DIGITAL_RULE_VERSION ? CONTENT_VERSION : PLAYER_COUNT_CONTENT_VERSION } = {}) {
   requireRule(RULE_VERSIONS.includes(ruleVersion) && Array.isArray(playerIds) && playerIds.length >= 2 && playerIds.length <= 6
     && (ruleVersion !== DIGITAL_RULE_VERSION || playerIds.length === 2) && new Set(playerIds).size === playerIds.length
     && playerIds.includes(firstPlayerId), '幽街商人需要2～6位不同的参赛者，旧版只支持两人。');
+  const profile = materialProfile(contentVersion, playerIds.length);
+  requireRule(contentVersion !== PLAYER_COUNT_CONTENT_VERSION || ruleVersion === MULTIPLAYER_RULE_VERSION, '新版材料需要多人数字版规则。');
+  if (goodsPerType === undefined) goodsPerType = contentVersion === CONTENT_VERSION ? DEFAULT_GOODS_PER_TYPE : recommendedGoodsPerType(playerIds.length);
   requireRule(stamp(now) && Number.isSafeInteger(now + TURN_MS) && validActionLimit(actionLimit) && validGoodsPerType(goodsPerType), '开局参数无效。');
-  const deck = shuffled(createDeck().map(card => card.id), randomInt);
+  const deck = shuffled(createDeck({ contentVersion, playerCount: playerIds.length }).map(card => card.id), randomInt);
   const players = playerIds.map(id => ({ id, hand: deck.splice(0, 5), tools: [], goods: emptyGoods(), silver: 20, stallCount: 0, temporaryOccupied: false }));
-  const state = { version: ruleVersion === DIGITAL_RULE_VERSION ? 1 : 2, gameType: 'hyakki-trading', ruleVersion, contentVersion: CONTENT_VERSION, matchId,
+  const state = { version: ruleVersion === DIGITAL_RULE_VERSION ? 1 : 2, gameType: 'hyakki-trading', ruleVersion, contentVersion, matchId,
     players, deck, discard: [], bankGoods: Object.fromEntries(GOODS.map(good => [good.id, goodsPerType])), goodsPerType,
-    availableStalls: 5, purchasedStalls: 0, status: 'playing', result: null,
+    availableStalls: profile.stallBoards, purchasedStalls: 0, status: 'playing', result: null,
     firstPlayerId, turnPlayerId: firstPlayerId, turnIndex: playerIds.indexOf(firstPlayerId), turnNumber: 1, turnId: 'turn-1', round: 1,
     stage: 'draw', actionsUsed: 0, actionLimit, drawStarted: false, bookLayers: 0, closing: null,
     revision: 0, publicEventSequence: 1, lastPublicEvents: [{ type: 'match-started' }], committedAt: now,
@@ -67,7 +72,7 @@ function finishGame(state, lastPlayerId, now) {
 function endTurn(state, now, { voluntary = false } = {}) {
   requireRule(!state.pending, '请先完成已经开始的操作。');
   const owner = player(state, state.turnPlayerId);
-  if (voluntary && state.actionLimit - state.actionsUsed >= 2) addSilver(owner, 1);
+  if (voluntary && qualifiesForIdleReward(state)) addSilver(owner, 1);
   owner.tools.forEach(tool => { tool.exhausted = false; }); state.bookLayers = 0;
   emit(state, { type: 'turn-ended', actorSeatId: owner.id });
   const finalPlayerId = state.players[(state.players.findIndex(value => value.id === state.firstPlayerId) + state.players.length - 1) % state.players.length].id;
@@ -208,7 +213,8 @@ function dispatch(state, actorId, action, ctx) {
     case 'buy': case 'sell': trade(state, actorId, action.cardId, action.type === 'buy'); break;
     case 'buy-stall': {
       requireUse(state); ownedCard(state, actorId, action.cardId, 'stall_permit');
-      requireRule(state.availableStalls > 0, '五块摊位已全部售出。'); const cost = state.purchasedStalls ? 3 : 6;
+      requireRule(state.availableStalls > 0, '公共摊位已全部售出。');
+      requireRule(owner.stallCount < 5, '每人最多扩充五块摊位。'); const cost = state.purchasedStalls ? 3 : 6;
       addSilver(owner, -cost); consumeAction(state); removeCard(owner.hand, action.cardId); discardCards(state, [action.cardId]);
       owner.stallCount++; state.purchasedStalls++; state.availableStalls--; refreshTemporary(owner);
       emit(state, { type: 'stall-expanded', actorSeatId: actorId, silver: cost, count: owner.stallCount }); break;

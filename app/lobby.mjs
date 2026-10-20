@@ -5,6 +5,7 @@ import { gamePath } from './entry-path.mjs';
 import { gameName, roomHref, gameDetails } from './game-routing.mjs';
 import { gamePresentation, creatableGamePresentations } from './games/catalog.mjs';
 import { parksCreationConfiguration } from './games/parks/configuration.mjs';
+import { gameIllustrationSvg } from './practice-hub.mjs';
 const $=id=>document.getElementById(id);
 const raw=new URLSearchParams(location.search).get('room');
 const incoming=/^\d{6}$/.test(raw || '')?raw:'';
@@ -44,6 +45,7 @@ function cancelPrivateWork() {
 function concealLobby() {
   privateReady=false;privateEpoch++;
   cancelPrivateWork();
+  $('lobby-name-field').hidden=true;
   $('lobby-forms').hidden=true;$('recent-list').replaceChildren();$('recent-section').hidden=true;
   $('create-name').value='';$('join-name').value='';clearHistory();exitState=null;
   if($('lobby-exit-dialog').open) $('lobby-exit-dialog').close();
@@ -51,7 +53,10 @@ function concealLobby() {
 }
 function suspendLobby() {
   concealLobby();$('account-panel').hidden=false;
-  $('account-heading').textContent='正在重新核验账号…';$('account-description').textContent='核验完成后再恢复你的房间。';
+  document.body.dataset.lobbyAuth='checking';
+  $('lobby-workspace').hidden=true;$('lobby-loading').hidden=false;
+  $('wordbank-link').hidden=true;
+  $('account-heading').textContent='来一局。';$('account-description').textContent='正在载入大厅…';
   for(const id of ['account-login','account-reauth','account-logout','account-retry']) $(id).hidden=true;
 }
 async function checkIncomingInvitation() {
@@ -144,25 +149,31 @@ function drawAccount() {
   if ($('wordbank-link')) $('wordbank-link').hidden = !state.drawingEnabled;
   privateReady=legacy || state.authenticated;
   $('lobby-forms').hidden=!(legacy || state.authenticated);
-  $('account-panel').hidden=legacy;
+  document.body.dataset.lobbyAuth=privateReady?'member':'guest';
+  $('lobby-name-field').hidden=!privateReady;
+  $('account-panel').hidden=false;
   $('account-login').hidden=state.authenticated || !state.loginReady || (state.failureStatus===503);
   $('account-logout').hidden=!state.authenticated;
   $('account-retry').hidden=state.failureStatus!==503;
   const reauth=reauthenticationHref();
   $('account-reauth').hidden=state.authenticated || state.failureStatus===503 || !reauth;
   $('account-reauth').href=reauth || '#';
-  $('account-heading').textContent=state.authenticated?'坐下来，慢慢玩。':state.failureStatus===503?'暂时连不上登录服务。':'用熟悉的账号，见熟悉的人。';
+  $('account-heading').textContent=state.authenticated?`来一局，${state.profile?.nickname || '新朋友'}`:state.failureStatus===503?'暂时连不上登录服务。':'来一局。';
   $('account-description').textContent=state.authenticated
-    ?(state.profile?.nickname?`棋牌昵称：${state.profile.nickname}。可以在入房前改称呼。`:'第一次来，入房前填一个棋牌昵称就好。')
+    ?'选个游戏开房，或输入朋友的房间号。'
     :state.failureStatus===503?'请稍后重试，你在房间的座位会保留。':state.loginReady
       ?`使用原日历账号，无需重新注册。${reauth?'若登录仍失败，请在 Agora 完成账号验证后返回，再登录棋牌室。':''}`
       :'登录入口正在准备，请稍后再来。';
   $('environment-note').textContent=legacy?'当前为本机房间预览。远程朋友入口将在部署后提供。':state.mode==='mock'?'本机隔离预览 · 使用虚构身份。':'与 Agora 共用账号，棋牌昵称与房间分别管理。';
+  // Reveal only the catalog returned by a completed account check. Unknown
+  // feature flags must never paint the smaller anonymous layout first.
+  $('lobby-loading').hidden=true;$('lobby-workspace').hidden=false;
   $('recent-list').replaceChildren();$('recent-section').hidden=true;
   if(!legacy && !state.authenticated) {
     concealLobby();return;
   }
   if(!legacy) for(const id of ['create-name','join-name']) if(changed || !$(id).value) $(id).value=state.profile?.nickname || '';
+  if(!$('create-name').value.trim())$('lobby-name-field').open=true;
   $('recent-description').textContent=legacy?'恢复这台设备保存的座位。':'恢复这个账号的座位，换设备也可以接着玩。';
   for(const seat of (legacy?recentSeats():state.recentRooms || [])) {
     const row=document.createElement('div');row.className='recent-seat';
@@ -188,8 +199,8 @@ function drawAccount() {
 async function enter(form,join) {
   const state=accountState();if(!privateReady || state.mode!=='legacy' && !state.authenticated) {notice('请先完成登录核验。');return;}
   if(entrySubmissions.has(form)) return;
-  const button=form.querySelector('button[type=submit]'),name=form.querySelector('[name=name]').value.trim(),code=normalizeCode($('join-code').value);
-  if(!name || [...name].length>16) {notice('昵称需要 1～16 个字。');return;}
+  const button=form.querySelector('button[type=submit]'),name=$('create-name').value.trim(),code=normalizeCode($('join-code').value);
+  if(!name || [...name].length>16) {notice('昵称需要 1～16 个字。');$('lobby-name-field').open=true;$('create-name').focus();return;}
   if(join && !/^\d{6}$/.test(code)) {notice('请填写六位房间号。');return;}
   const generation=accountGeneration(),epoch=privateEpoch;button.disabled=true;$('lobby-notice').hidden=true;
   const gameType=join?undefined:$('create-game').value;
@@ -214,6 +225,9 @@ function updateCreateGame() {
   const game=gameDetails($('create-game').value);
   const parksSettings=$('create-parks-settings');if(parksSettings)parksSettings.hidden=$('create-game').value!=='parks';
   $('create-game-description').textContent=`${game.name} · ${game.minPlayers===game.maxPlayers?game.minPlayers:`${game.minPlayers}～${game.maxPlayers}`} 人 · ${gamePresentation($('create-game').value).createHint}`;
+  for(const card of $('lobby-games').children)card.setAttribute('aria-pressed',String(card.dataset.game===$('create-game').value));
+  const practice=$('selected-practice');practice.href=`./${gamePresentation($('create-game').value).practicePage}`;practice.setAttribute('aria-label',`${game.name}先练一局`);practice.textContent=`练习${game.name} ↗`;
+  $('create-form').querySelector('button[type=submit]').textContent=`创建${game.name}房间 →`;
 }
 // Preserve the current choice while the registered games supply the options.
 function refreshGameChoices(state) {
@@ -223,12 +237,21 @@ $('create-game').replaceChildren(...games.map(game => {
   const option = document.createElement('option'); option.value = game.gameType; option.textContent = game.name; return option;
 }));
 $('create-game').value = games.some(game => game.gameType === previousGameChoice) ? previousGameChoice : games[0].gameType;
+const picker=$('lobby-games');
+if(picker.children.length!==games.length || games.some((game,index)=>picker.children[index].dataset.game!==game.gameType)) {
+picker.replaceChildren(...games.map(game=>{
+  const button=document.createElement('button');button.type='button';button.className='lobby-game';button.dataset.game=game.gameType;
+  const art=document.createElement('span');art.className='lobby-game-art';art.setAttribute('aria-hidden','true');art.innerHTML=gameIllustrationSvg(game.gameType);
+  const caption=document.createElement('span'),title=document.createElement('strong'),players=document.createElement('small');title.textContent=game.name;players.textContent=`${game.minPlayers===game.maxPlayers?game.minPlayers:`${game.minPlayers}～${game.maxPlayers}`} 人`;caption.append(title,players);button.append(art,caption);
+  button.addEventListener('click',()=>{$('create-game').value=game.gameType;updateCreateGame();});return button;
+}));
+}
 updateCreateGame();
 }
-refreshGameChoices(accountState());
 $('create-game').addEventListener('change',updateCreateGame);
-updateCreateGame();
 $('join-form').addEventListener('submit',event=>{event.preventDefault();enter(event.currentTarget,true);});
+$('create-name').addEventListener('input',()=>{$('join-name').value=$('create-name').value;});
+$('create-name').addEventListener('invalid',()=>{$('lobby-name-field').open=true;$('create-name').focus();notice('请先填一个 1～16 字的昵称。');});
 $('account-retry').addEventListener('click',()=>accountLifecycle.refresh());
 $('account-logout').addEventListener('click',async()=>{try {await logoutAccount();drawAccount();notice('已退出棋牌室，房间座位会保留。');} catch(error) {notice(error.message);}});
 $('lobby-exit-cancel').addEventListener('click',()=>{$('lobby-exit-dialog').close();exitState=null;});

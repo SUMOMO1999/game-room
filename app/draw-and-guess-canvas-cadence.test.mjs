@@ -4,16 +4,16 @@ import {createDrawingCanvasView,applyDrawingPacket,DRAW_BATCH_MS} from './games/
 
 const settle=()=>new Promise(resolve=>setImmediate(resolve));
 const scope={roomId:'room',matchId:'match',turnId:'turn',drawer:true,enabled:true,phase:'playing',stage:'drawing'};
-function harness({append,batchMs=DRAW_BATCH_MS}={}) {
-  let time=0,wallOffset=1000,id=0;
-  const timers=new Map(),handlers=new Map(),writes=[],localPaint=[];
+function harness({append,batchMs=DRAW_BATCH_MS,bitmap=false}={}) {
+  let time=0,wallOffset=1000,id=0,canvasCount=0;
+  const timers=new Map(),handlers=new Map(),writes=[],localPaint=[],bitmapWork={clears:0,segments:0,copies:0};
   const setTimer=(fn,ms,repeat=false)=>{const key=++id;timers.set(key,{fn,due:time+ms,ms,repeat});return key;};
   const win={setTimeout:(fn,ms)=>setTimer(fn,ms),clearTimeout:key=>timers.delete(key),
     setInterval:(fn,ms)=>setTimer(fn,ms,true),clearInterval:key=>timers.delete(key),addEventListener(){},removeEventListener(){}};
   const canvas={style:{},parentElement:{style:{}},setAttribute(){},setPointerCapture(){},
     addEventListener:(type,fn)=>handlers.set(type,fn),removeEventListener:(type)=>handlers.delete(type),
     getBoundingClientRect:()=>({left:0,top:0,width:400,height:300}),
-    getContext:()=>({clearRect(){},save(){},restore(){},beginPath(){},arc(){localPaint.push(time);},fill(){},
+    getContext:()=>({...(bitmap?{drawImage(){bitmapWork.copies++;}}:{}),clearRect(){},save(){},restore(){},beginPath(){},arc(){localPaint.push(time);},fill(){},
       moveTo(){localPaint.push(time);},lineTo(){},stroke(){}})};
   let saved={bootId:'boot',canvasId:'canvas',roomId:scope.roomId,matchId:scope.matchId,turnId:scope.turnId,stage:'drawing',paused:false,
     sequence:0,clearGeneration:0,leaseGeneration:1,strokes:[],pointCount:0,deadline:999999};
@@ -30,9 +30,10 @@ function harness({append,batchMs=DRAW_BATCH_MS}={}) {
     return append?append({body,commit,writes}):commit();
   }
   const view=createDrawingCanvasView({canvas,slot:{getBoundingClientRect:()=>({width:400,height:300})},window:win,
-    document:{hidden:false,addEventListener(){},removeEventListener(){}},now:()=>time+wallOffset,monotonicNow:()=>time,
+    document:{hidden:false,addEventListener(){},removeEventListener(){},...(bitmap?{createElement:()=>{const confirmed=++canvasCount===1;return {width:0,height:0,getContext:()=>({clearRect(){if(confirmed)bitmapWork.clears++;},save(){},restore(){},beginPath(){},arc(){},fill(){},moveTo(){},lineTo(){if(confirmed)bitmapWork.segments++;},stroke(){}})};}}:{})},now:()=>time+wallOffset,monotonicNow:()=>time,
     deviceId:'cadence-device',request,batchMs});
-  const fire=(type,point={})=>handlers.get(type)?.({button:0,pointerId:1,clientX:40,clientY:60,preventDefault(){},...point});
+  let lastPointer={clientX:40,clientY:60};
+  const fire=(type,point={})=>{lastPointer={clientX:point.clientX??lastPointer.clientX,clientY:point.clientY??lastPointer.clientY};return handlers.get(type)?.({button:0,pointerId:1,preventDefault(){},...lastPointer,...point});};
   async function advance(ms) {
     const end=time+ms;
     for(;;) {
@@ -45,8 +46,24 @@ function harness({append,batchMs=DRAW_BATCH_MS}={}) {
     time=end;await settle();
   }
   async function start(){view.setContext(scope);await view.refresh();await view.acquire();assert.equal(view.state().ready,true);}
-  return {view,fire,advance,start,writes,localPaint,timers,get saved(){return saved;},get time(){return time;},shiftWall(ms){wallOffset+=ms;}};
+  return {view,fire,advance,start,writes,localPaint,timers,bitmapWork,get saved(){return saved;},get time(){return time;},shiftWall(ms){wallOffset+=ms;}};
 }
+
+test('pen and eraser keep independent widths and new colors survive the actual append/ack path',async()=>{
+  const h=harness();await h.start();
+  h.view.setColor('#f06f9d');h.view.setWidth(22);
+  h.fire('pointerdown');h.fire('pointerup');await h.advance(350);
+  h.view.setTool('eraser');assert.equal(h.view.brushStyle().width,18);h.view.setWidth(32);
+  h.fire('pointerdown');h.fire('pointerup');await h.advance(350);
+  h.view.setWidth(8);h.fire('pointerdown');h.fire('pointerup');await h.advance(350);
+  h.view.setTool('pen');assert.deepEqual(h.view.brushStyle(),{tool:'pen',color:'#f06f9d',width:22});
+  h.fire('pointerdown');h.fire('pointerup');await h.advance(350);
+  h.view.setTool('eraser');assert.equal(h.view.brushStyle().width,8);h.view.setWidth(33);assert.equal(h.view.brushStyle().width,8);
+  assert.deepEqual(h.saved.strokes.map(({tool,color,width})=>({tool,color,width})),[
+    {tool:'pen',color:'#f06f9d',width:22},{tool:'eraser',color:'#f06f9d',width:32},
+    {tool:'eraser',color:'#f06f9d',width:8},{tool:'pen',color:'#f06f9d',width:22}]);
+  assert.equal(h.view.state().pending,0);h.view.destroy();assert.equal(h.timers.size,0);
+});
 
 test('350ms collection coalesces finished short strokes and paints locally before network confirmation',async()=>{
   const h=harness();await h.start();h.fire('pointerdown');h.fire('pointerup');
@@ -95,7 +112,7 @@ test('a held pointer publishes its first dot, then only newly moved points with 
 
 test('dense point chunks never exceed 256 points and never flush faster when a chunk fills',async()=>{
   const h=harness();await h.start();h.fire('pointerdown');
-  for(let index=1;index<=269;index++)h.fire('pointermove',{clientX:20+index%300,clientY:30+index%200});
+  for(let index=1;index<=269;index++)h.fire('pointermove',{clientX:20+index%300,clientY:30+(index%2)*100});
   h.fire('pointerup');assert.equal(h.writes.length,0);await h.advance(700);
   assert.equal(h.writes.length,2);assert.deepEqual(h.writes.map(write=>write.at),[350,700]);
   assert.ok(h.writes.every(write=>write.body.operations.reduce((sum,part)=>sum+part.points.length,0)<=256));
@@ -112,6 +129,23 @@ test('slow acknowledgement keeps one append in flight and drains already collect
   await h.advance(700);assert.equal(h.writes.length,2);h.view.destroy();
 });
 
+test('a slow first stroke acknowledgement cannot erase the second already visible long stroke',async()=>{
+  let release;const first=new Promise(resolve=>{release=resolve;});
+  const h=harness({append:async({commit,writes})=>{if(writes.length===1)await first;return commit();}});await h.start();
+  h.fire('pointerdown');h.fire('pointerup');await h.advance(350);
+  h.fire('pointerdown',{clientX:80});
+  for(let index=0;index<800;index++)h.fire('pointermove',{clientX:20+index%300,clientY:30+index%200});
+  h.fire('pointerup');
+  try {
+    assert.ok(h.view.state().pending>1,'the pending first upload must not erase unsent second-stroke chunks');
+    release();await settle();await h.advance(4000);
+    assert.equal(h.saved.strokes.length,2);
+    assert.deepEqual(h.saved.strokes[1].points.at(-1),[219/400,229/300],'the full second gesture reaches its last point');
+    assert.ok(h.saved.strokes[1].points.some(p=>p[1]>=228/300),'sharp path turns survive simplification');
+    assert.ok(h.writes.every((write,index)=>index===0||write.at-h.writes[index-1].at>=350));
+  } finally {release();h.view.destroy();}
+});
+
 test('unknown append preserves committed ink via read and never replays the remaining local batch',async()=>{
   const h=harness({append:({commit})=>{commit();throw new Error('synthetic lost acknowledgement');}});await h.start();
   h.fire('pointerdown');h.fire('pointerup');await h.advance(350);
@@ -119,12 +153,12 @@ test('unknown append preserves committed ink via read and never replays the rema
   assert.equal(h.view.state().ready,false);assert.equal(h.view.state().pending,0);await h.advance(4000);assert.equal(h.writes.length,1);h.view.destroy();
 });
 
-test('four pending parts bound an unresponsive writer and conceal cancels all scheduled ink',async()=>{
+test('bounded local buffering stops new input without clearing queued ink; conceal cancels all scheduled ink',async()=>{
   let release;const response=new Promise(resolve=>{release=resolve;});
   const h=harness({append:async({commit})=>{await response;return commit();}});await h.start();
   h.fire('pointerdown');h.fire('pointerup');await h.advance(350);
-  for(let index=0;index<8;index++){h.fire('pointerdown',{clientX:80+index});h.fire('pointerup');}
-  assert.equal(h.view.state().pending,4);assert.equal(h.writes.length,1);h.view.conceal();release();await settle();await h.advance(1000);
+  for(let index=0;index<80;index++){h.fire('pointerdown',{clientX:80+index});h.fire('pointerup');}
+  assert.equal(h.view.state().pending,64);assert.equal(h.writes.length,1);h.view.conceal();release();await settle();await h.advance(1000);
   assert.equal(h.writes.length,1);assert.equal(h.view.state().hasInk,false);assert.equal(h.view.state().pending,0);h.view.destroy();assert.equal(h.timers.size,0);
 });
 
@@ -142,4 +176,25 @@ test('invalid sub-350ms collector is rejected instead of silently exceeding the 
 test('a browser exposing an empty coalesced event array still records the current pointer movement',async()=>{
   const h=harness();await h.start();h.fire('pointerdown');h.fire('pointermove',{clientX:80,getCoalescedEvents:()=>[]});
   h.fire('pointerup');await h.advance(350);assert.equal(h.saved.pointCount,2);assert.deepEqual(h.saved.strokes[0].points,[[.1,.2],[.2,.2]]);h.view.destroy();
+});
+
+test('one continuous 6000-sample gesture stays connected past 4096 points; append work extends the confirmed bitmap linearly',async()=>{
+  const h=harness({bitmap:true});await h.start();h.fire('pointerdown');
+  try {
+    for(let index=0;index<6000;index++){
+      h.fire('pointermove',{clientX:20+index%300,clientY:30+index%200});
+      await h.advance(3);
+    }
+    h.fire('pointerup');await h.advance(2000);
+    assert.equal(h.saved.strokes.length,1,'a single held gesture retains one undo identity');
+    assert.deepEqual(h.saved.strokes[0].points.at(-1),[319/400,229/300],'the gesture continues through all 6000 input samples');
+    assert.ok(h.saved.pointCount<6001,'collinear input is represented geometrically, not as redundant hardware samples');
+    assert.equal(h.view.state().pending,0);
+    assert.ok(h.bitmapWork.segments<=h.saved.pointCount+10,'confirmed history is not repainted per ACK');
+    assert.ok(h.bitmapWork.clears<=4,'ordinary append extends, not clears, the backing bitmap');
+    assert.ok(h.writes.every((w,i)=>!i||w.at-h.writes[i-1].at>=350));
+    assert.ok(h.writes.every(w=>w.body.operations.reduce((n,o)=>n+o.points.length,0)<=256));
+    const before=h.bitmapWork.clears;await h.view.refresh();
+    assert.ok(h.bitmapWork.clears>before,'an authoritative full read rebuilds the bitmap');
+  }finally{h.view.destroy();}
 });

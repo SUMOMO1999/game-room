@@ -1,3 +1,4 @@
+import {withRoomVoice} from './platform/room-voice-session.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
@@ -10,6 +11,7 @@ import * as presentation from './games/flying-chess/presentation.mjs';
 import { flyingMotionPlan } from './games/flying-chess/motion-ui.mjs';
 import * as roomPresentation from './platform/room-presentation.mjs';
 import { mountRoomSettings } from './platform/room-settings.mjs';
+import { mountGameAppearancePicker } from './platform/game-appearance.mjs';
 import { roomChatMarkup } from './room-chat.mjs';
 import { createRoomClock } from './platform/room-clock.mjs';
 import { mountGameViewport } from './platform/room-viewport.mjs';
@@ -32,22 +34,30 @@ const deferred = () => { let resolve, reject; const promise = new Promise((yes, 
 // async callbacks and button flows, not CSS geometry, pointer hitboxes, native
 // dialog focus, trusted gestures, audio loudness or mobile software keyboards.
 function fakeDom() {
-  const ids = new Map();
+  const ids = new Map(); let document;
   class Node extends EventTarget {
     constructor(tag = 'div') {
-      super(); this.tagName = tag.toUpperCase(); this.children = []; this.parentNode = null; this.attributes = {};
+      super(); this.tagName = tag.toUpperCase(); this.children = []; this.parentNode = null; this.ownerDocument = document; this.attributes = {};
       this.dataset = {}; this.hidden = false; this.disabled = false; this.open = false; this.value = ''; this._text = ''; this._class = '';
-      this.style = { setProperty() {} };
+      const styles = new Map();
+      this.style = { setProperty: (name, value) => styles.set(name, String(value)),
+        getPropertyValue: name => styles.get(name) ?? '',
+        removeProperty(name) { const value = styles.get(name) ?? ''; styles.delete(name); return value; } };
       this.classList = { contains: value => this._class.split(/\s+/).includes(value), toggle: (value, force) => {
         const set = new Set(this._class.split(/\s+/).filter(Boolean)), enabled = force ?? !set.has(value);
         enabled ? set.add(value) : set.delete(value); this._class = [...set].join(' '); return enabled;
       }, add: (...values) => values.forEach(value => this.classList.toggle(value, true)) };
+      if (this.tagName === 'TEMPLATE') this.content = new Node('#document-fragment');
     }
     get id() { return this.attributes.id; } set id(value) { this.attributes.id = value; ids.set(value, this); }
     get className() { return this._class; } set className(value) { this._class = value; }
     get textContent() { return this._text + this.children.map(child => child.textContent).join(''); }
     set textContent(value) { this._text = String(value); this.children = []; }
-    set innerHTML(value) { this._text = ''; this.children = []; parse(value, this); }
+    set innerHTML(value) { const target = this.content || this; target.replaceChildren(); parse(value, target); }
+    get parentElement() { return this.parentNode; }
+    get firstElementChild() { return this.children[0] ?? null; }
+    get nextSibling() { return this.parentNode?.children[this.parentNode.children.indexOf(this) + 1] ?? null; }
+    get isConnected() { return document.documentElement.contains(this); }
     get options() { return this.children.filter(child => child.tagName === 'OPTION'); }
     setAttribute(name, value) {
       this.attributes[name] = String(value);
@@ -57,19 +67,33 @@ function fakeDom() {
       if (name === 'value') this.value = String(value);
       if (name.startsWith('data-')) this.dataset[name.slice(5).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())] = String(value);
     }
-    getAttribute(name) { return this.attributes[name] ?? null; }
-    append(...values) { for (const value of values) { value.parentNode = this; this.children.push(value); } }
-    prepend(...values) { for (const value of values) value.parentNode = this; this.children.unshift(...values); }
+    getAttribute(name) {
+      if (Object.hasOwn(this.attributes, name)) return this.attributes[name];
+      if (['name', 'type'].includes(name)) return this[name] ?? null;
+      if (name.startsWith('data-')) return this.dataset[name.slice(5).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())] ?? null;
+      return null;
+    }
+    append(...values) { for (const value of values) { value.remove(); value.parentNode = this; this.children.push(value); } }
+    prepend(...values) { for (const value of values) { value.remove(); value.parentNode = this; } this.children.unshift(...values); }
     replaceChildren(...values) { this._text = ''; this.children = []; this.append(...values); }
+    insertBefore(value, next) { value.remove(); const index = this.children.indexOf(next); if (index < 0) return this.append(value); value.parentNode = this; this.children.splice(index, 0, value); }
+    remove() { if (this.parentNode) this.parentNode.children = this.parentNode.children.filter(node => node !== this); this.parentNode = null; }
+    contains(node) { return node === this || this.children.some(child => child.contains(node)); }
     matches(selector) {
       if (selector.startsWith('#')) return this.id === selector.slice(1);
+      if (selector.startsWith('.')) return this.classList.contains(selector.slice(1));
       const tag = selector.match(/^[\w-]+/)?.[0]; if (tag && this.tagName !== tag.toUpperCase()) return false;
-      for (const [_, attribute] of selector.matchAll(/\[([\w-]+)\]/g)) if (!Object.hasOwn(this.attributes, attribute)) return false;
-      if (selector.includes('[open]') && !this.open) return false;
+      for (const [, attribute, expected] of selector.matchAll(/\[([\w-]+)(?:=["']?([^\]"']+)["']?)?\]/g)) {
+        const actual = attribute === 'open' ? this.open ? '' : null : this.getAttribute(attribute);
+        if (actual === null || expected !== undefined && actual !== expected) return false;
+      }
       return Boolean(tag || selector.includes('['));
     }
+    closest(selector) { return this.matches(selector) ? this : this.parentNode?.closest(selector) ?? null; }
+    querySelector(selector) { return this.querySelectorAll(selector)[0] ?? null; }
     querySelectorAll(selector) { return this.children.flatMap(child => [...(child.matches(selector) ? [child] : []), ...child.querySelectorAll(selector)]); }
     showModal() { this.open = true; } close() { this.open = false; }
+    focus() { document.activeElement = this; }
     click() { if (!this.disabled) this.dispatchEvent(new Event('click')); }
   }
   function parse(source, parent) {
@@ -86,15 +110,18 @@ function fakeDom() {
       } else stack.at(-1)._text += token;
     }
   }
-  const document = new EventTarget(); document.hidden = false; document.body = new Node('body');
+  document = new EventTarget(); document.hidden = false; document.documentElement = new Node('html'); document.head = new Node('head'); document.body = new Node('body');
+  document.documentElement.append(document.head, document.body);
   const root = new Node(); root.id = 'flying-root'; document.body.append(root);
   document.getElementById = id => ids.get(id) ?? null; document.createElement = tag => new Node(tag);
-  document.querySelectorAll = selector => selector.split(',').flatMap(part => document.body.querySelectorAll(part.trim()));
+  document.querySelectorAll = selector => selector.split(',').flatMap(part => document.documentElement.querySelectorAll(part.trim()));
+  document.querySelector = selector => document.querySelectorAll(selector)[0] ?? null;
   return { document, root, node: id => ids.get(id) };
 }
 
 async function page(t, options = {}, browser = {}) {
   const dom = fakeDom(), window = new EventTarget(), cues = [], timers = new Map(), animations = [];
+  dom.document.defaultView = window;
   const motion = new EventTarget(); motion.matches = Boolean(browser.reducedMotion);
   window.matchMedia = () => motion;
   let timerId = 0;
@@ -108,7 +135,7 @@ async function page(t, options = {}, browser = {}) {
   const context = vm.createContext({ ...art, SIDES, ...presentation, ...roomPresentation, gameViewport, flyingMotionPlan, createFlyingMotion,
     document: dom.document, window, location: navigation,
     navigator: {}, console, Event, Number, Object, Promise,
-    mountRoomSettings, roomChatMarkup, replacePracticeWithLobby, mountPracticeExit, createGameAudio: () => audio, mountRoomAudioControls: () => ({ destroy() {} }),
+    mountRoomSettings, mountGameAppearancePicker, roomChatMarkup, replacePracticeWithLobby, mountPracticeExit, createGameAudio: () => audio, mountRoomAudioControls: () => ({ destroy() {} }),
     createRoomClock: callbacks => createRoomClock({ ...callbacks, now: () => 1000,
       setInterval: callback => { const id = ++timerId; timers.set(id, callback); return id; }, clearInterval: id => timers.delete(id) }),
     mountGameViewport: callbacks => mountGameViewport({ ...callbacks, setTimeout: () => ++timerId, clearTimeout() {} }),
@@ -119,6 +146,14 @@ async function page(t, options = {}, browser = {}) {
     filename: 'actual-flying-page-ui.mjs', importModuleDynamically: () => Promise.reject(new Error('app shell is tested separately')),
   });
   const ui = mount(options); t.after(() => ui.destroy());
+  const appearance = dom.document.getElementById('appearance-dialog');
+  assert.equal(appearance?.parentNode, dom.document.body, 'The real shared menu mounts outside the game root');
+  assert.equal(appearance.getAttribute('aria-labelledby'), 'appearance-title');
+  const appearanceStyles = appearance.querySelectorAll('[name="appearance-style"]');
+  assert.deepEqual(appearanceStyles.map(node => node.value), ['paper', 'glass', 'soft']);
+  assert.equal(appearanceStyles.filter(node => node.checked).length, 1);
+  assert.equal(appearance.querySelectorAll('[name="appearance-palette"]').length, 6);
+  assert.equal(appearance.querySelectorAll('[name="appearance-background"]').length, 8);
   dom.node('flying-die').animate = (frames, timing) => {
     const animation = { frames, timing, cancelled: false, cancel() { this.cancelled = true; } };
     animations.push(animation); return animation;
@@ -385,7 +420,7 @@ async function onlinePage(t) {
   const ui = { audio: { play() {} }, views: [], gates: [], applyView(value, metadata) { this.views.push({ value, metadata }); },
     setConnection(value) { this.connection = value; }, conceal(value) { this.gates.push(value); }, setMessage() {}, leaveFailure(value) { this.leaveMessage = value; }, destroy() {} };
   const context = vm.createContext({ document: dom.document, window, location, URLSearchParams, Promise, AbortController,
-    crypto: { randomUUID }, createRoomSession, createRoomExit, RoomClient: Client,
+    crypto: { randomUUID }, createRoomSession, createRoomExit, RoomClient: Client, BaseRoomClient:Client, withRoomVoice,
     mountFlyingPage: value => { options = value; return ui; },
     api: async () => ({ view: firstView }), accountState: () => account, accountGeneration: () => epoch,
     onAccountChange: callback => { memberships.push(callback); }, loadAccount: async () => account,

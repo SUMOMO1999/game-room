@@ -45,7 +45,7 @@ async function fixture(t, overrides = {}) {
 }
 
 test('a real configured friends-v4 completion and outbox survive validation, backup and archival recovery once', async t => {
-  const f = await fixture(t), source = f.open(), host = await f.start(source, { jokerConfig: defaultJokerConfig(2) });
+  const f = await fixture(t, { gameOptions: { firstTurnIndex: 0, randomInt: max => max - 1, ruleVersion: 'friends-v4' } }), source = f.open(), host = await f.start(source, { jokerConfig: defaultJokerConfig(2) });
   assert.equal((await source.rooms.getView(host.roomCode, users[0])).game.ruleVersion, 'friends-v4');
   source.rooms.setHistory({ archive: async () => { throw new Error('synthetic archival pause'); } });
   const finished = await f.complete(source, host);

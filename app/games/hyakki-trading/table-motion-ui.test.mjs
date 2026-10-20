@@ -10,7 +10,7 @@ function fixture({reduced=false}={}) {
   Object.assign(window,{matchMedia:()=>({matches:reduced})});
   Object.assign(document,{defaultView:window,hidden:false});
   class Node {
-    constructor(){this.style={visibility:''};this.attributes=new Map();this.children=[];this.parentNode=null;this.ownerDocument=document;}
+    constructor(){this.style={visibility:'',setProperty(name,value){this[name]=value;}};this.attributes=new Map();this.children=[];this.parentNode=null;this.ownerDocument=document;}
     setAttribute(name,value){this.attributes.set(name,String(value));}
     getAttribute(name){return this.attributes.get(name)??null;}
     removeAttribute(name){this.attributes.delete(name);}
@@ -40,6 +40,16 @@ test('capture paints a visible copy and strips all private identities and action
   assert.equal(snapshot.node.getAttribute('data-hy-action'),null);
   assert.equal(snapshot.node.children[0].getAttribute('data-card-id'),null);
   assert.equal(snapshot.node.children[0].getAttribute('id'),null);
+  f.motion.destroy();
+});
+
+test('a travelling card keeps its actual face budget after leaving the original stock',()=>{
+  const f=fixture();f.source.matches=selector=>selector==='.yousei-card';
+  f.window.getComputedStyle=()=>({width:'80px',height:'112px'});
+  const snapshot=f.motion.capture(f.source);
+  assert.equal(snapshot.node.style['--hyakki-card-width'],'80px');
+  assert.equal(snapshot.node.style['--hyakki-card-height'],'112px');
+  assert.equal(f.source.style['--hyakki-card-width'],undefined,'capture cannot change the live hand');
   f.motion.destroy();
 });
 

@@ -5,7 +5,7 @@ import { emptyGoods } from './model.mjs';
 import { privateView, spectatorView } from './view.mjs';
 import { createHyakkiAdapter } from '../../../server/games/hyakki-trading/adapter.mjs';
 import { validateHyakkiPublicEvent } from '../../../server/games/hyakki-trading/event-store.mjs';
-import { DIGITAL_RULE_VERSION } from './content/definitions.mjs';
+import { CONTENT_VERSION, DIGITAL_RULE_VERSION } from './content/definitions.mjs';
 
 const ids = ['a'.repeat(32), 'b'.repeat(32)], ctx = { now: 1000, randomInt: limit => limit - 1 };
 const fresh = options => createGame(ids, { ...ctx, matchId: 'c'.repeat(32), ...options });
@@ -17,8 +17,9 @@ function command(state, type, fields = {}) {
   assert.equal(result.ok, true, result.error); return result.state;
 }
 
-test('new games freeze five actions and eight goods by default, with independently bounded options', () => {
-  const initial = fresh(); assert.equal(initial.actionLimit, 5); assert.equal(initial.goodsPerType, 8);
+test('new games freeze five actions and recommended six goods, while old explicit material default stays eight', () => {
+  const initial = fresh(); assert.equal(initial.actionLimit, 5); assert.equal(initial.goodsPerType, 6);
+  assert.equal(fresh({ contentVersion: CONTENT_VERSION }).goodsPerType, 8);
   for (const goodsPerType of [4, 6, 8, 20]) for (const actionLimit of [1, 5, 10]) {
     const state = fresh({ actionLimit, goodsPerType });
     assert.equal(gameProblem(state), null); assert.deepEqual(Object.values(state.bankGoods), Array(6).fill(goodsPerType));
@@ -71,7 +72,8 @@ test('goods above six move and sell through real effects without weakening per-t
 });
 
 test('adapter config preserves old omitted settings, rejects malformed values and writes schema14', () => {
-  const adapter = createHyakkiAdapter(), modern = adapter.roomDefaults(), legacy = { hyakkiConfig: { actionLimit: 7 } };
+  const adapter = createHyakkiAdapter(), modern = { hyakkiConfig: { actionLimit: 5, goodsPerType: 8 } }, legacy = { hyakkiConfig: { actionLimit: 7 } };
+  assert.deepEqual(adapter.roomDefaults().hyakkiConfig, { actionLimit: 5, goodsPerType: 6, goodsSupplyMode: 'recommended' });
   assert.deepEqual(modern.hyakkiConfig, { actionLimit: 5, goodsPerType: 8 });
   assert.deepEqual(adapter.configure(modern, { hyakkiConfig: { actionLimit: 4 } }).updates.hyakkiConfig, { actionLimit: 4, goodsPerType: 8 });
   assert.deepEqual(adapter.configure(legacy, { hyakkiConfig: { actionLimit: 4 } }).updates.hyakkiConfig, { actionLimit: 4, goodsPerType: 6 });

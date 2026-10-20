@@ -6,7 +6,7 @@ import { JOKER_TYPES, configuredJokers, normalizeJokerConfig, jokerCountOf, anal
 export { JOKER_TYPES, JOKER_CONFIG_KEYS, JOKER_LIMITS, normalizeJokerConfig, defaultJokerConfig, jokerCountOf } from './jokers.mjs';
 
 export const COLORS = Object.freeze(['red', 'blue', 'black', 'orange']);
-const RULE_VERSIONS = new Set(['practice-v1', 'practice-v2', 'friends-v1', 'friends-v2', 'friends-v3', 'friends-v4']);
+const RULE_VERSIONS = new Set(['practice-v1', 'practice-v2', 'friends-v1', 'friends-v2', 'friends-v3', 'friends-v4', 'friends-v5']);
 
 /** Old practice saves had no rule metadata and retain the original rules. */
 export function ruleVersionOf(state) {
@@ -15,7 +15,7 @@ export function ruleVersionOf(state) {
 
 /** v2 checks the complete legal table at commit, including rearranged jokers. */
 export function canRearrangeJokers(state) {
-  return ['practice-v2', 'friends-v2', 'friends-v3', 'friends-v4'].includes(ruleVersionOf(state));
+  return ['practice-v2', 'friends-v2', 'friends-v3', 'friends-v4', 'friends-v5'].includes(ruleVersionOf(state));
 }
 
 export function createDeck(options = {}) {
@@ -90,11 +90,11 @@ function analyzeMeld(tiles, options = {}) {
   if (options.ruleVersion !== undefined && !RULE_VERSIONS.has(options.ruleVersion)) return invalidMeld('规则版本无效。');
   // Subtypes may infer Twist for standalone tools, but cannot upgrade an
   // explicitly frozen legacy game or reinterpret its physical joker cards.
-  if (options.ruleVersion !== undefined && !['friends-v3', 'friends-v4'].includes(options.ruleVersion)
+  if (options.ruleVersion !== undefined && !['friends-v3', 'friends-v4', 'friends-v5'].includes(options.ruleVersion)
       && (options.jokerConfig !== undefined || Array.isArray(tiles) && tiles.some((tile) => tile?.jokerType !== undefined))) {
     return invalidMeld('本局旧版规则不支持特殊鬼牌。');
   }
-  const twist = ['friends-v3', 'friends-v4'].includes(options.ruleVersion) || options.jokerConfig !== undefined
+  const twist = ['friends-v3', 'friends-v4', 'friends-v5'].includes(options.ruleVersion) || options.jokerConfig !== undefined
     || Array.isArray(tiles) && tiles.some((tile) => tile?.jokerType !== undefined);
   let maxJokers, configured;
   try {
@@ -265,8 +265,8 @@ export function stateProblem(state, checkBoard = false, options = {}) {
     return '练习状态格式无效，请重新开始。';
   }
   if (!RULE_VERSIONS.has(ruleVersionOf(state))) return '规则版本无效，请重新开始。';
-  if (['friends-v3', 'friends-v4'].includes(ruleVersionOf(state)) && (configured === undefined || state.jokerConfig === undefined)
-      || !['friends-v3', 'friends-v4'].includes(ruleVersionOf(state)) && configured !== undefined) return '鬼牌设置与本局规则版本不一致。';
+  if (['friends-v3', 'friends-v4', 'friends-v5'].includes(ruleVersionOf(state)) && (configured === undefined || state.jokerConfig === undefined)
+      || !['friends-v3', 'friends-v4', 'friends-v5'].includes(ruleVersionOf(state)) && configured !== undefined) return '鬼牌设置与本局规则版本不一致。';
   if (state.jokerConfig !== undefined) {
     try { if (JSON.stringify(normalizeJokerConfig(state.jokerConfig)) !== JSON.stringify(normalizeJokerConfig(configured))) return '草稿不能改变鬼牌设置。'; }
     catch { return '鬼牌设置无效。'; }

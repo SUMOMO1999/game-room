@@ -1,9 +1,14 @@
 import { drawAndGuessCharacterLength } from './draw-and-guess-definition.mjs';
+import { DRAW_AND_GUESS_EXPANSION_CATEGORIES, DRAW_AND_GUESS_EXPANSION_ROWS } from './draw-and-guess-expansion.mjs';
+import { DRAW_AND_GUESS_EXPANDED_400_ROWS } from './draw-and-guess-expanded-400.mjs';
+import { DRAW_AND_GUESS_COMMON_ANSWERS } from './draw-and-guess-common-selection.mjs';
+import { DRAW_AND_GUESS_QUALITY_REPLACEMENTS, DRAW_AND_GUESS_QUALITY_CATEGORY_NAMES, DRAW_AND_GUESS_QUALITY_REMOVALS } from './draw-and-guess-quality-replacements.mjs';
 
 // Authored selection and drawing cues; no downloaded wordbank, imagery or user data.
 // IDs below are explicit and category-independent. Keep an ID when editing or
-// reclassifying; a new concept receives a new ID, not an array-position-derived ID.
-export const DRAW_AND_GUESS_CATEGORIES = Object.freeze([
+// reclassifying. Reviewed replacements advance definitionVersion; newly added
+// entries receive explicit IDs, never array-position-derived IDs.
+const originalCategories = [
   {
     "id": "daily",
     "name": "日常物品",
@@ -44,14 +49,17 @@ export const DRAW_AND_GUESS_CATEGORIES = Object.freeze([
     "name": "朋友梗与自定义",
     "status": "active"
   }
-].map(category => Object.freeze(category)));
+];
+export const DRAW_AND_GUESS_PREVIOUS_CATEGORIES = Object.freeze([...originalCategories, ...DRAW_AND_GUESS_EXPANSION_CATEGORIES].map(category => Object.freeze(category)));
+export const DRAW_AND_GUESS_CATEGORIES = Object.freeze(DRAW_AND_GUESS_PREVIOUS_CATEGORIES.map(category =>
+  Object.freeze({ ...category, name: DRAW_AND_GUESS_QUALITY_CATEGORY_NAMES[category.id] ?? category.name })));
 
 export const DRAW_AND_GUESS_SEED_METADATA = Object.freeze({
-  packId: 'dg-base', packVersion: 1, definitionVersion: 1, matcherVersion: 'zh-exact-v1',
-  language: 'zh', preparedOn: '2026-10-07', releasePublished: false,
-  reviewBasis: 'editorial-text-and-drawability-cues', trialDrawingVerified: false,
+  packId: 'dg-base', packVersion: 5, definitionVersion: 1, matcherVersion: 'zh-exact-v1',
+  language: 'zh', preparedOn: '2026-10-17', releasePublished: false,
+  reviewBasis: 'explicit-quality-replacement-and-removal', trialDrawingVerified: false,
   drawingCueAudience: 'content-maintenance-only',
-  source: '原创选题与别名整理；未抓取词库、生成答案图或导入真人资料',
+  source: '原创选题与别名整理；新增词目参考CC-CEDICT和THUOCL，归属见各词条与数据文件；无真人资料',
   step0RepresentativeIds: Object.freeze(["dg-base-0001", "dg-base-0028", "dg-base-0080", "dg-base-0081", "dg-base-0160", "dg-base-0091", "dg-base-0161", "dg-base-0211", "dg-base-0178", "dg-base-0266", "dg-base-0314", "dg-base-0319", "dg-base-0321", "dg-base-0336", "dg-base-0372", "dg-base-0401", "dg-base-0479", "dg-base-0441", "dg-base-0481", "dg-base-0550", "dg-base-0560"]),
 });
 
@@ -619,9 +627,52 @@ const seedRows = [
   ["dg-base-0560", "idiom-abstract", "公平", [], "hard", ["抽象"], "将同一物分成同样份额"],
 ];
 
-export const DRAW_AND_GUESS_SEED = Object.freeze(seedRows.map(([id, category, answer, aliases, difficulty, tags, drawingCue]) => Object.freeze({
+export const DRAW_AND_GUESS_ORIGINAL_SEED = Object.freeze(seedRows.map(([id, category, answer, aliases, difficulty, tags, drawingCue]) => Object.freeze({
   id, category, answer, aliases: Object.freeze(aliases), difficulty, language: 'zh',
   source: category === 'screen' ? '原创选题整理；既有虚构角色仅使用名称，无图片、商标图或截图素材' : '原创选题整理',
   status: 'reviewed', definitionVersion: 1, hintLength: drawAndGuessCharacterLength(answer),
   tags: Object.freeze(tags), packId: 'dg-base', drawingCue,
 })));
+
+// Original entries remain byte-for-byte definitions; additions never reassign IDs.
+export const DRAW_AND_GUESS_PREVIOUS_6408_SEED = Object.freeze([...DRAW_AND_GUESS_ORIGINAL_SEED,
+  ...DRAW_AND_GUESS_EXPANSION_ROWS.map(({id, category, answer, aliases, difficulty, drawingCue}) => Object.freeze({
+    id, category, answer, aliases, difficulty, language: 'zh', source: '原创分类选题整理',
+    status: 'reviewed', definitionVersion: 1, hintLength: drawAndGuessCharacterLength(answer),
+    tags: Object.freeze([]), packId: 'dg-base', drawingCue,
+  }))]);
+export const DRAW_AND_GUESS_PREVIOUS_14400_SEED = Object.freeze([...DRAW_AND_GUESS_PREVIOUS_6408_SEED,
+  ...DRAW_AND_GUESS_EXPANDED_400_ROWS.map(({id, category, answer, aliases, difficulty, source, drawingCue}) => Object.freeze({
+    id, category, answer, aliases: Object.freeze(aliases), difficulty, language: 'zh', source,
+    status: 'reviewed', definitionVersion: 1, hintLength: drawAndGuessCharacterLength(answer),
+    tags: Object.freeze([]), packId: 'dg-base', drawingCue,
+  }))]);
+const commonAnswers=new Set(DRAW_AND_GUESS_COMMON_ANSWERS),seedAnswers=new Set(DRAW_AND_GUESS_PREVIOUS_14400_SEED.map(word=>word.answer));
+if(commonAnswers.size!==DRAW_AND_GUESS_COMMON_ANSWERS.length||DRAW_AND_GUESS_COMMON_ANSWERS.some(answer=>!seedAnswers.has(answer)))
+  throw new TypeError('常用选词清单必须是已存在且不重复的明确词名。');
+// Preserve every definition and ID. Only difficulty is classified by the
+// explicit editorial list; there is no length, adjective or name heuristic.
+export const DRAW_AND_GUESS_PREVIOUS_CLASSIFIED_SEED=Object.freeze(DRAW_AND_GUESS_PREVIOUS_14400_SEED.map(word=>{
+  const difficulty=commonAnswers.has(word.answer)?word.difficulty==='hard'?'normal':word.difficulty:'hard';
+  return difficulty===word.difficulty?word:Object.freeze({...word,difficulty});
+}));
+
+// A reviewed correction keeps its stable slot but advances the definition.
+// Stored published versions retain their original definition and answer.
+const replacements = new Map(DRAW_AND_GUESS_QUALITY_REPLACEMENTS.map(row => [row.id, row]));
+const removals = new Map(DRAW_AND_GUESS_QUALITY_REMOVALS.map(row => [row.id, row]));
+const previousDefinitions = new Map(DRAW_AND_GUESS_PREVIOUS_CLASSIFIED_SEED.map(word => [word.id, word]));
+if (replacements.size !== DRAW_AND_GUESS_QUALITY_REPLACEMENTS.length
+  || removals.size !== DRAW_AND_GUESS_QUALITY_REMOVALS.length
+  || [...replacements.values(), ...removals.values()].some(row => previousDefinitions.get(row.id)?.answer !== row.previousAnswer)
+  || [...removals.keys()].some(id => replacements.has(id))) {
+  throw new TypeError('词库修订必须对应唯一且已知的旧词条。');
+}
+export const DRAW_AND_GUESS_SEED = Object.freeze(DRAW_AND_GUESS_PREVIOUS_CLASSIFIED_SEED.filter(word => !removals.has(word.id)).map(word => {
+  const replacement = replacements.get(word.id);
+  if (!replacement) return word;
+  return Object.freeze({ ...word, answer: replacement.answer, category: replacement.category,
+    aliases: Object.freeze([...replacement.aliases]), difficulty: replacement.difficulty,
+    drawingCue: replacement.drawingCue, hintLength: drawAndGuessCharacterLength(replacement.answer),
+    definitionVersion: word.definitionVersion + 1, tags: Object.freeze([]), source: '人工审阅选题与画法整理' });
+}));

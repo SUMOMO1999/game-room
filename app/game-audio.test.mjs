@@ -9,6 +9,8 @@ function deferred() {
   const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
   return { promise, resolve, reject };
 }
+const settle=async()=>{for(let i=0;i<8;i++)await Promise.resolve();};
+async function recover(f){await settle();f.tick(100);await settle();}
 function fixture(options = {}) {
   let clock = 1000;
   const values = new Map(), writes = [], contexts = [], listeners = new Map(), windowListeners = new Map(), timers = new Map();
@@ -74,7 +76,7 @@ function fixture(options = {}) {
     clearTimeout(id) { timers.delete(id); } });
   return { audio, document, contexts, writes, values, options,
     advance(ms) { clock += ms; },
-    tick(ms) { clock += ms; for (const [id, item] of [...timers]) if (item.at <= clock && timers.has(id)) { timers.delete(id); item.callback(); } },
+    tick(ms) { clock += ms;if(!options.stuckClock)for(const context of contexts)if(context.state==='running')context.currentTime+=ms/1000;for (const [id, item] of [...timers]) if (item.at <= clock && timers.has(id)) { timers.delete(id); item.callback(); } },
     page(type) { windowListeners.get(type)?.(); },
     timers, windowListeners,
     visibility(hidden) { document.hidden = hidden; document.visibilityState = hidden ? 'hidden' : 'visible'; listeners.get('visibilitychange')?.(); },
@@ -231,20 +233,22 @@ test('storage refusal and absent audio hardware cannot break gameplay', async ()
 });
 
 test('visibility loss cancels active and future notes; returning alone never replays them', async () => {
-  const { audio, contexts, visibility, advance } = fixture(); await audio.unlock(); audio.play('win');
+  const f=fixture(),{ audio, contexts, visibility, advance } = f; await audio.unlock(); audio.play('win');
   visibility(true); assert.equal(audio.state().ready, false);
   assert.ok(contexts[0].oscillators.every((source) => source.disconnected));
   advance(2000); assert.equal(audio.play('turn'), false);
   const count = contexts[0].oscillators.length; visibility(false);
   assert.equal(audio.play('turn'), false); assert.equal(contexts[0].oscillators.length, count);
-  await audio.unlock(); assert.equal(audio.play('turn'), true); await audio.close();
+  await recover(f);assert.equal(audio.state().ready,true);assert.equal(contexts.length,1);assert.equal(contexts[0].oscillators.length,count);
+  assert.equal(audio.play('turn'), true); await audio.close();
 });
 
-test('an interrupted notification can resume its graph but still needs a gesture before playback', async () => {
-  const { audio, contexts } = fixture(); await audio.unlock();
+test('an interrupted previously authorized graph recovers once without replaying the missed notification', async () => {
+  const f=fixture(),{ audio, contexts } = f; await audio.unlock();
   contexts[0].state = 'suspended'; const calls = contexts[0].resumeCalls;
   assert.equal(audio.state().ready, false); assert.equal(audio.play('placement'), false);
-  assert.equal(contexts[0].resumeCalls, calls + 1); assert.equal(audio.state().ready, false); await audio.unlock();
+  assert.equal(contexts[0].resumeCalls, calls + 1); assert.equal(audio.state().ready, false);await recover(f);
+  assert.equal(audio.state().ready,true);assert.equal(contexts.length,1);assert.equal(contexts[0].oscillators.length,0);
   assert.equal(audio.play('placement'), true); await audio.close();
 });
 
@@ -405,14 +409,15 @@ test('a visible window blur and focus keep already activated audio audible witho
   await f.audio.close(); assert.equal(f.windowListeners.size, 0); assert.equal(f.listeners.size, 0);
 });
 
-test('visible blur never unlocks a new or interrupted graph and later hidden/pagehide still revoke old activation', async () => {
-  for (const revoke of [f => f.visibility(true), f => f.page('pagehide')]) {
+test('visible blur never authorizes a new graph; ordinary hidden recovers existing audio while pagehide revokes it', async () => {
+  for (const boundary of ['hidden','pagehide']) {
     const f = fixture(); f.page('blur'); f.page('focus');
     assert.equal(f.contexts.length, 0); assert.equal(f.audio.play('turn'), false);
-    await f.audio.unlock(); f.page('blur'); revoke(f);
+    await f.audio.unlock(); f.page('blur');if(boundary==='hidden')f.visibility(true);else f.page('pagehide');
     f.visibility(false); f.page('focus');
     assert.equal(f.audio.state().ready, false); assert.equal(f.audio.play('chat'), false);
-    assert.equal(f.contexts[0].suspendCalls, 1);
+    if(boundary==='hidden'){await recover(f);assert.equal(f.audio.state().ready,true);assert.equal(f.contexts[0].suspendCalls,0);assert.equal(f.contexts.length,1);}
+    else assert.equal(f.contexts[0].suspendCalls,1);
     await f.audio.close();
   }
   const f = fixture(); await f.audio.unlock(); f.contexts[0].transition('interrupted');
@@ -435,10 +440,10 @@ test('one pending gesture retains only its latest action and control subscribers
 });
 
 test('foreground recovery rebuilds an old running context only inside the next trusted tap', async () => {
-  const f = fixture(); await f.audio.unlock(); f.audio.play('win'); const old = f.contexts[0];
+  const f = fixture({stuckClock:true}); await f.audio.unlock(); f.audio.play('win'); const old = f.contexts[0];
   f.visibility(true); f.visibility(false);
   // Models WebKit's old graph reporting running again while its clock is stuck.
-  old.transition('running'); f.page('pageshow'); f.page('focus');
+  old.transition('running'); f.page('pageshow'); f.page('focus');await recover(f);
   assert.equal(f.audio.state().ready, false); assert.equal(f.audio.play('turn'), false);
   assert.equal(f.contexts.length, 1); assert.equal(old.closeCalls, 0);
   f.document.defaultView.navigator.userActivation.isActive = false;
@@ -477,8 +482,8 @@ test('notification recovery coalesces a burst and never queues chat or turn hist
   f.contexts[0].transition('suspended'); const calls = f.contexts[0].resumeCalls;
   for (let i = 0; i < 30; ++i) assert.equal(f.audio.play(i % 2 ? 'chat' : 'turn'), false);
   assert.equal(f.contexts[0].resumeCalls, calls + 1); assert.equal(f.timers.size, 1);
-  resumePending.resolve(); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
-  assert.equal(f.audio.state().contextState, 'running'); assert.equal(f.audio.state().ready, false);
+  resumePending.resolve();await recover(f);
+  assert.equal(f.audio.state().contextState, 'running'); assert.equal(f.audio.state().ready, true);
   assert.equal(f.contexts[0].oscillators.length, 0); assert.equal(f.timers.size, 0);
   await f.audio.unlock(); assert.equal(f.audio.play('placement'), true); await f.audio.close();
 });
@@ -575,7 +580,7 @@ test('turn and result cues preempt crowded action sounds and quieter local click
   f.advance(100);
   assert.equal(f.audio.play('select'),true);const reduced=gainPeak(f.contexts[0].gains.at(-1));assert.ok(reduced<.06);
   assert.equal(f.audio.play('win'),true);assert.ok(f.contexts[0].oscillators.slice(0,-3).every(source=>source.disconnected));
-  f.visibility(true);f.visibility(false);await f.audio.unlock();f.advance(100);
+  f.visibility(true);f.visibility(false);await recover(f);f.advance(100);
   assert.equal(f.audio.play('select'),true);assert.ok(gainPeak(f.contexts.at(-1).gains.at(-1))>.1,'backgrounding clears the old priority envelope');await f.audio.close();
 });
 
@@ -591,7 +596,7 @@ test('a public action scheduled in the same event survives the following turn or
     assert.ok(active.reduce((n,node)=>n+gainPeak(node),0)*masterValue(f.contexts[0])<=.5000001);
     assert.ok(f.contexts[0].oscillators.filter(source=>!source.disconnected).length<=12);
     f.visibility(true);assert.ok(f.contexts[0].oscillators.every(source=>source.disconnected));
-    f.visibility(false);assert.equal(await f.audio.unlock(),true);assert.equal(f.contexts.at(-1).oscillators.length,0,'foregrounding cannot replay public actions');await f.audio.close();
+    const count=f.contexts[0].oscillators.length;f.visibility(false);await recover(f);assert.equal(f.audio.state().ready,true);assert.equal(f.contexts.length,1);assert.equal(f.contexts[0].oscillators.length,count,'foregrounding cannot replay public actions');assert.ok(f.contexts[0].oscillators.every(source=>source.disconnected));await f.audio.close();
   }
 });
 
@@ -625,7 +630,7 @@ test('every new basic cue stays silent before activation, while muted, at zero v
   f.audio.setMuted(false);f.audio.setVolume(0);for(const kind of ACTION_CUES)assert.equal(f.audio.play(kind,{gesture:true}),false);
   f.audio.setVolume(.45);f.visibility(true);for(const kind of ACTION_CUES)assert.equal(f.audio.play(kind,{gesture:true}),false);
   f.visibility(false);for(const kind of ACTION_CUES)assert.equal(f.audio.play(kind),false);
-  assert.equal(f.contexts.flatMap(context=>context.oscillators).length,0);await f.audio.unlock();assert.equal(f.audio.play('sort'),true);
+  assert.equal(f.contexts.flatMap(context=>context.oscillators).length,0);await recover(f);assert.equal(f.audio.state().ready,true);assert.equal(f.audio.play('sort'),true);
   await f.audio.close();for(const kind of ACTION_CUES)assert.equal(f.audio.play(kind),false);
 });
 
@@ -708,4 +713,37 @@ test('unsupported devices report an honest audition status rather than suggestin
   await f.audio.close();const unsupported=createGameAudio({AudioContext:{},document:f.document});
   unsupported.bindPreview({button,select:{value:'turn'},status});assert.match(status.textContent,/设备不支持/);
   button.dispatchEvent(new Event('click'));await new Promise(resolve=>setImmediate(resolve));assert.match(status.textContent,/设备不支持/);await unsupported.close();
+});
+
+test('foregrounding resumes only the same previously activated graph and never replays hidden cues',async()=>{
+  const f=fixture();try{await f.audio.unlock();f.audio.play('win');const context=f.contexts[0],count=context.oscillators.length;
+    f.visibility(true);context.transition('interrupted');assert.equal(f.audio.play('turn'),false);f.document.defaultView.navigator.userActivation.isActive=false;
+    f.visibility(false);f.page('focus');await recover(f);assert.equal(f.contexts.length,1);assert.equal(context.closeCalls,0);assert.equal(f.audio.state().ready,true);assert.equal(context.oscillators.length,count);assert(context.oscillators.every(source=>source.disconnected));
+    assert.equal(f.audio.play('turn'),true);
+  }finally{await f.audio.close();}
+});
+
+test('a failed foreground resume is bounded and requires an explicit gesture rather than a new automatic graph',async()=>{
+  const f=fixture();try{await f.audio.unlock();const context=f.contexts[0];f.visibility(true);context.transition('interrupted');f.options.resumeFailure=true;f.document.defaultView.navigator.userActivation.isActive=false;
+    const calls=context.resumeCalls;f.visibility(false);await settle();for(let i=0;i<5;i++)f.page('focus');await settle();assert.equal(context.resumeCalls,calls+1);assert.equal(f.contexts.length,1);assert.equal(f.audio.state().needsGesture,true);assert.equal(f.audio.play('turn'),false);
+    f.options.resumeFailure=false;f.document.defaultView.navigator.userActivation.isActive=true;assert.equal(await f.audio.unlock(),true);assert.equal(f.contexts.length,1);assert.equal(context.oscillators.length,0);
+  }finally{await f.audio.close();}
+});
+
+test('foreground can resume the same graph after an unfocused notification recovery was denied',async()=>{
+  const f=fixture();try{await f.audio.unlock();const context=f.contexts[0];f.page('blur');context.transition('interrupted');f.options.resumeFailure=true;
+    assert.equal(f.audio.play('chat'),false);await settle();const calls=context.resumeCalls;assert.equal(f.audio.state().ready,false);
+    f.options.resumeFailure=false;f.document.defaultView.navigator.userActivation.isActive=false;f.page('focus');await recover(f);
+    assert.equal(context.resumeCalls,calls+1);assert.equal(f.audio.state().ready,true);assert.equal(f.contexts.length,1);assert.equal(context.oscillators.length,0);
+    f.page('pageshow');f.page('focus');await recover(f);assert.equal(context.resumeCalls,calls+1);assert.equal(context.oscillators.length,0);
+  }finally{await f.audio.close();}
+});
+
+test('a denied foreground graph retry has its own bounded budget and never creates or queues sound',async()=>{
+  const f=fixture();try{await f.audio.unlock();const context=f.contexts[0];f.page('blur');context.transition('interrupted');f.options.resumeFailure=true;
+    f.audio.play('turn');await settle();const calls=context.resumeCalls;f.page('focus');await settle();assert.equal(context.resumeCalls,calls+1);
+    for(let i=0;i<5;i++){f.page('pageshow');f.page('focus');f.audio.play('chat');}await settle();assert.equal(context.resumeCalls,calls+1);assert.equal(f.audio.state().needsGesture,true);
+    f.options.resumeFailure=false;f.page('focus');await recover(f);assert.equal(context.resumeCalls,calls+1);
+    f.page('blur');f.page('focus');await recover(f);assert.equal(context.resumeCalls,calls+2);assert.equal(f.audio.state().ready,true);assert.equal(f.contexts.length,1);assert.equal(context.oscillators.length,0);
+  }finally{await f.audio.close();}
 });

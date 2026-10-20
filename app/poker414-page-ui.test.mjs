@@ -11,26 +11,34 @@ import { classifyPattern } from './games/poker414-2/patterns.mjs';
 import { fixture } from './games/poker414-2/test-support/preview-fixtures.mjs';
 import { roomChatMarkup } from './room-chat.mjs';
 import { gameViewport } from './game-viewport.mjs';
+import { mountGameAppearancePicker } from './platform/game-appearance.mjs';
 
 // Executes the real UI state/lifecycle code with minimal DOM doubles. Browser
 // geometry, native dialogs, audio activation and hitboxes are verified separately.
 function fakeDom() {
-  const ids = new Map();
+  const ids = new Map(); let document;
   class Node extends EventTarget {
     constructor(tag = 'div') {
       super(); this.tagName = tag.toUpperCase(); this.children = []; this.parentNode = null; this.attributes = {};
-      this.ownerDocument = null; this.clientWidth = 720; this.clientHeight = 240; this.dataset = {}; this.hidden = false; this.disabled = false; this.open = false; this.value = ''; this._text = ''; this._class = '';
-      this.style = { setProperty() {} };
+      this.ownerDocument = document; this.clientWidth = 720; this.clientHeight = 240; this.dataset = {}; this.hidden = false; this.disabled = false; this.open = false; this.value = ''; this._text = ''; this._class = '';
+      const styles = new Map();
+      this.style = { setProperty: (name, value) => styles.set(name, String(value)),
+        getPropertyValue: name => styles.get(name) ?? '',
+        removeProperty(name) { const value = styles.get(name) ?? ''; styles.delete(name); return value; } };
       this.classList = { contains: value => this._class.split(/\s+/).includes(value), toggle: (value, force) => {
         const set = new Set(this._class.split(/\s+/).filter(Boolean)), enabled = force ?? !set.has(value);
         enabled ? set.add(value) : set.delete(value); this._class = [...set].join(' '); return enabled;
       }, add: (...values) => values.forEach(value => this.classList.toggle(value, true)), remove: (...values) => values.forEach(value => this.classList.toggle(value, false)) };
+      if (this.tagName === 'TEMPLATE') this.content = new Node('#document-fragment');
     }
     get id() { return this.attributes.id; } set id(value) { this.attributes.id = value; ids.set(value, this); }
     get className() { return this._class; } set className(value) { this._class = value; }
     get textContent() { return this._text + this.children.map(child => child.textContent).join(''); }
     set textContent(value) { this._text = String(value); this.children = []; }
-    set innerHTML(value) { this._text = ''; this.children = []; parse(value, this); }
+    set innerHTML(value) { const target = this.content || this; target.replaceChildren(); parse(value, target); }
+    get parentElement() { return this.parentNode; }
+    get firstElementChild() { return this.children[0] ?? null; }
+    get isConnected() { return document.documentElement.contains(this); }
     get options() { return this.children.filter(child => child.tagName === 'OPTION'); }
     setAttribute(name, value) {
       this.attributes[name] = String(value);
@@ -41,22 +49,32 @@ function fakeDom() {
       if (name.startsWith('data-')) this.dataset[name.slice(5).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())] = String(value);
     }
     removeAttribute(name) { delete this.attributes[name]; }
-    getAttribute(name) { return this.attributes[name] ?? null; }
-    append(...values) { for (const value of values) { value.parentNode = this; this.children.push(value); } }
-    prepend(...values) { for (const value of values) value.parentNode = this; this.children.unshift(...values); }
+    getAttribute(name) {
+      if (Object.hasOwn(this.attributes, name)) return this.attributes[name];
+      if (['name', 'type'].includes(name)) return this[name] ?? null;
+      if (name.startsWith('data-')) return this.dataset[name.slice(5).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())] ?? null;
+      return null;
+    }
+    append(...values) { for (const value of values) { value.remove(); value.parentNode = this; this.children.push(value); } }
+    prepend(...values) { for (const value of values) { value.remove(); value.parentNode = this; } this.children.unshift(...values); }
     replaceChildren(...values) { this._text = ''; this.children = []; this.append(...values); }
+    remove() { if (this.parentNode) this.parentNode.children = this.parentNode.children.filter(node => node !== this); this.parentNode = null; }
+    contains(node) { return node === this || this.children.some(child => child.contains(node)); }
     matches(selector) {
       if (selector.startsWith('.')) return this.classList.contains(selector.slice(1));
       if (selector.startsWith('#')) return this.id === selector.slice(1);
       const tag = selector.match(/^[\w-]+/)?.[0]; if (tag && this.tagName !== tag.toUpperCase()) return false;
-      for (const [_, attribute] of selector.matchAll(/\[([\w-]+)\]/g)) if (!Object.hasOwn(this.attributes, attribute)) return false;
-      if (selector.includes('[open]') && !this.open) return false;
+      for (const [, attribute, expected] of selector.matchAll(/\[([\w-]+)(?:=["']?([^\]"']+)["']?)?\]/g)) {
+        const actual = attribute === 'open' ? this.open ? '' : null : this.getAttribute(attribute);
+        if (actual === null || expected !== undefined && actual !== expected) return false;
+      }
       return Boolean(tag || selector.includes('['));
     }
     closest(selector) { return this.matches(selector) ? this : this.parentNode?.closest(selector) ?? null; }
     querySelector(selector) { return this.querySelectorAll(selector)[0] ?? null; }
     querySelectorAll(selector) { return this.children.flatMap(child => [...(child.matches(selector) ? [child] : []), ...child.querySelectorAll(selector)]); }
     showModal() { this.open = true; this.attributes.open = ''; } close() { this.open = false; delete this.attributes.open; }
+    focus() { document.activeElement = this; }
     click() { if (!this.disabled) this.dispatchEvent(new Event('click')); }
   }
   function parse(source, parent) {
@@ -73,11 +91,13 @@ function fakeDom() {
       } else stack.at(-1)._text += token;
     }
   }
-  const document = new EventTarget(); document.hidden = false; document.body = new Node('body');
+  document = new EventTarget(); document.hidden = false; document.body = new Node('body');
   document.documentElement = new Node('html');
+  document.head = new Node('head'); document.documentElement.append(document.head, document.body);
   const root = new Node(); root.ownerDocument = document; root.id = 'p414-root'; document.body.append(root);
   document.getElementById = id => ids.get(id) ?? null; document.createElement = tag => new Node(tag);
-  document.querySelectorAll = selector => selector.split(',').flatMap(part => document.body.querySelectorAll(part.trim()));
+  document.querySelectorAll = selector => selector.split(',').flatMap(part => document.documentElement.querySelectorAll(part.trim()));
+  document.querySelector = selector => document.querySelectorAll(selector)[0] ?? null;
   return { document, root, node: id => ids.get(id) };
 }
 
@@ -93,13 +113,21 @@ async function mount(t, options = {}) {
   const createPoker414Motion = () => ({ capture() { return null; }, play() {}, sync() {}, cancel() {}, destroy() {} });
   const context = vm.createContext({ ...art, makeDeck, handLayout, publicLayout, poker414Selection, roomChatMarkup, URL, poker414MotionPlan, createPoker414Motion,
     createGameAudio: () => ({ play() {}, close() {} }), mountRoomAudioControls: () => ({ destroy() {} }),
-    mountRoomSettings: () => ({ close() {}, destroy() {} }), mountGameViewport: () => ({ destroy() {} }),
+    mountRoomSettings: () => ({ close() {}, destroy() {} }), mountGameAppearancePicker, mountGameViewport: () => ({ destroy() {} }),
     gameViewport: options.viewport || (input => ({ ...input, top: 0, resetScroll: false })) });
   const source = (await readFile(new URL('./games/poker414-2/page-ui.mjs', import.meta.url), 'utf8')).replace(/^import[\s\S]*?;\s*/gm, '').replace(/^export /gm, '');
   const ui = vm.runInContext(`(()=>{${source}\nreturn mountPoker414Page;})()`, context)({ root: dom.root,
     onAction: (type, fields) => actions.push([type, structuredClone(fields)]), onLeave: destination => { exits.push(structuredClone(destination)); return options.leaveResult ?? true; },
     onRefresh: fields => refreshes.push(structuredClone(fields)), onRecover: () => recovery.push(true), onRetry: () => retries.push(true), ...options });
   t.after(() => ui.destroy());
+  const appearance = dom.document.getElementById('appearance-dialog');
+  assert.equal(appearance?.parentNode, dom.document.body, 'The real shared menu mounts outside the game root');
+  assert.equal(appearance.getAttribute('aria-labelledby'), 'appearance-title');
+  const appearanceStyles = appearance.querySelectorAll('[name="appearance-style"]');
+  assert.deepEqual(appearanceStyles.map(node => node.value), ['paper', 'glass', 'soft']);
+  assert.equal(appearanceStyles.filter(node => node.checked).length, 1);
+  assert.equal(appearance.querySelectorAll('[name="appearance-palette"]').length, 6);
+  assert.equal(appearance.querySelectorAll('[name="appearance-background"]').length, 8);
   function cardClick(id) {
     const node = dom.node('p414-hand').querySelectorAll('[data-card-id]').find(node => node.dataset.cardId === id);
     assert.ok(node); const event = new Event('click'); Object.defineProperty(event, 'target', { value: node }); dom.node('p414-hand').dispatchEvent(event);
@@ -243,6 +271,37 @@ test('414 false leave keeps the controller failure detail while restoring the co
   assert.equal(f.node('p414-leave-confirm').disabled, false);
   assert.equal(f.node('p414-leave-confirm').textContent, '确认退出');
   assert.equal(f.node('p414-leave-dialog').open, true);
+});
+
+test('414 leave busy follows the owning pending request through failure and a successful close', async t => {
+  let release, attempts = 0;
+  const f = await mount(t, { onLeave: () => { attempts++; return new Promise(resolve => { release = resolve; }); } });
+  f.ui.applyView(normalized()); f.ui.confirmLeave('agora');
+  const confirm = f.node('p414-leave-confirm'), dialog = f.node('p414-leave-dialog');
+  assert.equal(confirm.getAttribute('aria-busy'), null);
+  confirm.click(); assert.equal(confirm.getAttribute('aria-busy'), 'true'); assert.equal(confirm.disabled, true);
+  confirm.click(); assert.equal(attempts, 1); assert.deepEqual(f.actions, []);
+  release(false); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(confirm.getAttribute('aria-busy'), null); assert.equal(confirm.disabled, false); assert.equal(dialog.open, true);
+  assert.equal(f.node('p414-leave-error').hidden, false);
+  confirm.click(); assert.equal(confirm.getAttribute('aria-busy'), 'true'); assert.equal(attempts, 2);
+  release(true); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(confirm.getAttribute('aria-busy'), null); assert.equal(dialog.open, false); assert.deepEqual(f.actions, []);
+});
+
+test('414 conceal and destroy clear leave busy while stale failures cannot clear a newer request', async t => {
+  const pending = [];
+  const f = await mount(t, { onLeave: () => new Promise((resolve, reject) => pending.push({ resolve, reject })) });
+  const view = normalized(); f.ui.applyView(view); f.ui.confirmLeave(); f.node('p414-leave-confirm').click();
+  const confirm = f.node('p414-leave-confirm'); assert.equal(confirm.getAttribute('aria-busy'), 'true');
+  f.ui.conceal({ message: '正在恢复新身份' }); assert.equal(confirm.getAttribute('aria-busy'), null);
+  f.ui.applyView({ ...view, selfId: 'new-owner' }); f.ui.confirmLeave(); confirm.click();
+  assert.equal(pending.length, 2); assert.equal(confirm.getAttribute('aria-busy'), 'true');
+  pending[0].reject(new Error('旧身份退出失败')); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(confirm.getAttribute('aria-busy'), 'true'); assert.equal(f.node('p414-leave-error').hidden, true);
+  f.ui.destroy(); assert.equal(confirm.getAttribute('aria-busy'), null); const finalText = f.root.textContent;
+  pending[1].reject(new Error('销毁后迟到失败')); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(confirm.getAttribute('aria-busy'), null); assert.equal(f.root.textContent, finalText); assert.deepEqual(f.actions, []);
 });
 
 test('414 practice members and expired response never request account scores or room refresh', async t => {

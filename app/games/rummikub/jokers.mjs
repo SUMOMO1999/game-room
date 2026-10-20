@@ -1,4 +1,4 @@
-/** Browser-safe, bounded special-joker semantics for the versioned friends-v3 / friends-v4 rules. */
+/** Browser-safe, bounded special-joker semantics; saved games retain their rule version. */
 export const JOKER_TYPES = Object.freeze(['normal', 'mirror', 'color-change', 'double']);
 export const JOKER_CONFIG_KEYS = Object.freeze(['normal', 'mirror', 'colorChange', 'double']);
 const TYPE_KEYS = Object.freeze({ normal: 'normal', mirror: 'mirror', 'color-change': 'colorChange', double: 'double' });
@@ -51,7 +51,7 @@ function ordinaryGroup(tiles) {
 }
 
 /** Counts, not physical-joker permutations: at most 13 number slots × four colours. */
-function ordinaryRun(tiles) {
+function ordinaryRun(tiles, requireColorAnchors) {
   const regular = tiles.filter((tile) => !tile.joker);
   const byNumber = new Map(regular.map((tile) => [tile.value, tile]));
   if (byNumber.size !== regular.length || !regular.length) return null;
@@ -62,29 +62,30 @@ function ordinaryRun(tiles) {
   for (let start = 14 - span; start >= 1; start -= 1) {
     if (regular.some((tile) => tile.value < start || tile.value >= start + span)) continue;
     const memo = new Map();
-    function solve(offset, n, c, d, color) {
-      if (offset === span) return n === ghosts.normal.length && c === ghosts['color-change'].length && d === ghosts.double.length ? [] : null;
-      const key = `${offset}:${n}:${c}:${d}:${color}`;
+    function solve(offset, n, c, d, color, hasNumber) {
+      if (offset === span) return n === ghosts.normal.length && c === ghosts['color-change'].length && d === ghosts.double.length
+        && (!requireColorAnchors || hasNumber) ? [] : null;
+      const key = `${offset}:${n}:${c}:${d}:${color}:${hasNumber}`;
       if (memo.has(key)) return memo.get(key);
       const value = start + offset, actual = byNumber.get(value);
       let answer = null;
       if (actual) {
         if (actual.color === color) {
-          const tail = solve(offset + 1, n, c, d, color);
+          const tail = solve(offset + 1, n, c, d, color, true);
           if (tail) answer = [{ tile: actual, points: value }, ...tail];
         }
       } else {
         if (n < ghosts.normal.length) {
-          const tail = solve(offset + 1, n + 1, c, d, color);
+          const tail = solve(offset + 1, n + 1, c, d, color, hasNumber);
           if (tail) answer = [{ tile: ghosts.normal[n], points: value }, ...tail];
         }
         if (!answer && d < ghosts.double.length && offset + 1 < span && !byNumber.has(value + 1)) {
-          const tail = solve(offset + 2, n, c, d + 1, color);
+          const tail = solve(offset + 2, n, c, d + 1, color, hasNumber);
           if (tail) answer = [{ tile: ghosts.double[d], points: value * 2 + 1 }, ...tail];
         }
-        if (!answer && c < ghosts['color-change'].length) {
+        if (!answer && c < ghosts['color-change'].length && (!requireColorAnchors || hasNumber && offset + 1 < span)) {
           for (const after of COLORS) if (after !== color) {
-            const tail = solve(offset + 1, n, c + 1, d, after);
+            const tail = solve(offset + 1, n, c + 1, d, after, false);
             if (tail) { answer = [{ tile: ghosts['color-change'][c], points: value }, ...tail]; break; }
           }
         }
@@ -92,7 +93,7 @@ function ordinaryRun(tiles) {
       memo.set(key, answer); return answer;
     }
     for (const color of COLORS) {
-      const result = solve(0, 0, 0, 0, color);
+      const result = solve(0, 0, 0, 0, color, false);
       if (result) return good('run', result.map(({ tile }) => tile), new Map(result.map(({ tile, points }) => [tile.id, points])));
     }
   }
@@ -122,8 +123,25 @@ function mirrorGroup(tiles, mirror, left, right, numericMirror) {
   return good('group', tiles, new Map(tiles.map((tile) => [tile.id, tile.id === mirror.id ? (numericMirror ? value : 0) : value * (kindOf(tile) === 'double' ? 2 : 1)])));
 }
 
+// The mirror fixes physical order, so each arm's colour segments can be
+// checked directly. Ordinary/double jokers fill numbers, not colour evidence.
+function hasColorChangeAnchors(tiles) {
+  let previousColor = null, pendingColor = null;
+  for (const tile of tiles) {
+    if (!tile.joker) {
+      if (pendingColor === tile.color) return false;
+      pendingColor = null; previousColor = tile.color;
+    } else if (kindOf(tile) === 'color-change') {
+      if (previousColor === null || pendingColor !== null) return false;
+      pendingColor = previousColor; previousColor = null;
+    }
+  }
+  return pendingColor === null;
+}
+
 /** Reflection keeps the mirror's physical centre and compares expanded number/color slots. */
-function mirrorRun(tiles, mirror, left, right, numericMirror) {
+function mirrorRun(tiles, mirror, left, right, numericMirror, requireColorAnchors) {
+  if (requireColorAnchors && (!hasColorChangeAnchors(left) || !hasColorChangeAnchors(right))) return null;
   const a = slotsFor(left), b = slotsFor(right);
   if (!a.length || a.length !== b.length || a.length > 13) return null;
   const span = a.length;
@@ -159,7 +177,8 @@ function mirrorRun(tiles, mirror, left, right, numericMirror) {
 }
 
 export function analyzeTwistMeld(tiles, { ruleVersion } = {}) {
-  const numericMirror = ruleVersion === 'friends-v4';
+  const numericMirror = ['friends-v4', 'friends-v5'].includes(ruleVersion);
+  const requireColorAnchors = ruleVersion === 'friends-v5';
   const mirrors = tiles.filter((tile) => kindOf(tile) === 'mirror');
   if (mirrors.length > 1) return bad('每组最多使用一张镜像鬼牌。');
   let candidates;
@@ -167,8 +186,10 @@ export function analyzeTwistMeld(tiles, { ruleVersion } = {}) {
     const mirror = mirrors[0], index = tiles.findIndex(({ id }) => id === mirror.id);
     const left = tiles.slice(0, index), right = tiles.slice(index + 1).toReversed();
     if (!left.length || !right.length) return bad('镜像鬼牌两边都需要对应的牌。');
-    candidates = [mirrorGroup(tiles, mirror, left, right, numericMirror), mirrorRun(tiles, mirror, left, right, numericMirror)];
-  } else candidates = [ordinaryGroup(tiles), ordinaryRun(tiles)];
+    candidates = [mirrorGroup(tiles, mirror, left, right, numericMirror), mirrorRun(tiles, mirror, left, right, numericMirror, requireColorAnchors)];
+  } else candidates = [ordinaryGroup(tiles), ordinaryRun(tiles, requireColorAnchors)];
   const valid = candidates.filter(Boolean).sort((a, b) => b.points - a.points);
-  return valid[0] ?? bad('特殊鬼牌组合需符合双重两格、变色边界或镜像两侧对应规则。');
+  return valid[0] ?? bad(requireColorAnchors && tiles.some(tile => kindOf(tile) === 'color-change')
+    ? '变色鬼牌必须夹在两段不同颜色的数字牌之间，不能放在两端；数字仍须连续。'
+    : '特殊鬼牌组合需符合双重两格、变色边界或镜像两侧对应规则。');
 }

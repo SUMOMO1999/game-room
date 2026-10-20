@@ -24,6 +24,13 @@ export function releaseSources(projectRoot = root, { publicPaths = publicAssetPa
     if (!lstatSync(target).isFile()) throw new Error(`Release dependency is not a regular file: ${file}`);
     files.add(file);
     if (!/\.(?:mjs|js)$/.test(file)) return;
+    // Verified self-contained official bundle. Its documentation contains a
+    // sample import './file'; the small first-party import scanner is not a JS
+    // parser. Only this exact upstream byte hash may bypass that scanner.
+    if(file==='app/vendor/livekit-client-2.22.4.esm.mjs') {
+      if(hash(readFileSync(target))!=='13dba7e174d59892a6cd8f0647fc132fe56da4e065c60d7bd7aaa3ce15009d54')throw Error('Pinned voice SDK bundle mismatch');
+      return;
+    }
     const source = readFileSync(target, 'utf8');
     const imports = [...source.matchAll(/\b(?:import|export)\s+(?:[^;]*?\s+from\s*)?['"](\.[^'"]+)['"]/g),
       ...source.matchAll(/\bimport\s*\(\s*['"](\.[^'"]+)['"]\s*\)/g)];
@@ -32,7 +39,7 @@ export function releaseSources(projectRoot = root, { publicPaths = publicAssetPa
   collect('package.json'); collect('package-lock.json');
   for (const file of publicPaths) collect(`app/${file}`);
   for (const script of ['production-start.mjs','production-preflight.mjs','initialize-store-key.mjs','store-backup.mjs','store-restore.mjs','scheduled-backup.mjs','release-compatibility.mjs']) collect(`scripts/${script}`);
-  for (const file of ['Caddyfile','game-room.service','game-room-identity-batch.conf','game-room-backup.service','game-room-backup.timer','runtime.env.example','install-release.sh','activate-release.sh']) collect(`infra/${file}`);
+  for (const file of ['Caddyfile','game-room.service','game-room-identity-batch.conf','game-room-voice.conf','game-room-backup.service','game-room-backup.timer','runtime.env.example','install-release.sh','activate-release.sh']) collect(`infra/${file}`);
   return [...files].sort();
 }
 export function buildRelease({ projectRoot = root, outputRoot = join(root, 'dist'), publicPaths } = {}) {

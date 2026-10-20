@@ -1,9 +1,12 @@
+import { mountNightMarket } from './night-market-ui.mjs';
+import { mountNightMarketBackground } from './night-market-background.mjs';
 import { CARDS, CATEGORIES, GOODS, getCard } from './content/definitions.mjs';
 import { renderCard, renderCardDetails, renderGoodsIcon, renderCardBack } from './digital-card-ui.mjs';
 import { mountArtFallback } from './content/manifest.mjs';
 import { createGameAudio } from '../../game-audio.mjs';
 import { mountRoomAudioControls } from '../../platform/room-audio-controls.mjs';
 import { mountRoomSettings } from '../../platform/room-settings.mjs';
+import { mountGameAppearancePicker } from '../../platform/game-appearance.mjs';
 import { mountGameViewport } from '../../platform/room-viewport.mjs';
 import { mountGameStageFit } from '../../platform/game-stage-fit.mjs';
 import { gameViewport } from '../../game-viewport.mjs';
@@ -95,11 +98,11 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
       </main>
       <aside id="yg-peer" class="yg-peer" aria-label="其他玩家的公开商铺"></aside>
       <aside class="yg-storage"><section id="yg-public-stock" class="yg-public"><div class="yg-public-heading"><strong>公共货摊</strong><span id="yg-stock-limit"></span></div><div id="yg-market" class="yg-market" aria-label="六类公共货物和库存"></div></section>
-        <section id="yg-personal" class="yg-personal" aria-label="我的货物"><button type="button" id="yg-shop-detail"><span class="yg-personal-heading"><strong>我的货物</strong><span id="yg-silver"></span></span><span id="yg-stock-slots" class="yg-stock-slots"></span><span class="yg-shop-note" id="yg-shop-note"></span></button>${button('yg-expand', '扩摊', 'aria-label="查看扩摊费用"')}</section>
+        <section id="yg-personal" class="yg-personal" aria-label="我的货物"><button type="button" id="yg-shop-detail"><span class="yg-personal-heading"><strong>我的货物</strong><span id="yg-silver"></span></span><span id="yg-stock-slots" class="yg-stock-slots"></span><span class="yg-shop-note" id="yg-shop-note"></span></button></section>
       </aside>
     </section>
     <div class="yg-lower" data-chat-dismiss-notices><section id="yg-tool-zone" class="yg-tool-zone" aria-label="已装备道具"><div class="yg-tool-heading"><strong>已装备</strong><span id="yg-tool-count"></span></div><div id="yg-tools" class="yg-tools"></div></section>
-      <section id="yg-hand-section" class="yg-hand-section" aria-label="我的手牌"><div class="yg-hand-heading"><strong id="yg-hand-title">我的手牌</strong><span class="yg-hand-guide">横滑看牌 · 点牌选择</span></div><div id="yg-hand" class="yg-hand" tabindex="0" aria-label="全部手牌，左右滑动或方向键浏览"></div></section>
+      <section id="yg-hand-section" class="yg-hand-section" aria-label="我的手牌"><div class="yg-hand-heading"><strong id="yg-hand-title">我的手牌</strong></div><div id="yg-hand" class="yg-hand" tabindex="0" aria-label="全部手牌，左右滑动或方向键浏览"></div></section>
       <section id="yg-observer-note" class="yg-observer-note" hidden><h2>观战只看公开信息</h2><p>这里不会显示任何人的手牌、私看候选或未公开的牌序。</p></section>
     </div><p id="yg-feedback" class="yg-feedback" role="status" aria-live="polite">合成局面只用于检查页面和选择流程；主题、音量偏好沿用本机设置。</p></div>
       <div id="yg-window-hint" class="yg-window-hint" role="status" hidden><strong>扩大窗口，展开完整牌桌。</strong><span>当前选择与进度保留；设置、聊天和退出仍可使用。</span></div>
@@ -116,6 +119,7 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
     ${roomChatMarkup()}
     <div id="yg-chat-decision" class="yg-chat-decision" hidden><strong id="yg-chat-decision-label"></strong>${button('yg-chat-decision-open', '查看当前选择')}</div>`;
   const $ = id => document.getElementById(id), removers = [];
+  const night = externalDecisions ? mountNightMarket({root}) : null;
   let view = null, selectedHand = null, selectedChoices = [], destroyed = false;
   let returnToDecision = false, pendingDraft = null, appliedScope = null, appliedDecisionId = null, bidDraft = null, feedbackTimer;
   let renderedHand = null, focusedPublicPlayer = null;
@@ -124,6 +128,11 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
   const unmountArt = mountArtFallback(root);
   const settings = mountRoomSettings({ document, buttonId: 'yg-settings', dialogId: 'yg-options', closeButtonId: 'yg-options-close',
     dismissIds: ['yg-rules', 'yg-catalog', 'yg-settings-exit', 'yg-peer-message', 'yg-copy-invite'] });
+  const removeAppearance = externalDecisions ? () => {} : mountGameAppearancePicker(document, $('yg-options'), { scope: 'hyakki-trading' });
+  if (externalDecisions) {
+    const picker = $('yg-options').querySelector('[data-theme-picker]'); if (picker) picker.hidden = true;
+  }
+  const backgroundPicker = externalDecisions ? mountNightMarketBackground({root,settingsDialog:$('yg-options')}) : null;
   function listen(target, type, callback, options) {
     target.addEventListener(type, callback, options); removers.push(() => target.removeEventListener(type, callback, options));
   }
@@ -187,7 +196,7 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
     $('yg-track').hidden = ['waiting', 'finished'].includes(view.phase);
     $('yg-readiness').hidden = !['waiting', 'finished'].includes(view.phase);
     $('yg-readiness').innerHTML = view.players.map(entry => `<span><strong title="${escape(entry.name)}">${entry.id === view.selfId ? '我' : '伙伴'}</strong><b>${view.phase === 'finished' ? `${entry.silver}两` : entry.ready ? '已准备' : '未准备'}</b></span>`).join('');
-    $('yg-track-label').textContent = `${player?.id === view.selfId ? '我' : '伙伴'}的行动 · ${view.actionsUsed}/${view.actionLimit}`;
+    $('yg-track-label').textContent = `${player?.id === view.selfId ? '我的' : '伙伴'}行动 ${view.actionsUsed}/${view.actionLimit} · 剩${Math.max(0,view.actionLimit-view.actionsUsed)}`;
     $('yg-track-steps').setAttribute('aria-valuemax', String(view.actionLimit));
     $('yg-track-steps').setAttribute('aria-valuenow', String(view.actionsUsed));
     $('yg-track-steps').setAttribute('aria-valuetext', `已用${view.actionsUsed}步，余${view.actionLimit - view.actionsUsed}步`);
@@ -229,12 +238,14 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
     $('yg-personal').hidden = !self; $('yg-hand-section').hidden = !self; $('yg-tool-zone').hidden = !self; $('yg-observer-note').hidden = !!self;
     if (self) {
       $('yg-silver').textContent = `${self.silver}两`;
-      $('yg-stock-slots').innerHTML = GOODS.map(good => `<span class="yg-owned-good" aria-label="我的${escape(good.name)}${self.goods.find(item => item.id === good.id)?.count ?? 0}件" title="${escape(good.name)}">${renderGoodsIcon(good.id)}<b>${self.goods.find(item => item.id === good.id)?.count ?? 0}</b></span>`).join('');
+      // The night-market layer owns these objects and preserves their scroll.
+      // Replacing them with the legacy strip first would clamp that position.
+      if (!night) $('yg-stock-slots').innerHTML = GOODS.map(good => `<span class="yg-owned-good" aria-label="我的${escape(good.name)}${self.goods.find(item => item.id === good.id)?.count ?? 0}件" title="${escape(good.name)}">${renderGoodsIcon(good.id)}<b>${self.goods.find(item => item.id === good.id)?.count ?? 0}</b></span>`).join('');
       $('yg-shop-note').textContent = `${totalGoods(self)}/${self.ordinaryCapacity}普通格＋1临时格 · ${view.temporaryPaid ? '临时已付2两' : '临时占用付2两'}`;
       $('yg-tool-count').textContent = `${self.tools.length}/3`;
       $('yg-tools').innerHTML = self.tools.length ? self.tools.map(tool => `<button type="button" data-tool-id="${escape(tool.id)}" class="yg-equipped${tool.tapped ? ' is-tapped' : ''}" aria-label="${escape(definition(tool).name)}，${tool.tapped ? '已用，本回合不可再发动' : '可用'}">${renderCard(tool, { interactive: false })}<span class="yg-equipped-state">${tool.tapped ? '已用' : '可用'}</span></button>`).join('') : '<span class="yg-tool-empty">道具放在这里<br>先安装，再使用</span>';
     } else { $('yg-stock-slots').replaceChildren(); $('yg-tools').replaceChildren(); }
-    renderHand();
+    renderHand(); night?.render(view);
     $('yg-portrait-decision').innerHTML = isOwnDecision(view) ? `<strong>${escape(view.decision.title)} · ${view.decision.clock}</strong>${button('yg-portrait-decision-open', '查看并处理当前选择', 'class="yg-primary"')}` : '';
     syncChatDecision();
   }
@@ -283,6 +294,17 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
     const frame = gameViewport({ width: window.innerWidth, height: window.innerHeight, visual: window.visualViewport,
       editing: document.activeElement?.matches('input,textarea') });
     root.style.setProperty('--yg-height', `${frame.height}px`); root.style.setProperty('--yg-top', `${frame.top}px`);
+    if (night) {
+      const portrait = window.innerWidth < window.innerHeight;
+      const profile = window.innerHeight < 570 && !portrait ? 'mobile' : window.innerHeight < 720 ? 'compact' : 'desktop';
+      const profileChanged = $('yg-playfield').dataset.stageProfile !== profile;
+      $('yg-playfield').dataset.stageProfile = profile;
+      root.classList.toggle('yg-portrait',portrait); root.classList.remove('yg-window-small');
+      $('yg-playfield').inert = portrait; $('yg-rotation').hidden = !portrait; $('yg-window-hint').hidden = true;
+      document.body.classList.toggle('yg-keyboard',frame.height < window.innerHeight - 80);
+      if (profileChanged) onLayout?.({profile,portrait});
+      return;
+    }
     const portrait = window.innerWidth < window.innerHeight;
     root.classList.toggle('yg-portrait', portrait); $('yg-rotation').hidden = !portrait;
     const fit = stageFit.update();
@@ -350,14 +372,13 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
       const player = view.players.find(entry => entry.id === (node.dataset.player ?? view.selfId));
       if (player) inspect(`${player.name} · 公开商铺`, `<p>${player.silver}两 · 普通容量${player.ordinaryCapacity}格＋1临时格 · 手牌${player.handCount}张</p><div class="yg-detail-goods">${player.goods.map(good => `<div>${renderGoodsIcon(good.id)}<strong>${escape(goodName(good.id))}</strong><span>${good.count}件</span></div>`).join('')}</div><h3>已装道具</h3><div class="yg-candidates">${player.tools.map(tool => `<article>${renderCard(tool, { tapped: tool.tapped, interactive: false })}<p>${tool.tapped ? '横置 · 已用' : '竖直 · 可用'}</p></article>`).join('')}</div><p>其他人的手牌和私看候选不在这里显示。</p>`); return;
     }
-    if (node.dataset.marketGood) { inspect('公共货摊 · 六类库存', `<div class="yg-detail-goods">${view.market.map(good => `<div>${renderGoodsIcon(good.id)}<strong>${good.name}</strong><span>${good.count}件</span></div>`).join('')}</div><p>本局开局每类${view.goodsPerType ?? 6}件；当前库存已扣除双方货物。购买时必须满足完整配方，不能缺货先扣款。</p>`); return; }
+    if (node.dataset.marketGood) { inspect('公共货摊 · 六类库存', `<div class="yg-detail-goods">${view.market.map(good => `<div>${renderGoodsIcon(good.id)}<strong>${good.name}</strong><span>${good.count}件</span></div>`).join('')}</div><p>本局开局每类${view.goodsPerType ?? 6}件；当前库存已扣除各商铺的货物。购买时必须满足完整配方，不能缺货先扣款。</p>`); return; }
     if (['yg-decision-open', 'yg-portrait-decision-open', 'yg-chat-decision-open'].includes(node.id)) { openDecision(); return; }
     if (node.id === 'yg-decision-close') { $('yg-decision').close(); feedback('当前步骤与已选候选保留；没有取消、退款或重新抽取。'); return; }
     if (node.id === 'yg-inspector-close' || node.id === 'yg-cancel-draft') { closeInspector(); return; }
     if (node.id === 'yg-confirm-draft') { const draft = pendingDraft; if (draft && draft.scene === view.scene) { pendingDraft = null; invoke('confirm-draft', draft); } return; }
     if (node.id === 'yg-draw-pile') { if (canOperate(view)) invoke('peek'); else feedback('现在只能查看牌堆张数；不能越过当前待决步骤抽牌。'); return; }
     if (node.id === 'yg-discard-pile') { if (view.discard) cardDetail(view.discard); return; }
-    if (node.id === 'yg-expand') { inspect('扩展商铺', `<h3>3个新的普通格</h3><p>公共扩摊板剩${view.expansionStock}块。本次价格${view.expansionPrice}两；须持许可、处于自己的用牌阶段且有1行动。</p><p>全局首块6两，之后每块3两。扩容后临时格自动腾空，已经支付的临时费不退。</p><div class="yg-extension-slots"><span>普通格</span><span>普通格</span><span>普通格</span></div><p>当前仅说明费用，没有假装扣款或取得扩摊板。</p>`); return; }
     if (node.id === 'yg-waiting-invite' || node.id === 'yg-copy-invite') { void copyInvite(); return; }
     if (['yg-exit', 'yg-settings-exit'].includes(node.id)) { openDialog('yg-leave'); return; }
     if (['yg-stay', 'yg-leave-close'].includes(node.id)) { $('yg-leave').close(); return; }
@@ -374,7 +395,7 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
     if (event.target.id === 'yg-bid') { bidDraft = event.target.value; event.target.setCustomValidity(''); }
   });
   const bounded = (value, minimum, maximum) => Math.max(minimum, Math.min(maximum, value));
-  const stageFit = mountGameStageFit({ host: $('yg-playfield-host'), stage: $('yg-playfield'), window, minScale: .85,
+  const stageFit = externalDecisions ? {update(){return {unsupported:false};},destroy(){}} : mountGameStageFit({ host: $('yg-playfield-host'), stage: $('yg-playfield'), window, minScale: .85,
     profiles: [
       // Touch has its own composition. Browser CSS pixels, not device pixels,
       // decide which composition fits beneath the unscaled room toolbar.
@@ -399,13 +420,13 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
   const observer = new window.ResizeObserver(resize); observer.observe($('yg-hand'));
   const chatObserver = new window.MutationObserver(syncChatDecision); chatObserver.observe($('room-chat'), { attributes: true, attributeFilter: ['hidden'] });
   $('chat-title').textContent = '样板双成员聊天'; root.querySelector('.chat-heading p').textContent = '仅当前标签页内 · 未连接真实伙伴 · 退出即清空';
-  return { applyView, openDecision, audio, feedback, settings,
+  return { applyView, openDecision, audio, feedback, settings, syncActions:()=>night?.syncActions(), captureTable:()=>night?.capture(), animateTable:(snapshot,before,next)=>night?.present(snapshot,before,next), cancelTable:()=>night?.cancel(),
     focusPublicPlayer(id) {
       if (!view?.players.some(player=>player.id===id&&(view.selfRole!=='player'||id!==view.selfId))) return false;
       focusedPublicPlayer=id;renderTable();return true;
     }, destroy() {
     if (destroyed) return; destroyed = true; clearPrivatePanels(); removers.forEach(remove => remove());
-    viewport.destroy(); stageFit.destroy(); observer.disconnect(); chatObserver.disconnect(); settings.destroy(); audioControls.destroy(); void audio.close();
+    viewport.destroy(); stageFit.destroy(); backgroundPicker?.destroy(); night?.destroy(); observer.disconnect(); chatObserver.disconnect(); removeAppearance(); settings.destroy(); audioControls.destroy(); void audio.close();
     unmountArt(); window.clearTimeout(feedbackTimer); document.body.classList.remove('yg-keyboard', 'yg-has-chat-decision');
     view = null; selectedChoices = []; selectedHand = null; bidDraft = null; root.replaceChildren();
   } };

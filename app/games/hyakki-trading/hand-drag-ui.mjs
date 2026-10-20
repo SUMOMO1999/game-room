@@ -53,8 +53,13 @@ export function mountHandDrag({ root, getContext, onDrop, onBlocked = () => {} }
     const dx = event.clientX - gesture.startX, dy = event.clientY - gesture.startY;
     if (gesture.mode === 'pending') {
       if (Math.max(Math.abs(dx), Math.abs(dy)) < 12) return;
-      // Horizontal browsing locks this gesture; it must never become an accidental play.
-      if (dy >= 0 || -dy <= Math.abs(dx) * 1.25) { gesture.mode = 'browsing'; return; }
+      const horizontal = Math.abs(dx), upward = -dy;
+      // Keep near-horizontal browsing locked, but accept natural diagonal lifts
+      // from either end of the hand. Between the two directions, wait for intent.
+      if (dy >= 12 || (horizontal >= 12 && upward <= horizontal * 0.5)) {
+        gesture.mode = 'browsing'; return;
+      }
+      if (upward < 12 || upward < horizontal * 0.65) return;
       if (!context.enabled) { gesture.mode = 'browsing'; onBlocked(context.blockedReason || '当前不能出牌，可点牌查看。'); return; }
       gesture.mode = 'dragging';
       hand.setPointerCapture(event.pointerId);

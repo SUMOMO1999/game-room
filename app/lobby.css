@@ -34,3 +34,160 @@
 .lobby-shell .practice-hub-link:hover {background:#e7ebe1;}
 .lobby-shell .lobby-bottom {align-items:center;}
 @media(max-width:600px) {.lobby-shell .lobby-bottom {align-items:flex-start;}.lobby-shell .site-header .practice-hub-link {padding-inline:8px;font-size:13px;}}
+
+/* Layout v2: current seats first, then host/join. This file is lobby-only. */
+.lobby-shell{width:min(1120px,100%);margin-inline:auto;padding-inline:clamp(20px,5vw,56px)}
+.lobby-shell .site-header{min-height:88px}
+.lobby-shell .lobby-hero{padding:32px 160px 26px 0}
+.lobby-shell .lobby-hero .eyebrow{margin:0 0 10px;font-size:10px;letter-spacing:2px}
+.lobby-shell .lobby-hero h1{margin:0;font-size:clamp(28px,3vw,40px);line-height:1.3;letter-spacing:2px}
+.lobby-shell .lobby-hero>p:last-of-type{margin-top:12px;max-width:38em;font-size:14px}
+.lobby-shell .hero-tiles{top:37px;right:18px;gap:6px}
+.lobby-shell .hero-tiles .tile{width:35px;height:50px;font-size:22px}
+.lobby-shell .account-panel{padding:16px 0;margin:0 0 24px;border:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:0;background:transparent;gap:20px}
+.lobby-shell .account-panel .eyebrow{margin:0 0 5px;font-size:9px;letter-spacing:1.4px}
+.lobby-shell .account-panel h2{font-size:17px;margin:0 0 5px;line-height:1.5}
+.lobby-shell .account-panel p:not(.eyebrow){font-size:12px;line-height:1.6}
+.lobby-shell .account-actions{display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:8px}
+.lobby-shell .recent-section{margin:0 0 28px;padding:0}
+.lobby-shell .recent-section h2{margin:0 0 6px;font-size:20px;font-weight:550;letter-spacing:1px}
+.lobby-shell .recent-section>p{margin:0 0 8px;font-size:12px}
+.lobby-shell .recent-seat{padding:14px 0;gap:14px;align-items:center}
+.lobby-shell .recent-room-controls button{min-height:44px}
+.lobby-shell .lobby-forms{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:36px;align-items:start;margin-top:12px}
+.lobby-shell .room-card{padding:0;min-width:0;border:0;border-radius:0;background:transparent;color:var(--ink)}
+.lobby-shell .room-card+.room-card{border-left:1px solid var(--line);padding-left:36px}
+.lobby-shell .room-card .eyebrow{color:var(--muted);font-size:9px;letter-spacing:1.7px;margin:0 0 10px}
+.lobby-shell .room-card h2{font-size:24px;line-height:1.3;margin:0;font-weight:550;letter-spacing:1px}
+.lobby-shell .room-card>p:not(.eyebrow){font-size:12px;line-height:1.7;color:var(--muted);margin:10px 0 20px}
+.lobby-shell .room-card form label{font-size:12px;color:var(--ink);line-height:1.5;margin-bottom:7px}
+.lobby-shell .room-card form input,.lobby-shell .room-card form select{min-height:48px;margin-bottom:16px;font-size:14px;background:var(--paper);border:1px solid var(--line);border-radius:8px;color:var(--ink)}
+.lobby-shell .room-card form>button{margin:2px 0 0;min-height:48px;font-size:14px}
+.lobby-shell .create-card .primary-button{color:var(--paper,#fffdf7);background:var(--green);border-color:var(--green)}
+.lobby-shell .create-card .primary-button:hover{filter:brightness(1.08)}
+.lobby-shell .join-fields{gap:12px}
+.lobby-shell .parks-create-settings{padding:12px;margin:0 0 16px;background:color-mix(in srgb,var(--paper) 65%,transparent)}
+.lobby-shell .parks-create-settings input[type=checkbox]{width:20px;min-height:20px;margin:0}
+.lobby-shell .history-section{margin:32px 0 20px;padding-top:24px}
+@media(max-width:640px){
+ .lobby-shell .site-header{min-height:76px}
+ .lobby-shell .lobby-hero{padding:26px 0 22px}
+ .lobby-shell .hero-tiles{display:none}
+ .lobby-shell .lobby-hero h1{font-size:30px}
+ .lobby-shell .account-panel{gap:12px;align-items:flex-start;flex-direction:column;margin-bottom:22px}
+ .lobby-shell .account-actions{justify-content:flex-start}
+ .lobby-shell .lobby-forms{grid-template-columns:minmax(0,1fr);gap:28px}
+ .lobby-shell .room-card+.room-card{border-left:0;border-top:1px solid var(--line);padding:24px 0 0}
+ .lobby-shell .room-card h2{font-size:22px}
+ .lobby-shell .recent-seat{align-items:flex-start;flex-direction:column}
+ .lobby-shell .recent-room-controls{width:100%;justify-content:space-between}
+}
+
+/* Exact lobby consumer: objects first, compact identity, local form widths. */
+.lobby-shell{width:100%;max-width:none;padding-inline:clamp(16px,2.5vw,48px)}
+.lobby-shell .site-header{min-height:68px}
+.lobby-shell .brand{gap:12px}
+.lobby-shell .brand strong{font-size:19px;letter-spacing:1px}
+.lobby-shell .lobby-welcome{display:flex;align-items:center;justify-content:space-between;gap:20px;margin:0;padding:22px 0 24px;border:0}
+.lobby-shell .lobby-welcome h1{font-size:clamp(22px,1.9vw,30px);letter-spacing:.3px;line-height:1.3;margin:0 0 6px;overflow-wrap:anywhere}
+.lobby-shell .lobby-welcome p{margin:0;font-size:13px;color:var(--muted)}
+.welcome-identity{min-width:0}
+.lobby-shell .account-actions{flex-shrink:0}
+.nickname-editor{position:relative;font-size:13px;color:var(--green)}
+.nickname-editor>summary{min-height:44px;display:flex;align-items:center;cursor:pointer;padding:8px;list-style:none}
+.nickname-editor>div{position:absolute;right:0;top:100%;width:260px;z-index:6;background:var(--paper,#fffdf6);box-shadow:0 12px 32px #26362f20;border:1px solid var(--line);padding:16px;border-radius:10px}
+.nickname-editor label{display:block;margin-bottom:8px;font-size:12px}
+.nickname-editor input{width:100%;min-height:44px;border:1px solid var(--line);border-radius:6px;padding:10px;font:inherit}
+.lobby-workspace{display:grid;grid-template-columns:minmax(0,1fr) minmax(250px,300px);grid-template-areas:"games join" "create join";column-gap:clamp(24px,3vw,48px);align-items:start}
+.lobby-game-picker{grid-area:games;min-width:0}
+.game-picker-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px}
+.game-picker-heading h2{margin:0;font-size:17px;font-weight:650;letter-spacing:.3px}
+.game-picker-heading a{font-size:12px;min-height:36px;display:inline-flex;align-items:center}
+.lobby-games{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.lobby-game{display:flex;align-items:center;gap:4px;text-align:left;min-width:0;min-height:108px;padding:12px 10px;border:1px solid #d5dacd;background:#eeeee5;border-radius:10px;transition:background .15s,border-color .15s,transform .15s}
+.lobby-game:hover{background:#e6eadd;border-color:#9aaf9c;transform:translateY(-2px)}
+.lobby-game[aria-pressed=true]{background:#dfe9de;border-color:var(--green);box-shadow:inset 0 0 0 1px var(--green)}
+.lobby-game-art{display:block;width:clamp(64px,6.6vw,96px);flex:none}
+.lobby-game-art svg{display:block;width:100%;height:auto}
+.lobby-game>span:last-child{display:flex;min-width:0;flex-direction:column;gap:7px}
+.lobby-game strong{font-size:14px;line-height:1.4;overflow-wrap:anywhere}
+.lobby-game small{font-size:12px;color:var(--muted)}
+.lobby-shell .lobby-forms{display:contents}
+.lobby-shell #lobby-forms[hidden]{display:none}
+.lobby-shell .create-card{grid-area:create;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 20px;border-top:1px solid var(--line);padding:18px 0 0;margin-top:18px}
+.lobby-shell .create-card h2{font-size:17px;margin:0}
+.lobby-shell .create-card>p{font-size:12px;margin:0;flex:1;line-height:1.6}
+.lobby-shell .create-card form{display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:12px;margin:0}
+.lobby-shell .create-card form>button{min-height:44px;width:auto;min-width:160px;margin:0}
+.lobby-shell .create-card .selection-fallback{display:none}
+.lobby-shell .parks-create-settings{width:100%;margin:0;max-width:620px}
+.lobby-shell .join-card{grid-area:join;padding:14px 0 14px clamp(22px,2.4vw,40px)!important;border-left:1px solid var(--line);border-top:0!important}
+.lobby-shell .join-card h2{font-size:17px;margin:0}
+.lobby-shell .join-card>p{font-size:12px;margin:9px 0 20px}
+.lobby-shell .join-fields{display:block}
+.lobby-shell .join-card form{margin:0}
+.lobby-shell .join-card form input,.lobby-shell .join-card form select{min-height:44px;margin-bottom:14px}
+.lobby-shell .join-card form button{width:100%;min-height:44px}
+[data-lobby-auth=guest] .lobby-workspace{grid-template-columns:1fr;grid-template-areas:"games"}
+.lobby-shell .recent-section{padding:12px 16px;margin:0 0 22px;border:1px solid var(--line);border-radius:9px;background:#eef1e8}
+.lobby-shell .recent-section h2{font-size:14px;margin:0 0 8px;letter-spacing:0}
+.lobby-shell .recent-section>p{display:none}
+.lobby-shell #recent-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:0 24px}
+.lobby-shell .recent-seat{padding:8px 0;min-height:60px;border-bottom:0;gap:10px}
+.lobby-shell .recent-room-label strong{font-size:13px;line-height:1.5}
+.lobby-shell .recent-room-label span{font-size:11px}
+.lobby-shell .recent-room-controls{gap:8px}
+.lobby-shell .recent-room-controls button{font-size:12px;min-height:40px;padding:8px}
+.lobby-shell .history-section{margin:26px 0 14px;padding-top:18px}
+.history-section>summary{font-size:15px;cursor:pointer;min-height:40px;line-height:40px;color:var(--muted)}
+.lobby-shell .page-footer{margin-top:20px;padding-top:12px}
+.lobby-shell #wordbank-link{display:inline-flex;align-items:center;min-height:44px;font-size:12px}
+@media(min-width:1680px){.lobby-games{grid-template-columns:repeat(7,minmax(0,1fr))}.lobby-game{flex-direction:column;text-align:center;gap:4px;min-height:150px}.lobby-game-art{width:100px}.lobby-game>span:last-child{gap:4px}}
+@media(max-width:1080px){.lobby-workspace{grid-template-columns:minmax(0,1fr) 250px;column-gap:24px}.lobby-games{grid-template-columns:repeat(3,minmax(0,1fr))}.lobby-game{flex-direction:column;text-align:center;min-height:116px;padding:8px}.lobby-game-art{width:84px}.lobby-game>span:last-child{gap:2px}}
+@media(max-width:700px){.lobby-shell .site-header{min-height:62px}.lobby-shell .lobby-welcome{align-items:flex-start;flex-direction:row;padding:22px 0;gap:8px}.lobby-shell .lobby-welcome h1{font-size:23px}.lobby-shell .lobby-welcome p{font-size:12px;line-height:1.6}.lobby-shell .account-actions{max-width:45%;gap:0;justify-content:flex-end}.lobby-shell .account-actions .primary-button{padding:10px;font-size:12px;min-height:44px}.lobby-workspace{grid-template-columns:1fr;grid-template-areas:"games" "create" "join"}.lobby-games{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.lobby-game{flex-direction:row;text-align:left;min-height:92px;padding:10px 6px;gap:2px}.lobby-game-art{width:74px}.lobby-game strong{font-size:13px}.lobby-game>span:last-child{gap:6px}.lobby-shell .create-card{margin-top:18px;padding-top:18px}.lobby-shell .create-card>p{flex-basis:70%;margin-bottom:6px}.lobby-shell .create-card form{width:100%;justify-content:stretch}.lobby-shell .create-card form>button{width:100%}.lobby-shell .join-card{padding:22px 0 0!important;border-left:0;margin-top:24px;border-top:1px solid var(--line)!important}.lobby-shell #recent-list{grid-template-columns:1fr}.lobby-shell .recent-seat{flex-direction:row;align-items:center}.lobby-shell .recent-room-controls{width:auto;flex-direction:column;gap:0}.nickname-editor>div{right:0;max-width:calc(100vw - 32px)}.lobby-shell .recent-room-controls button{padding:6px}}
+@media(prefers-reduced-motion:reduce){.lobby-game{transition:none}.lobby-game:hover{transform:none}}
+
+/* Anonymous first task is a playable practice entry; member primary stays room creation. */
+[data-lobby-auth=guest] #selected-practice{background:var(--green);color:var(--paper,#fffdf6);border-radius:8px;min-height:44px;padding:10px 16px;font-weight:600;text-decoration:none}
+
+/* PARKS keeps its pre-creation configuration, in the full width of the host area. */
+.lobby-shell .create-card{display:grid;grid-template-columns:max-content minmax(0,1fr);align-items:center;gap:12px 20px}
+.lobby-shell .create-card>h2{grid-column:1}
+.lobby-shell .create-card>p{grid-column:2;margin:0}
+.lobby-shell .create-card form{grid-column:1 / -1;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;justify-content:normal;width:100%;min-width:0}
+.lobby-shell .create-card form>button{grid-column:2;margin:0}
+.lobby-shell .create-card .parks-create-settings{grid-column:1 / -1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;width:100%;max-width:none;margin:0;padding:14px 16px 16px;background:color-mix(in srgb,var(--paper) 65%,transparent)}
+.lobby-shell .create-card .parks-config-field{min-width:0}
+.lobby-shell .create-card .parks-config-field>label:not(.parks-create-camping),.parks-config-label{display:block;margin:0 0 8px;color:var(--muted);font-size:12px;line-height:1.5}
+.lobby-shell .create-card .parks-config-field select{width:100%;min-height:44px;margin:0;padding:9px 12px;font-size:14px}
+.lobby-shell .create-card .parks-create-camping{display:flex;align-items:center;gap:10px;min-height:44px;margin:0;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--paper);font-size:14px;cursor:pointer}
+.lobby-shell .create-card .parks-create-camping input{width:20px;height:20px;min-height:20px;margin:0;flex:none}
+@media(max-width:1280px){.lobby-shell .create-card .parks-create-settings{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.lobby-shell .create-card{gap:10px 14px}.lobby-shell .create-card form>button{grid-column:1 / -1;width:100%}.lobby-shell .create-card .parks-create-settings{gap:14px;padding:12px}.lobby-shell .create-card .parks-config-field:first-of-type,.lobby-shell .create-card .parks-config-field:last-of-type{grid-column:1 / -1}}
+
+/* A plain game uses one creation row. Only PARKS expands its settings. */
+.lobby-shell .create-card>p:not(.eyebrow){margin:0;line-height:1.5}
+@media(min-width:701px){
+ .lobby-shell .create-card:not(:has(#create-parks-settings:not([hidden]))){grid-template-columns:max-content minmax(0,1fr) auto}
+ .lobby-shell .create-card:not(:has(#create-parks-settings:not([hidden]))) form{grid-column:3;grid-row:1;display:block;width:auto}
+}
+
+/* A pending account check has its own neutral frame, never a guest lobby. */
+.lobby-loading-games{grid-area:games;min-width:0}
+.lobby-loading-heading{height:36px;margin-bottom:14px;display:flex;align-items:center}
+.lobby-loading-heading::before{content:"";width:104px;height:18px;border-radius:4px;background:var(--line)}
+.lobby-loading-card{display:flex;align-items:center;gap:12px;min-height:108px;padding:12px;border:1px solid var(--line);border-radius:10px;background:color-mix(in srgb,var(--ink) 2%,transparent)}
+.lobby-loading-card i,.lobby-loading-card b{display:block;border-radius:5px;background:var(--line);opacity:.65}
+.lobby-loading-card i{width:clamp(64px,6.6vw,96px);height:60px;flex:none}
+.lobby-loading-card b{width:52px;max-width:35%;height:16px}
+.lobby-loading-create{grid-area:create;display:flex;justify-content:space-between;align-items:center;gap:20px;margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}
+.lobby-loading-create span{width:200px;max-width:40%;height:16px;background:var(--line);border-radius:4px}
+.lobby-loading-create i{width:160px;height:44px;border-radius:8px;background:var(--line);opacity:.65}
+.lobby-loading-join{grid-area:join;display:grid;gap:14px;padding:14px 0 14px clamp(22px,2.4vw,40px);border-left:1px solid var(--line)}
+.lobby-loading-join b,.lobby-loading-join span,.lobby-loading-join i{display:block;background:var(--line);border-radius:6px;opacity:.65}
+.lobby-loading-join b{width:120px;max-width:100%;height:20px;margin-bottom:24px}
+.lobby-loading-join span{width:60px;height:12px}
+.lobby-loading-join i{height:44px}
+@media(min-width:1680px){.lobby-loading-card{flex-direction:column;justify-content:center;gap:12px;min-height:150px}.lobby-loading-card i{width:100px}.lobby-loading-card b{max-width:70%}}
+@media(max-width:1080px){.lobby-loading-card{flex-direction:column;justify-content:center;gap:8px;min-height:116px;padding:8px}.lobby-loading-card i{width:84px}.lobby-loading-card b{max-width:70%}}
+@media(max-width:700px){.lobby-loading-card{flex-direction:row;min-height:92px;padding:10px 6px;gap:8px}.lobby-loading-card i{width:74px;height:54px}.lobby-loading-card b{max-width:35%}.lobby-loading-join{padding:22px 0 0;border-left:0;border-top:1px solid var(--line);margin-top:24px}.lobby-loading-create{flex-wrap:wrap}.lobby-loading-create i{width:100%}}

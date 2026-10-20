@@ -1,0 +1,50 @@
+/* Inspector reading surfaces only. The game table keeps its own fixed viewport. */
+.hy-real #yg-inspector.hy-battle-dialog { width:min(1000px,calc(100vw - 32px));height:min(720px,calc(100dvh - 32px));max-height:calc(100dvh - 32px); }
+.hy-real #yg-inspector.hy-battle-dialog #yg-inspector-body { display:flex;overflow:hidden;min-height:0; }
+.hy-battle-report { display:flex;flex-direction:column;gap:8px;width:100%;min-width:0;min-height:0; }
+.hy-battle-tabs { display:flex;flex:none;gap:6px;overflow-x:auto;overscroll-behavior:contain; }
+.hy-battle-tabs button { flex:1 0 auto;min-width:64px;min-height:44px;padding:8px 12px; }
+.hy-night .hy-battle-tabs button[aria-pressed=true] { color:#ffe4a6;background:#6a5032;border-color:#e6bc6b; }
+.hy-battle-page-controls { display:flex;justify-content:space-between;align-items:center;gap:8px;flex:none; }
+.hy-battle-page-controls strong { font-size:17px;line-height:1.4;min-width:0; }
+.hy-battle-page-controls small { display:block;font-size:12px;line-height:1.5;color:#d3c4a6; }
+.hy-battle-page-controls nav { display:flex;align-items:center;gap:8px;flex:none; }
+.hy-battle-page-controls button,.hy-battle-status button,.hy-battle-cards button { min-height:44px;padding:7px 10px; }
+.hy-battle-page-controls span { white-space:nowrap;font-variant-numeric:tabular-nums; }
+.hy-battle-status { display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;flex:none;font-size:13px;line-height:1.4; }
+.hy-battle-status>span { flex:1 1 220px; }
+.hy-battle-scroll { flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:4px 8px 12px 2px;scrollbar-gutter:stable; }
+.hy-battle-steps { list-style:none;padding:0;margin:0; }
+.hy-battle-step { padding:12px 0;border-bottom:1px solid #b3945e55;overflow-wrap:anywhere; }
+.hy-battle-step>ol { list-style:none;padding:0; }
+.hy-real .hy-battle-step li { font-size:15px;line-height:1.6; }
+.hy-battle-cards { display:flex;flex-wrap:wrap;gap:6px;margin-top:6px; }
+.hy-real .hy-battle-step p { margin:8px 0 0;font-size:14px;line-height:1.6; }
+.hy-battle-result { color:#f5db9e; }.hy-battle-discard,.hy-battle-partial { color:#d3c4a6; }
+/* These are reading objects, not table buttons. The explicit inspector scope
+   outranks the night table's generic button padding and fixed face dimensions. */
+#hyakki-digital-root #yg-inspector:has(.hy-public-discard) { box-sizing:border-box;width:min(1040px,calc(100vw - 24px));max-width:calc(100vw - 24px);height:min(740px,calc(100dvh - 24px));max-height:calc(100dvh - 24px); }
+#hyakki-digital-root #yg-inspector:has(.hy-public-discard) #yg-inspector-body { display:flex;flex:1;min-width:0;min-height:0;overflow:hidden; }
+#hyakki-digital-root #yg-inspector:has(.hy-public-discard) .hy-dialog-layout { flex:1;min-height:0; }
+#hyakki-digital-root #yg-inspector:has(.hy-public-discard) .hy-dialog-content { flex:1;min-width:0;min-height:0;overflow:auto;padding:4px; }
+#hyakki-digital-root #yg-inspector .hy-public-discard { display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));align-items:start;gap:12px;min-width:0; }
+#hyakki-digital-root #yg-inspector .hy-discard-card { box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0;min-height:0;height:auto;max-height:none;padding:4px;border:1px solid transparent;background:transparent;color:inherit;box-shadow:none;overflow:visible;white-space:normal; }
+#hyakki-digital-root #yg-inspector .hy-discard-card>.yousei-card { --hyakki-card-width:132px;--hyakki-card-height:192px;flex:none;width:132px;max-width:none;height:192px;min-height:192px;min-width:132px;pointer-events:none;transform:none; }
+#hyakki-digital-root #yg-inspector .hy-discard-card:focus-visible,#hyakki-digital-root #yg-inspector .hy-discard-card:hover { outline:2px solid #e6bc6b;outline-offset:1px; }
+#hyakki-digital-root #yg-inspector .hy-discard-caption { display:block;width:100%;max-width:180px;font-size:12px;line-height:1.5;text-align:center;overflow-wrap:anywhere; }
+#hyakki-digital-root #yg-inspector .hy-discard-origin { display:block;width:100%;max-width:180px;font-size:12px;line-height:1.45;text-align:center;color:#d3c4a6;overflow-wrap:anywhere; }
+#hyakki-digital-root #yg-inspector .hy-discard-guide { display:flex;align-items:center;flex-wrap:wrap;gap:4px 12px;margin:0 0 8px; }
+.hy-discard-guide button { min-height:44px;padding:6px 12px; }
+@media(max-height:500px) and (orientation:landscape) {
+ .hy-real #yg-inspector.hy-battle-dialog { width:calc(100vw - 20px);height:calc(100dvh - 16px);max-height:calc(100dvh - 16px);padding:8px 10px; }
+ .hy-battle-report { gap:4px; }.hy-battle-tabs { gap:4px; }.hy-battle-tabs button { padding:4px 8px; }
+ .hy-battle-page-controls strong { font-size:14px; }.hy-battle-page-controls nav { gap:4px; }.hy-battle-page-controls button { padding:4px 8px; }
+ .hy-battle-status { font-size:12px; }.hy-battle-step { padding:8px 0; }
+ #hyakki-digital-root #yg-inspector:has(.hy-public-discard) { width:calc(100vw - 20px);max-width:calc(100vw - 20px);height:calc(100dvh - 16px);max-height:calc(100dvh - 16px);padding:8px 10px; }
+ #hyakki-digital-root #yg-inspector .hy-public-discard { display:flex;gap:12px;overflow-x:auto;overflow-y:hidden;overscroll-behavior:contain;scroll-snap-type:x proximity;padding:4px 4px 8px; }
+ #hyakki-digital-root #yg-inspector .hy-discard-card { display:grid;grid-template-columns:96px minmax(0,1fr);grid-template-rows:1fr auto;align-items:center;gap:6px 12px;flex:0 0 286px;max-width:calc(100vw - 72px);padding:4px;scroll-snap-align:start; }
+ #hyakki-digital-root #yg-inspector .hy-discard-card>.yousei-card { --hyakki-card-width:96px;--hyakki-card-height:144px;grid-column:1;grid-row:1/3;width:96px;height:144px;min-width:96px;min-height:144px; }
+ #hyakki-digital-root #yg-inspector .hy-discard-caption { grid-column:2;grid-row:1;max-width:none;text-align:left;align-self:center;font-size:13px;line-height:1.45; }
+ #hyakki-digital-root #yg-inspector .hy-discard-origin { grid-column:2;grid-row:2;max-width:none;text-align:left;align-self:start; }
+}
+@media(max-width:600px) { .hy-battle-page-controls { align-items:flex-start;flex-direction:column; }.hy-battle-page-controls nav { align-self:flex-end; } }

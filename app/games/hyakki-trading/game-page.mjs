@@ -1,11 +1,14 @@
+import {withRoomVoice} from '../../platform/room-voice-session.mjs';
 import { mountHyakkiPage } from './game-ui.mjs';
 import { createHyakkiRoomController } from './room-controller.mjs';
-import { RoomClient, api, forgetMembership } from '../../room-client.mjs';
+import { RoomClient as BaseRoomClient, api, forgetMembership } from '../../room-client.mjs';
 import { accountState, accountGeneration, onAccountChange, loadAccount, watchAccountLifecycle,
   loginHref, reauthenticationHref, logoutAccount } from '../../account-client.mjs';
 import { mountRoomChat } from '../../room-chat.mjs';
 import { roomHref } from '../../game-routing.mjs';
 import { entryBase } from '../../entry-path.mjs';
+
+const RoomClient=withRoomVoice(BaseRoomClient,{gameType:'hyakki-trading',getAccount:accountState,document,window});
 
 let controller;
 const ui = mountHyakkiPage({ root: document.querySelector('#hyakki-digital-root'),
@@ -18,3 +21,4 @@ controller = createHyakkiRoomController({ roomCode: new URLSearchParams(location
   agoraHref: entryBase() === '/game/' ? '/#projects' : 'https://agora.sumomoli.com/#projects' });
 void controller.start();
 if ('serviceWorker' in navigator && window.isSecureContext) navigator.serviceWorker.register('./sw.js').catch(() => {});
+

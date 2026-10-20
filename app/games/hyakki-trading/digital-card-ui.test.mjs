@@ -116,3 +116,33 @@ test('six-kind goods use six image/quantity cells rather than a long name list',
   assert.match(renderCard('yousei.c07'),/回应 · 0步/u);
   assert.match(renderCard('yousei.m08'),/行动 · 1步/u);
 });
+
+test('replacement art resolves detached cache hits and failures, and stops observing on unmount', () => {
+  const states = new Map();
+  let inserted, observed, disconnected = false;
+  class Observer {
+    constructor(callback) { inserted = callback; }
+    observe(root, options) { observed = { root, options }; }
+    disconnect() { disconnected = true; }
+  }
+  const image = (id, width) => ({ complete:true, naturalWidth:width,
+    matches:selector => selector === 'img[data-yousei-art]',
+    querySelectorAll:() => [],
+    classList:{ toggle(){} },
+    closest:() => ({ classList:{ toggle:(name,on) => states.set(`${id}:${name}`,on) } }),
+  });
+  const root = { ownerDocument:{ defaultView:{ MutationObserver:Observer } },
+    addEventListener(){}, removeEventListener(){}, querySelectorAll:() => [],
+  };
+  const dispose = mountArtFallback(root);
+  assert.equal(observed.root,root);
+  const loaded = image('loaded',120), failed = image('failed',0);
+  // Both images completed before attachment, so no root load/error event exists.
+  inserted([{ addedNodes:[loaded,{ querySelectorAll:() => [failed] }] }]);
+  assert.equal(states.get('loaded:is-loaded'),true);
+  assert.equal(states.get('loaded:is-missing'),false);
+  assert.equal(states.get('failed:is-loaded'),false);
+  assert.equal(states.get('failed:is-missing'),true);
+  dispose();
+  assert.equal(disconnected,true);
+});

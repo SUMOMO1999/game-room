@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createGame, applyGameAction, applyTimeout, currentDecision, gameProblem } from './rules.mjs';
-import { DIGITAL_RULE_VERSION, createDeck } from './content/definitions.mjs';
+import { DIGITAL_RULE_VERSION, CONTENT_VERSION, createDeck } from './content/definitions.mjs';
 import { definition } from './model.mjs';
 import { createHyakkiPracticeSession, decodeHyakkiPractice, encodeHyakkiPractice,
   PRACTICE_SELF, PRACTICE_BOTS, PRACTICE_STORAGE_KEY } from './practice-engine.mjs';
@@ -51,7 +51,8 @@ function conserved(state) {
   assert.equal(gameProblem(state), null);
   assert.deepEqual([...state.deck, ...state.discard,
     ...state.players.flatMap(owner => [...owner.hand, ...owner.tools.map(tool => tool.cardId)]),
-    ...(state.pending?.sourceCards ?? []), ...(state.pending?.poolCards ?? [])].sort(), createDeck().map(card => card.id).sort());
+    ...(state.pending?.sourceCards ?? []), ...(state.pending?.poolCards ?? [])].sort(), createDeck({ contentVersion: state.contentVersion, playerCount: state.players.length }).map(card => card.id).sort());
+  if (state.contentVersion === CONTENT_VERSION) assert.equal(createDeck().length, 110);
 }
 async function rejectsRestoration(game) {
   const raw = JSON.stringify(saved(game)), env = environment(raw);

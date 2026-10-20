@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { choiceModel, buildChoiceSelection, defaultChoiceInput, actionDraft, knownCards, tableProjection, tradeAvailability } from './game-ui-model.mjs';
+import { choiceModel, buildChoiceSelection, defaultChoiceInput, actionDraft, knownCards, tableProjection, tradeAvailability, supplySetup } from './game-ui-model.mjs';
 import { renderChoiceForm, publicEventText } from './game-ui.mjs';
 import { GOODS } from './content/definitions.mjs';
 import { createGame, applyGameAction, currentDecision } from './rules.mjs';
@@ -8,6 +8,22 @@ import { privateView, spectatorView } from './view.mjs';
 const ids=['a'.repeat(32),'b'.repeat(32)],ctx={now:1000,randomInt:n=>n-1};
 const goods=n=>Object.fromEntries(GOODS.map((good,index)=>[good.id,index===0?n:0]));
 const pending=(kind,options,defaultSelection)=>({choice:{kind,options,defaultSelection}});
+test('setup recommendations use actual participant count, while absent mode keeps a legacy custom value',()=>{
+ for(const [count,total,recommendation] of [[2,110,6],[3,144,9],[4,178,12],[5,212,15],[6,246,18]]){
+  const recommended=supplySetup(count,{goodsSupplyMode:'recommended',goodsPerType:8});
+  assert.equal(recommended.deckSize,total);assert.equal(recommended.goodsPerType,recommendation);
+  const manual=supplySetup(count,{goodsPerType:20});
+  assert.equal(manual.goodsSupplyMode,'custom');assert.equal(manual.goodsPerType,20);assert.equal(manual.goodsPerTypeRecommended,recommendation);
+ }
+ assert.equal(supplySetup(1,{goodsSupplyMode:'recommended'}).deckSize,null,'an incomplete waiting room is not a one-player deck');
+});
+test('waiting preview follows recommended mode, but a frozen old game retains its real stock and boards',()=>{
+ const members=Array.from({length:6},(_,index)=>({id:`seat${index}`,name:`伙伴${index}`}));
+ const waiting={players:members,spectators:Array(4).fill({id:'viewer'}),hyakkiConfig:{actionLimit:5,goodsPerType:8,goodsSupplyMode:'recommended'},phase:'waiting',selfId:'seat0'};
+ const preview=tableProjection(waiting);assert.equal(preview.goodsPerType,18);assert.equal(preview.expansionStock,13);assert.ok(preview.market.every(good=>good.count===18));
+ const game={players:members.map(member=>({...member,goods:goods(0),tools:[],hand:[]})),bankGoods:goods(6),goodsPerType:6,availableStalls:5};
+ const restored=tableProjection({...waiting,game,phase:'playing'});assert.equal(restored.goodsPerType,6);assert.equal(restored.expansionStock,5);assert.equal(restored.market[0].count,6);
+});
 const cases=[
  pending('retain-goods',[{combined:goods(6),ordinaryCapacity:5,capacity:6,temporaryFee:2}],goods(5)),
  pending('auction-goods',[{goods:goods(6),minimum:2,maximum:2}],{goods:goods(2)}),

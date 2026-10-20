@@ -1,0 +1,27 @@
+@import url('./room-voice.css');
+/* Join and microphone form a single, quiet group in the existing header. The
+   group has a constant footprint across receiving, speaking and recovery. */
+.room-voice-toolbar{display:inline-flex;align-items:center;gap:var(--room-header-control-gap,4px);flex:none;vertical-align:middle}
+.room-voice-toolbar>span{display:flex;align-items:center}
+.room-voice-toolbar .room-voice-compact-join{height:var(--room-header-control-height,44px);min-height:var(--room-header-control-height,44px);width:var(--room-header-join-width,76px);min-width:var(--room-header-join-width,76px);padding:4px min(8px,var(--room-header-control-gap,8px));font-size:var(--room-header-control-font-size,12px);white-space:nowrap}
+.room-voice-toolbar .room-voice-compact-microphone{height:var(--room-header-control-height,44px);min-height:var(--room-header-control-height,44px);width:var(--room-header-control-size,44px);min-width:var(--room-header-control-size,44px);padding:0}
+.room-voice-settings{min-width:0}
+.room-voice-settings .room-voice-status{display:block;width:100%;height:auto;min-height:24px;white-space:normal;line-height:1.5;font-size:13px;padding-top:8px}
+.room-voice-peers{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.room-voice-peer{min-height:44px;padding:6px 10px;font-size:13px}
+@media(max-width:740px){.room-voice-toolbar .room-voice-compact-join{width:var(--room-header-join-width,68px);min-width:var(--room-header-join-width,68px);padding-inline:4px}}
+@media(max-width:600px){
+ .p414-header:has(.room-voice-toolbar) .p414-brand{flex:none}
+ .p414-header:has(.room-voice-toolbar) .p414-brand strong{display:flex;flex-direction:column;gap:2px;white-space:nowrap}
+ .p414-header:has(.room-voice-toolbar) .p414-brand>span{display:none}
+ .p414-header:has(.room-voice-toolbar) .p414-brand small{white-space:nowrap}
+}
+@media(max-width:600px){
+ .flying-header:has(.room-voice-toolbar) .flying-brand{flex-direction:column;align-items:flex-start;justify-content:center;gap:0;line-height:16px;min-width:44px;min-height:44px}
+}
+.flying-page:has(.room-voice-toolbar) .flying-header-actions{min-width:0;justify-content:flex-end}
+.flying-page .room-toolbar-actions:has(.room-voice-toolbar){display:flex;flex-wrap:nowrap;justify-content:flex-end;gap:2px;min-width:0;width:100%}
+.flying-page .room-toolbar-actions:has(.room-voice-toolbar)>.room-toolbar-action{width:var(--room-header-control-size,44px);min-width:var(--room-header-control-size,44px);max-width:var(--room-header-control-size,44px);flex:0 0 var(--room-header-control-size,44px);height:var(--room-header-control-height,44px);min-height:var(--room-header-control-height,44px);font-size:var(--room-header-control-font-size,11px);padding:2px}
+.flying-page .room-voice-toolbar{gap:var(--room-header-control-gap,2px)}
+.flying-page .room-voice-toolbar .room-voice-compact-join{width:var(--room-header-join-width,54px);min-width:var(--room-header-join-width,54px);font-size:var(--room-header-control-font-size,11px);padding-inline:2px}
+.flying-footer #flying-connection{display:block;font-size:10px;line-height:13px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0}

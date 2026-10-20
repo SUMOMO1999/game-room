@@ -7,6 +7,7 @@ import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {EncryptedStore,SQLiteAdapter} from '../server/storage.mjs';
 import {readSettings} from '../server/config.mjs';
+import {DRAW_AND_GUESS_SEED} from '../server/content/draw-and-guess-seed.mjs';
 import {createRuntime} from '../server/runtime.mjs';
 import {closeRuntime} from '../server/production.mjs';
 import {backupStore,restoreStore,verifyLiveStore,verifyBackup,validateDrawingRecoveryReferences} from '../server/backup.mjs';
@@ -23,6 +24,7 @@ async function fixture(t) {
   await runtime.rooms.joinRoom(code,users[1],'猜者','backup-join');
   await runtime.rooms.joinRoom(code,users[2],'观众','backup-watch','spectator');
   const action=async(user,type,extra={})=>{const view=await runtime.rooms.getView(code,user);return runtime.rooms.action(code,user,{type,requestId:randomBytes(16).toString('hex'),expectedRevision:view.revision,...extra});};
+  await action(users[0],'configure',{drawConfig:{...(await runtime.rooms.getView(code,users[0])).drawConfig,candidateCount:5}});
   return {...runtime,dir,path,key,code,host,action};
 }
 for(const phase of ['waiting','drawing'])test(`whole drawing ${phase} restores in a fresh process with original seats, content and confirmed ink`,async t=>{
@@ -46,7 +48,9 @@ for(const phase of ['waiting','drawing'])test(`whole drawing ${phase} restores i
     let paper=phase==='drawing'?await r.canvases.read(code,users[1]):null;
     console.log(JSON.stringify({views,releaseWords:release.words.length,paper,room:(await storage.scan('rooms'))[0].value.snapshot}));await closeRuntime(r);`;
   const recovered=JSON.parse(execFileSync(process.execPath,['--input-type=module','-e',child,restored,f.key.toString('base64url'),f.code,phase],{cwd:process.cwd(),encoding:'utf8'}));
-  assert.deepEqual(recovered.room,original);assert.equal(recovered.releaseWords,560);
+  assert.deepEqual(recovered.room,original);assert.equal(recovered.releaseWords,DRAW_AND_GUESS_SEED.length);
+  assert.equal(recovered.room.schemaVersion,19);assert.equal(recovered.views[0].drawConfig.candidateCount,5);
+  if(phase==='drawing')assert.equal(recovered.room.game.settings.candidateCount,5);
   assert.equal(recovered.views[0].selfId,original.players[0].id);assert.equal(recovered.views[1].selfId,original.players[1].id);assert.equal(recovered.views[2].selfId,original.spectators[0].id);
   if(phase==='drawing') {assert.equal(recovered.paper.pointCount,3);assert.equal(recovered.paper.sequence,1);assert.notEqual(recovered.paper.bootId,lease.bootId);assert.equal(recovered.views[1].game.word,undefined);}
   assert.doesNotThrow(()=>verifyLiveStore({sourcePath:restored,key:f.key}));

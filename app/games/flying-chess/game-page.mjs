@@ -1,10 +1,13 @@
+import {withRoomVoice} from '../../platform/room-voice-session.mjs';
 import { mountFlyingPage } from './page-ui.mjs';
-import { RoomClient, api, loadMembership, forgetMembership } from '../../room-client.mjs';
+import { RoomClient as BaseRoomClient, api, loadMembership, forgetMembership } from '../../room-client.mjs';
 import { accountState, accountGeneration, onAccountChange, loadAccount, watchAccountLifecycle, loginHref, reauthenticationHref, logoutAccount } from '../../account-client.mjs';
 import { createRoomSession, createRoomExit } from '../../platform/room-session.mjs';
 import { mountRoomChat } from '../../room-chat.mjs';
 import { gameErrorMessage } from '../../platform/room-presentation.mjs';
 import { roomHref } from '../../game-routing.mjs';
+
+const RoomClient=withRoomVoice(BaseRoomClient,{gameType:'flying-chess',getAccount:accountState,document,window});
 
 const roomCode = new URLSearchParams(location.search).get('code') || '';
 let client=null, view=null, chat=null, baseline=true, leaving=false, seatScope=null;
@@ -48,14 +51,14 @@ function boot(verifiedState){
       if(seatScope!==null&&seatScope!==nextScope)exit.reset();seatScope=nextScope;
       const next=new RoomClient(roomCode,membership,{
         onView:value=>{
-          if(!session.current(fence))return;
+          if(!session.passive(fence))return;
           if(value.gameType!=='flying-chess'){location.replace(roomHref(roomCode,value.gameType));return;}
           view=value;ui.applyView(value,{baseline});baseline=false;
         },
-        onConnection:status=>{if(!session.current(fence))return;if(status!=='online')baseline=true;ui.setConnection(status);chat?.connection(status);},
-        onChat:packet=>{if(session.current(fence))chat?.receive(packet);},
+        onConnection:status=>{if(!session.passive(fence))return;if(status!=='online')baseline=true;ui.setConnection(status);chat?.connection(status);},
+        onChat:packet=>{if(session.passive(fence))chat?.receive(packet);},
         onError:error=>{
-          if(!session.current(fence)||leaving&&error.status===404)return;
+          if(!session.passive(fence)||leaving&&error.status===404)return;
           if(error.status===404&&view)forgetMembership(roomCode,view.selfId);
           if(error.status===404||!legacy&&[401,503].includes(error.status))clearPrivate(error);
           else ui.setMessage(gameErrorMessage(error));
@@ -71,6 +74,17 @@ chat=mountRoomChat({onCue:kind=>ui.audio.play(kind),onUnavailable:error=>clearPr
 const logout=document.createElement('button');logout.id='flying-logout';logout.textContent='退出棋牌室登录';document.querySelector('.room-menu-actions').append(logout);
 logout.addEventListener('click',async()=>{exit.reset();seatScope=null;clearPrivate();try{await logoutAccount();location.href='./';}catch{clearPrivate({status:503});}});
 onAccountChange(state=>{logout.hidden=state.mode==='legacy';if(!state.authenticated&&state.mode!=='legacy'||client&&client.accountEpoch!==accountGeneration())clearPrivate({status:state.failureStatus===503?503:401});});
-const lifecycle=watchAccountLifecycle({onSuspend:()=>clearPrivate({message:'正在重新核验账号…'},{preserveDraft:true}),onVerified:state=>{logout.hidden=state.mode==='legacy';if(!client)boot(state);},onError:error=>clearPrivate(error)});
+const lifecycle=watchAccountLifecycle({onSuspend:()=>clearPrivate({message:'正在重新核验账号…'},{preserveDraft:true}),onVerified:(state,{reason}={})=>{
+  logout.hidden=state.mode==='legacy';
+  if(!client){void boot(state);return;}
+  if(!['return','focus'].includes(reason))return;
+  const current=client,fence=session.capture(current);
+  void current.refresh().catch(error=>{
+    if(!session.passive(fence))return;
+    if([401,503,404].includes(error.status))clearPrivate(error);
+    else ui.setMessage(gameErrorMessage(error));
+  });
+},onError:error=>clearPrivate(error)});
 window.addEventListener('pagehide',event=>{if(!event.persisted){client?.stop();session.destroy();ui.destroy();}});
 lifecycle.refresh();
+

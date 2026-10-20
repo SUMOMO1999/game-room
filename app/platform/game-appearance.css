@@ -1,0 +1,1002 @@
+/* Product material adapter. Product rules exclude the shared appearance-dialog
+   and its complete subtree; only the four-property host collision bridge below
+   repeats values owned by the byte-for-byte shared menu stylesheet.
+   Important paint in this named layer beats legacy unlayered important rules;
+   :where() keeps selector lists from importing unrelated ID/pseudo specificity.
+   No game object, board/canvas ancestor, stage or viewport gains geometry or a
+   filter. Frost is limited to static navigation/reading surfaces and menus. */
+@layer game-appearance-material {
+  html[data-game-appearance] {
+    color-scheme:var(--appearance-scheme,light)!important;
+    --game-material-surface:var(--appearance-panel,var(--appearance-surface))!important;
+    --game-material-input:var(--appearance-input,var(--appearance-surface))!important;
+    --game-material-overlay:var(--appearance-surface)!important;
+    --game-material-line:var(--appearance-line)!important;
+    --game-material-shadow:var(--appearance-shadow,0 0 0 transparent)!important;
+    --game-material-inset:var(--appearance-inset,inset 0 0 0 transparent)!important;
+    --game-material-texture:none!important;
+    --game-material-hover:color-mix(in srgb,var(--appearance-accent) 8%,var(--game-material-surface))!important;
+    --theme-base:var(--appearance-bg)!important;
+    --theme-surface:var(--game-material-overlay)!important;
+    --theme-table:var(--game-material-overlay)!important;
+    --theme-control:var(--game-material-input)!important;
+    --theme-accent:var(--appearance-accent)!important;
+    --theme-ink:var(--appearance-ink)!important;
+    --theme-muted:var(--appearance-muted)!important;
+    --theme-border:var(--game-material-line)!important;
+    --theme-glow:color-mix(in srgb,var(--appearance-surface) 30%,transparent)!important;
+    --theme-grain:color-mix(in srgb,var(--appearance-ink) 3%,transparent)!important;
+    --theme-shadow:color-mix(in srgb,var(--appearance-ink) 12%,transparent)!important;
+    --theme-rack:var(--game-material-overlay)!important;
+    --theme-rack-edge:var(--game-material-line)!important;
+    --theme-rack-ink:var(--appearance-ink)!important;
+    --theme-good:var(--appearance-good)!important;
+    --theme-bad:var(--appearance-bad)!important;
+    --theme-texture:var(--game-material-texture)!important;
+    --green:var(--appearance-accent)!important;
+    --ink:var(--appearance-ink)!important;
+    --muted:var(--appearance-muted)!important;
+    --line:var(--game-material-line)!important;
+    --paper:var(--game-material-surface)!important;
+    --ivory:var(--appearance-surface)!important;
+    background-color:var(--appearance-bg)!important;
+    background-image:var(--appearance-environment,none)!important;
+    background-size:cover!important;
+    background-position:center!important;
+    background-repeat:no-repeat!important;
+    color:var(--appearance-ink)!important;
+  }
+
+  html[data-game-appearance=paper] {
+    --game-material-texture:repeating-linear-gradient(0deg,transparent 0 3px,color-mix(in srgb,var(--appearance-ink) 2%,transparent) 3px 4px)!important;
+  }
+
+  html[data-game-appearance=glass] {
+    background-attachment:fixed!important;
+    background-size:100% 100%!important;
+    --game-material-surface:var(--appearance-material-surface,var(--appearance-panel))!important;
+    --game-material-input:var(--appearance-material-input,color-mix(in srgb,var(--appearance-surface) 70%,transparent))!important;
+    --game-material-overlay:var(--appearance-material-overlay,color-mix(in srgb,var(--appearance-surface) 86%,transparent))!important;
+    --game-material-line:color-mix(in srgb,var(--appearance-ink) 20%,transparent)!important;
+    --game-material-texture:linear-gradient(145deg,color-mix(in srgb,var(--appearance-surface) 12%,transparent),transparent 72%)!important;
+  }
+
+  html[data-game-appearance=soft] {
+    --game-material-texture:linear-gradient(145deg,color-mix(in srgb,var(--appearance-surface) 55%,transparent),transparent 70%)!important;
+  }
+
+  /* Buttons, native choices and functional overlays have distinct specimen
+     roles. In particular, a soft secondary starts raised; field inset is not
+     its idle surface. Values follow html:root's winning v33 cascade. */
+  html[data-game-appearance] {
+    --game-button-surface:var(--appearance-surface)!important;
+    --game-button-image:none!important;
+    --game-button-line:var(--appearance-line)!important;
+    --game-button-hover-surface:var(--game-button-surface)!important;
+    --game-button-hover-line:var(--game-button-line)!important;
+    --game-button-active-surface:var(--game-button-surface)!important;
+    --game-button-active-line:var(--game-button-line)!important;
+    --game-button-selected-ink:var(--appearance-accent)!important;
+    --game-button-disabled-ink:var(--appearance-muted)!important;
+    --game-button-disabled-line:var(--appearance-line)!important;
+    --game-button-disabled-shadow:none!important;
+    --game-button-disabled-opacity:1!important;
+    --game-primary-line:var(--appearance-accent)!important;
+    --game-functional-surface:var(--appearance-functional-surface,var(--appearance-surface))!important;
+    --game-functional-line:var(--appearance-functional-line,var(--appearance-line))!important;
+    --game-functional-image:none!important;
+    --game-quiet-hover:color-mix(in srgb,var(--appearance-accent) 4%,var(--appearance-surface))!important;
+  }
+  html[data-game-appearance=paper] {
+    --game-button-shadow:0 1px 0 color-mix(in srgb,var(--appearance-ink) 4%,transparent),inset 0 1px 0 color-mix(in srgb,var(--appearance-surface) 45%,#ffffff)!important;
+    --game-button-hover-surface:color-mix(in srgb,var(--appearance-accent) 3%,var(--appearance-surface))!important;
+    --game-button-hover-line:color-mix(in srgb,var(--appearance-accent) 42%,var(--appearance-line))!important;
+    --game-button-selected-surface:color-mix(in srgb,var(--appearance-accent) 7%,var(--appearance-surface))!important;
+    --game-button-selected-line:var(--appearance-accent)!important;
+    --game-button-selected-shadow:inset 0 0 0 1px color-mix(in srgb,var(--appearance-accent) 12%,transparent)!important;
+    --game-button-active-surface:var(--game-button-selected-surface)!important;
+    --game-button-active-line:var(--appearance-accent)!important;
+    --game-button-active-shadow:inset 0 1px 2px color-mix(in srgb,var(--appearance-ink) 8%,transparent)!important;
+    --game-button-disabled-surface:color-mix(in srgb,var(--appearance-ink) 4%,var(--appearance-surface))!important;
+    --game-primary-shadow:inset 0 1px 0 #ffffff18,0 1px 2px color-mix(in srgb,var(--appearance-accent) 15%,transparent)!important;
+    --game-primary-active-shadow:inset 0 2px 4px color-mix(in srgb,var(--appearance-ink) 20%,transparent)!important;
+    --game-busy-shadow:var(--game-primary-shadow)!important;
+    --game-busy-opacity:1!important;
+    --game-choice-shadow:0 1px 1px color-mix(in srgb,var(--appearance-ink) 6%,transparent)!important;
+    --game-choice-checked-shadow:0 0 0 2px color-mix(in srgb,var(--appearance-accent) 9%,transparent)!important;
+    --game-range-thumb-shadow:0 1px 3px color-mix(in srgb,var(--appearance-ink) 16%,transparent)!important;
+    --game-segment-surface:color-mix(in srgb,var(--appearance-ink) 4%,var(--appearance-surface))!important;
+    --game-segment-shadow:inset 0 1px 2px color-mix(in srgb,var(--appearance-ink) 3%,transparent)!important;
+    --game-segment-active-shadow:inset 0 1px 2px color-mix(in srgb,var(--appearance-ink) 6%,transparent)!important;
+    --game-segment-selected-surface:var(--appearance-accent)!important;
+    --game-segment-selected-ink:var(--appearance-on-accent)!important;
+    --game-segment-selected-shadow:0 1px 3px color-mix(in srgb,var(--appearance-accent) 16%,transparent)!important;
+    --game-functional-shadow:0 3px 8px color-mix(in srgb,var(--appearance-ink) 6%,transparent),0 22px 48px color-mix(in srgb,var(--appearance-ink) 12%,transparent)!important;
+    --game-toast-line:color-mix(in srgb,var(--appearance-accent) 32%,var(--appearance-line))!important;
+    --game-toast-shadow:0 3px 8px color-mix(in srgb,var(--appearance-ink) 7%,transparent),0 12px 30px color-mix(in srgb,var(--appearance-ink) 10%,transparent)!important;
+    --game-backdrop-color:color-mix(in srgb,var(--appearance-ink) 27%,transparent)!important;
+    --game-backdrop-blur:2px!important;
+    --game-quiet-active-shadow:var(--game-button-active-shadow)!important;
+  }
+  html[data-game-appearance=soft] {
+    --game-button-image:linear-gradient(145deg,color-mix(in srgb,var(--appearance-surface) 96%,#ffffff),var(--appearance-surface))!important;
+    --game-button-line:color-mix(in srgb,var(--appearance-surface) 78%,#ffffff)!important;
+    --game-button-shadow:3px 3px 7px var(--game-field-soft-dark),-3px -3px 7px var(--game-field-soft-light)!important;
+    --game-button-hover-line:color-mix(in srgb,var(--appearance-accent) 35%,var(--appearance-line))!important;
+    --game-button-selected-surface:color-mix(in srgb,var(--appearance-accent) 6%,var(--appearance-surface))!important;
+    --game-button-selected-line:color-mix(in srgb,var(--appearance-accent) 35%,var(--appearance-surface))!important;
+    --game-button-selected-shadow:var(--game-field-shadow)!important;
+    --game-button-active-shadow:var(--game-field-shadow)!important;
+    --game-button-disabled-surface:var(--appearance-surface)!important;
+    --game-primary-line:color-mix(in srgb,var(--appearance-accent) 92%,var(--appearance-ink))!important;
+    --game-primary-shadow:inset 0 1px 0 #ffffff25,0 3px 7px color-mix(in srgb,var(--appearance-accent) 17%,transparent)!important;
+    --game-primary-active-shadow:inset 0 2px 5px color-mix(in srgb,var(--appearance-accent) 72%,var(--appearance-ink)),inset 0 -1px 0 #ffffff20!important;
+    --game-busy-shadow:inset 0 1px 0 #ffffff20!important;
+    --game-busy-opacity:1!important;
+    --game-choice-shadow:1px 2px 3px var(--game-field-soft-dark),-1px -1px 3px var(--game-field-soft-light)!important;
+    --game-choice-checked-shadow:0 0 0 2px color-mix(in srgb,var(--appearance-accent) 18%,transparent),inset 1px 1px 2px var(--game-field-soft-dark)!important;
+    --game-range-thumb-shadow:2px 2px 4px var(--game-field-soft-dark),-2px -2px 4px var(--game-field-soft-light)!important;
+    --game-segment-surface:var(--appearance-surface)!important;
+    --game-segment-shadow:var(--game-field-shadow)!important;
+    --game-segment-active-shadow:var(--game-field-shadow)!important;
+    --game-segment-selected-surface:var(--game-button-selected-surface)!important;
+    --game-segment-selected-ink:var(--appearance-accent)!important;
+    --game-segment-selected-shadow:var(--game-field-shadow)!important;
+    --game-functional-line:color-mix(in srgb,var(--game-field-soft-light) 50%,var(--appearance-line))!important;
+    --game-functional-shadow:0 2px 5px color-mix(in srgb,var(--appearance-ink) 8%,transparent),0 18px 38px color-mix(in srgb,var(--appearance-ink) 18%,transparent),inset 0 1px 0 var(--game-field-soft-light)!important;
+    --game-toast-line:color-mix(in srgb,var(--game-field-soft-light) 70%,var(--appearance-line))!important;
+    --game-toast-shadow:0 3px 8px color-mix(in srgb,var(--appearance-ink) 9%,transparent),0 14px 32px color-mix(in srgb,var(--appearance-ink) 15%,transparent),inset 0 1px 0 var(--game-field-soft-light)!important;
+    --game-backdrop-color:color-mix(in srgb,var(--appearance-ink) 24%,transparent)!important;
+    --game-backdrop-blur:3px!important;
+    --game-quiet-active-shadow:inset 1px 1px 3px var(--game-field-soft-dark),inset -1px -1px 3px var(--game-field-soft-light)!important;
+  }
+  html[data-game-appearance=glass] {
+    --game-button-surface:color-mix(in srgb,var(--appearance-surface) 30%,transparent)!important;
+    --game-button-line:color-mix(in srgb,var(--appearance-ink) 17%,transparent)!important;
+    --game-button-shadow:inset 0 1px 0 #ffffff50,0 1px 3px #304a5e08!important;
+    --game-button-hover-surface:color-mix(in srgb,var(--appearance-surface) 48%,transparent)!important;
+    --game-button-selected-surface:color-mix(in srgb,var(--appearance-accent) 9%,var(--appearance-input))!important;
+    --game-button-selected-line:var(--appearance-accent)!important;
+    --game-button-selected-shadow:inset 0 0 0 1px color-mix(in srgb,var(--appearance-accent) 14%,transparent)!important;
+    --game-button-active-shadow:var(--game-button-shadow)!important;
+    --game-button-disabled-surface:var(--game-button-surface)!important;
+    --game-button-disabled-ink:var(--appearance-ink)!important;
+    --game-button-disabled-line:var(--game-button-line)!important;
+    --game-button-disabled-shadow:var(--game-button-shadow)!important;
+    --game-button-disabled-opacity:.42!important;
+    --game-primary-shadow:inset 0 1px 0 #ffffff20,0 3px 8px #303a4014!important;
+    --game-primary-active-shadow:var(--game-primary-shadow)!important;
+    --game-busy-shadow:var(--game-primary-shadow)!important;
+    --game-busy-opacity:.42!important;
+    --game-segment-surface:color-mix(in srgb,var(--appearance-surface) 26%,transparent)!important;
+    --game-segment-shadow:none!important;
+    --game-segment-selected-surface:var(--appearance-accent)!important;
+    --game-segment-selected-ink:var(--appearance-on-accent)!important;
+    --game-segment-selected-shadow:0 2px 6px #33423d16!important;
+    --game-functional-surface:var(--appearance-functional-surface,color-mix(in srgb,var(--appearance-surface) 86%,transparent))!important;
+    --game-functional-line:var(--appearance-functional-line,color-mix(in srgb,#ffffff 34%,#405b7620))!important;
+    --game-functional-image:linear-gradient(145deg,#ffffff18,transparent 48%)!important;
+    --game-functional-shadow:var(--appearance-shadow)!important;
+    --game-toast-line:var(--game-functional-line)!important;
+    --game-toast-shadow:var(--game-functional-shadow)!important;
+    --game-backdrop-color:#273b4e26!important;
+    --game-backdrop-blur:4px!important;
+    --game-quiet-active-shadow:inset 0 1px 2px #4d59670a!important;
+  }
+
+  html[data-game-appearance] {
+    --game-compact-shadow:var(--game-button-shadow)!important;
+  }
+  html[data-game-appearance=soft] {
+    --game-compact-shadow:2px 2px 5px var(--game-field-soft-dark),-2px -2px 5px var(--game-field-soft-light)!important;
+  }
+
+  /* Text fields follow the final v33 specimen cascade, not the shared button
+     input role. No field gains specimen padding, font, width or height. */
+  html[data-game-appearance] {
+    --game-field-line:var(--appearance-line)!important;
+    --game-field-disabled-ink:var(--appearance-muted)!important;
+    --game-field-disabled-line:var(--appearance-line)!important;
+    --game-field-focus-offset:3px!important;
+    --game-field-error-focus-width:2px!important;
+    --game-field-error-focus-offset:3px!important;
+  }
+  html[data-game-appearance=paper] {
+    --game-field-surface:color-mix(in srgb,var(--appearance-surface) 98%,var(--appearance-ink))!important;
+    --game-field-shadow:inset 0 1px 2px color-mix(in srgb,var(--appearance-ink) 3%,transparent)!important;
+    --game-field-placeholder-opacity:.88!important;
+    --game-field-hover-line:color-mix(in srgb,var(--appearance-ink) 32%,var(--appearance-surface))!important;
+    --game-field-focus-shadow:var(--game-field-shadow),0 0 0 3px color-mix(in srgb,var(--appearance-accent) 20%,transparent)!important;
+    --game-field-disabled-surface:color-mix(in srgb,var(--appearance-ink) 4%,var(--appearance-surface))!important;
+    --game-field-disabled-shadow:none!important;
+    --game-field-error:#9d403f!important;
+    --game-field-error-shadow:inset 0 1px 2px color-mix(in srgb,var(--game-field-error) 5%,transparent)!important;
+    --game-field-error-focus-shadow:var(--game-field-error-shadow)!important;
+  }
+  html[data-game-appearance=soft] {
+    --game-field-soft-dark:color-mix(in srgb,var(--appearance-surface) 90%,var(--appearance-ink))!important;
+    --game-field-soft-light:color-mix(in srgb,var(--appearance-surface) 28%,#ffffff)!important;
+    --game-field-surface:var(--appearance-surface)!important;
+    --game-field-line:color-mix(in srgb,var(--appearance-line) 65%,var(--game-field-soft-light))!important;
+    --game-field-shadow:inset 2px 2px 5px var(--game-field-soft-dark),inset -2px -2px 5px var(--game-field-soft-light)!important;
+    --game-field-placeholder-opacity:.9!important;
+    --game-field-hover-line:color-mix(in srgb,var(--appearance-accent) 30%,var(--appearance-line))!important;
+    --game-field-focus-shadow:var(--game-field-shadow),0 0 0 3px color-mix(in srgb,var(--appearance-accent) 18%,transparent)!important;
+    --game-field-disabled-surface:color-mix(in srgb,var(--appearance-ink) 3%,var(--appearance-surface))!important;
+    --game-field-disabled-shadow:inset 1px 1px 3px var(--game-field-soft-dark),inset -1px -1px 3px var(--game-field-soft-light)!important;
+    --game-field-error:#98434a!important;
+    --game-field-error-shadow:var(--game-field-shadow),inset 0 0 0 1px color-mix(in srgb,var(--game-field-error) 18%,transparent)!important;
+    --game-field-error-focus-shadow:var(--game-field-error-shadow)!important;
+  }
+  html[data-game-appearance=glass] {
+    --game-field-surface:var(--appearance-input)!important;
+    --game-field-line:color-mix(in srgb,var(--appearance-ink) 22%,transparent)!important;
+    --game-field-shadow:inset 0 1px 2px #34495d0a,0 1px 0 #ffffff3d!important;
+    --game-field-placeholder-opacity:1!important;
+    --game-field-focus-offset:4px!important;
+    --game-field-focus-shadow:0 0 0 2px color-mix(in srgb,var(--appearance-accent) 12%,transparent)!important;
+    /* Upstream glass has no separate disabled/readonly field paint. */
+    --game-field-disabled-surface:var(--game-field-surface)!important;
+    --game-field-disabled-ink:var(--appearance-ink)!important;
+    --game-field-disabled-line:var(--game-field-line)!important;
+    --game-field-disabled-shadow:var(--game-field-shadow)!important;
+    --game-field-error:#a34448!important;
+    --game-field-error-shadow:inset 0 1px 2px #34495d0a,0 0 0 1px color-mix(in srgb,var(--game-field-error) 20%,transparent)!important;
+    --game-field-error-focus-shadow:0 0 0 2px color-mix(in srgb,var(--game-field-error) 14%,transparent)!important;
+    --game-field-error-focus-width:1px!important;
+    --game-field-error-focus-offset:1px!important;
+  }
+
+  html[data-game-appearance] :where(body,.game-screen .shell:not(.lobby-shell),.lobby-shell,.practice-hub-shell,.flying-page,.drawing-page,.p414-shell,.yg-shell,.pg-stage,.pk-shell,.pk-catalog-shell,.yousei-catalog,.wordbank-page,[id=hyakki-digital-root]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    background-color:transparent!important;
+    background-image:none!important;
+    color:var(--appearance-ink)!important;
+  }
+
+  html[data-game-appearance] :where(.game-screen,.army-screen,.flying-body,.drawing-body,.p414-body,.parks-game-body,.hyakki-digital-body,.lobby-shell,.practice-hub-shell,.wordbank-page):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    --green:var(--appearance-accent)!important;
+    --ink:var(--appearance-ink)!important;
+    --muted:var(--appearance-muted)!important;
+    --line:var(--game-material-line)!important;
+    --paper:var(--game-material-surface)!important;
+  }
+
+  html[data-game-appearance] :where(.lobby-game,.hub-game,.recent-section,.wordbank-section,.wordbank-preview:not(:empty),.wordbank-import-preview:not(:empty)):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    background-color:var(--game-material-surface)!important;
+    background-image:var(--game-material-texture)!important;
+    color:var(--appearance-ink)!important;
+    border-color:var(--game-material-line)!important;
+    box-shadow:var(--game-material-shadow)!important;
+  }
+
+  html[data-game-appearance] :where(.lobby-game:hover,.lobby-game[aria-pressed=true]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    background-color:var(--game-material-hover)!important;
+    border-color:var(--appearance-accent)!important;
+  }
+
+  html[data-game-appearance] :where(.lobby-game[aria-pressed=true]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    box-shadow:inset 0 0 0 1px var(--appearance-accent)!important;
+  }
+
+  html[data-game-appearance] :where(.hub-return:hover,.lobby-shell .practice-hub-link:hover):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    background-color:var(--game-material-hover)!important;
+  }
+
+  html[data-game-appearance] :where(.brand,.brand strong,.hub-body h3,.lobby-game strong,.wordbank-heading h1,.wordbank-section h2,.wordbank-section h3,.site-header,.flying-header,.drawing-header,.p414-header,.yg-header,.pg-header,.pk-header,.room-waiting,.flying-waiting,.p414-waiting,.pk-waiting,.pg-rotate):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    color:var(--appearance-ink)!important;
+  }
+
+  html[data-game-appearance] :where(.brand-mark i):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    background-color:var(--appearance-accent)!important;
+    color:var(--appearance-on-accent)!important;
+  }
+
+  html[data-game-appearance] :where(.hub-return,.hub-links a,.quiet-link,.nickname-editor,.shell-more>summary,[id=hy-login],[id=hy-reauth]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    color:var(--appearance-accent)!important;
+  }
+
+  html[data-game-appearance] :where(.hub-intro>p,.hub-toolbar h2>span,.hub-search,.hub-summary,.hub-empty,.lobby-game small,.lobby-welcome p,.recent-room-label span,.wordbank-note,.wordbank-page .eyebrow,.room-waiting p,.flying-waiting p,.p414-waiting p,.pk-waiting p,.app-install-intro,.app-install-note,.app-install-steps,.confirm-dialog p,.room-rule-note,.color-assist-option,.color-assist-option span,.sound-settings,.sound-settings span,.activity-note,.room-activity-list time,.room-activity-list li span,.activity-pages span,.flying-stage,.flying-clock,.flying-side-note,.flying-footer,.drawing-stage-bar>span,.drawing-footer,.drawing-paint-status,.pg-brand small,.yg-brand span,[id=room-options-note],[id=sound-preview-status],[id=practice-save-note]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    color:var(--appearance-muted)!important;
+  }
+
+  /* Existing reading chrome present in the frozen product scenes. The
+     current-turn accent is restored by the more specific state rules below;
+     empty seats keep their outlined empty space and no raised surface. */
+  html[data-game-appearance] :where(.player-seat:not(.empty),.drawing-player,.sort-controls,.round-summary strong,.spectator-list):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    background-color:var(--game-material-surface)!important;
+    background-image:var(--game-material-texture)!important;
+    color:var(--appearance-ink)!important;
+    border-color:var(--game-material-line)!important;
+    box-shadow:var(--game-compact-shadow)!important;
+  }
+  html[data-game-appearance] :where(.player-seat.empty):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    background:transparent!important;
+    color:var(--appearance-muted)!important;
+    border-color:var(--game-material-line)!important;
+    box-shadow:none!important;
+  }
+  html[data-game-appearance] :where(.player-seat.current,.drawing-player.current):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    background-color:var(--game-button-selected-surface)!important;
+    background-image:none!important;
+    border-color:var(--appearance-accent)!important;
+    box-shadow:var(--game-button-selected-shadow)!important;
+  }
+  html[data-game-appearance] :where(.hub-empty):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    background-color:var(--game-material-surface)!important;
+    color:var(--appearance-muted)!important;
+    border-color:var(--game-material-line)!important;
+    box-shadow:none!important;
+  }
+  html[data-game-appearance] :where(.dialog-tip):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    background-color:var(--game-material-input)!important;
+    color:var(--appearance-ink)!important;
+    border-color:var(--game-material-line)!important;
+    box-shadow:var(--game-field-shadow)!important;
+  }
+
+  /* Game stages and text controls get a stronger translucent wash without
+     backdrop filtering: board/canvas coordinates and their ancestors stay put. */
+  html[data-game-appearance] :where(.game-table,.army-table,.army-board-frame,.flying-board-panel,.drawing-canvas-panel,.p414-table,.yg-table,.pg-table,.pk-board):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    background-color:var(--game-material-overlay)!important;
+    background-image:var(--game-material-texture)!important;
+    border-color:var(--game-material-line)!important;
+    box-shadow:var(--game-material-inset)!important;
+  }
+
+  html[data-game-appearance] :where(.flying-control-panel,.drawing-card,.drawing-tools,.drawing-guess-form,.drawing-recovery,.room-result,.flying-result,.p414-recovery,.hy-connection,.yg-readiness>span,.yg-candidates-guide,.pk-personal,.room-voice):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    background-color:var(--game-material-overlay)!important;
+    background-image:var(--game-material-texture)!important;
+    color:var(--appearance-ink)!important;
+    border-color:var(--game-material-line)!important;
+    box-shadow:var(--game-material-shadow)!important;
+  }
+
+  /* This existing popup overlaps canvas status text. Keep its local reading
+     surface opaque; paint chips and all popup geometry remain game-owned. */
+  html[data-game-appearance] :where([id=drawing-tool-panel]):not(:where(.appearance-dialog,.appearance-dialog *)) {
+    background-color:var(--appearance-surface)!important;
+    color:var(--appearance-ink)!important;
+    border-color:var(--game-material-line)!important;
+    box-shadow:var(--game-material-shadow)!important;
+  }
+
+  html[data-game-appearance] :where(dialog,.room-chat,.room-chat-notice,.yg-chat-decision,.shell-more-menu,.nickname-editor>div):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    background-color:var(--game-functional-surface)!important;
+    background-image:var(--game-functional-image)!important;
+    color:var(--appearance-ink)!important;
+    border-color:var(--game-functional-line)!important;
+    border-radius:var(--appearance-radius)!important;
+    box-shadow:var(--game-functional-shadow)!important;
+    -webkit-backdrop-filter:none!important;
+    backdrop-filter:none!important;
+  }
+
+  html[data-game-appearance] :where(.toast):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    background-color:var(--game-functional-surface)!important;
+    background-image:var(--game-functional-image)!important;
+    color:var(--appearance-ink)!important;
+    border-color:var(--game-toast-line)!important;
+    border-radius:var(--appearance-radius)!important;
+    box-shadow:var(--game-toast-shadow)!important;
+  }
+
+  html[data-game-appearance=glass] :where(dialog,.room-chat,.room-chat-notice,.yg-chat-decision,.shell-more-menu,.nickname-editor>div,.toast):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    border-bottom-color:color-mix(in srgb,var(--appearance-ink) 10%,transparent)!important;
+  }
+
+  html[data-game-appearance] :where(.game-settings-dialog .dialog-heading,.p414-dialog .dialog-heading,.yg-dialog .dialog-heading,.yg-decision-actions,.pg-dialog>header,.pk-dialog .dialog-heading,.hy-dialog-footer,.drawing-dialog .dialog-heading):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    background-color:var(--game-functional-surface)!important;
+    color:var(--appearance-ink)!important;
+  }
+
+  html[data-game-appearance] :where(.game-settings-dialog[open] section):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    background-color:var(--game-material-surface)!important;
+    color:var(--appearance-ink)!important;
+    border-color:var(--game-material-line)!important;
+  }
+
+  html[data-game-appearance] :where(dialog h2,dialog h3,dialog label,.chat-heading h2,.chat-message-meta strong,.chat-notice-name):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    color:var(--appearance-ink)!important;
+  }
+
+  html[data-game-appearance] :where(dialog .theme-note,dialog .room-menu-actions>p,.chat-heading p,.chat-history-tools span,.chat-message-meta,.chat-message-meta time,.chat-empty,.chat-pending p,.chat-pending-actions,.chat-composer-bottom span,.chat-status-row,.chat-alerts-bar>span,.chat-notice-text):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    color:var(--appearance-muted)!important;
+  }
+
+  html[data-game-appearance] :where(.room-chat):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    --muted:var(--appearance-muted)!important;
+    --line:var(--game-material-line)!important;
+  }
+
+  html[data-game-appearance] :where(.chat-message p):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    background-color:var(--game-material-input)!important;
+    color:var(--appearance-ink)!important;
+  }
+
+  html[data-game-appearance] :where(.chat-message.mine p,.room-chat-own-notice):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    background-color:var(--game-material-hover)!important;
+    color:var(--appearance-ink)!important;
+  }
+
+  /* Explicit existing action consumers; semantic game objects and the shared
+     editor remain excluded. All dimensions and typography stay game-owned. */
+  html[data-game-appearance] :where(.room-toolbar-action,.quiet-button,.secondary-button,.text-button,.room-exit,.practice-exit,.sort-button,.board-view-button,.sound-toggle,[id=sound-toggle],.chat-toggle,.app-shell-button,.game-settings-toggle,.flying-button,.p414-close,.pk-link-button,.close-button,.chat-close,.chat-latest,.chat-alerts-toggle,.chat-notice-close,.room-voice-talk,.room-voice-leave,.room-voice-listen,.room-voice-indicator,.pg-choice:not(.pg-choice-card),.pg-payments>button,.pg-camping>button,[id=pg-hikers]>button[data-hiker],.pg-canteen-row>button,.pg-passion>button,.pg-footer [id=pg-recovery]>button,[id=p414-inspect],[id=p414-clear],[id=p414-invite],.yg-seat,.yg-pile,.hy-benefit-objects>button,.hy-material-good,.hy-material-player,[id=hy-connection]>div>button,[id=hy-short-actions] button,.app-install-dialog>button,.flying-gate>button,.flying-result>button,.flying-header-actions .room-toolbar-actions>button,:where(.flying-actions,.flying-recovery,.flying-header-actions,.flying-roster-heading,.drawing-header-actions,.drawing-tool-heading,.drawing-tool-row,.drawing-actions,.drawing-recovery,.drawing-guess-row,.p414-actions,.yg-table-actions,.hy-work-actions,.hy-inline-secondary,.pg-header nav,.pg-commit,.pg-source-tabs,[id=pg-market-tabs],[id=pg-personal-tabs],.game-settings-controls,.room-menu-actions,.sound-settings,.dialog-heading,.confirm-actions,.yg-dialog-actions,.pg-dialog-actions,.p414-dialog-actions)>:where(button,a),dialog button):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):not(:where(.drawing-color-chip,.p414-response,.exit-confirm,.theme-choice,.pk-card,.yousei-card,.hyakki-card,.hy-source-reader,.yg-candidate,.yg-hand-card,.hy-material-card,.yg-good-candidate,.pg-choice-card,.p414-card,.army-piece,.army-cell,.tile)) {
+    background-color:var(--game-button-surface)!important;
+    background-image:var(--game-button-image)!important;
+    color:var(--appearance-ink)!important;
+    border-color:var(--game-button-line)!important;
+    border-radius:var(--appearance-radius)!important;
+    box-shadow:var(--game-button-shadow)!important;
+  }
+
+  @media (hover:hover) {
+  html[data-game-appearance] :where(.room-toolbar-action,.quiet-button,.secondary-button,.text-button,.room-exit,.practice-exit,.sort-button,.board-view-button,.sound-toggle,[id=sound-toggle],.chat-toggle,.app-shell-button,.game-settings-toggle,.flying-button,.p414-close,.pk-link-button,.close-button,.chat-close,.chat-latest,.chat-alerts-toggle,.chat-notice-close,.room-voice-talk,.room-voice-leave,.room-voice-listen,.room-voice-indicator,.pg-choice:not(.pg-choice-card),.pg-payments>button,.pg-camping>button,[id=pg-hikers]>button[data-hiker],.pg-canteen-row>button,.pg-passion>button,.pg-footer [id=pg-recovery]>button,[id=p414-inspect],[id=p414-clear],[id=p414-invite],.yg-seat,.yg-pile,.hy-benefit-objects>button,.hy-material-good,.hy-material-player,[id=hy-connection]>div>button,[id=hy-short-actions] button,.app-install-dialog>button,.flying-gate>button,.flying-result>button,.flying-header-actions .room-toolbar-actions>button,:where(.flying-actions,.flying-recovery,.flying-header-actions,.flying-roster-heading,.drawing-header-actions,.drawing-tool-heading,.drawing-tool-row,.drawing-actions,.drawing-recovery,.drawing-guess-row,.p414-actions,.yg-table-actions,.hy-work-actions,.hy-inline-secondary,.pg-header nav,.pg-commit,.pg-source-tabs,[id=pg-market-tabs],[id=pg-personal-tabs],.game-settings-controls,.room-menu-actions,.sound-settings,.dialog-heading,.confirm-actions,.yg-dialog-actions,.pg-dialog-actions,.p414-dialog-actions)>:where(button,a),dialog button):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):not(:where(.drawing-color-chip,.p414-response,.exit-confirm,.theme-choice,.pk-card,.yousei-card,.hyakki-card,.hy-source-reader,.yg-candidate,.yg-hand-card,.hy-material-card,.yg-good-candidate,.pg-choice-card,.p414-card,.army-piece,.army-cell,.tile)):not(:where(.primary-button,.hub-primary,.flying-primary,.p414-primary,.yg-primary,.hy-primary,.hy-primary-action,.hy-inline-actions button:not([data-hy-action=cancel-exchange]),.pg-primary,.pk-primary,.main-action,[id=commit],[id=start-room],.yg-table-actions button[data-hy-action=peek],.yg-table-actions button[data-hy-action=decision],[data-lobby-auth=guest] [id=selected-practice],.quiet-button,.text-button,.chat-close,.close-button,.p414-close,.chat-notice-close,.catalog-close,[data-catalog-close],dialog header>button[data-close],.dialog-heading>button[data-close],[id=pg-setup-close],[id=drawing-settings-close],[id=p414-invite],[id=p414-clear],.shell-more-menu .app-shell-button,.shell-more-menu [id=back-to-agora],.hy-inline-secondary>button,.flying-plane-button,[id=pg-market-tabs] button[data-market],[id=pg-personal-tabs] button[data-personal])):hover:where(:not(:disabled)) {
+    background-color:var(--game-button-hover-surface)!important;
+    border-color:var(--game-button-hover-line)!important;
+  }
+  }
+  html[data-game-appearance] :where(.room-toolbar-action,.quiet-button,.secondary-button,.text-button,.room-exit,.practice-exit,.sort-button,.board-view-button,.sound-toggle,[id=sound-toggle],.chat-toggle,.app-shell-button,.game-settings-toggle,.flying-button,.p414-close,.pk-link-button,.close-button,.chat-close,.chat-latest,.chat-alerts-toggle,.chat-notice-close,.room-voice-talk,.room-voice-leave,.room-voice-listen,.room-voice-indicator,.pg-choice:not(.pg-choice-card),.pg-payments>button,.pg-camping>button,[id=pg-hikers]>button[data-hiker],.pg-canteen-row>button,.pg-passion>button,.pg-footer [id=pg-recovery]>button,[id=p414-inspect],[id=p414-clear],[id=p414-invite],.yg-seat,.yg-pile,.hy-benefit-objects>button,.hy-material-good,.hy-material-player,[id=hy-connection]>div>button,[id=hy-short-actions] button,.app-install-dialog>button,.flying-gate>button,.flying-result>button,.flying-header-actions .room-toolbar-actions>button,:where(.flying-actions,.flying-recovery,.flying-header-actions,.flying-roster-heading,.drawing-header-actions,.drawing-tool-heading,.drawing-tool-row,.drawing-actions,.drawing-recovery,.drawing-guess-row,.p414-actions,.yg-table-actions,.hy-work-actions,.hy-inline-secondary,.pg-header nav,.pg-commit,.pg-source-tabs,[id=pg-market-tabs],[id=pg-personal-tabs],.game-settings-controls,.room-menu-actions,.sound-settings,.dialog-heading,.confirm-actions,.yg-dialog-actions,.pg-dialog-actions,.p414-dialog-actions)>:where(button,a),dialog button):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):not(:where(.drawing-color-chip,.p414-response,.exit-confirm,.theme-choice,.pk-card,.yousei-card,.hyakki-card,.hy-source-reader,.yg-candidate,.yg-hand-card,.hy-material-card,.yg-good-candidate,.pg-choice-card,.p414-card,.army-piece,.army-cell,.tile)):not(:where(.primary-button,.hub-primary,.flying-primary,.p414-primary,.yg-primary,.hy-primary,.hy-primary-action,.hy-inline-actions button:not([data-hy-action=cancel-exchange]),.pg-primary,.pk-primary,.main-action,[id=commit],[id=start-room],.yg-table-actions button[data-hy-action=peek],.yg-table-actions button[data-hy-action=decision],[data-lobby-auth=guest] [id=selected-practice],.quiet-button,.text-button,.chat-close,.close-button,.p414-close,.chat-notice-close,.catalog-close,[data-catalog-close],dialog header>button[data-close],.dialog-heading>button[data-close],[id=pg-setup-close],[id=drawing-settings-close],[id=p414-invite],[id=p414-clear],.shell-more-menu .app-shell-button,.shell-more-menu [id=back-to-agora],.hy-inline-secondary>button,.flying-plane-button,[id=pg-market-tabs] button[data-market],[id=pg-personal-tabs] button[data-personal])):active:where(:not(:disabled)):where(:not([aria-busy=true])) {
+    box-shadow:var(--game-button-active-shadow)!important;
+  }
+
+  html[data-game-appearance=paper] :where(.room-toolbar-action,.quiet-button,.secondary-button,.text-button,.room-exit,.practice-exit,.sort-button,.board-view-button,.sound-toggle,[id=sound-toggle],.chat-toggle,.app-shell-button,.game-settings-toggle,.flying-button,.p414-close,.pk-link-button,.close-button,.chat-close,.chat-latest,.chat-alerts-toggle,.chat-notice-close,.room-voice-talk,.room-voice-leave,.room-voice-listen,.room-voice-indicator,.pg-choice:not(.pg-choice-card),.pg-payments>button,.pg-camping>button,[id=pg-hikers]>button[data-hiker],.pg-canteen-row>button,.pg-passion>button,.pg-footer [id=pg-recovery]>button,[id=p414-inspect],[id=p414-clear],[id=p414-invite],.yg-seat,.yg-pile,.hy-benefit-objects>button,.hy-material-good,.hy-material-player,[id=hy-connection]>div>button,[id=hy-short-actions] button,.app-install-dialog>button,.flying-gate>button,.flying-result>button,.flying-header-actions .room-toolbar-actions>button,:where(.flying-actions,.flying-recovery,.flying-header-actions,.flying-roster-heading,.drawing-header-actions,.drawing-tool-heading,.drawing-tool-row,.drawing-actions,.drawing-recovery,.drawing-guess-row,.p414-actions,.yg-table-actions,.hy-work-actions,.hy-inline-secondary,.pg-header nav,.pg-commit,.pg-source-tabs,[id=pg-market-tabs],[id=pg-personal-tabs],.game-settings-controls,.room-menu-actions,.sound-settings,.dialog-heading,.confirm-actions,.yg-dialog-actions,.pg-dialog-actions,.p414-dialog-actions)>:where(button,a),dialog button):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):not(:where(.drawing-color-chip,.p414-response,.exit-confirm,.theme-choice,.pk-card,.yousei-card,.hyakki-card,.hy-source-reader,.yg-candidate,.yg-hand-card,.hy-material-card,.yg-good-candidate,.pg-choice-card,.p414-card,.army-piece,.army-cell,.tile)):not(:where(.primary-button,.hub-primary,.flying-primary,.p414-primary,.yg-primary,.hy-primary,.hy-primary-action,.hy-inline-actions button:not([data-hy-action=cancel-exchange]),.pg-primary,.pk-primary,.main-action,[id=commit],[id=start-room],.yg-table-actions button[data-hy-action=peek],.yg-table-actions button[data-hy-action=decision],[data-lobby-auth=guest] [id=selected-practice],.quiet-button,.text-button,.chat-close,.close-button,.p414-close,.chat-notice-close,.catalog-close,[data-catalog-close],dialog header>button[data-close],.dialog-heading>button[data-close],[id=pg-setup-close],[id=drawing-settings-close],[id=p414-invite],[id=p414-clear],.shell-more-menu .app-shell-button,.shell-more-menu [id=back-to-agora],.hy-inline-secondary>button,.flying-plane-button,[id=pg-market-tabs] button[data-market],[id=pg-personal-tabs] button[data-personal])):active:where(:not(:disabled)):where(:not([aria-busy=true])) {
+    background-color:var(--game-button-active-surface)!important;
+    border-color:var(--game-button-active-line)!important;
+  }
+
+  /* Only these real toggle controls use the secondary pressed specimen.
+     Drawing tool selections, plane side stripes and card choices stay local. */
+  html[data-game-appearance] :where(.sound-toggle,[id=sound-toggle],.chat-alerts-toggle,.pg-choice:not(.pg-choice-card),.pg-payments>button,[id=pg-hikers]>button[data-hiker],.yg-seat,.yg-pile,.hy-benefit-objects>button):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *))[aria-pressed=true]:where(:not(:disabled)) {
+    background-color:var(--game-button-selected-surface)!important;
+    background-image:none!important;
+    color:var(--game-button-selected-ink)!important;
+    border-color:var(--game-button-selected-line)!important;
+    box-shadow:var(--game-button-selected-shadow)!important;
+  }
+
+  html[data-game-appearance=paper] :where(.sound-toggle,[id=sound-toggle],.chat-alerts-toggle,.pg-choice:not(.pg-choice-card),.pg-payments>button,[id=pg-hikers]>button[data-hiker],.yg-seat,.yg-pile,.hy-benefit-objects>button):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *))[aria-pressed=true]:active:where(:not(:disabled)) {
+    box-shadow:var(--game-button-active-shadow)!important;
+  }
+
+  @media (hover:hover) {
+  html[data-game-appearance=glass] :where(.sound-toggle,[id=sound-toggle],.chat-alerts-toggle,.pg-choice:not(.pg-choice-card),.pg-payments>button,[id=pg-hikers]>button[data-hiker],.yg-seat,.yg-pile,.hy-benefit-objects>button):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *))[aria-pressed=true]:hover:where(:not(:disabled)) {
+    background-color:color-mix(in srgb,var(--appearance-accent) 12%,var(--appearance-input))!important;
+  }
+  }
+
+  html[data-game-appearance] :where(.hy-material-good,.hy-material-player).is-selected:not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):where(:not(:disabled)) {
+    background-color:var(--game-button-selected-surface)!important;
+    background-image:none!important;
+    color:var(--game-button-selected-ink)!important;
+    border-color:var(--game-button-selected-line)!important;
+    box-shadow:var(--game-button-selected-shadow)!important;
+  }
+  html[data-game-appearance=paper] :where(.hy-material-good,.hy-material-player).is-selected:not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):active:where(:not(:disabled)) {
+    box-shadow:var(--game-button-active-shadow)!important;
+  }
+
+  /* PARKS keeps its actual aria-pressed buttons and responsive native select;
+     no moving indicator, tab role or source specimen geometry is introduced. */
+  html[data-game-appearance] :where([id=pg-market-tabs],[id=pg-personal-tabs]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    background-color:var(--game-segment-surface)!important;
+    border-color:var(--appearance-line)!important;
+    border-radius:var(--appearance-radius)!important;
+    box-shadow:var(--game-segment-shadow)!important;
+  }
+  html[data-game-appearance] :where([id=pg-market-tabs] button[data-market],[id=pg-personal-tabs] button[data-personal]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    background:transparent!important;
+    color:var(--appearance-muted)!important;
+    border-color:transparent!important;
+    box-shadow:none!important;
+  }
+  html[data-game-appearance] :where([id=pg-market-tabs] button[data-market],[id=pg-personal-tabs] button[data-personal]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *))[aria-pressed=true]:where(:not(:disabled)) {
+    background-color:var(--game-segment-selected-surface)!important;
+    color:var(--game-segment-selected-ink)!important;
+    border-color:var(--appearance-accent)!important;
+    box-shadow:var(--game-segment-selected-shadow)!important;
+  }
+
+  @media (hover:hover) {
+  html[data-game-appearance]:where([data-game-appearance=paper],[data-game-appearance=soft]) :where([id=pg-market-tabs] button[data-market],[id=pg-personal-tabs] button[data-personal]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):hover:where(:not(:disabled)):where(:not([aria-pressed=true])) {
+    background-color:var(--game-quiet-hover)!important;
+    color:var(--appearance-accent)!important;
+  }
+  }
+  html[data-game-appearance]:where([data-game-appearance=paper],[data-game-appearance=soft]) :where([id=pg-market-tabs] button[data-market],[id=pg-personal-tabs] button[data-personal]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):active:where(:not(:disabled)):where(:not([aria-pressed=true])) {
+    background-color:var(--game-button-selected-surface)!important;
+    box-shadow:var(--game-segment-active-shadow)!important;
+  }
+
+  /* Plane action rows retain their existing semantic paint and side stripe. */
+  html[data-game-appearance] :where(.flying-plane-button):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    background-color:var(--game-material-input)!important;
+    color:var(--appearance-ink)!important;
+    border-color:var(--game-material-line)!important;
+    box-shadow:var(--game-material-inset)!important;
+  }
+
+  /* The real palette chip and 414 response are controls around semantic
+     paint. Preserve ::before/--paint-color and the original yellow response
+     pigment; material only reaches the button shell, never its inner object. */
+  html[data-game-appearance] :where(.drawing-color-chip):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    background-color:var(--game-button-surface)!important;
+    background-image:var(--game-button-image)!important;
+    color:var(--appearance-ink)!important;
+    border-color:var(--game-button-line)!important;
+    border-radius:var(--appearance-radius)!important;
+    box-shadow:var(--game-button-shadow)!important;
+  }
+  html[data-game-appearance] :where(.drawing-color-chip):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *))[aria-pressed=true]:where(:not(:disabled)) {
+    background-color:var(--game-button-selected-surface)!important;
+    background-image:none!important;
+    border-color:var(--game-button-selected-line)!important;
+    box-shadow:var(--game-button-selected-shadow)!important;
+    outline-color:var(--appearance-accent)!important;
+  }
+  html[data-game-appearance] :where(.drawing-color-chip):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):active:where(:not(:disabled)) {
+    box-shadow:var(--game-button-active-shadow)!important;
+  }
+  html[data-game-appearance] :where(.p414-response):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    border-radius:var(--appearance-radius)!important;
+    box-shadow:var(--game-button-shadow)!important;
+  }
+  html[data-game-appearance] :where(.p414-response):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):not(:disabled) {
+    background-color:#f1cf70!important;
+    background-image:none!important;
+    color:#382907!important;
+    border-color:#ffe5a3!important;
+  }
+  html[data-game-appearance] :where(.p414-response):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):active:where(:not(:disabled)) {
+    box-shadow:var(--game-button-active-shadow)!important;
+  }
+  html[data-game-appearance] :where(.drawing-color-chip,.p414-response):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):disabled {
+    background-color:var(--game-button-disabled-surface)!important;
+    background-image:none!important;
+    color:var(--game-button-disabled-ink)!important;
+    border-color:var(--game-button-disabled-line)!important;
+    box-shadow:var(--game-button-disabled-shadow)!important;
+    opacity:var(--game-button-disabled-opacity)!important;
+  }
+
+  /* One complete text-field consumer list owns normal, placeholder, hover,
+     focus, disabled/readonly and authored validation paint. Native select
+     popups, semantic objects and the canonical appearance menu stay owned. */
+  html[data-game-appearance] :where(.lobby-shell input,.lobby-shell select,.hub-search input,.wordbank-page input,.wordbank-page select,.wordbank-page textarea,dialog input,dialog select,dialog textarea,.drawing-guess-form input,.drawing-tool-row select,.yousei-catalog__filters input,.yousei-catalog__filters select,.pk-catalog-tools input,.pk-catalog-tools select,.chat-form textarea,[id=pg-personal-select],[id=hy-action-limit],[id=hy-goods-limit]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *,.tile,.tile *,.army-piece,.army-piece *,.p414-card,.p414-card *,.yousei-card,.yousei-card *,.hyakki-card,.hyakki-card *,.pk-card,.pk-card *)):not(:where([type=checkbox],[type=radio],[type=range],[type=color],[type=hidden],[type=button],[type=submit],[type=reset],[type=image],[type=file])) {
+    background-color:var(--game-field-surface)!important;
+    color:var(--appearance-ink)!important;
+    border-color:var(--game-field-line)!important;
+    border-radius:var(--appearance-radius)!important;
+    box-shadow:var(--game-field-shadow)!important;
+  }
+
+  html[data-game-appearance] :where(.lobby-shell input,.lobby-shell select,.hub-search input,.wordbank-page input,.wordbank-page select,.wordbank-page textarea,dialog input,dialog select,dialog textarea,.drawing-guess-form input,.drawing-tool-row select,.yousei-catalog__filters input,.yousei-catalog__filters select,.pk-catalog-tools input,.pk-catalog-tools select,.chat-form textarea,[id=pg-personal-select],[id=hy-action-limit],[id=hy-goods-limit]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *,.tile,.tile *,.army-piece,.army-piece *,.p414-card,.p414-card *,.yousei-card,.yousei-card *,.hyakki-card,.hyakki-card *,.pk-card,.pk-card *)):not(:where([type=checkbox],[type=radio],[type=range],[type=color],[type=hidden],[type=button],[type=submit],[type=reset],[type=image],[type=file]))::placeholder {
+    color:var(--appearance-muted)!important;
+    opacity:var(--game-field-placeholder-opacity)!important;
+  }
+
+  /* v33 pointer-hover border wins alongside focus; the accent outline/ring
+     remains. Keyboard focus without pointer hover uses the accent border. */
+  html[data-game-appearance]:where([data-game-appearance=paper],[data-game-appearance=soft]) :where(.lobby-shell input,.lobby-shell select,.hub-search input,.wordbank-page input,.wordbank-page select,.wordbank-page textarea,dialog input,dialog select,dialog textarea,.drawing-guess-form input,.drawing-tool-row select,.yousei-catalog__filters input,.yousei-catalog__filters select,.pk-catalog-tools input,.pk-catalog-tools select,.chat-form textarea,[id=pg-personal-select],[id=hy-action-limit],[id=hy-goods-limit]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *,.tile,.tile *,.army-piece,.army-piece *,.p414-card,.p414-card *,.yousei-card,.yousei-card *,.hyakki-card,.hyakki-card *,.pk-card,.pk-card *)):not(:where([type=checkbox],[type=radio],[type=range],[type=color],[type=hidden],[type=button],[type=submit],[type=reset],[type=image],[type=file])):hover:not(:disabled):not([aria-invalid=true]):where(:not([readonly])) {
+    border-color:var(--game-field-hover-line)!important;
+  }
+
+  html[data-game-appearance] :where(.lobby-shell input,.lobby-shell select,.hub-search input,.wordbank-page input,.wordbank-page select,.wordbank-page textarea,dialog input,dialog select,dialog textarea,.drawing-guess-form input,.drawing-tool-row select,.yousei-catalog__filters input,.yousei-catalog__filters select,.pk-catalog-tools input,.pk-catalog-tools select,.chat-form textarea,[id=pg-personal-select],[id=hy-action-limit],[id=hy-goods-limit]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *,.tile,.tile *,.army-piece,.army-piece *,.p414-card,.p414-card *,.yousei-card,.yousei-card *,.hyakki-card,.hyakki-card *,.pk-card,.pk-card *)):not(:where([type=checkbox],[type=radio],[type=range],[type=color],[type=hidden],[type=button],[type=submit],[type=reset],[type=image],[type=file])):focus-visible {
+    outline:2px solid var(--appearance-accent)!important;
+    outline-offset:var(--game-field-focus-offset)!important;
+    border-color:var(--appearance-accent)!important;
+    box-shadow:var(--game-field-focus-shadow)!important;
+  }
+
+  html[data-game-appearance] :where(.lobby-shell input,.lobby-shell select,.hub-search input,.wordbank-page input,.wordbank-page select,.wordbank-page textarea,dialog input,dialog select,dialog textarea,.drawing-guess-form input,.drawing-tool-row select,.yousei-catalog__filters input,.yousei-catalog__filters select,.pk-catalog-tools input,.pk-catalog-tools select,.chat-form textarea,[id=pg-personal-select],[id=hy-action-limit],[id=hy-goods-limit]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *,.tile,.tile *,.army-piece,.army-piece *,.p414-card,.p414-card *,.yousei-card,.yousei-card *,.hyakki-card,.hyakki-card *,.pk-card,.pk-card *)):not(:where([type=checkbox],[type=radio],[type=range],[type=color],[type=hidden],[type=button],[type=submit],[type=reset],[type=image],[type=file])):is(:disabled,[readonly]) {
+    background-color:var(--game-field-disabled-surface)!important;
+    color:var(--game-field-disabled-ink)!important;
+    border-color:var(--game-field-disabled-line)!important;
+    box-shadow:var(--game-field-disabled-shadow)!important;
+  }
+
+  html[data-game-appearance] :where(.lobby-shell input,.lobby-shell select,.hub-search input,.wordbank-page input,.wordbank-page select,.wordbank-page textarea,dialog input,dialog select,dialog textarea,.drawing-guess-form input,.drawing-tool-row select,.yousei-catalog__filters input,.yousei-catalog__filters select,.pk-catalog-tools input,.pk-catalog-tools select,.chat-form textarea,[id=pg-personal-select],[id=hy-action-limit],[id=hy-goods-limit]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *,.tile,.tile *,.army-piece,.army-piece *,.p414-card,.p414-card *,.yousei-card,.yousei-card *,.hyakki-card,.hyakki-card *,.pk-card,.pk-card *)):not(:where([type=checkbox],[type=radio],[type=range],[type=color],[type=hidden],[type=button],[type=submit],[type=reset],[type=image],[type=file]))[aria-invalid=true] {
+    border-color:var(--game-field-error)!important;
+    outline:1px solid var(--game-field-error)!important;
+    outline-offset:1px!important;
+    box-shadow:var(--game-field-error-shadow)!important;
+  }
+
+  html[data-game-appearance] :where(.lobby-shell input,.lobby-shell select,.hub-search input,.wordbank-page input,.wordbank-page select,.wordbank-page textarea,dialog input,dialog select,dialog textarea,.drawing-guess-form input,.drawing-tool-row select,.yousei-catalog__filters input,.yousei-catalog__filters select,.pk-catalog-tools input,.pk-catalog-tools select,.chat-form textarea,[id=pg-personal-select],[id=hy-action-limit],[id=hy-goods-limit]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *,.tile,.tile *,.army-piece,.army-piece *,.p414-card,.p414-card *,.yousei-card,.yousei-card *,.hyakki-card,.hyakki-card *,.pk-card,.pk-card *)):not(:where([type=checkbox],[type=radio],[type=range],[type=color],[type=hidden],[type=button],[type=submit],[type=reset],[type=image],[type=file]))[aria-invalid=true]:focus-visible {
+    outline-width:var(--game-field-error-focus-width)!important;
+    outline-offset:var(--game-field-error-focus-offset)!important;
+    box-shadow:var(--game-field-error-focus-shadow)!important;
+  }
+
+  html[data-game-appearance] :where(input,select,textarea):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):where([type=checkbox],[type=radio],[type=range]) {
+    accent-color:var(--appearance-accent)!important;
+  }
+
+
+  /* The existing native choices retain their UA shape and hit area; only
+     the specimen's checked/focus/disabled pigment and local relief are mapped. */
+  html[data-game-appearance]:where([data-game-appearance=paper],[data-game-appearance=soft]) :where([id=tile-color-assist],[id=create-parks-camping],[id=p414-hand-overlap]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    box-shadow:var(--game-choice-shadow)!important;
+  }
+  html[data-game-appearance]:where([data-game-appearance=paper],[data-game-appearance=soft]) :where([id=tile-color-assist],[id=create-parks-camping],[id=p414-hand-overlap]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):checked {
+    box-shadow:var(--game-choice-checked-shadow)!important;
+  }
+  html[data-game-appearance] :where([id=tile-color-assist],[id=create-parks-camping],[id=p414-hand-overlap]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):focus-visible {
+    outline:2px solid var(--appearance-accent)!important;
+    outline-offset:var(--game-field-focus-offset)!important;
+    box-shadow:none!important;
+  }
+  html[data-game-appearance]:where([data-game-appearance=paper],[data-game-appearance=soft]) :where([id=tile-color-assist],[id=create-parks-camping],[id=p414-hand-overlap]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):disabled {
+    accent-color:var(--appearance-muted)!important;
+    box-shadow:none!important;
+  }
+  html[data-game-appearance] :where(.sound-settings input[type=range],[id=flying-zoom]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):focus-visible {
+    outline:2px solid var(--appearance-accent)!important;
+    outline-offset:var(--game-field-focus-offset)!important;
+  }
+  html[data-game-appearance]:where([data-game-appearance=paper],[data-game-appearance=soft]) :where(.sound-settings input[type=range],[id=flying-zoom]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):focus-visible {
+    outline-offset:2px!important;
+  }
+  html[data-game-appearance]:where([data-game-appearance=paper],[data-game-appearance=soft]) :where(.sound-settings input[type=range],[id=flying-zoom]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):disabled {
+    accent-color:var(--appearance-muted)!important;
+  }
+  html[data-game-appearance]:where([data-game-appearance=paper],[data-game-appearance=soft]) :where(.sound-settings input[type=range],[id=flying-zoom]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *))::-webkit-slider-thumb {
+    box-shadow:var(--game-range-thumb-shadow)!important;
+  }
+  html[data-game-appearance]:where([data-game-appearance=paper],[data-game-appearance=soft]) :where(.sound-settings input[type=range],[id=flying-zoom]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *))::-moz-range-thumb {
+    box-shadow:var(--game-range-thumb-shadow)!important;
+  }
+
+  html[data-game-appearance] :where(.primary-button,.hub-primary,.flying-primary,.p414-primary,.yg-primary,.hy-primary,.hy-primary-action,.hy-inline-actions button:not([data-hy-action=cancel-exchange]),.pg-primary,.pk-primary,.main-action,[id=commit],[id=start-room],.yg-table-actions button[data-hy-action=peek],.yg-table-actions button[data-hy-action=decision],[data-lobby-auth=guest] [id=selected-practice]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):not(:disabled) {
+    background-color:var(--appearance-accent)!important;
+    background-image:none!important;
+    color:var(--appearance-on-accent)!important;
+    border-color:var(--game-primary-line)!important;
+    box-shadow:var(--game-primary-shadow)!important;
+  }
+
+  html[data-game-appearance] :where(.primary-button,.hub-primary,.flying-primary,.p414-primary,.yg-primary,.hy-primary,.hy-primary-action,.hy-inline-actions button:not([data-hy-action=cancel-exchange]),.pg-primary,.pk-primary,.main-action,[id=commit],[id=start-room],.yg-table-actions button[data-hy-action=peek],.yg-table-actions button[data-hy-action=decision],[data-lobby-auth=guest] [id=selected-practice]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):active:where(:not(:disabled)) {
+    box-shadow:var(--game-primary-active-shadow)!important;
+  }
+
+  html[data-game-appearance] :where(.board-view-button[aria-pressed=true],.sort-button.active,.room-toolbar-action[aria-expanded=true],.drawing-body button[data-tool][aria-pressed=true],.drawing-body [id=drawing-tools-toggle][aria-expanded=true],.practice-lessons [aria-current=page],.split-group[aria-pressed=true],.split-group:not(:disabled):hover,.room-voice.speaking .room-voice-talk,.room-voice-indicator.speaking):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):not(:disabled) {
+    background-color:var(--appearance-accent)!important;
+    background-image:none!important;
+    color:var(--appearance-on-accent)!important;
+    border-color:var(--appearance-accent)!important;
+  }
+
+  html[data-game-appearance] :where(.game-screen[data-mode=room].in-game .player-seat.current):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    background-color:var(--appearance-accent)!important;
+    color:var(--appearance-on-accent)!important;
+  }
+
+  html[data-game-appearance] :where(.game-screen[data-mode=room].in-game .player-seat.current strong,.game-screen[data-mode=room].in-game .player-seat.current>span:not(.player-avatar):not(.player-turn-order),.game-screen.rummi-own-turn [id=rack-owner-label],[id=turn-banner].your-turn,.p414-seat.is-current .p414-seat-order,.yg-action-cursor>b):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    color:var(--appearance-on-accent)!important;
+  }
+
+  html[data-game-appearance] :where(.chat-toggle.has-unread):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    border-color:var(--appearance-accent)!important;
+    color:var(--appearance-ink)!important;
+    box-shadow:inset 0 0 0 1px var(--appearance-accent)!important;
+  }
+
+  html[data-game-appearance] :where(.chat-toggle.has-unread .chat-unread):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    background-color:var(--appearance-accent)!important;
+    color:var(--appearance-on-accent)!important;
+  }
+
+  html[data-game-appearance] :where(.room-toolbar-action,.quiet-button,.secondary-button,.text-button,.room-exit,.practice-exit,.sort-button,.board-view-button,.sound-toggle,[id=sound-toggle],.chat-toggle,.app-shell-button,.game-settings-toggle,.flying-button,.p414-close,.pk-link-button,.close-button,.chat-close,.chat-latest,.chat-alerts-toggle,.chat-notice-close,.room-voice-talk,.room-voice-leave,.room-voice-listen,.room-voice-indicator,.pg-choice:not(.pg-choice-card),.pg-payments>button,.pg-camping>button,[id=pg-hikers]>button[data-hiker],.pg-canteen-row>button,.pg-passion>button,.pg-footer [id=pg-recovery]>button,[id=p414-inspect],[id=p414-clear],[id=p414-invite],.yg-seat,.yg-pile,.hy-benefit-objects>button,.hy-material-good,.hy-material-player,[id=hy-connection]>div>button,[id=hy-short-actions] button,.app-install-dialog>button,.flying-gate>button,.flying-result>button,.flying-header-actions .room-toolbar-actions>button,:where(.flying-actions,.flying-recovery,.flying-header-actions,.flying-roster-heading,.drawing-header-actions,.drawing-tool-heading,.drawing-tool-row,.drawing-actions,.drawing-recovery,.drawing-guess-row,.p414-actions,.yg-table-actions,.hy-work-actions,.hy-inline-secondary,.pg-header nav,.pg-commit,.pg-source-tabs,[id=pg-market-tabs],[id=pg-personal-tabs],.game-settings-controls,.room-menu-actions,.sound-settings,.dialog-heading,.confirm-actions,.yg-dialog-actions,.pg-dialog-actions,.p414-dialog-actions)>:where(button,a),dialog button):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):not(:where(.drawing-color-chip,.p414-response,.exit-confirm,.theme-choice,.pk-card,.yousei-card,.hyakki-card,.hy-source-reader,.yg-candidate,.yg-hand-card,.hy-material-card,.yg-good-candidate,.pg-choice-card,.p414-card,.army-piece,.army-cell,.tile)):disabled:where(:not([aria-busy=true])),
+  html[data-game-appearance] :where(.primary-button,.hub-primary,.flying-primary,.p414-primary,.yg-primary,.hy-primary,.hy-primary-action,.hy-inline-actions button:not([data-hy-action=cancel-exchange]),.pg-primary,.pk-primary,.main-action,[id=commit],[id=start-room],.yg-table-actions button[data-hy-action=peek],.yg-table-actions button[data-hy-action=decision],[data-lobby-auth=guest] [id=selected-practice]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):disabled:where(:not([aria-busy=true])) {
+    background-color:var(--game-button-disabled-surface)!important;
+    background-image:none!important;
+    color:var(--game-button-disabled-ink)!important;
+    border-color:var(--game-button-disabled-line)!important;
+    box-shadow:var(--game-button-disabled-shadow)!important;
+    opacity:var(--game-button-disabled-opacity)!important;
+  }
+
+  html[data-game-appearance=glass] :where(.primary-button,.hub-primary,.flying-primary,.p414-primary,.yg-primary,.hy-primary,.hy-primary-action,.hy-inline-actions button:not([data-hy-action=cancel-exchange]),.pg-primary,.pk-primary,.main-action,[id=commit],[id=start-room],.yg-table-actions button[data-hy-action=peek],.yg-table-actions button[data-hy-action=decision],[data-lobby-auth=guest] [id=selected-practice]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):disabled:where(:not([aria-busy=true])) {
+    background-color:var(--appearance-accent)!important;
+    color:var(--appearance-on-accent)!important;
+    border-color:var(--appearance-accent)!important;
+    box-shadow:var(--game-primary-shadow)!important;
+  }
+  html[data-game-appearance=glass] :where([id=pg-market-tabs] button[data-market],[id=pg-personal-tabs] button[data-personal]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):disabled {
+    background:transparent!important;
+    color:var(--appearance-muted)!important;
+    border-color:transparent!important;
+    box-shadow:none!important;
+  }
+  html[data-game-appearance] :where(.flying-plane-button):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):disabled {
+    background-color:var(--game-material-input)!important;
+    color:var(--appearance-muted)!important;
+    border-color:var(--game-material-line)!important;
+    box-shadow:none!important;
+    opacity:1!important;
+  }
+
+  /* These three owners expose a real pending marker. Disabled alone never
+     means busy, and no second request/state machine is introduced here. */
+  html[data-game-appearance] :where([id=drawing-leave-confirm],[id=p414-leave-confirm],[id=yg-leave-confirm]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *))[aria-busy=true] {
+    background-color:var(--appearance-accent)!important;
+    background-image:none!important;
+    color:var(--appearance-on-accent)!important;
+    border-color:var(--game-primary-line)!important;
+    box-shadow:var(--game-busy-shadow)!important;
+    opacity:var(--game-busy-opacity)!important;
+    cursor:progress!important;
+  }
+
+  /* These existing controls are text/menu/close actions. Preserve their
+     original size, typography, underlines and weak border geometry. */
+  html[data-game-appearance] :where(.quiet-button,.text-button,.chat-close,.close-button,.p414-close,.chat-notice-close,.catalog-close,[data-catalog-close],dialog header>button[data-close],.dialog-heading>button[data-close],[id=pg-setup-close],[id=drawing-settings-close],[id=p414-invite],[id=p414-clear],.shell-more-menu .app-shell-button,.shell-more-menu [id=back-to-agora],.hy-inline-secondary>button):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):not(:where(.primary-button,.hub-primary,.flying-primary,.p414-primary,.yg-primary,.hy-primary,.hy-primary-action,.hy-inline-actions button:not([data-hy-action=cancel-exchange]),.pg-primary,.pk-primary,.main-action,[id=commit],[id=start-room],.yg-table-actions button[data-hy-action=peek],.yg-table-actions button[data-hy-action=decision],[data-lobby-auth=guest] [id=selected-practice])) {
+    background:transparent!important;
+    color:var(--appearance-muted)!important;
+    border-color:transparent!important;
+    box-shadow:none!important;
+  }
+
+  html[data-game-appearance] :where(.quiet-button,.text-button,.chat-close,.close-button,.p414-close,.chat-notice-close,.catalog-close,[data-catalog-close],dialog header>button[data-close],.dialog-heading>button[data-close],[id=pg-setup-close],[id=drawing-settings-close],[id=p414-invite],[id=p414-clear],.shell-more-menu .app-shell-button,.shell-more-menu [id=back-to-agora],.hy-inline-secondary>button):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):not(:where(.primary-button,.hub-primary,.flying-primary,.p414-primary,.yg-primary,.hy-primary,.hy-primary-action,.hy-inline-actions button:not([data-hy-action=cancel-exchange]),.pg-primary,.pk-primary,.main-action,[id=commit],[id=start-room],.yg-table-actions button[data-hy-action=peek],.yg-table-actions button[data-hy-action=decision],[data-lobby-auth=guest] [id=selected-practice])):disabled {
+    background:transparent!important;
+    color:var(--appearance-muted)!important;
+    border-color:transparent!important;
+    box-shadow:none!important;
+  }
+  html[data-game-appearance] :where(.hy-inline-secondary>button):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)),
+  html[data-game-appearance] :where(.hy-inline-secondary>button):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):disabled {
+    border-color:color-mix(in srgb,var(--appearance-line) 65%,transparent)!important;
+  }
+  @media (hover:hover) {
+  html[data-game-appearance] :where(.quiet-button,.text-button,.chat-close,.close-button,.p414-close,.chat-notice-close,.catalog-close,[data-catalog-close],dialog header>button[data-close],.dialog-heading>button[data-close],[id=pg-setup-close],[id=drawing-settings-close],[id=p414-invite],[id=p414-clear],.shell-more-menu .app-shell-button,.shell-more-menu [id=back-to-agora],.hy-inline-secondary>button):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):not(:where(.primary-button,.hub-primary,.flying-primary,.p414-primary,.yg-primary,.hy-primary,.hy-primary-action,.hy-inline-actions button:not([data-hy-action=cancel-exchange]),.pg-primary,.pk-primary,.main-action,[id=commit],[id=start-room],.yg-table-actions button[data-hy-action=peek],.yg-table-actions button[data-hy-action=decision],[data-lobby-auth=guest] [id=selected-practice])):hover:where(:not(:disabled)) {
+    background-color:var(--game-quiet-hover)!important;
+    color:var(--appearance-accent)!important;
+  }
+  }
+  html[data-game-appearance] :where(.quiet-button,.text-button,.chat-close,.close-button,.p414-close,.chat-notice-close,.catalog-close,[data-catalog-close],dialog header>button[data-close],.dialog-heading>button[data-close],[id=pg-setup-close],[id=drawing-settings-close],[id=p414-invite],[id=p414-clear],.shell-more-menu .app-shell-button,.shell-more-menu [id=back-to-agora],.hy-inline-secondary>button):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):not(:where(.primary-button,.hub-primary,.flying-primary,.p414-primary,.yg-primary,.hy-primary,.hy-primary-action,.hy-inline-actions button:not([data-hy-action=cancel-exchange]),.pg-primary,.pk-primary,.main-action,[id=commit],[id=start-room],.yg-table-actions button[data-hy-action=peek],.yg-table-actions button[data-hy-action=decision],[data-lobby-auth=guest] [id=selected-practice])):active:where(:not(:disabled)) {
+    background-color:var(--game-button-selected-surface)!important;
+    color:var(--appearance-accent)!important;
+    box-shadow:var(--game-quiet-active-shadow)!important;
+  }
+
+  @media (orientation:landscape) and (max-height:540px) {
+  html[data-game-appearance] :where([id=p414-clear]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    --game-clear-current-surface:var(--game-button-surface)!important;
+    background-color:var(--game-clear-current-surface)!important;
+    background-image:var(--game-button-image)!important;
+    color:var(--appearance-ink)!important;
+    border-color:var(--game-button-line)!important;
+    box-shadow:var(--game-button-shadow)!important;
+  }
+  @media (hover:hover) {
+  html[data-game-appearance] :where([id=p414-clear]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):hover:where(:not(:disabled)) {
+    --game-clear-current-surface:var(--game-button-hover-surface)!important;
+    background-color:var(--game-clear-current-surface)!important;
+    color:var(--appearance-ink)!important;
+    border-color:var(--game-button-hover-line)!important;
+  }
+  }
+  html[data-game-appearance] :where([id=p414-clear]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):active:where(:not(:disabled)) {
+    background-color:var(--game-clear-current-surface)!important;
+    color:var(--appearance-ink)!important;
+    box-shadow:var(--game-button-active-shadow)!important;
+  }
+  html[data-game-appearance=paper] :where([id=p414-clear]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):active:where(:not(:disabled)) {
+    background-color:var(--game-button-active-surface)!important;
+    border-color:var(--game-button-active-line)!important;
+  }
+  html[data-game-appearance] :where([id=p414-clear]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):disabled {
+    background-color:var(--game-button-disabled-surface)!important;
+    background-image:none!important;
+    color:var(--game-button-disabled-ink)!important;
+    border-color:var(--game-button-disabled-line)!important;
+    box-shadow:var(--game-button-disabled-shadow)!important;
+  }
+  }
+
+  html[data-game-appearance] :where(.flying-plane-button.legal,.flying-plane-button.selected,.flying-plane-button[aria-pressed=true]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):where(:not(:disabled)) {
+    background-color:color-mix(in srgb,var(--appearance-accent) 15%,var(--game-material-overlay))!important;
+    color:var(--appearance-ink)!important;
+    border-color:var(--appearance-accent)!important;
+  }
+
+  html[data-game-appearance] .flying-plane-button:not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    border-left-color:var(--side-color,#99baa4)!important;
+  }
+
+  html[data-game-appearance] .flying-plane-button:is(.selected,[aria-pressed=true]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    border-left-color:#ffe091!important;
+  }
+
+  html[data-game-appearance] :where(.flying-plane-button small):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    color:var(--appearance-muted)!important;
+  }
+
+  html[data-game-appearance] :where(.flying-feedback.pending):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    color:var(--appearance-muted)!important;
+  }
+
+  html[data-game-appearance] :where(.army-action-effect):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    background-color:var(--game-functional-surface)!important;
+    color:var(--appearance-ink)!important;
+    border-color:var(--game-functional-line)!important;
+    box-shadow:var(--game-functional-shadow)!important;
+  }
+  html[data-game-appearance] :where(.chat-pending):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    border-color:var(--appearance-line)!important;
+  }
+
+  html[data-game-appearance] :where(.result-row,.room-activity-list li:not(.activity-empty)):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    border-color:var(--appearance-line)!important;
+  }
+
+  html[data-game-appearance] :where(.feedback.valid):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    color:var(--appearance-good)!important;
+  }
+
+  html[data-game-appearance] :where(.feedback.invalid,.flying-feedback.error,.flying-feedback[data-kind=error],.flying-error,.meld.invalid .meld-header small,.turn-clock.expired,.flying-clock.expired,.wordbank-error,[id=p414-leave-error],[id=lobby-exit-status],.shell-more-menu [id=account-logout]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    color:var(--appearance-bad)!important;
+  }
+
+  html[data-game-appearance] :where(.room-toolbar-action,.quiet-button,.secondary-button,.primary-button,.text-button,.room-exit,.practice-exit,.sort-button,.board-view-button,.sound-toggle,.chat-toggle,.app-shell-button,.flying-button,.flying-plane-button,[id=sound-toggle],.chat-alerts-toggle,.hub-return,.hub-links a,.wordbank-heading>.quiet-link,[id=wordbank-link],[id=hy-login],[id=hy-reauth],.history-match summary,[id=pg-market-tabs] button[data-market],[id=pg-personal-tabs] button[data-personal],dialog button):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):focus-visible {
+    outline-color:var(--appearance-accent)!important;
+  }
+
+  html[data-game-appearance] :where(.quiet-button,.secondary-button,.primary-button,.hub-primary,.room-toolbar-action,.app-shell-button,.shell-more-menu,.nickname-editor>div,.wordbank-section,.game-settings-dialog,.room-options-dialog,.app-install-dialog,.flying-control-panel,.drawing-tools,.drawing-guess-form):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    border-radius:var(--appearance-radius)!important;
+  }
+
+  html[data-game-appearance] :where(.pg-choice:not(.pg-choice-card),.pg-payments>button,.pg-camping>button,[id=pg-hikers]>button[data-hiker],.pg-canteen-row>button,.pg-passion>button,.pg-footer [id=pg-recovery]>button,[id=p414-inspect],[id=p414-clear],[id=p414-invite],.yg-seat,.yg-pile,.hy-benefit-objects>button,.hy-material-good,.hy-material-player,[id=hy-connection]>div>button,[id=hy-short-actions] button,.drawing-color-chip,.p414-response):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):focus-visible {
+    outline-color:var(--appearance-accent)!important;
+  }
+
+  /* The magnified live board dialog keeps its wash, without ancestor frost. */
+  html[data-game-appearance=glass] :where(.lobby-game,.hub-game,.recent-section,.wordbank-section,.wordbank-preview:not(:empty),.wordbank-import-preview:not(:empty),.shell-more-menu,.nickname-editor>div,.game-settings-dialog,.room-options-dialog,.app-install-dialog,dialog:not(.flying-board-dialog),.room-chat,.room-chat-notice,.yg-chat-decision,.toast):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    -webkit-backdrop-filter:blur(var(--appearance-blur,16px)) saturate(var(--appearance-saturation,108%))!important;
+    backdrop-filter:blur(var(--appearance-blur,16px)) saturate(var(--appearance-saturation,108%))!important;
+  }
+
+  html[data-game-appearance=glass] :where(.recent-section):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    -webkit-backdrop-filter:none!important;
+    backdrop-filter:none!important;
+    box-shadow:inset 0 1px 0 color-mix(in srgb,var(--game-functional-line) 55%,transparent),0 1px 2px color-mix(in srgb,var(--appearance-ink) 4%,transparent)!important;
+  }
+
+  html[data-game-appearance] :where(dialog):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *))::backdrop {
+    background:var(--game-backdrop-color)!important;
+    -webkit-backdrop-filter:blur(var(--game-backdrop-blur))!important;
+    backdrop-filter:blur(var(--game-backdrop-blur))!important;
+  }
+
+  html[data-game-appearance=glass][data-appearance-fallback=opaque] :where(.lobby-game,.hub-game,.recent-section,.wordbank-section,.wordbank-preview:not(:empty),.wordbank-import-preview:not(:empty),.shell-more-menu,.nickname-editor>div,.game-settings-dialog,.room-options-dialog,.app-install-dialog,dialog:not(.flying-board-dialog),.room-chat,.room-chat-notice,.yg-chat-decision,.toast):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    -webkit-backdrop-filter:none!important;
+    backdrop-filter:none!important;
+  }
+  html[data-game-appearance=glass][data-appearance-fallback=opaque] {
+    --game-material-surface:color-mix(in srgb,var(--appearance-surface) 97%,var(--appearance-bg))!important;
+    --game-material-input:var(--game-material-surface)!important;
+    --game-material-overlay:var(--game-material-surface)!important;
+    --game-material-texture:none!important;
+    --game-functional-surface:color-mix(in srgb,var(--appearance-surface) 96%,#edf0f4)!important;
+    --game-functional-image:none!important;
+  }
+
+  @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))) {
+  html[data-game-appearance=glass] {
+    --game-material-surface:color-mix(in srgb,var(--appearance-surface) 97%,var(--appearance-bg))!important;
+    --game-material-input:var(--game-material-surface)!important;
+    --game-material-overlay:var(--game-material-surface)!important;
+    --game-material-texture:none!important;
+    --game-functional-surface:color-mix(in srgb,var(--appearance-surface) 96%,#edf0f4)!important;
+    --game-functional-image:none!important;
+  }
+  html[data-game-appearance=glass] :where(.lobby-game,.hub-game,.recent-section,.wordbank-section,.wordbank-preview:not(:empty),.wordbank-import-preview:not(:empty),.shell-more-menu,.nickname-editor>div,.game-settings-dialog,.room-options-dialog,.app-install-dialog,dialog:not(.flying-board-dialog),.room-chat,.room-chat-notice,.yg-chat-decision,.toast):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    -webkit-backdrop-filter:none!important;
+    backdrop-filter:none!important;
+  }
+  }
+
+  @media (prefers-reduced-transparency:reduce) {
+  html[data-game-appearance=glass],
+  html[data-game-appearance=glass][data-appearance-fallback=opaque] {
+    --game-material-surface:color-mix(in srgb,var(--appearance-surface) 97%,var(--appearance-bg))!important;
+    --game-material-input:var(--game-material-surface)!important;
+    --game-material-overlay:var(--game-material-surface)!important;
+    --game-material-texture:none!important;
+    --game-functional-surface:color-mix(in srgb,var(--appearance-surface) 97%,#edf0f4)!important;
+    --game-functional-image:none!important;
+  }
+  html[data-game-appearance=glass] :where(.lobby-game,.hub-game,.recent-section,.wordbank-section,.wordbank-preview:not(:empty),.wordbank-import-preview:not(:empty),.shell-more-menu,.nickname-editor>div,.game-settings-dialog,.room-options-dialog,.app-install-dialog,dialog:not(.flying-board-dialog),.room-chat,.room-chat-notice,.yg-chat-decision,.toast):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
+    -webkit-backdrop-filter:none!important;
+    backdrop-filter:none!important;
+  }
+  }
+  /* Sticky heading paint is a pseudo-element target, outside :where(). */
+  html[data-game-appearance] :where(.game-settings-dialog,.p414-dialog) .dialog-heading:not(:where(.appearance-dialog,.appearance-dialog *))::before {
+    background-color:var(--game-functional-surface)!important;
+  }
+
+  /* Only the new host entry owns geometry here. The common panel keeps its exact
+     shared DOM/CSS, and every existing game action keeps its original hit area. */
+  html:root button.user-menu-item.appearance-open[data-open-appearance]:not(:where(.appearance-dialog,.appearance-dialog *)) {
+    display:grid!important;
+    grid-template-columns:20px minmax(0,1fr)!important;
+    align-items:center!important;
+    justify-items:start!important;
+    column-gap:10px!important;
+    row-gap:1px!important;
+    width:100%!important;
+    min-height:44px!important;
+    padding:8px 12px!important;
+    text-align:left!important;
+    font-size:13px!important;
+    line-height:1.4!important;
+    background:transparent!important;
+    color:var(--appearance-ink,var(--theme-ink,#26362f))!important;
+    border-color:transparent!important;
+    box-shadow:none!important;
+  }
+  html:root button.user-menu-item.appearance-open[data-open-appearance]:not(:where(.appearance-dialog,.appearance-dialog *)):is(:hover,:focus-visible) {
+    background-color:var(--game-material-hover,color-mix(in srgb,var(--appearance-accent,var(--theme-accent,#315b50)) 8%,transparent))!important;
+  }
+  html:root button.user-menu-item.appearance-open[data-open-appearance]:not(:where(.appearance-dialog,.appearance-dialog *)) > svg {
+    grid-column:1!important;
+    grid-row:1!important;
+    width:18px!important;
+    height:18px!important;
+    fill:none!important;
+    stroke:currentColor!important;
+    color:var(--appearance-muted,var(--theme-muted,var(--muted,#7b8278)))!important;
+  }
+  html:root button.user-menu-item.appearance-open[data-open-appearance]:not(:where(.appearance-dialog,.appearance-dialog *)) > span {
+    display:grid!important;
+    grid-column:2!important;
+    grid-row:1!important;
+    justify-self:stretch!important;
+    row-gap:1px!important;
+    min-width:0!important;
+    text-align:left!important;
+  }
+  html:root button.user-menu-item.appearance-open[data-open-appearance]:not(:where(.appearance-dialog,.appearance-dialog *)) > span > strong {
+    font-size:13px!important;
+    line-height:1.4!important;
+    text-align:left!important;
+  }
+  html:root button.user-menu-item.appearance-open[data-open-appearance]:not(:where(.appearance-dialog,.appearance-dialog *)) > span > small {
+    font-size:11px!important;
+    line-height:1.4!important;
+    text-align:left!important;
+    color:var(--appearance-muted,var(--theme-muted,var(--muted,#7b8278)))!important;
+  }
+}
+
+/* Host compatibility only: legacy game-theme.css paints every dialog with
+   unlayered !important values, including this body-mounted shared editor.
+   Repeat only its four colliding paint properties, verbatim from the shared
+   v2 stylesheet. DOM, geometry, filters, controls and safe variables remain
+   owned by the byte-identical appearance-menu.css. */
+@layer game-appearance-menu-compat {
+  html:root dialog.appearance-dialog {
+    background:var(--card)!important;
+    color:var(--ink)!important;
+    border-color:var(--line)!important;
+    box-shadow:0 18px 54px #151b241f,0 2px 8px #151b2412!important;
+  }
+  html[data-appearance=paper] dialog.appearance-dialog {
+    box-shadow:0 2px 5px #151b240d,0 18px 54px #151b241c!important;
+  }
+  html[data-appearance=glass] dialog.appearance-dialog {
+    background:color-mix(in srgb,var(--card) 94%,transparent)!important;
+    border-color:color-mix(in srgb,#fff 45%,var(--line))!important;
+    box-shadow:inset 0 1px 0 #ffffff88,0 18px 54px #263e5630,0 2px 8px #263e5614!important;
+  }
+  html[data-appearance=soft] dialog.appearance-dialog {
+    border-color:color-mix(in srgb,var(--card) 92%,var(--ink))!important;
+    box-shadow:inset 0 1px 0 var(--appearance-soft-light),0 3px 8px #151b2412,0 20px 52px #151b2429!important;
+  }
+  @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))) {
+    html[data-appearance=glass] dialog.appearance-dialog { background:var(--card)!important; }
+  }
+  @media (prefers-reduced-transparency:reduce) {
+    html[data-appearance=glass] dialog.appearance-dialog { background:var(--card)!important; }
+  }
+}

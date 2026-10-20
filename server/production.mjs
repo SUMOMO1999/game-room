@@ -1,3 +1,4 @@
+import {readVoiceConfiguration,startProductionVoice} from './room-voice-process.mjs';
 import { DatabaseSync } from 'node:sqlite';
 import { lstatSync, statfsSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -18,16 +19,18 @@ export function runtimeVersions() {
   return { node: process.versions.node, sqlite };
 }
 export async function closeRuntime(runtime) {
-  runtime.preview?.close();
+  let voiceError;try{await runtime.voiceHub?.close();}catch(error){voiceError=error;}runtime.preview?.close();
   try { try { await runtime.canvases?.close(); } finally { await runtime.chat?.close(); } }
   finally { try { await runtime.rooms.close(); } finally {
     try { await runtime.identityRuntime?.close(); } finally { runtime.storage.close(); }
   } }
+  if(voiceError)throw voiceError;
 }
 export async function prepareProduction(env = process.env) {
   const versions = runtimeVersions();
   const settings = readSettings(env);
   if (!settings.production) throw new Error('Production entry requires NODE_ENV=production');
+  const voiceConfiguration=await readVoiceConfiguration(env);
   let liveStoreValidation;
   // Validate the original bytes before any domain initializer creates a seed
   // or repairs an index. Only an absent database is eligible for first boot.
@@ -50,12 +53,13 @@ export async function prepareProduction(env = process.env) {
     const initialized = verifyLiveStore({ sourcePath: settings.storePath, key: settings.storeKey });
     liveStoreValidation ??= initialized;
   } catch (error) { try { await closeRuntime(runtime); } finally { throw error; } }
-  return { ...runtime, versions, liveStoreValidation };
+  const prepared={...runtime,versions,liveStoreValidation};Object.defineProperty(prepared,'voiceConfiguration',{value:voiceConfiguration});return prepared;
 }
 export async function startProduction(env = process.env) {
   const runtime = await prepareProduction(env);
   let server;
   try {
+    runtime.voiceHub=await startProductionVoice(runtime.voiceConfiguration);
     server = createUnifiedServer({ ...runtime, entries: runtime.settings.entries });
     await new Promise((resolve, reject) => { server.once('error', reject); server.listen(runtime.settings.port, runtime.settings.host, resolve); });
   } catch (error) {

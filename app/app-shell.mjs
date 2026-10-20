@@ -38,11 +38,13 @@ export async function toggleFullscreen(documentRef) {
 
 function initializeShell() {
   const header = document.querySelector('.site-header');
+  // Only the explicitly opted-in lobby move their existing controls.
+  const compactMenu = document.body.hasAttribute('data-compact-shell') ? document.querySelector('[data-app-shell-menu]') : null;
   if (entryBase() === '/game/' && header && !document.querySelector('#back-to-agora')) {
     const link = document.createElement('a');
     link.id = 'back-to-agora'; link.href = '/#projects'; link.textContent = '← 返回 Agora';
     // Use the existing room menu instead of crowding the fixed game header.
-    const menu = document.querySelector('.room-menu-actions');
+    const menu = compactMenu || document.querySelector('.room-menu-actions');
     link.className = menu ? 'secondary-button agora-entry-return' : 'quiet-link agora-entry-return';
     if (menu) menu.append(link); else if (document.querySelector('.lobby-shell')) header.after(link);
     for (const anchor of document.querySelectorAll('a.account-reauth-link')) {
@@ -54,7 +56,13 @@ function initializeShell() {
   tools.id = 'app-shell-tools'; tools.className = 'app-shell-tools';
   tools.setAttribute('aria-label', '应用显示方式');
   tools.innerHTML = '<button type="button" class="quiet-button app-shell-button" id="app-install">放到手机桌面</button><button type="button" class="quiet-button app-shell-button" id="app-fullscreen" hidden>全屏显示</button><p class="app-shell-status" id="app-display-status" role="status" aria-live="polite" hidden></p>';
-  header.after(tools);
+  const toolsSlot = compactMenu || document.querySelector('[data-app-shell-tools-slot]');
+  if (toolsSlot) toolsSlot.append(tools); else header.after(tools);
+  if (compactMenu) {
+    const more=compactMenu.closest('details');
+    document.addEventListener('pointerdown',event=>{if(more.open&&!more.contains(event.target))more.open=false;});
+    document.addEventListener('keydown',event=>{if(event.key==='Escape'&&more.open){more.open=false;more.querySelector('summary').focus();}});
+  }
   const dialog = document.createElement('dialog');
   dialog.className = 'app-install-dialog'; dialog.id = 'app-install-dialog';
   dialog.setAttribute('aria-labelledby', 'app-install-title');
@@ -74,6 +82,7 @@ function initializeShell() {
   let deferredPrompt = null;
   let installed = false;
   let displayTimer = null;
+  let returnDialog = null;
   function updateControls() {
     install.hidden = installed || isStandalone(window);
     full.hidden = !document.fullscreenEnabled || !document.documentElement.requestFullscreen;
@@ -85,7 +94,13 @@ function initializeShell() {
     if (typeof dialog.close === 'function') dialog.close(); else dialog.removeAttribute('open');
   }
   install.addEventListener('click', () => {
+    const owner = install.closest('dialog[open]');
+    if (owner) { returnDialog = owner; owner.close(); }
     if (typeof dialog.showModal === 'function') dialog.showModal(); else dialog.setAttribute('open', '');
+  });
+  dialog.addEventListener('close', () => {
+    const owner = returnDialog; returnDialog = null;
+    if (owner?.isConnected && !owner.open) { owner.showModal(); if (!install.hidden) install.focus(); }
   });
   dialog.querySelector('#app-install-close').addEventListener('click', closeDialog);
   dialog.querySelector('#app-install-done').addEventListener('click', closeDialog);

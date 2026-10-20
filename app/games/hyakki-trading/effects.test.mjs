@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createGame, applyGameAction, currentDecision, gameProblem } from './rules.mjs';
-import { createDeck, GOODS, DIGITAL_RULE_VERSION, MULTIPLAYER_RULE_VERSION } from './content/definitions.mjs';
+import { CONTENT_VERSION, createDeck, GOODS, DIGITAL_RULE_VERSION, MULTIPLAYER_RULE_VERSION } from './content/definitions.mjs';
 import { definition, emptyGoods, goodsCount, refreshTemporary } from './model.mjs';
 import { implementedCharacterCodes, characterProblem } from './effects.mjs';
 
@@ -9,7 +9,7 @@ const ids = ['a'.repeat(32), 'b'.repeat(32)];
 const ctx = { now: 1000, randomInt: limit => limit - 1 };
 const goods = entries => ({ ...emptyGoods(), ...entries });
 function fixture(code, { playerIds = ids, ruleVersion = DIGITAL_RULE_VERSION } = {}) {
-  const state = createGame(playerIds, { ...ctx, matchId: 'c'.repeat(32), actionLimit: 10, goodsPerType: 6, firstPlayerId: playerIds[0], ruleVersion });
+  const state = createGame(playerIds, { ...ctx, contentVersion: CONTENT_VERSION, matchId: 'c'.repeat(32), actionLimit: 10, goodsPerType: 6, firstPlayerId: playerIds[0], ruleVersion });
   state.deck = [...state.deck, ...state.players.flatMap(owner => owner.hand)].sort();
   state.players.forEach(owner => { owner.hand = []; });
   state.stage = 'use'; state.drawStarted = true;
@@ -446,7 +446,7 @@ test('C01: a preselected draw stops at the opponent goods choice; owner goods re
 });
 test('C01: the legacy zero-stock goods branch can still grant only the peer draw without a fabricated goods selection', () => {
   const playerIds = ['a','b','c','d','e','f'].map(value => value.repeat(32));
-  const initial = createGame(playerIds, { ...ctx, matchId: 'c'.repeat(32), actionLimit: 10, goodsPerType: 6 });
+  const initial = createGame(playerIds, { ...ctx, contentVersion: CONTENT_VERSION, matchId: 'c'.repeat(32), actionLimit: 10, goodsPerType: 6 });
   initial.deck.push(...initial.players.flatMap(owner => owner.hand)); initial.players.forEach(owner => { owner.hand = []; });
   const cardIndex = initial.deck.findIndex(id => definition(id).sourceCode === 'C01'), cardId = initial.deck.splice(cardIndex, 1)[0];
   initial.players[0].hand.push(cardId); initial.stage = 'use'; initial.drawStarted = true;

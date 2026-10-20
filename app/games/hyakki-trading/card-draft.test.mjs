@@ -26,6 +26,20 @@ function accept(state, type, fields = {}, actor = currentDecision(state)?.actorI
     ...(decision ? { effectId: state.pending.id, decisionId: decision.id } : {}), ...fields }, context);
   assert.equal(result.ok, true, result.error); assert.equal(gameProblem(result.state), null); return result.state;
 }
+
+test('auction wait keeps the public leading bid readable without offering another player controls', () => {
+  const f = fixture('C12', 3);
+  let state = accept(f.state, 'play-character', { cardId: f.cardId }, ids[0]);
+  state = accept(state, 'bid', { amount: 6 }, ids[0]);
+  const game = privateView(state, ids[0]), before = JSON.stringify(game);
+  assert.notEqual(game.pending.actorId, ids[0]);
+  const markup = renderNativeWork({ pending: game.pending, game, selfId: ids[0],
+    draft: nativeChoiceDraft(game.pending), name: id => id === ids[0] ? '我' : '伙伴', canChoose: false, short: true });
+  assert.match(markup, /当前最高6两（我）/u);
+  assert.match(markup, /等待伙伴完成这一步/u);
+  assert.doesNotMatch(markup, /id="hy-native-bid-amount"|data-hy-action="native-bid"/u);
+  assert.equal(JSON.stringify(game), before);
+});
 function projectedDetail(state, cardId, tool = false, extra = {}) {
   const game = privateView(state, ids[0]);
   const card = (tool ? game.players[0].tools : game.players[0].hand).find(card => cardKey(card) === cardId);
@@ -207,4 +221,32 @@ test('invalid projected materials and an obsolete public reference reject withou
   const result = applyGameAction(f.state, ids[0], { type: 'play-character', matchId: f.state.matchId, turnId: f.state.turnId, ...command }, { now: 1000, randomInt: () => { calls++; return 0; } });
   assert.equal(result.ok, false); assert.deepEqual(f.state, before); assert.equal(calls, 0);
   d.detail.choiceInputs[0] = { optionIndex: 999 }; assert.throws(() => cardDraftSelections(d.game, ids[0], d.detail), RangeError);
+});
+
+for(const count of [2,3])test(`C08 ${count} players: self draw needs no target selection and does not touch opponents`,()=>{
+  const f=fixture('C08',count);
+  for(const peer of f.state.players.slice(1))peer.hand.push(...f.state.deck.splice(0,5));
+  const {game,detail}=projectedDetail(f.state,f.cardId);
+  const part=cardDraftChoices(game,ids[0],detail)[0];
+  assert.ok(part.choice.options.some(option=>option.branch==='discard'),'discard is discoverable before choosing its target');
+  chooseOption(game,detail,0,option=>option.branch==='draw');
+  const selections=cardDraftSelections(game,ids[0],detail),before=f.state.players.slice(1).map(player=>player.hand.slice());
+  const command=actionDraft(game,ids[0],detail.card,'play-character',{initialChoices:selections});
+  const result=accept(f.state,'play-character',command);
+  assert.equal(result.players[0].hand.length,5);assert.equal(result.actionsUsed,1);
+  assert.deepEqual(result.players.slice(1).map(player=>player.hand),before);
+});
+
+test('C08 three-player discard is chosen by the selected opponent, not the card owner or the next seat',()=>{
+  const f=fixture('C08',3);
+  for(const peer of f.state.players.slice(1))peer.hand.push(...f.state.deck.splice(0,5));
+  const {game,detail}=projectedDetail(f.state,f.cardId,false,{targetId:ids[2]});
+  chooseOption(game,detail,0,option=>option.branch==='discard');
+  const before=f.state.players[1].hand.slice(),selections=cardDraftSelections(game,ids[0],detail);
+  let result=accept(f.state,'play-character',actionDraft(game,ids[0],detail.card,'play-character',{targetId:ids[2],initialChoices:selections}));
+  assert.equal(result.pending.choice.kind,'discard-hand');assert.equal(result.pending.choice.actorId,ids[2]);
+  const choice=result.pending.choice.options[0];
+  result=accept(result,'choose-effect',{selection:{cardIds:choice.cardIds.slice(0,choice.count)}},ids[2]);
+  assert.equal(result.players[2].hand.length,3);assert.deepEqual(result.players[1].hand,before);
+  assert.equal(result.players[0].hand.length,0);assert.equal(result.pending,null);
 });

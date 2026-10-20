@@ -1,10 +1,11 @@
+import {withRoomVoice} from '../../platform/room-voice-session.mjs';
 import { mountRoomAudioControls } from '../../platform/room-audio-controls.mjs';
 import { mountGameViewport, mountCanvasPin } from '../../platform/room-viewport.mjs';
 import { createRoomClock, renderRoomClock } from '../../platform/room-clock.mjs';
 import { createRoomSession, createRoomExit } from '../../platform/room-session.mjs';
 import { entryStorageKey, gamePath } from '../../entry-path.mjs';
 import { createPracticeState, createJokerPracticeState, createDeck, validateMeld, normalizeMeld, evaluateDraft, commitDraft, drawTile, sortRack, stateProblem, ruleVersionOf, canRearrangeJokers } from './rules.mjs';
-import { RoomClient, api, loadMembership, normalizeCode, forgetMembership } from '../../room-client.mjs';
+import { RoomClient as BaseRoomClient, api, loadMembership, normalizeCode, forgetMembership } from '../../room-client.mjs';
 import { loadAccount, accountState, accountGeneration, onAccountChange, logoutAccount, watchAccountLifecycle, loginHref, reauthenticationHref } from '../../account-client.mjs';
 import { fitGroupsToViewport, placeGroup, boardLayoutPositions, spatialGroupOrder } from './table-layout.mjs';
 import { mountRoomChat } from '../../room-chat.mjs';
@@ -18,6 +19,8 @@ import { mountRummikubMotion, placementCue } from './motion-ui.mjs';
 import { sortPlayableRack, autoSplitDuplicateRun, splitRunAfterExtraction } from './assist.mjs';
 import { gameViewport } from '../../game-viewport.mjs';
 import { createPreviewPublisher,encodeBoardPositions,decodeBoardPositions } from './preview-client.mjs';
+
+const RoomClient=withRoomVoice(BaseRoomClient,{gameType:'rummikub',getAccount:accountState,document,window});
 
 const $ = (id) => document.getElementById(id);
 const clone = (value) => structuredClone(value);
@@ -483,7 +486,7 @@ function tileHTML(tile) {
 }
 
 function renderRuleText() {
-  const state = ROOM_MODE ? { ruleVersion: roomView?.game?.ruleVersion || (roomView?.jokerConfig ? 'friends-v4' : 'friends-v2') } : committed;
+  const state = ROOM_MODE ? { ruleVersion: roomView?.game?.ruleVersion || (roomView?.jokerConfig ? 'friends-v5' : 'friends-v2') } : committed;
   const unlocked = canRearrangeJokers(state);
   $('rule-version').textContent = `${ROOM_MODE ? '拉密朋友局' : JOKER_LESSON ? '拉密操作练习 · 鬼牌重组' : '拉密操作练习'}${unlocked ? '' : ' · 这局沿用旧规则'}`;
   $('rule-version').dataset.ruleVersion = ruleVersionOf(state);
@@ -491,10 +494,11 @@ function renderRuleText() {
     ? '开局后可以重组含鬼牌组合。取回的鬼牌可接进已有组合，或组成新组；本回合必须重新用到桌上，并至少出一张自己的牌。桌面牌不能拿回手牌。'
     : '这局保留旧规则：已提交的含鬼牌组合只能移动整组位置，不能拆分、接牌或取回鬼牌。重新开始一局即可使用鬼牌重组。';
   if ($('twist-rule')) {
-    $('twist-rule').hidden = !['friends-v3','friends-v4'].includes(ruleVersionOf(state));
+    $('twist-rule').hidden = !['friends-v3','friends-v4','friends-v5'].includes(ruleVersionOf(state));
     $('twist-rule').textContent = '传统百搭代替一个数字。镜像百搭必须在正中，两侧数字和颜色对称；每组限一张。'
-      + (ruleVersionOf(state)==='friends-v4' ? '朋友计分：镜像计靠中心的对应数字；相邻双重牌只取靠中心的一格。' : '这局沿用旧计分：镜像自身计0分。')
-      + '变色百搭只用于顺子，数字仍连续，可改变后面牌的颜色。双重百搭在顺子中代替连续两个数字，在同数组中代替两种缺少的颜色。每组至少三张实牌，不能全是鬼牌；手里每张鬼牌结算按30点。';
+      + (['friends-v4','friends-v5'].includes(ruleVersionOf(state)) ? '朋友计分：镜像计靠中心的对应数字；相邻双重牌只取靠中心的一格。' : '这局沿用旧计分：镜像自身计0分。')
+      + (ruleVersionOf(state)==='friends-v5' ? '变色百搭必须夹在两段不同颜色的数字牌之间，不能放在两端；数字仍须连续。' : '这局沿用旧规则：变色百搭可放顺子两端，后续接牌须换色。')
+      + '双重百搭在顺子中代替连续两个数字，在同数组中代替两种缺少的颜色。每组至少三张实牌，不能全是鬼牌；手里每张鬼牌结算按30点。';
   }
   if (ROOM_MODE && $('tile-count-rule')) {
     const game=roomView?.game,copies=game?.copies || (roomView?.players?.length>4?3:2);
@@ -849,12 +853,13 @@ function applyRoomView(view) {
 async function roomAction(type, fields = {}) {
   if (busy || leavingRoom || !roomClient) return false;
   const client=roomClient, fence=roomSession.capture(client);
+  if (!roomSession.current(fence)) return false;
   if(type==='submit')rememberOwnPublicPlacement();
-  const current=()=>roomSession.current(fence);
+  const ownsResult=()=>roomSession.passive(fence);
   busy = true; clearDrag(); renderRoomMeta(); if (roomView?.game) render();
-  try { await client.action(type, fields); if(!current())return false; if(type==='submit' && roomView?.phase!=='finished') audio.play('commit'); else if(type==='draw') audio.play('draw',{gesture:true}); else if(type==='ready')audio.play(fields.ready?'ready':'undo',{gesture:true});else if(type==='pause' && roomView?.phase!=='paused')audio.play(fields.agree===false?'undo':'ready',{gesture:true}); return true; }
-  catch(error) { if(current() && error.name!=='AbortError') {audio.play('invalid',{gesture:true});toast(gameErrorMessage(error));}return false; }
-  finally { if(current()) {busy = false; renderRoomMeta(); if (roomView?.game) render();} }
+  try { await client.action(type, fields); if(!ownsResult())return false; if(type==='submit' && roomView?.phase!=='finished') audio.play('commit'); else if(type==='draw') audio.play('draw',{gesture:true}); else if(type==='ready')audio.play(fields.ready?'ready':'undo',{gesture:true});else if(type==='pause' && roomView?.phase!=='paused')audio.play(fields.agree===false?'undo':'ready',{gesture:true}); return true; }
+  catch(error) { if(ownsResult() && error.name!=='AbortError') {audio.play('invalid',{gesture:true});toast(gameErrorMessage(error));}return false; }
+  finally { if(ownsResult()) {busy = false; renderRoomMeta(); if (roomView?.game) render();} }
 }
 
 function pushHistory() {
@@ -1297,19 +1302,19 @@ function bootRoom(verifiedState) {
       if (!membership) { location.replace(`./?room=${roomCode}`); return; }
       $('room-account-recover').hidden = true; $('room-account-logout').hidden = legacy;
       const client = new RoomClient(roomCode, membership, {
-        onView: view => { if (roomSession.current(clientFence)) applyRoomView(view); },
+        onView: view => { if (roomSession.passive(clientFence)) applyRoomView(view); },
         onConnection: state => {
-          if (!roomSession.current(clientFence)) return;
+          if (!roomSession.passive(clientFence)) return;
           if (state !== 'online') { needsRoomBaseline=true; publicPlacementSound=null; needsPublicPlacementBaseline=true; }
           if (drag) clearDrag();
           connection=state; roomChat?.connection(state);
           $('connection-label').textContent=(state==='online'?'已连接':state==='offline'?'重连中':'连接中')+' · '+roomCode;
           renderRoomMeta(); if (roomView?.game) render();
         },
-        onChat: packet => { if (roomSession.current(clientFence)) roomChat?.receive(packet); },
-        onPreview: packet => { if (roomSession.current(clientFence)) receiveRemotePreview(packet); },
+        onChat: packet => { if (roomSession.passive(clientFence)) roomChat?.receive(packet); },
+        onPreview: packet => { if (roomSession.passive(clientFence)) receiveRemotePreview(packet); },
         onError: error => {
-          if (!roomSession.current(clientFence)) return;
+          if (!roomSession.passive(clientFence)) return;
           // A successful leave closes our own stream before its HTTP acknowledgement may arrive.
           if (leavingRoom && error.status===404) return;
           if (error.status===404 && roomView) forgetMembership(roomCode,roomView.selfId);
@@ -1344,7 +1349,16 @@ if (ROOM_MODE) {
   });
   const accountLifecycle=watchAccountLifecycle({
     onSuspend:()=>{clearRoomPrivate({message:'正在重新核验账号…'},{preserveDraft:true});},
-    onVerified:state=>{if(!roomClient) bootRoom(state);},
+    onVerified:(state,{reason}={})=>{
+      if(!roomClient) {void bootRoom(state);return;}
+      if(!['return','focus'].includes(reason))return;
+      const current=roomClient,fence=roomSession.capture(current);
+      void current.refresh().catch(error=>{
+        if(!roomSession.passive(fence))return;
+        if([401,503,404].includes(error.status))clearRoomPrivate(error);
+        else toast(gameErrorMessage(error));
+      });
+    },
     onError:error=>{clearRoomPrivate(error);},
   });
   accountLifecycle.refresh();
@@ -1401,3 +1415,4 @@ if (ROOM_MODE) {
   if (JOKER_LESSON) $('practice-description').textContent = '用红7补齐红色顺子，把鬼牌接进蓝色顺子，再确认出牌。';
   restoreSaved(); render();
 }
+

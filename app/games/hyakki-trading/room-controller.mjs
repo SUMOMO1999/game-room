@@ -1,9 +1,48 @@
 import { createRoomSession, createRoomExit } from '../../platform/room-session.mjs';
 import { hyakkiCues, hyakkiCommand } from './presentation.mjs';
+import { materialProfile, PLAYER_COUNT_CONTENT_VERSION } from './content/definitions.mjs';
+import { publicBattleMetadataProblem } from './battle-public-metadata.mjs';
+import { publicEvent } from './validation.mjs';
 
 const business = new Set(['peek', 'keep-peek', 'discard-peek', 'finish-draw', 'end-turn', 'buy', 'sell', 'buy-stall', 'play-character', 'install-tool', 'activate-tool', 'respond', 'decline-response', 'choose-effect', 'bid', 'pass-bid']);
 const common = new Set(['ready', 'start', 'rematch', 'set-role', 'transferHost', 'configure', 'pause', 'resume']);
 const matchId = view => view?.matchId ?? view?.lastMatchResult?.matchId ?? null;
+const exact = (value, fields) => value && typeof value === 'object' && !Array.isArray(value)
+  && Object.keys(value).length === fields.length && fields.every(field => Object.hasOwn(value, field));
+const integer = value => Number.isSafeInteger(value) && value >= 0;
+
+/** The history page uses the captured match's public material context. A live
+ * packet cannot select a larger deck or introduce private fields itself. */
+export function historyPacketProblem(packet, room, after = 0) {
+  try {
+    const game = room.game, ids = game.players.map(player => player.id);
+    const profile = materialProfile(game.contentVersion, ids.length), id = matchId(room);
+    if (!exact(packet, ['roomId', 'matchId', 'groups', 'nextAfter', 'headSequence', 'hasMore'])
+      || packet.roomId !== room.roomId || packet.matchId !== id || !integer(packet.headSequence)
+      || !integer(packet.nextAfter) || packet.nextAfter > packet.headSequence || after > packet.headSequence
+      || packet.hasMore !== (packet.nextAfter < packet.headSequence)
+      || !Array.isArray(packet.groups) || packet.groups.length > 50
+      || new TextEncoder().encode(JSON.stringify(packet)).byteLength > 256 * 1024) return '公开战况页面无效。';
+    let previous = after;
+    for (const group of packet.groups) {
+      const metadata = [2, 3].includes(group?.schemaVersion) ? ['turn', 'sourceCardId', 'changes', 'discard'] : [];
+      const context = group?.schemaVersion === 3 ? ['contentVersion', 'playerCount'] : [];
+      if (!exact(group, ['schemaVersion', 'roomId', 'matchId', 'sequence', 'committedAt', 'events', ...metadata, ...context])
+        || ![1, 2, 3].includes(group.schemaVersion) || group.roomId !== room.roomId || group.matchId !== id
+        || group.sequence !== previous + 1 || group.sequence > packet.headSequence || !integer(group.committedAt)
+        || (profile.contentVersion === PLAYER_COUNT_CONTENT_VERSION ? group.schemaVersion !== 3
+          || group.contentVersion !== profile.contentVersion || group.playerCount !== profile.playerCount : group.schemaVersion === 3)
+        || !Array.isArray(group.events) || !group.events.length || group.events.length > 64
+        || group.events.some(event => !publicEvent(event, ids, game.goodsPerType ?? 6, profile))
+        || new TextEncoder().encode(JSON.stringify(group)).byteLength > 32 * 1024
+        || metadata.length && (publicBattleMetadataProblem({ turn: group.turn, sourceCardId: group.sourceCardId,
+          changes: group.changes, discard: group.discard }, ids, profile)
+          || group.turn.round !== Math.ceil(group.turn.number / ids.length))) return '公开战况内容或版本无效。';
+      previous = group.sequence;
+    }
+    return packet.nextAfter === previous ? null : '公开战况游标无效。';
+  } catch { return '公开战况内容或版本无效。'; }
+}
 
 /** Owns this page's subscriptions and reply fences, never game rules or identity policy. */
 export function createHyakkiRoomController({ roomCode, document, window, ui, chat, RoomClient, api,
@@ -34,12 +73,15 @@ export function createHyakkiRoomController({ roomCode, document, window, ui, cha
     if (!current || !room || !matchId(room)) return null;
     const fence = session.capture(current), id = matchId(room);
     try {
-      const packet = await current.request(`/api/hyakki/matches/${id}/events?after=${Math.max(0, Number(after) || 0)}&limit=${Math.min(50, Math.max(1, Number(limit) || 30))}&roomCode=${roomCode}`, {}, current.epoch());
-      if (!session.current(fence) || sequence !== historySequence || !view || matchId(view) !== id
+      const cursor = Math.max(0, Number(after) || 0);
+      const packet = await current.request(`/api/hyakki/matches/${id}/events?after=${cursor}&limit=${Math.min(50, Math.max(1, Number(limit) || 30))}&roomCode=${roomCode}`, {}, current.epoch());
+      if (!session.passive(fence) || sequence !== historySequence || !view || matchId(view) !== id
         || packet.roomId !== room.roomId || packet.matchId !== id) return null;
+      const issue = historyPacketProblem(packet, room, cursor);
+      if (issue) throw new Error(issue);
       return packet;
     } catch (error) {
-      if (session.current(fence) && sequence === historySequence) unavailable(error);
+      if (session.passive(fence) && sequence === historySequence) unavailable(error);
       return null;
     }
   }
@@ -73,19 +115,19 @@ export function createHyakkiRoomController({ roomCode, document, window, ui, cha
         seatScope = scope;
         const next = new RoomClient(roomCode, { roomCode, playerId: first.selfId, userKey: state.userKey }, {
           onView(value) {
-            if (!session.current(fence)) return;
+            if (!session.passive(fence)) return;
             if (value.gameType !== 'hyakki-trading') { window.location.replace(roomHref(roomCode, value.gameType)); return; }
             cues(view, value); view = value; baseline = false; render();
             if (!next.actionStorageReady()) ui.feedback('无法保存操作记录，请允许本站存储后重新进入房间；仍可查看牌局或退出。');
           },
           onConnection(status) {
-            if (!session.current(fence)) return;
+            if (!session.passive(fence)) return;
             if (status !== 'online') baseline = true;
             connection = status; chat.connection(status); render();
           },
-          onChat(packet) { if (session.current(fence)) chat.receive(packet); },
+          onChat(packet) { if (session.passive(fence)) chat.receive(packet); },
           onError(error) {
-            if (!session.current(fence) || leaving && error.status === 404) return;
+            if (!session.passive(fence) || leaving && error.status === 404) return;
             if (error.status === 404 && view) forgetMembership(roomCode, view.selfId);
             unavailable(error);
           },
@@ -105,22 +147,22 @@ export function createHyakkiRoomController({ roomCode, document, window, ui, cha
     const body = business.has(type) ? hyakkiCommand(game, type, fields) : structuredClone(fields);
     busy = true; render();
     try { return await current.action(type, body); }
-    catch (error) { if (session.current(fence) && [401, 403, 404, 503].includes(error.status)) unavailable(error); throw error; }
-    finally { if (session.current(fence)) { busy = false; render(); } }
+    catch (error) { if (session.passive(fence) && [401, 403, 404, 503].includes(error.status)) unavailable(error); throw error; }
+    finally { if (session.passive(fence)) { busy = false; render(); } }
   }
   async function readRoom() {
     const current = client, fence = session.capture(current);
-    if (!current || !session.current(fence)) return lifecycle.refresh();
+    if (!current || !session.passive(fence)) return lifecycle.refresh();
     try { await current.refresh(); }
-    catch (error) { if (session.current(fence)) unavailable(error); }
+    catch (error) { if (session.passive(fence)) unavailable(error); }
   }
   async function retry() {
     const current = client, fence = session.capture(current);
     if (!current || !session.current(fence) || busy || leaving) return;
     busy = true; render();
     try { await current.retryAction(); }
-    catch (error) { if (session.current(fence)) unavailable(error); }
-    finally { if (session.current(fence)) { busy = false; render(); } }
+    catch (error) { if (session.passive(fence)) unavailable(error); }
+    finally { if (session.passive(fence)) { busy = false; render(); } }
   }
   const exit = createRoomExit({ session, roomCode, getClient: () => client, getView: () => view, forgetMembership,
     requireAcknowledgement: true, onPending: () => { leaving = true; render(); },
@@ -149,7 +191,10 @@ export function createHyakkiRoomController({ roomCode, document, window, ui, cha
   });
   const lifecycle = watchAccountLifecycle({ windowRef: window, documentRef: document,
     onSuspend: () => clearPrivate({ message: '正在重新核验账号…' }, { preserveDraft: true }),
-    onVerified: state => { if (!client) void boot(state); }, onError: unavailable });
+    onVerified: (state, { reason } = {}) => {
+      if (!client) void boot(state);
+      else if (reason === 'return' || reason === 'focus') void readRoom();
+    }, onError: unavailable });
   function destroy() {
     if (disposed) return;
     disposed = true; lifecycle.stop(); unsubscribe(); session.destroy(); client?.stop(); chat.clear(); ui.destroy();

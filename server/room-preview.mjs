@@ -3,7 +3,7 @@ import { createDeck,evaluateDraft } from '../app/rules.mjs';
 
 const failure=(status,code,message)=>new RoomError(status,code,message);
 const fence=view=>JSON.stringify([view.roomId,view.matchId,view.phase,view.game?.revision,view.game?.turnPlayerId]);
-const supported=view=>view.gameType==='rummikub' && ['friends-v1','friends-v2','friends-v3','friends-v4'].includes(view.game?.ruleVersion);
+const supported=view=>view.gameType==='rummikub' && ['friends-v1','friends-v2','friends-v3','friends-v4','friends-v5'].includes(view.game?.ruleVersion);
 const tile=({id,color,value,joker,jokerType})=>({id,color,value,...(joker?{joker:true,...(jokerType?{jokerType}:{})}:{})});
 function validatePublicDraft(game,board) {
   const options={copies:game.copies ?? 2,jokerCount:game.jokerCount ?? 2,...(game.jokerConfig?{jokerConfig:game.jokerConfig}:{}),ruleVersion:game.ruleVersion};
