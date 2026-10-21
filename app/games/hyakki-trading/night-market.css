@@ -1288,3 +1288,51 @@ body.night-market-body{overflow:hidden}
   #hyakki-digital-root.hy-night #yg-playfield .hy-table-work[data-step-kind=auction] .hy-work-actions{grid-column:1;grid-row:3;position:static;display:flex;flex-direction:row;width:100%;height:44px;min-height:44px;margin:0;gap:4px;align-self:stretch;background:none}
   #hyakki-digital-root.hy-night #yg-playfield .hy-table-work[data-step-kind=auction] .hy-work-actions>button{min-height:44px;height:44px;flex:1;min-width:44px;padding:4px}
 }
+
+/* The accepted material pane packs quantity objects by their readable width.
+   No per-device item count or second pager is introduced. */
+#hyakki-digital-root.hy-night #hy-task-materials.hy-grouped-selection .hy-material-options--quantities{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,136px),1fr));gap:6px;min-width:0;width:100%}
+#hyakki-digital-root.hy-night #hy-task-materials .hy-material-options--quantities>.hy-material-quantity{width:100%;min-width:0;max-width:none;box-sizing:border-box}
+
+@media(min-height:501px){
+  #hyakki-digital-root.hy-night #hy-task-materials .hy-material-options--quantities>.hy-material-quantity{height:70px;display:grid;grid-template-columns:26px max-content minmax(0,1fr);grid-template-rows:20px 44px;align-content:center;align-items:center;gap:0 3px;padding:2px}
+  #hyakki-digital-root.hy-night .hy-material-options--quantities>.hy-material-quantity>.yousei-good-icon{width:22px;height:22px;grid-column:1;grid-row:1}
+  #hyakki-digital-root.hy-night .hy-material-options--quantities>.hy-material-quantity>strong{grid-column:2;grid-row:1;font-size:11px;line-height:20px}
+  #hyakki-digital-root.hy-night .hy-material-options--quantities>.hy-material-quantity>small{grid-column:3;grid-row:1;font-size:9px;line-height:20px;white-space:nowrap}
+  #hyakki-digital-root.hy-night .hy-material-options--quantities>.hy-material-quantity>div{grid-column:1/-1;grid-row:2}
+}
+@media(max-height:500px){
+  #hyakki-digital-root.hy-night #hy-task-materials.hy-grouped-selection .hy-material-options--quantities{grid-template-columns:repeat(auto-fit,minmax(min(100%,176px),1fr))}
+}
+/* Reuse the accepted short-screen 76 x 104 complete lot face. The source
+   already identifies the task, so repeated headings cannot consume its card
+   budget. This applies only to expansion candidate faces, not original tasks. */
+@media(max-width:1150px) and (max-height:500px) and (orientation:landscape){
+  #hyakki-digital-root.hy-night #yg-playfield .yg-centre #hy-task-materials.hy-expansion-materials.hy-card-selection>.yg-hand-heading,
+  #hyakki-digital-root.hy-night #yg-playfield .yg-centre #hy-task-materials.hy-expansion-materials.hy-card-selection .hy-material-step>h3{display:none}
+  #hyakki-digital-root.hy-night #hy-task-materials.hy-expansion-materials.hy-card-selection .hy-material-step{padding:0;border:0;background:none}
+  #hyakki-digital-root.hy-night #hy-task-materials.hy-expansion-materials.hy-card-selection :is(.hy-material-steps,.hy-material-options){grid-template-columns:repeat(auto-fit,minmax(min(100%,76px),1fr));gap:6px}
+  #hyakki-digital-root.hy-night #yg-playfield .yg-centre #hy-task-materials.hy-expansion-materials.hy-card-selection .hy-material-card{--hyakki-card-width:76px;--hyakki-card-height:104px;display:block;flex:0 0 76px;width:76px;min-width:76px;max-width:76px;height:104px;min-height:104px;padding:0;border:0;background:none;justify-self:center}
+  #hyakki-digital-root.hy-night #yg-playfield .yg-centre #hy-task-materials.hy-expansion-materials.hy-card-selection .hy-material-card>.yousei-card{width:76px;height:104px}
+}
+
+/* Every card's expanded material pane shares one vertical scroll owner.
+   At middle heights the old overflow:hidden clipped the lower choices while
+   the grouped contents deliberately allowed overflow. Keep the complete
+   contents, existing horizontal card rows and the accepted table positions. */
+#hyakki-digital-root.hy-night #yg-playfield .yg-centre>#hy-task-materials:not([hidden]){overflow:auto;overscroll-behavior:contain;scrollbar-gutter:auto;scrollbar-width:auto;scrollbar-color:auto;background:rgba(48,51,54,.7);border-radius:5px}
+#hyakki-digital-root.hy-night #hy-task-materials::-webkit-scrollbar{width:8px;height:8px;background:#23272999}
+#hyakki-digital-root.hy-night #hy-task-materials::-webkit-scrollbar-thumb{background:#ded6c6;border:2px solid #363a3c;border-radius:8px}
+
+/* A borrowed tool is context for the target choice, not a squeezed payment
+   tile. Keep its complete face and a separate horizontal caption. The outer
+   material pane remains the only vertical scroll owner. */
+#hyakki-digital-root.hy-night #yg-playfield .yg-centre:has(.hy-table-work[data-step-kind=borrowed-target]) #hy-task-material-cards{height:max-content;max-height:none;flex-shrink:0;align-items:flex-start;overscroll-behavior-y:auto}
+#hyakki-digital-root.hy-night #yg-playfield .yg-centre:has(.hy-table-work[data-step-kind=borrowed-target]) #hy-task-material-cards>article.hy-material-card{display:flex;flex-direction:column;align-items:center;gap:3px;flex:0 0 92px;width:92px;min-width:92px;height:max-content;min-height:0;padding:0}
+#hyakki-digital-root.hy-night #yg-playfield .yg-centre:has(.hy-table-work[data-step-kind=borrowed-target]) #hy-task-material-cards>article.hy-material-card>.yousei-card{flex:none;width:90px;height:132px;min-height:132px}
+#hyakki-digital-root.hy-night #yg-playfield .yg-centre:has(.hy-table-work[data-step-kind=borrowed-target]) .hy-material-caption{flex:none;align-self:stretch;width:100%;writing-mode:horizontal-tb;line-height:1.25;text-align:center}
+@media(max-width:1150px) and (max-height:500px) and (orientation:landscape){
+  #hyakki-digital-root.hy-night #yg-playfield .yg-centre:has(.hy-table-work[data-step-kind=borrowed-target]) #hy-task-material-cards>article.hy-material-card{--hyakki-card-width:76px;--hyakki-card-height:104px;flex-basis:76px;width:76px;min-width:76px;gap:2px}
+  #hyakki-digital-root.hy-night #yg-playfield .yg-centre:has(.hy-table-work[data-step-kind=borrowed-target]) #hy-task-material-cards>article.hy-material-card>.yousei-card{width:76px;height:104px;min-height:104px}
+  #hyakki-digital-root.hy-night #yg-playfield .yg-centre:has(.hy-table-work[data-step-kind=borrowed-target]) .hy-material-caption{font-size:9px;white-space:nowrap}
+}

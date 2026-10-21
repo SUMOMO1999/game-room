@@ -8,6 +8,38 @@ const action=(type,label,fields={},disabled=false,className='')=>`<button type="
 const goodName=id=>GOODS.find(good=>good.id===id)?.name??'货物';
 const zeros=()=>Object.fromEntries(GOODS.map(good=>[good.id,0]));
 
+/** Same decision: update authority in place without removing a focused native input. */
+export function syncTaskMarkup(container, markup, preserve) {
+  if (!preserve || !container.childNodes) { container.innerHTML = markup; return; }
+  const fresh = container.ownerDocument.createElement('div');
+  fresh.innerHTML = markup;
+  const active = container.ownerDocument.activeElement;
+  function syncChildren(current, next) {
+    const previous = [...current.childNodes], desired = [...next.childNodes];
+    for (let index = 0; index < Math.max(previous.length, desired.length); index++) {
+      const old = previous[index], node = desired[index];
+      if (!node) { old.remove(); continue; }
+      if (!old) { current.appendChild(node); continue; }
+      if (old.nodeType !== node.nodeType || old.nodeName !== node.nodeName || old.id !== node.id) { old.replaceWith(node); continue; }
+      if (old.nodeType !== 1) { if (old.nodeValue !== node.nodeValue) old.nodeValue = node.nodeValue; continue; }
+      const editing = old === active && old.nodeName === 'INPUT';
+      for (const name of old.getAttributeNames()) if (!node.hasAttribute(name) && !(editing && name === 'value')) old.removeAttribute(name);
+      for (const name of node.getAttributeNames()) if (!(editing && name === 'value') && old.getAttribute(name) !== node.getAttribute(name)) old.setAttribute(name, node.getAttribute(name));
+      if (old.nodeName === 'INPUT' && !editing && old.value !== node.value) old.value = node.value;
+      syncChildren(old, node);
+    }
+  }
+  syncChildren(container, fresh);
+}
+/** Shared accepted source / explanation / confirmation surface. Domain callers
+ * supply their own safe markup and authoritative command wiring. */
+export function renderTableActionDraft({source,heading,secondary='',description,actions,label='确认前的选牌与材料'}){
+  return `<section class="hy-card-play hy-action-draft" aria-label="${esc(label)}"><div class="hy-inline-card">${source}</div><div class="hy-inline-copy"><div class="hy-decision-heading"><strong>${heading}</strong><div class="hy-inline-secondary">${secondary}</div></div><div class="hy-source-description">${description}</div><div class="hy-inline-actions">${actions}</div></div></section>`;
+}
+export function renderMaterialTarget({label,fields,disabled=false,selected=false,renderAction=action}){
+  return renderAction('draft-value',esc(label),fields,disabled,`hy-material-player${selected?' is-selected':''}`);
+}
+
 /** C06's two local steps still submit the original, authoritative exchange pair. */
 export function nativeExchangeState(pending,draft={}){
   if(pending?.code!=='C06'||pending.choice?.kind!=='exchange')return null;
@@ -87,16 +119,16 @@ export function nativeSelectionText(pending,game,draft,name){
   return '已选定这项材料。';
 }
 
-export function renderNativeMaterials({pending,game,selfId,draft,name,canChoose,partIndex,borrowPartIndex}){
-  const chooseAction=(type,label,fields={},disabled=false,className='')=>action(type,label,{...fields,...(partIndex!==undefined?{part:partIndex}:{}),...(borrowPartIndex!==undefined?{borrowPart:borrowPartIndex}:{})},disabled,className);
+export function renderNativeMaterials({pending,game,selfId,draft,name,canChoose,partIndex,borrowPartIndex,modelOverride=null,renderAction=action,canIncreaseGood=()=>true,optionLabel=null}){
+  const chooseAction=(type,label,fields={},disabled=false,className='')=>renderAction(type,label,{...fields,...(partIndex!==undefined?{part:partIndex}:{}),...(borrowPartIndex!==undefined?{borrowPart:borrowPartIndex}:{})},disabled,className);
 function materialCard(card,selected,disabled,type,fields,caption=''){
   return chooseAction('native-select',`${renderCard(card,{interactive:false})}${caption?`<span class="hy-material-caption">${esc(caption)}</span>`:''}`,{type,...fields},disabled,`hy-material-card${selected?' is-selected':''}`).replace('<button ',`<button data-material-card="${esc(cardKey(card))}" `);
 }
 function goodsObject(id,selected,disabled,type,fields,caption=''){
   return chooseAction('native-select',`${renderGoodsIcon(id)}<strong>${goodName(id)}</strong>${caption?`<small>${esc(caption)}</small>`:''}`,{type,...fields},disabled,`hy-material-good${selected?' is-selected':''}`).replace('<button ',`<button data-material-good="${esc(id)}" `);
 }
-  const model=choiceModel(pending),cards=knownCards(game),self=game.players.find(player=>player.id===selfId);
-  const owned=new Set([...(self?.hand??[]),...(self?.tools??[])].map(cardKey));
+  const model=modelOverride??choiceModel(pending),cards=knownCards(game),self=game.players.find(player=>player.id===selfId);
+  const owned=new Set([...(self?.hand??[]),...(self?.tools??[])].flatMap(card=>[cardKey(card),card.ref].filter(Boolean)));
   const disabled=!canChoose;
   if(pending.auction){
     return (pending.pool??[]).map((card,index)=>{
@@ -124,10 +156,10 @@ function goodsObject(id,selected,disabled,type,fields,caption=''){
   }
   if(model.type==='goods')return GOODS.filter(good=>model.stock[good.id]>0).map(good=>{
     const count=draft.goods?.[good.id]??0;
-    return `<article data-material-good="${good.id}" class="hy-material-quantity${count?' is-selected':''}">${renderGoodsIcon(good.id)}<strong>${good.name}</strong><small>${model.raw?'共':'可选'}${model.stock[good.id]}件</small><div>${chooseAction('native-select','−',{type:'quantity',id:good.id,delta:-1},disabled||count===0)}<b aria-live="polite">${count}</b>${chooseAction('native-select','＋',{type:'quantity',id:good.id,delta:1},disabled||count===model.stock[good.id]||goodsTotal(draft.goods)>=model.maximum)}</div></article>`;
+    return `<article data-material-good="${good.id}" class="hy-material-quantity${count?' is-selected':''}">${renderGoodsIcon(good.id)}<strong>${good.name}</strong><small>${model.raw?'共':'可选'}${model.stock[good.id]}件</small><div>${chooseAction('native-select','−',{type:'quantity',id:good.id,delta:-1},disabled||count===0)}<b aria-live="polite">${count}</b>${chooseAction('native-select','＋',{type:'quantity',id:good.id,delta:1},disabled||count===model.stock[good.id]||goodsTotal(draft.goods)>=model.maximum||!canIncreaseGood(good.id))}</div></article>`;
   }).join('');
   if(model.type==='cards')return model.cardIds.filter(id=>!owned.has(id)).map(id=>cards.get(id)?materialCard(cards.get(id),draft.cardIds?.includes(id),disabled,'card',{id}):'').join('');
-  if(model.type==='exchange')return `<div class="hy-material-steps" data-material-flow="exchange"><section class="hy-material-step" data-material-step="own"><h3>交出自己的1件</h3><div class="hy-material-options">${model.own.map(id=>goodsObject(id,draft.ownGoodId===id,disabled,'exchange',{field:'ownGoodId',id},`${self?.goods?.[id]??0}件`)).join('')}</div></section><section class="hy-material-step" data-material-step="other"><h3>换取对方的1件</h3><div class="hy-material-options">${model.other.map(id=>goodsObject(id,draft.otherGoodId===id,disabled,'exchange',{field:'otherGoodId',id})).join('')}</div></section></div>`;
+  if(model.type==='exchange')return `<div class="hy-material-steps" data-material-flow="exchange"><section class="hy-material-step" data-material-step="own"><h3>${esc(model.ownLabel??'交出自己的1件')}</h3><div class="hy-material-options">${model.own.map(id=>goodsObject(id,draft.ownGoodId===id,disabled,'exchange',{field:'ownGoodId',id},`${self?.goods?.[id]??0}件`)).join('')}</div></section><section class="hy-material-step" data-material-step="other"><h3>${esc(model.otherLabel??'换取对方的1件')}</h3><div class="hy-material-options">${model.other.map(id=>goodsObject(id,draft.otherGoodId===id,disabled,'exchange',{field:'otherGoodId',id})).join('')}</div></section></div>`;
   if(model.type==='payment-good'){
     const selected=model.payments[draft.paymentIndex],selectedCard=selected?cards.get(selected.cardId):null;
     const ownedPayments=model.payments.filter(payment=>owned.has(payment.cardId));
@@ -142,7 +174,7 @@ function goodsObject(id,selected,disabled,type,fields,caption=''){
     if(option.cardId||option.payment?.cardId){const id=option.cardId??option.payment.cardId;if(owned.has(id))return '';return cards.get(id)?materialCard(cards.get(id),selected,disabled,'option',{index},option.payment?'作为费用弃掉':'') : '';}
     if(option.goodsId||option.goodId)return goodsObject(option.goodsId??option.goodId,selected,disabled,'option',{index});
     if(option.fromGoodsId)return chooseAction('native-select',`${renderGoodsIcon(option.fromGoodsId)}<span>全部${goodName(option.fromGoodsId)} →</span>${renderGoodsIcon(option.toGoodsId)}<strong>${goodName(option.toGoodsId)}</strong>`,{type:'option',index},disabled,`hy-material-exchange${selected?' is-selected':''}`);
-    const label=option.targetId?name(option.targetId):option.kind==='silver'?'支付1两':option.borrow!==undefined?option.borrow?'借用一次':'不借用':option.branch?pending.choice.kind==='benefit-branch'?option.branch==='draw'?'自己抽2张':'自己取得货物':pending.choice.kind==='tribute-branch'?option.branch==='pay'?'付给发动者2两':'让发动者抽2张':option.branch==='draw'?'自己补至5张':'对方弃至3张':'选择此项';
+    const label=optionLabel?.(option)??(option.targetId?name(option.targetId):option.kind==='silver'?'支付1两':option.borrow!==undefined?option.borrow?'借用一次':'不借用':option.branch?pending.choice.kind==='benefit-branch'?option.branch==='draw'?'自己抽2张':'自己取得货物':pending.choice.kind==='tribute-branch'?option.branch==='pay'?'付给发动者2两':'让发动者抽2张':option.branch==='draw'?'自己补至5张':'对方弃至3张':'选择此项');
     return chooseAction('native-select',`${option.kind==='silver'||option.branch==='pay'?'<span class="hy-material-coin">两</span>':option.branch==='draw'?renderCardBack():''}<strong>${esc(label)}</strong>`,{type:'option',index},disabled,`hy-material-branch${selected?' is-selected':''}`);
   }).join('');
 }
