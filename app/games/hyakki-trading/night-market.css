@@ -1323,3 +1323,16 @@ body.night-market-body{overflow:hidden}
 #hyakki-digital-root.hy-night #yg-playfield .yg-centre>#hy-task-materials:not([hidden]){overflow:auto;overscroll-behavior:contain;scrollbar-gutter:auto;scrollbar-width:auto;scrollbar-color:auto;background:rgba(48,51,54,.7);border-radius:5px}
 #hyakki-digital-root.hy-night #hy-task-materials::-webkit-scrollbar{width:8px;height:8px;background:#23272999}
 #hyakki-digital-root.hy-night #hy-task-materials::-webkit-scrollbar-thumb{background:#ded6c6;border:2px solid #363a3c;border-radius:8px}
+
+/* A borrowed tool is context for the target choice, not a squeezed payment
+   tile. Keep its complete face and a separate horizontal caption. The outer
+   material pane remains the only vertical scroll owner. */
+#hyakki-digital-root.hy-night #yg-playfield .yg-centre:has(.hy-table-work[data-step-kind=borrowed-target]) #hy-task-material-cards{height:max-content;max-height:none;flex-shrink:0;align-items:flex-start;overscroll-behavior-y:auto}
+#hyakki-digital-root.hy-night #yg-playfield .yg-centre:has(.hy-table-work[data-step-kind=borrowed-target]) #hy-task-material-cards>article.hy-material-card{display:flex;flex-direction:column;align-items:center;gap:3px;flex:0 0 92px;width:92px;min-width:92px;height:max-content;min-height:0;padding:0}
+#hyakki-digital-root.hy-night #yg-playfield .yg-centre:has(.hy-table-work[data-step-kind=borrowed-target]) #hy-task-material-cards>article.hy-material-card>.yousei-card{flex:none;width:90px;height:132px;min-height:132px}
+#hyakki-digital-root.hy-night #yg-playfield .yg-centre:has(.hy-table-work[data-step-kind=borrowed-target]) .hy-material-caption{flex:none;align-self:stretch;width:100%;writing-mode:horizontal-tb;line-height:1.25;text-align:center}
+@media(max-width:1150px) and (max-height:500px) and (orientation:landscape){
+  #hyakki-digital-root.hy-night #yg-playfield .yg-centre:has(.hy-table-work[data-step-kind=borrowed-target]) #hy-task-material-cards>article.hy-material-card{--hyakki-card-width:76px;--hyakki-card-height:104px;flex-basis:76px;width:76px;min-width:76px;gap:2px}
+  #hyakki-digital-root.hy-night #yg-playfield .yg-centre:has(.hy-table-work[data-step-kind=borrowed-target]) #hy-task-material-cards>article.hy-material-card>.yousei-card{width:76px;height:104px;min-height:104px}
+  #hyakki-digital-root.hy-night #yg-playfield .yg-centre:has(.hy-table-work[data-step-kind=borrowed-target]) .hy-material-caption{font-size:9px;white-space:nowrap}
+}
