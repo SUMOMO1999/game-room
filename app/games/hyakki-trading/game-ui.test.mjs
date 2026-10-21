@@ -21,7 +21,7 @@ function room(game,{phase='playing',selfId=ids[0],pause=null,manual=false}={}){
 }
 function fixture(t,{onAction,onLeave,onHistory,practice=false}={}){
   const document=drawingTestDOM('<head></head><body><main id="hyakki-digital-root"></main></body>'),root=document.getElementById('hyakki-digital-root');
-  const prototype=Object.getPrototypeOf(root),nativeQuery=prototype.querySelectorAll,nativeMatches=prototype.matches;
+  const prototype=Object.getPrototypeOf(root),nativeQuery=prototype.querySelectorAll,nativeMatches=prototype.matches,nativeClosest=prototype.closest;
   // Extend the small shared lifecycle DOM only for APIs used by the real mount.
   const nativeSetAttribute=prototype.setAttribute,nativeRemoveAttribute=prototype.removeAttribute;
   prototype.setAttribute=function(name,value){nativeSetAttribute.call(this,name,value);if(name==='disabled')this.disabled=true;};
@@ -32,14 +32,19 @@ function fixture(t,{onAction,onLeave,onHistory,practice=false}={}){
   prototype.append=function(...children){nativeAppend.apply(this,children);if(this.tagName==='SELECT'){const selected=this.children.find(node=>node.getAttribute('selected')!==null)??this.children[0];this.value=selected?.value??'';}};
   prototype.scrollIntoView=function(){};
   prototype.matches=function(selector){
-    const entity=selector.match(/^\[data-entity-id="([^"]+)"\]$/u);
-    return entity?this.dataset.entityId===entity[1]:nativeMatches.call(this,selector);
+    const entity=selector.match(/^\[data-(entity-id|tool-id)="([^"]+)"\]$/u);
+    return entity?this.dataset[entity[1]==='entity-id'?'entityId':'toolId']===entity[2]:nativeMatches.call(this,selector);
   };
   prototype.after=function(...children){const parent=this.parentNode,index=parent.children.indexOf(this)+1;for(const child of children){child.remove();child.parentNode=parent;}parent.children.splice(index,0,...children);};
   prototype.querySelectorAll=function(selector){
     if(selector.includes(','))return [...new Set(selector.split(',').flatMap(part=>this.querySelectorAll(part.trim())))];
     const parts=selector.trim().split(/\s+/u);if(parts.length===1)return nativeQuery.call(this,selector==='*'?'div,span,button,img':selector.replace(/:first-child/gu,''));
     let parents=[this];for(const part of parts)parents=parents.flatMap(parent=>nativeQuery.call(parent,part.replace(/:first-child/gu,'')));return [...new Set(parents)];
+  };
+  prototype.closest=function(selector){
+    const scoped=selector.match(/^(#yg-(?:hand|tools)) (\[data-(?:entity|tool)-id\])$/u);
+    if(!scoped)return nativeClosest.call(this,selector);
+    const node=nativeClosest.call(this,scoped[2]);return node?.parentNode?.closest(scoped[1])?node:null;
   };
   prototype.insertAdjacentHTML=function(position,markup){
     const holder=document.createElement('div');holder.innerHTML=markup;const children=[...holder.children];
@@ -1131,4 +1136,131 @@ test('expansion overflow receipt shows named goods and sends the actual retained
   assert.deepEqual(selection,game.pending.choice.defaultSelection);assert.equal(selection.combined,undefined);
   const after=run(game,'choose-effect',{selection});assert.equal(after.pending,null);
   assert.equal(Object.values(after.players[0].goods).reduce((a,b)=>a+b,0),7);
+});
+
+// These checks mount the same accepted material pane and exercise the real
+// expansion rules. A visible source or a pager count alone is not acceptance.
+async function expandedTable(t,codes=['R18','R12'],prepare=()=>{}){
+  const rules=await import('./configured/test-support/fixture.mjs');
+  const {privateView}=await import('./configured/view.mjs');
+  let game=rules.use(rules.fixture(codes,{actionLimit:10}));const prepared=prepare(game,rules);if(prepared?.players)game=prepared;
+  const f=fixture(t),selfId=rules.ids[0];
+  function view(){const players=game.players.map((p,i)=>({id:p.id,name:i?'伙伴'+i:'我',ready:true}));return {roomId:'reuse',roomCode:'123456',phase:'playing',selfId,selfRole:'player',hostId:selfId,serverTime:1001,players,spectators:[],game:privateView(game,selfId),hyakkiConfig:game.configuration};}
+  const apply=()=>f.ui.applyView(view());apply();
+  const command=(type,accept=()=>true)=>f.root.querySelectorAll(`[data-ex-command="${type}"]`).find(node=>accept(JSON.parse(node.dataset.exFields.replace(/&quot;/gu,'"'))));
+  function click(node){assert.ok(node);if(node.dataset.exFields)node.setAttribute('data-ex-fields',node.dataset.exFields.replace(/&quot;/gu,'"'));f.click(node);}
+  const select=code=>{const card=view().game.players[0].hand.find(c=>c.definitionId==='yousei.'+code.toLowerCase());assert.ok(card,code);f.ui.selectHandCard(card);};
+  const commit=()=>{const action=f.commands.at(-1);assert.ok(action);game=rules.run(game,action.type,action.fields);apply();return game;};
+  return {...f,apply,view,command,click,select,commit,get game(){return game;}};
+}
+
+test('expansion mixed trade uses all twelve original quantities and preserves its draft through a view and resize',async t=>{
+  const f=await expandedTable(t,undefined,(g,r)=>r.move(g,'XG13'));f.select('XG13');f.click(f.command('trade',x=>x.direction==='buy'));
+  assert.equal(f.byId('ex-workbench').hidden,true);assert.ok(f.byId('yg-scene-content').querySelector('.hy-card-play'));
+  assert.equal(f.byId('hy-task-material-cards').querySelectorAll('.hy-material-quantity').length,12);
+  assert.equal(f.command('page'),undefined);
+  const amount=(id,delta)=>f.click(f.command('amount',x=>x.id===id&&x.delta===delta));
+  amount('firearms',1);amount('firearms',1);amount('timber',1);
+  assert.equal(f.command('trade-confirm').disabled,false);assert.match(f.byId('yg-scene-content').textContent,/已选3\/3/);
+  f.apply();f.document.defaultView.innerWidth=844;f.document.defaultView.innerHeight=390;f.document.defaultView.dispatchEvent(new Event('resize'));
+  assert.equal(f.command('trade-confirm').disabled,false);assert.deepEqual(f.commands,[]);
+  const used=f.game.actionsUsed,silver=f.game.players[0].silver;f.click(f.command('trade-confirm'));
+  assert.equal(f.commands.length,1);assert.equal(f.commands[0].fields.materials.firearms,2);assert.equal(f.commands[0].fields.materials.timber,1);
+  const after=f.commit();assert.equal(after.actionsUsed,used+1);assert.equal(after.players[0].silver,silver-5);
+});
+
+test('expansion target selection lists all five opponents and confirms only the chosen last opponent',async t=>{
+  const f=await expandedTable(t,['R18','R12','R10','R08','R07','R06'],(g,r)=>r.move(g,'XM04'));f.select('XM04');
+  assert.equal(f.byId('hy-task-material-cards').querySelectorAll('.hy-material-player').length,5);assert.equal(f.command('page'),undefined);
+  const target=f.game.players.at(-1).id;f.click(f.command('param',x=>x.value===target));assert.equal(f.commands.length,0);
+  f.click(f.command('use'));assert.equal(f.commands[0].fields.params.targetId,target);
+  const after=f.commit();assert.equal(after.players.at(-1).silver,16);assert.equal(after.players[0].silver,18);
+});
+
+test('expansion installation selects one of the actual three equipped tools without a replacement browser',async t=>{
+  const f=await expandedTable(t,undefined,(g,r)=>{for(const code of ['T01','T02','XT07']){const id=r.move(g,code);g.players[0].hand.splice(g.players[0].hand.indexOf(id),1);g.players[0].tools.push({cardId:id,exhausted:false});}r.move(g,'XT14');});
+  f.select('XT14');assert.match(f.byId('hy-task-material-cards').textContent,/点下方已装备/);
+  assert.equal(f.byId('hy-task-material-cards').querySelectorAll('[data-ex-command="param"]').length,0);
+  const replacement=f.game.players[0].tools.at(-1).cardId;f.click(f.root.querySelector(`[data-tool-id="${replacement}"]`));
+  assert.equal(f.commands.length,0);assert.equal(f.command('install').disabled,false);assert.equal(f.root.querySelector(`[data-tool-id="${replacement}"]`).classList.contains('is-selected'),true);
+  f.click(f.command('install'));assert.equal(f.commands[0].fields.replaceCardId,replacement);const used=f.game.actionsUsed;
+  const after=f.commit();assert.equal(after.actionsUsed,used);assert.ok(after.discard.includes(replacement));assert.equal(after.players[0].tools.length,3);
+});
+
+test('expansion reset chooses a physical hand card and equipped public reference, preserving both after a view',async t=>{
+  const f=await expandedTable(t,['R22','R12'],(g,r)=>{const id=r.move(g,'XT07');g.players[0].hand.splice(g.players[0].hand.indexOf(id),1);g.players[0].tools.push({cardId:id,exhausted:true});return r.run(g,'use-role');});
+  assert.equal(f.game.pending.choice.kind,'role-reset-tool');assert.equal(f.byId('hy-task-material-cards').querySelectorAll('.hy-material-card').length,0);
+  const hand=f.game.players[0].hand[0],tool=f.game.players[0].tools[0].cardId,reference=f.view().game.players[0].tools[0].ref;
+  f.click(f.root.querySelector(`[data-entity-id="${hand}"]`));f.click(f.root.querySelector(`[data-tool-id="${tool}"]`));f.apply();
+  assert.equal(f.root.querySelector(`[data-tool-id="${tool}"]`).classList.contains('is-selected'),true);assert.equal(f.command('pending-confirm').disabled,false);
+  f.click(f.command('pending-confirm'));assert.deepEqual(f.commands.at(-1).fields.selection,{cardId:hand,toolCardId:reference});
+  const after=f.commit();assert.equal(after.players[0].tools[0].exhausted,false);assert.ok(after.discard.includes(hand));
+});
+
+test('expansion XT13 reuses the two grouped goods choices and submits both sides',async t=>{
+  const f=await expandedTable(t,undefined,(g,r)=>{const id=r.move(g,'XT13');g.players[0].hand.splice(g.players[0].hand.indexOf(id),1);g.players[0].tools.push({cardId:id,exhausted:false});g.players[0].goods.firearms=1;g.bankGoods.firearms--;return r.run(g,'activate-tool',{cardId:id});});
+  assert.equal(f.game.pending.choice.kind,'tool-class-exchange');assert.equal(f.byId('hy-task-material-cards').querySelectorAll('.hy-material-step').length,2);
+  f.click(f.command('field',x=>x.key==='ownGoodId'&&x.value==='firearms'));f.click(f.command('field',x=>x.key==='goodId'&&x.value==='timber'));
+  assert.equal(f.command('pending-confirm').disabled,false);f.click(f.command('pending-confirm'));assert.deepEqual(f.commands.at(-1).fields.selection,{ownGoodId:'firearms',goodId:'timber'});
+  const after=f.commit();assert.equal(after.players[0].goods.firearms,0);assert.equal(after.players[0].goods.timber,1);
+});
+
+test('expansion discarded-card swap selects its payment from the real hand and the full discard face',async t=>{
+  const f=await expandedTable(t,undefined,(g,r)=>{const id=r.move(g,'XT14');g.players[0].hand.splice(g.players[0].hand.indexOf(id),1);g.players[0].tools.push({cardId:id,exhausted:false});const target=r.move(g,'G01');g.players[0].hand.splice(g.players[0].hand.indexOf(target),1);g.discard.push(target);return r.run(g,'activate-tool',{cardId:id});});
+  const payment=f.game.pending.choice.options[0].payments[0],target=f.view().game.pending.choice.options[0].targets[0];
+  assert.equal(f.byId('hy-task-material-cards').querySelectorAll('.hy-material-card').length,1,'only the external discard is duplicated in the material pane');
+  f.click(f.root.querySelector(`[data-entity-id="${payment}"]`));f.click(f.command('field',x=>x.key==='takeCardId'&&x.value===target));
+  f.click(f.command('pending-confirm'));assert.deepEqual(f.commands.at(-1).fields.selection,{payCardId:payment,takeCardId:target});
+  const after=f.commit();assert.ok(after.discard.includes(payment));assert.equal(after.pending,null);
+});
+
+test('accountant uses a physical hand card while a different viewer has no private choice controls',async t=>{
+  const f=await expandedTable(t,['R11','R12'],(g,r)=>{const cardId=r.move(g,'G01');g=r.run(g,'buy',{cardId});return g;});
+  assert.equal(f.game.pending.choice.kind,'accountant-discard');assert.equal(f.byId('hy-task-material-cards').querySelectorAll('.hy-material-card').length,0);
+  const card=f.game.players[0].hand[0];f.click(f.root.querySelector(`[data-entity-id="${card}"]`));assert.equal(f.commands.length,0);
+  f.click(f.command('pending-confirm'));assert.deepEqual(f.commands.at(-1).fields.selection,{cardId:card});assert.equal(f.commit().pending,null);
+});
+
+test('non-actor expansion receipt renders a waiting state without accessing hidden options',async t=>{
+  const f=await expandedTable(t,['R10','R12'],(g,r)=>{g.players[0].goods.timber=6;g.bankGoods.timber-=6;return r.run(g,'play-character',{cardId:r.move(g,'XC01'),params:{goods:{firearms:2}}});});
+  const {privateView}=await import('./configured/view.mjs');
+  const next=f.view(),peer=next.game.players[1].id;next.selfId=peer;next.game=privateView(f.game,peer);
+  assert.equal(next.game.pending.choice.options,undefined);assert.doesNotThrow(()=>f.ui.applyView(next));
+  assert.match(f.byId('hy-task-material-cards').textContent,/等待/);assert.equal(f.command('pending-confirm'),undefined);
+});
+
+test('canceling an expansion draft sends nothing and leaves the accepted legacy tool choices intact',async t=>{
+  const f=await expandedTable(t,['R18','R12','R10'],(g,r)=>{r.move(g,'XM04');const id=r.move(g,'T02');g.players[0].hand.splice(g.players[0].hand.indexOf(id),1);g.players[0].tools.push({cardId:id,exhausted:false});g.players[0].goods.firearms=1;g.bankGoods.firearms--;g.players[1].goods.timber=1;g.bankGoods.timber--;});
+  f.select('XM04');f.click(f.command('param',x=>x.value===f.game.players[1].id));f.click(f.command('close'));assert.deepEqual(f.commands,[]);
+  f.click(f.byId('yg-tools').querySelector('[data-tool-id]'));
+  assert.ok(f.byId('yg-scene-content').querySelector('.hy-card-play'));assert.equal(f.command('param'),undefined);
+  assert.ok(f.root.querySelector('[data-hy-action="draft-value"]'),'the accepted target selector remains wired');
+});
+
+test('new procure card selects quantities before one confirmation and cancel leaves all authority unchanged',async t=>{
+  const f=await expandedTable(t,undefined,(g,r)=>r.move(g,'XC01'));f.select('XC01');
+  assert.equal(f.byId('hy-task-material-cards').querySelectorAll('.hy-material-quantity').length,2);assert.equal(f.command('use').disabled,true);
+  f.click(f.command('amount',x=>x.id==='firearms'&&x.delta===1));f.click(f.command('amount',x=>x.id==='mechanism'&&x.delta===1));
+  assert.equal(f.command('use').disabled,false);assert.deepEqual(f.commands,[]);
+  const before=structuredClone(f.game);f.click(f.command('close'));assert.deepEqual(f.game,before);assert.deepEqual(f.commands,[]);
+  f.select('XC01');f.click(f.command('amount',x=>x.id==='firearms'&&x.delta===1));f.click(f.command('amount',x=>x.id==='firearms'&&x.delta===1));
+  f.click(f.command('use'));assert.equal(f.commands.length,1);assert.equal(f.commands[0].fields.params.goods.firearms,2);
+  const after=f.commit();assert.equal(after.pending,null);assert.equal(after.players[0].goods.firearms,2);
+});
+
+test('new reset role selects both physical materials before the single use-role command',async t=>{
+  const f=await expandedTable(t,['R22','R12'],(g,r)=>{const id=r.move(g,'XT07');g.players[0].hand.splice(g.players[0].hand.indexOf(id),1);g.players[0].tools.push({cardId:id,exhausted:true});});
+  f.click(f.root.querySelector('.ex-role-dock'));assert.equal(f.command('use').disabled,true);assert.equal(f.game.pending,null);
+  const hand=f.game.players[0].hand[0],tool=f.game.players[0].tools[0].cardId;
+  f.click(f.root.querySelector(`[data-entity-id="${hand}"]`));f.click(f.root.querySelector(`[data-tool-id="${tool}"]`));assert.deepEqual(f.commands,[]);
+  f.click(f.command('use'));assert.equal(f.commands.length,1);assert.deepEqual(f.commands[0].fields.params,{cardId:hand,toolCardId:tool});
+  const after=f.commit();assert.equal(after.pending,null);assert.equal(after.players[0].tools[0].exhausted,false);assert.ok(after.discard.includes(hand));
+});
+
+test('new XT13 selects both original groups before the single activate-tool command',async t=>{
+  const f=await expandedTable(t,undefined,(g,r)=>{const id=r.move(g,'XT13');g.players[0].hand.splice(g.players[0].hand.indexOf(id),1);g.players[0].tools.push({cardId:id,exhausted:false});g.players[0].goods.firearms=1;g.bankGoods.firearms--;});
+  f.click(f.byId('yg-tools').querySelector('[data-tool-id]'));assert.equal(f.command('use').disabled,true);assert.equal(f.game.pending,null);
+  f.click(f.command('field',x=>x.key==='ownGoodId'&&x.value==='firearms'));f.click(f.command('field',x=>x.key==='goodId'&&x.value==='timber'));assert.deepEqual(f.commands,[]);
+  f.click(f.command('use'));assert.equal(f.commands.length,1);assert.deepEqual(f.commands[0].fields.params,{ownGoodId:'firearms',goodId:'timber'});
+  const after=f.commit();assert.equal(after.pending,null);assert.equal(after.players[0].goods.firearms,0);assert.equal(after.players[0].goods.timber,1);
 });

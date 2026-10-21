@@ -3,7 +3,7 @@ import { mountHandDrag } from './hand-drag-ui.mjs';
 import { mountDigitalPage } from './digital-page-ui.mjs';
 import { renderCard, renderCardBack, renderCardDetails, renderGoodsIcon } from './digital-card-ui.mjs';
 import { mountTableMotion } from './table-motion-ui.mjs';
-import { nativeChoiceDraft, nativeCardInput, updateNativeChoice, nativeChoiceReady, nativeExchangeState, nativeSelectionText, renderNativeMaterials, renderNativeWork } from './table-decision-ui.mjs';
+import { syncTaskMarkup, renderTableActionDraft, renderMaterialTarget, nativeChoiceDraft, nativeCardInput, updateNativeChoice, nativeChoiceReady, nativeExchangeState, nativeSelectionText, renderNativeMaterials, renderNativeWork } from './table-decision-ui.mjs';
 import { dialogPage, renderDialogPager, renderCompactCard, renderCompactCards, renderPublicDiscardCards, renderDialogBody, decisionContext } from './game-dialog-ui.mjs';
 import { mountBattleReport } from './battle-report-ui.mjs';
 import { cardDraftChoices, cardDraftSelections, cardDraftCost } from './card-draft.mjs';
@@ -14,29 +14,6 @@ import { choiceModel, buildChoiceSelection, defaultChoiceInput, knownCards, acti
 const esc = value => String(value ?? '').replace(/[&<>"']/gu, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[char]);
 const button = (action, label, fields = {}, disabled = false, className = '') => `<button type="button" data-hy-action="${action}" data-hy-fields="${esc(JSON.stringify(fields))}" ${className ? `class="${className}"` : ''} ${disabled ? 'disabled' : ''}>${esc(label)}</button>`;
 const goodName = id => GOODS.find(good => good.id === id)?.name ?? '货物';
-/** Same decision: update authority in place without removing a focused native input. */
-function syncTaskMarkup(container, markup, preserve) {
-  if (!preserve || !container.childNodes) { container.innerHTML = markup; return; }
-  const fresh = container.ownerDocument.createElement('div');
-  fresh.innerHTML = markup;
-  const active = container.ownerDocument.activeElement;
-  function syncChildren(current, next) {
-    const previous = [...current.childNodes], desired = [...next.childNodes];
-    for (let index = 0; index < Math.max(previous.length, desired.length); index++) {
-      const old = previous[index], node = desired[index];
-      if (!node) { old.remove(); continue; }
-      if (!old) { current.appendChild(node); continue; }
-      if (old.nodeType !== node.nodeType || old.nodeName !== node.nodeName || old.id !== node.id) { old.replaceWith(node); continue; }
-      if (old.nodeType !== 1) { if (old.nodeValue !== node.nodeValue) old.nodeValue = node.nodeValue; continue; }
-      const editing = old === active && old.nodeName === 'INPUT';
-      for (const name of old.getAttributeNames()) if (!node.hasAttribute(name) && !(editing && name === 'value')) old.removeAttribute(name);
-      for (const name of node.getAttributeNames()) if (!(editing && name === 'value') && old.getAttribute(name) !== node.getAttribute(name)) old.setAttribute(name, node.getAttribute(name));
-      if (old.nodeName === 'INPUT' && !editing && old.value !== node.value) old.value = node.value;
-      syncChildren(old, node);
-    }
-  }
-  syncChildren(container, fresh);
-}
 const titleByKind = {'retain-goods':'选择要留下的货物','take-card':'留下一张牌','tool-two-cards':'两仪灯 · 自留一张，另一张给对手','discard-hand':'弃牌至剩三张','tool-discard-draw':'弃一或两张，再抽同样张数','auction-goods':'挑选两件完整拍品','sell-goods':'挑选三件出售货物','sell-stock':'选择出售的库存','draft-card':'县丞 · 公开手牌重分','draft-good':'船老大 · 货物重分','draft-tool':'光棍 · 道具重分','keep-tool':'魁首 · 只留一件道具','borrow-tool':'术士 · 是否借用该道具','borrowed-target':'借用道具 · 另选对手','benefit-branch':'把戏人 · 选择自己的收益','benefit-good':'选择自己的收益货物','trade-card':'买办 · 选择货物牌','hand-branch':'典史 · 选择效果','tribute-branch':'蛊婆 · 付钱或让发动者抽牌','tool-search-payment':'貔貅袋 · 支付取牌费用','tool-exchange':'许愿井 · 双方各换一件','tool-payment-good':'选择货物与支付牌'};
 const branchLabel = (kind, branch) => kind === 'tribute-branch' ? branch === 'pay' ? '付给对方2两' : '让对方抽2张'
   : kind === 'hand-branch' ? branch === 'draw' ? '自己补足5张手牌' : '让对方弃到3张'
@@ -249,7 +226,7 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
     if(face.category==='tool'&&!tool&&self.tools.length===3)conditions+=`<p>${detail.replaceCardId?'将弃掉'+esc(getCard(self.tools.find(item=>cardKey(item)===detail.replaceCardId).definitionId).name):'点现有装备，选择替换的一件'}。</p>`;
     operations+=button('cancel-card','取消');
     const selectedObject=face.category==='goods'?Object.entries(face.goods).map(([id,count])=>`${goodName(id)}×${count}`).join('／'):face.name;
-    return `<section class="hy-card-play hy-action-draft" aria-label="确认前的选牌与材料"><div class="hy-inline-card"><button type="button" class="hy-source-reader" data-hy-detail="${esc(cardKey(card))}" aria-label="阅读${esc(face.name)}完整牌文" title="点来源牌阅读完整牌文">${renderCard(card,{interactive:false})}</button></div><div class="hy-inline-copy"><div class="hy-decision-heading"><strong>${esc(selectedObject)}${shortScreen()&&needsTarget&&peer?' · '+esc(taskName(peer.id)):''}</strong><div class="hy-inline-secondary"><button type="button" data-hy-detail="${esc(cardKey(card))}" aria-label="阅读${esc(face.name)}完整牌文">牌文</button></div></div><div class="hy-source-description"><p class="hy-decision-summary">${esc(summary)}</p>${conditions}</div><div class="hy-inline-actions">${operations}</div></div></section>`;
+    return renderTableActionDraft({source:`<button type="button" class="hy-source-reader" data-hy-detail="${esc(cardKey(card))}" aria-label="阅读${esc(face.name)}完整牌文" title="点来源牌阅读完整牌文">${renderCard(card,{interactive:false})}</button>`,heading:`${esc(selectedObject)}${shortScreen()&&needsTarget&&peer?' · '+esc(taskName(peer.id)):''}`,secondary:`<button type="button" data-hy-detail="${esc(cardKey(card))}" aria-label="阅读${esc(face.name)}完整牌文">牌文</button>`,description:`<p class="hy-decision-summary">${esc(summary)}</p>${conditions}`,actions:operations});
   }
   function selectHandCard(card,tool=false){
     if(!card||!room?.game)return;const self=room.game.players.find(player=>player.id===room.selfId);
@@ -302,7 +279,7 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
       return draftParts().map((part,index)=>renderNativeMaterials({pending:part,game:room.game,selfId:room.selfId,draft:draftInput(part,index),name,canChoose:active(),partIndex:index})).join('');
     }
     const selectingObject=['M01','M08'].includes(face.sourceCode);
-    if(requiresOpponent(face,detail.tool?'activate-tool':'play-character')&&others.length>1&&(!selectingObject||!peer))html+=others.map(player=>button('draft-value',`${name(player.id)} · ${selectingObject?(face.sourceCode==='M01'?goodsTotal(player.goods)+'件库存':player.tools.length+'件装备'):player.silver+'两'}`,{field:'targetId',id:player.id},selectingObject&&(face.sourceCode==='M01'?!goodsTotal(player.goods):!player.tools.length),`hy-material-player${targetId===player.id?' is-selected':''}`)).join('');
+    if(requiresOpponent(face,detail.tool?'activate-tool':'play-character')&&others.length>1&&(!selectingObject||!peer))html+=others.map(player=>renderMaterialTarget({label:`${name(player.id)} · ${selectingObject?(face.sourceCode==='M01'?goodsTotal(player.goods)+'件库存':player.tools.length+'件装备'):player.silver+'两'}`,fields:{field:'targetId',id:player.id},disabled:selectingObject&&(face.sourceCode==='M01'?!goodsTotal(player.goods):!player.tools.length),selected:targetId===player.id})).join('');
     if(peer&&face.sourceCode==='M01')html+=GOODS.filter(good=>peer.goods[good.id]>0).map(good=>`<button type="button" class="hy-material-good${detail.goodsId===good.id?' is-selected':''}" data-hy-action="draft-value" data-hy-fields="${esc(JSON.stringify({field:'goodsId',id:good.id}))}">${renderGoodsIcon(good.id)}<strong>${good.name}</strong><small>库存${peer.goods[good.id]}件</small></button>`).join('');
     if(peer&&face.sourceCode==='M08')html+=peer.tools.map(tool=>`<button type="button" class="hy-material-card${detail.toolCardId===cardKey(tool)?' is-selected':''}" data-hy-action="draft-value" data-hy-fields="${esc(JSON.stringify({field:'toolCardId',id:cardKey(tool)}))}">${renderCard(tool,{interactive:false})}<small>拆除${esc(name(peer.id))}的这件</small></button>`).join('');
     if(peer&&selectingObject&&!html)html='<p class="hy-material-chosen">这位对手没有可取的物件，请改选对手。</p>';
@@ -454,7 +431,7 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
     root.classList.toggle('hy-pending-inline',tableStep);
     const native=tableStep&&!primaryStep(game.pending),nativeDraft=choiceDraft??nativeChoiceDraft(game?.pending);
     const taskMarkup=tableStep?native?renderNativeWork({pending:game.pending,game,selfId:room.selfId,draft:nativeDraft,step:decisionStep,short:shortScreen(),narrow:narrowPhone(),name:taskName,canChoose:mine()&&available()&&room.phase==='playing',readyOverride:borrowReady(),costOverride:borrowCost(),borrowPreview:borrowDraft()?borrowParts().map((part,index)=>nativeSelectionText(part,game,borrowDraft().choiceInputs[index]??nativeChoiceDraft(part),name)).join('；'):null}):renderTableStep(game.pending):detail?selectedCardContent(detail.card,detail.tool):peerPresentation?renderPeerPresentation():`<p class="yg-scene-note">${esc(note)}</p><div class="yg-table-actions">${controls}</div>`;
-    syncTaskMarkup($('yg-scene-content'),taskMarkup,preserveTaskDOM&&tableStep);
+    if(!expansionTable.hasDraft()&&!expansionTable.handlesPending(game?.pending))syncTaskMarkup($('yg-scene-content'),taskMarkup,preserveTaskDOM&&tableStep);
     let materialHtml=native?renderNativeMaterials({pending:game.pending,game,selfId:room.selfId,draft:nativeDraft,name,canChoose:mine()&&available()&&room.phase==='playing'}):renderDraftMaterials();
     const choosingBenefitBranch=game?.pending?.code==='C01'&&game.pending.choice?.kind==='benefit-branch'&&mine();
     if(choosingBenefitBranch)materialHtml=renderBenefitBranches({pending:game.pending,draft:choiceDraft,canChoose:available()&&room.phase==='playing'});
@@ -490,7 +467,7 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
     if(detail&&getCard(detail.card.definitionId).sourceCode==='C08')$('hy-task-material-title').textContent=dianBranch()==='discard'?(materialPeer?`由${name(materialPeer.id)}弃牌至3张`:'选择弃牌的对手'):dianBranch()==='draw'?'自己补牌至5张':'典史 · 选择效果';
     if(exchangeState)$('hy-task-material-title').textContent=exchangeState.step==='from'?'货郎 · 先选交出的货物':'货郎 · 再选换入的货物';
     if(benefitState)$('hy-task-material-title').textContent=`把戏人 · ${{branch:'1 选择自己的收益',goods:'2 选择自己的货物',target:'选择另一位受益者',ready:'核对双方收益',receive:'选择你的收益货物'}[benefitState.step]}`;
-    syncTaskMarkup($('hy-task-material-cards'),materialHtml,preserveTaskDOM&&tableStep);
+    if(!expansionTable.hasDraft()&&!expansionTable.handlesPending(game?.pending))syncTaskMarkup($('hy-task-material-cards'),materialHtml,preserveTaskDOM&&tableStep);
     root.querySelector('.yg-lower').classList.toggle('hy-has-materials',!$('hy-task-materials').hidden);
     root.classList.toggle('hy-native-pending',native);
     syncMarketChoice();renderRoomControl();motion.sync();
