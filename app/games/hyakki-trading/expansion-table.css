@@ -401,3 +401,24 @@
  #hyakki-digital-root.ex-preview.hy-night .yg-header .nm-peer-tools>.ex-peer-tool-label{display:inline;flex:none;font-size:9px;line-height:12px;white-space:nowrap;color:#ebd6ac}
  #hyakki-digital-root.ex-preview.hy-night .yg-header .nm-peer-tools>small{font-size:9px;line-height:12px;white-space:nowrap}
 }
+
+/* Role skill reuses the existing second overview line. Counters share the
+   first line, preserving every outer size including the44px phone card. */
+#hyakki-digital-root.ex-preview.hy-night .nm-peer-copy:has(.ex-peer-role-skill){grid-template-columns:minmax(0,1fr) auto auto}
+#hyakki-digital-root.ex-preview.hy-night .nm-peer-copy:has(.ex-peer-role-skill)>strong{grid-row:1;grid-column:1}
+#hyakki-digital-root.ex-preview.hy-night .nm-peer-copy:has(.ex-peer-role-skill)>.nm-money{grid-row:1;grid-column:2}
+#hyakki-digital-root.ex-preview.hy-night .nm-peer-copy:has(.ex-peer-role-skill)>.nm-hand-count{grid-row:1;grid-column:3}
+#hyakki-digital-root.ex-preview.hy-night .nm-peer-copy>small:has(.ex-peer-role-skill){grid-row:2;grid-column:1/-1;display:flex;align-items:center;gap:5px;min-width:0;overflow:hidden;white-space:nowrap}
+.ex-peer-role-name{flex:0 1 auto;max-width:7em;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.ex-peer-role-skill{flex:1 0 auto;white-space:nowrap;color:#f2dfb8}
+.hy-public-role{display:flex;flex-wrap:wrap;align-items:center;gap:4px}
+/* Short tablet/desktop cards may grow slightly. Exclude only the actual
+   phone range (width<=1150 and height<=500), including its boundary pixels. */
+@media(min-height:501px) and (max-height:620px) and (orientation:landscape), (min-width:1151px) and (max-height:500px) and (orientation:landscape){
+ #hyakki-digital-root.ex-preview.hy-night #yg-peer:has(.ex-peer-role-skill){height:68px}
+ #hyakki-digital-root.ex-preview.hy-night .yg-playfield:has(>#yg-peer .ex-peer-role-skill){grid-template-rows:68px minmax(0,1fr) var(--nm-self-height)}
+ #hyakki-digital-root.ex-preview.hy-night .nm-merchant-overview:has(.ex-peer-role-skill){min-height:44px;height:auto;flex-basis:auto}
+ #hyakki-digital-root.ex-preview.hy-night .nm-peer-copy>small:has(.ex-peer-role-skill){flex-wrap:wrap;gap:0 3px;overflow:visible}
+ #hyakki-digital-root.ex-preview.hy-night .nm-peer-copy .ex-peer-role-name{max-width:100%;flex:0 1 auto}
+ #hyakki-digital-root.ex-preview.hy-night .nm-peer-copy .ex-peer-role-skill{flex:0 1 auto;white-space:normal;overflow-wrap:anywhere}
+}

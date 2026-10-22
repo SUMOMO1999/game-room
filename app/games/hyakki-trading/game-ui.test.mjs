@@ -1264,3 +1264,66 @@ test('new XT13 selects both original groups before the single activate-tool comm
   f.click(f.command('use'));assert.equal(f.commands.length,1);assert.deepEqual(f.commands[0].fields.params,{ownGoodId:'firearms',goodId:'timber'});
   const after=f.commit();assert.equal(after.pending,null);assert.equal(after.players[0].goods.firearms,0);assert.equal(after.players[0].goods.timber,1);
 });
+
+for (const toolCode of ['T03','T10']) for (const paymentCode of ['G01','XG07','XG13','XG19','XG20']) {
+  test(`expansion receipt cards remain ${toolCode} payment materials through physical click: ${paymentCode}`,async t=>{
+    let toolId,paymentId;
+    const f=await expandedTable(t,['R18','R12'],(game,r)=>{
+      toolId=r.move(game,toolCode);paymentId=r.move(game,paymentCode);
+      game.players[0].hand=game.players[0].hand.filter(id=>id!==toolId);
+      game.players[0].tools.push({cardId:toolId,exhausted:false});
+    });
+    const before=structuredClone(f.game),view=()=>f.view().game.players[0];
+    const start=()=>f.ui.selectHandCard(view().tools.find(c=>c.cardId===toolId),true);
+    const clickNative=(action,match=()=>true)=>{
+      const control=f.root.querySelectorAll(`[data-hy-action="${action}"]`).find(n=>match(JSON.parse(n.dataset.hyFields.replace(/&quot;/gu,'"'))));
+      assert.ok(control,action);control.setAttribute('data-hy-fields',control.dataset.hyFields.replace(/&quot;/gu,'"'));f.click(control);
+    };
+    const choose=()=>{if(toolCode==='T10')clickNative('native-select',v=>v.type==='good'&&v.id==='firearms');};
+    start();choose();
+    f.click(f.root.querySelector(`[data-entity-id="${paymentId}"] button`));
+    assert.match(f.byId('yg-scene-content').textContent,new RegExp(toolCode==='T03'?'鹤骨笛':'贪嘴泥翁'));
+    assert.equal(f.command('trade'),undefined,'payment click must not replace the tool with a receipt trade draft');
+    assert.deepEqual(f.commands,[]);clickNative('cancel-card');assert.deepEqual(f.commands,[]);assert.deepEqual(f.game,before);
+    start();choose();f.ui.selectHandCard(view().hand.find(c=>c.cardId===paymentId));
+    clickNative('confirm-card');assert.equal(f.commands.length,1);assert.equal(f.commands[0].type,'activate-tool');
+    assert.equal(f.commands[0].fields.cardId,toolId);
+    if(toolCode==='T03')assert.deepEqual(f.commands[0].fields.params,{cardIds:[paymentId]});
+    else assert.deepEqual(f.commands[0].fields.params,{goodId:'firearms',payment:{zone:'hand',cardId:paymentId}});
+    const after=f.commit();assert.equal(after.actionsUsed,before.actionsUsed+1);assert.equal(after.pending,null);
+    assert.ok(after.discard.includes(paymentId));assert.equal(after.players[0].tools.find(c=>c.cardId===toolId).exhausted,true);
+  });
+}
+
+test('public opponent skill summary and full role reader remain available without a game command',async t=>{
+  const f=await expandedTable(t,['R13','R24']);
+  assert.match(f.byId('yg-peer').textContent,/收税2两／每回合买1笔/);
+  f.click(actionControl(f,'members'));
+  assert.equal(f.byId('yg-inspector').open,true);
+  const role=f.byId('yg-inspector-body').querySelectorAll('[data-hy-read-card]').find(n=>n.dataset.hyReadCard==='yousei.role.r24');assert.ok(role);f.click(role);
+  assert.equal(f.byId('hy-card-reader').open,true);assert.match(f.byId('hy-card-reader').textContent,/每回合最多用货物牌买入1次/);
+  assert.deepEqual(f.commands,[]);
+  f.ui.applyView({...f.view(),selfRole:'spectator',selfId:'observer'});
+  assert.match(f.byId('yg-peer').textContent,/收税2两／每回合买1笔/);
+});
+
+for(const toolCode of ['T01','T08'])for(const paymentCode of ['G01','XG13'])test(`adjacent ${toolCode} preserves a ${paymentCode} hand payment draft`,async t=>{
+  let toolId,paymentId;
+  const f=await expandedTable(t,['R18','R12'],(g,r)=>{toolId=r.move(g,toolCode);paymentId=r.move(g,paymentCode);g.players[0].hand=g.players[0].hand.filter(id=>id!==toolId);g.players[0].tools.push({cardId:toolId,exhausted:false});});
+  const self=f.view().game.players[0],used=f.game.actionsUsed,silver=f.game.players[0].silver;
+  f.ui.selectHandCard(self.tools.find(c=>c.cardId===toolId),true);
+  f.click(f.root.querySelector(`[data-entity-id="${paymentId}"] button`));assert.deepEqual(f.commands,[]);
+  assert.equal(f.command('trade'),undefined);
+  const confirm=actionControl(f,'confirm-card');confirm.setAttribute('data-hy-fields',confirm.dataset.hyFields.replace(/&quot;/gu,'"'));f.click(confirm);
+  assert.equal(f.commands.length,1);assert.equal(f.commands[0].type,'activate-tool');assert.equal(f.commands[0].fields.cardId,toolId);
+  const after=f.commit();assert.equal(after.actionsUsed,used+1);assert.equal(after.players[0].hand.includes(paymentId),false);
+  if(toolCode==='T08')assert.equal(after.players[0].silver,silver+2);
+  else assert.equal(after.players[0].silver,silver);
+});
+
+
+test('expansion preparation without an opened game renders ready controls and configuration',t=>{
+ const f=fixture(t),players=ids.map((id,i)=>({id,name:i?'伙伴':'我',ready:true,connected:true}));
+ assert.doesNotThrow(()=>f.ui.applyView({roomId:'waiting',roomCode:'123456',phase:'waiting',selfId:ids[0],selfRole:'player',hostId:ids[0],serverTime:1000,game:null,players,spectators:[],hyakkiConfig:{packId:'six-trades-v1',actionLimit:5,goodsPerType:6,closingTarget:60}}));
+ assert.match(f.byId('yg-scene-content').textContent,/取消准备/);assert.match(f.byId('yg-scene-content').textContent,/收市/);assert.deepEqual(f.commands,[]);
+});

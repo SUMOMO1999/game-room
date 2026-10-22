@@ -82,7 +82,7 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
     const modal=root.querySelector('dialog[open]');
     if(modal){let note=modal.querySelector('[data-hy-error]');if(!note){note=document.createElement('p');note.dataset.hyError='true';note.setAttribute('role','alert');modal.querySelector('.dialog-heading').after(note);}note.textContent=text;}
   };
-  const expansionTable=mountExpansionTable({root,send:dispatch,read:readCard,rerender:render,feedback,available:()=>available(),clearLegacyDraft:()=>{detail=null;},inspect});
+  const expansionTable=mountExpansionTable({root,send:dispatch,read:readCard,rerender:render,feedback,available:()=>available(),clearLegacyDraft:()=>{detail=null;},isLegacyMaterial:id=>!!ownedDraftInput(id),inspect});
   function listen(type,handler){root.addEventListener(type,handler,true);return()=>root.removeEventListener(type,handler,true);}
   const selectionScope = value => [value?.roomId,value?.game?.matchId,value?.selfId,value?.selfRole,value?.phase,value?.game?.turnId,value?.game?.stage,value?.game?.actionsUsed,value?.game?.pending?.decisionId].join(':');
   const sameScope = value => [value?.roomId,value?.matchId??value?.game?.matchId,value?.selfId,value?.selfRole].join(':');
@@ -234,9 +234,9 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
     // Reading a private card is independent from the public action surface.
     // A peer turn or an in-flight receipt must never turn reading into a draft.
     if(actionRequest||!active()&&!mine()){readCard(current);return;}
-    if(!room.game.pending&&expansionTable.select(current))return;
     const localInput=ownedDraftInput(cardKey(current));
     if(localInput){const part=draftParts()[localInput.part];detail.choiceInputs??=[];detail.choiceInputs[localInput.part]=updateNativeChoice(part,draftInput(part,localInput.part),localInput.type,localInput);render();return;}
+    if(!room.game.pending&&expansionTable.select(current))return;
     if(tool&&detail&&!detail.tool&&getCard(detail.card.definitionId).category==='tool'&&self.tools.length===3&&active()){
       detail.replaceCardId=cardKey(current);render();return;
     }
@@ -675,7 +675,7 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
       const options=type==='practice-confirm'?{...(practiceSetup.packId?{packId:practiceSetup.packId,closingTarget:practiceSetup.closingTarget??60}:{}),playerCount:Number($('hy-practice-players').value),actionLimit:Number($('hy-practice-limit').value),goodsPerType:Number($('hy-practice-goods').value),goodsSupplyMode:practiceSetup.goodsSupplyMode}:undefined;
       const stamp=generation;Promise.resolve().then(()=>callback?.(options)).then(()=>{if(stamp===generation&&!destroyed&&type!=='practice-hint')closeDialogs();}).catch(error=>{if(stamp===generation&&!destroyed)feedback(error.message);});return;
     }
-    if(type==='members'){return inspect('成员与公开商铺',`<div class="hy-member-list">${(room?.game?.players??room?.players??[]).map(player=>`<article><h3>${esc(name(player.id))}${player.id===room.hostId?' · 房主':''}</h3><p>${player.silver??20}两 · 手牌${player.handCount??0}张</p>${player.goods?`<p>${goodsFor(room.game).map(good=>`${good.name} ${player.goods[good.id]}`).join(' · ')}</p>`:''}${player.goods?`<p>普通容量${player.ordinaryCapacity}格 · 临时格${player.temporaryOccupied?'已占用，已付2两':'空闲，占用付2两'}</p>`:''}${player.tools?.length?`<p>${player.tools.map(tool=>`${esc(getCard(tool.definitionId).name)}：${tool.exhausted?'已用':'可用'}`).join(' · ')}</p>${cardList(player.tools)}`:''}</article>`).join('')}</div><p>观众：${esc(room?.spectators?.map(player=>player.name).join('、')||'暂无')}</p>`);}
+    if(type==='members'){return inspect('成员与公开商铺',`<div class="hy-member-list">${(room?.game?.players??room?.players??[]).map(player=>`<article><h3>${esc(name(player.id))}${player.id===room.hostId?' · 房主':''}</h3><p>${player.silver??20}两 · 手牌${player.handCount??0}张</p>${player.roleId?`<p class="hy-public-role"><strong>${esc(getCard(player.roleId).name)}</strong> · ${esc(getCard(player.roleId).compactText)} <button type="button" data-hy-read-card="${esc(player.roleId)}">完整能力</button></p>`:''}${player.goods?`<p>${goodsFor(room.game).map(good=>`${good.name} ${player.goods[good.id]}`).join(' · ')}</p>`:''}${player.goods?`<p>普通容量${player.ordinaryCapacity}格 · 临时格${player.temporaryOccupied?'已占用，已付2两':'空闲，占用付2两'}</p>`:''}${player.tools?.length?`<p>${player.tools.map(tool=>`${esc(getCard(tool.definitionId).name)}：${tool.exhausted?'已用':'可用'}`).join(' · ')}</p>${cardList(player.tools)}`:''}</article>`).join('')}</div><p>观众：${esc(room?.spectators?.map(player=>player.name).join('、')||'暂无')}</p>`);}
     if(type==='host')return inspect('房主管理',room.hostId===room.selfId?`<label>将房主交给<select id="hy-host-target">${room.players.filter(player=>player.id!==room.selfId).map(player=>`<option value="${esc(player.id)}">${esc(player.name)}</option>`).join('')}</select></label>${button('host-transfer','确认转交')}`:button('transferHost','接任房主',{playerId:room.selfId}));
     if(type==='host-transfer')return dispatch('transferHost',{playerId:$('hy-host-target').value});
     if(type==='confirm-card'){

@@ -1336,3 +1336,11 @@ body.night-market-body{overflow:hidden}
   #hyakki-digital-root.hy-night #yg-playfield .yg-centre:has(.hy-table-work[data-step-kind=borrowed-target]) #hy-task-material-cards>article.hy-material-card>.yousei-card{width:76px;height:104px;min-height:104px}
   #hyakki-digital-root.hy-night #yg-playfield .yg-centre:has(.hy-table-work[data-step-kind=borrowed-target]) .hy-material-caption{font-size:9px;white-space:nowrap}
 }
+
+/* Normal phone actions sit below the turn ribbon, inside the existing centre.
+   Waiting and source/material tasks retain their dedicated arrangements. */
+@media(max-width:1150px) and (max-height:500px) and (orientation:landscape){
+ #hyakki-digital-root.hy-night[data-phase=playing] #yg-playfield .yg-centre>#yg-scene-content:has(>.yg-table-actions){display:flex;flex-direction:column;justify-content:center;align-items:center;gap:6px;padding:calc(var(--nm-table-ribbon) + 4px) 5px 4px;box-sizing:border-box}
+ #hyakki-digital-root.hy-night[data-phase=playing] #yg-playfield .yg-centre>#yg-scene-content:has(>.yg-table-actions)>.yg-scene-note{display:block;flex:none;max-width:34em;margin:0;font-size:11px;line-height:16px}
+ #hyakki-digital-root.hy-night[data-phase=playing] #yg-playfield .yg-centre>#yg-scene-content>.yg-table-actions{flex:none;align-self:center}
+}

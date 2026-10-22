@@ -11,7 +11,7 @@ const button=(type,label,fields={},disabled=false,className='')=>`<button type="
 const activeRoles=new Set(['R09','R14','R16','R17','R18','R20','R22','R23','R24']);
 const expansionCard=c=>{const f=getCard(c.definitionId);return f.category==='goods'?!!f.recipe&&f.recipe.type!=='fixed':f.sourceCode.startsWith('X');};
 const newPending=p=>!!p&&(!p.response&&p.choice&&(p.code?.startsWith('X')||p.kind==='role'||p.choice.kind==='peek-select'));
-export function mountExpansionTable({root,send,read,rerender,feedback,available,clearLegacyDraft,inspect}){
+export function mountExpansionTable({root,send,read,rerender,feedback,available,clearLegacyDraft,isLegacyMaterial=()=>false,inspect}){
   const document=root.ownerDocument,$=id=>document.getElementById(id);
   const work=document.createElement('section');work.id='ex-workbench';work.className='ex-workbench';work.hidden=true;work.setAttribute('aria-labelledby','ex-work-title');$('yg-scene-content').after(work);
   const roles=document.createElement('section');roles.className='ex-role-stage';roles.hidden=true;roles.setAttribute('aria-label','选择本局角色');root.querySelector('.yg-shell').append(roles);
@@ -27,13 +27,17 @@ export function mountExpansionTable({root,send,read,rerender,feedback,available,
     $('yg-market').classList.add('ex-market');$('yg-market').innerHTML=`<button type="button" class="ex-market-board" data-hy-action="members" aria-label="查看十二种公共货物及公开商铺">${CATEGORIES.map(c=>`<span class="ex-market-pair"><small>${c.name}</small><span>${GOODS.filter(g=>g.category===c.id).map(g=>`<span class="ex-market-good"><img src="${esc(expansionAsset(g.icon))}" alt=""><span>${g.name}</span><b>${room.game?.bankGoods?.[g.id]??room.hyakkiConfig.goodsPerType}</b></span>`).join('')}</span></span>`).join('')}</button>`;
     $('yg-stock-limit').textContent=`十二种 · 各${room.game?.goodsPerType??room.hyakkiConfig.goodsPerType}件`;
   }
-  function roleDock(){const me=own();dock.hidden=!me?.roleId;if(!me?.roleId)return;
+  function roleDock(){const me=own();dock.hidden=!me?.roleId;if(me?.roleId){
     const role=getRole(me.roleId);dock.innerHTML=`${image(role)}<span><strong>${esc(role.name)}</strong><small>${esc(role.compactText)}</small></span>`;
     dock.setAttribute('aria-label',`${role.name}：${role.compactText}，查看能力`);
+    }
     for(const node of root.querySelectorAll('#yg-peer [data-public-player]')){
-      const p=room.game.players.find(p=>p.id===node.dataset.publicPlayer);if(!p?.roleId)continue;const r=getRole(p.roleId);
+      const p=room.game?.players?.find(p=>p.id===node.dataset.publicPlayer);if(!p?.roleId)continue;const r=getRole(p.roleId);
       const portrait=node.querySelector('.nm-portrait');if(portrait)portrait.src=expansionAsset(r.artPath);
-      const seat=node.querySelector('.nm-peer-copy>small');if(seat)seat.textContent=`${room.game.players.indexOf(p)+1}席 · ${r.name}`;
+      const seat=node.querySelector('.nm-peer-copy>small');if(seat){
+        seat.innerHTML=`<span class="ex-peer-role-name">${room.game.players.indexOf(p)+1}席 · ${esc(r.name)}</span><span class="ex-peer-role-skill">${esc(r.compactText)}</span>`;
+        seat.title=`${r.name}：${r.compactText}；点商铺查看完整能力`;
+      }
     }
   }
   function catalog(){const all=[...CARDS,...ROLES],last=Math.ceil(all.length/8)-1;catalogPage=Math.min(catalogPage,last);
@@ -239,6 +243,9 @@ export function mountExpansionTable({root,send,read,rerender,feedback,available,
       if(key){event.preventDefault();event.stopImmediatePropagation();selection[key]=value;rerender();return;}
     }
     if(tool&&selected&&!pending&&faceOf()?.category==='tool'&&!own().tools.some(c=>cardKey(c)===cardKey(selected))&&own().tools.length>=3){event.preventDefault();event.stopImmediatePropagation();params.replaceCardId=physicalId;rerender();return;}
+    // The active original draft owns its legal materials, including expansion
+    // receipts. Let its existing hand/tool handler select rather than play them.
+    if(physicalId&&isLegacyMaterial(physicalId))return;
     const physical=hand||tool,c=physical&&[...(own()?.hand??[]),...(own()?.tools??[])].find(c=>cardKey(c)===(hand?.dataset.entityId??tool?.dataset.toolId));
     if(c&&!room.game.pending){const f=getCard(c.definitionId);intercept=intercept||expansionCard(c);}
     if(!intercept){if(c)reset();return;}event.preventDefault();event.stopImmediatePropagation();
