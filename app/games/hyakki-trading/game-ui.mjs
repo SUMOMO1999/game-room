@@ -99,6 +99,13 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
   const discardList = () => {discardPage=dialogPage(room.game.discard,discardPage).current;const origins=battleReport.discardOrigins(room.game.discard);return renderPublicDiscardCards([...room.game.discard].reverse(),discardPage,{origins:origins.items,originsLoaded:origins.loaded,name});};
   function closeDialogs(){root.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());}
   function inspect(title,content,actions=''){closeDialogs();inspectorKind=null;$('yg-inspector-title').textContent=title;$('yg-inspector-body').innerHTML=renderDialogBody(content,actions);$('yg-inspector').showModal();}
+  function showMembers(playerId=null){
+    const allPlayers=room?.game?.players??room?.players??[];
+    const players=playerId===null?allPlayers:allPlayers.filter(player=>player.id===playerId);
+    if(playerId!==null&&!players.length)return;
+    const title=playerId===null?'成员与公开商铺':playerId===room.selfId?'我的商铺':'对手信息';
+    return inspect(title,`<div class="hy-member-list">${players.map(player=>`<article><h3>${esc(name(player.id))}${player.id===room.hostId?' · 房主':''}</h3><p>${player.silver??20}两 · 手牌${player.handCount??0}张</p>${player.roleId?`<p class="hy-public-role"><strong>${esc(getCard(player.roleId).name)}</strong> · ${esc(getCard(player.roleId).compactText)} <button type="button" data-hy-read-card="${esc(player.roleId)}">完整能力</button></p>`:''}${player.goods?`<p>${goodsFor(room.game).map(good=>`${good.name} ${player.goods[good.id]}`).join(' · ')}</p>`:''}${player.goods?`<p>普通容量${player.ordinaryCapacity}格 · 临时格${player.temporaryOccupied?'已占用，已付2两':'空闲，占用付2两'}</p>`:''}${player.tools?.length?`<p>${player.tools.map(tool=>`${esc(getCard(tool.definitionId).name)}：${tool.exhausted?'已用':'可用'}`).join(' · ')}</p>${cardList(player.tools)}`:''}</article>`).join('')}</div>${playerId?'':`<p>观众：${esc(room?.spectators?.map(player=>player.name).join('、')||'暂无')}</p>`}`);
+  }
   function showDiscard(page=0){if(!room?.game)return;discardPage=page;discardMarkup=discardList();inspect('公开弃牌',discardMarkup);inspectorKind='discard';}
   function syncDiscardReader(){
     const markup=discardList();if(markup===discardMarkup)return;discardMarkup=markup;
@@ -675,7 +682,8 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
       const options=type==='practice-confirm'?{...(practiceSetup.packId?{packId:practiceSetup.packId,closingTarget:practiceSetup.closingTarget??60}:{}),playerCount:Number($('hy-practice-players').value),actionLimit:Number($('hy-practice-limit').value),goodsPerType:Number($('hy-practice-goods').value),goodsSupplyMode:practiceSetup.goodsSupplyMode}:undefined;
       const stamp=generation;Promise.resolve().then(()=>callback?.(options)).then(()=>{if(stamp===generation&&!destroyed&&type!=='practice-hint')closeDialogs();}).catch(error=>{if(stamp===generation&&!destroyed)feedback(error.message);});return;
     }
-    if(type==='members'){return inspect('成员与公开商铺',`<div class="hy-member-list">${(room?.game?.players??room?.players??[]).map(player=>`<article><h3>${esc(name(player.id))}${player.id===room.hostId?' · 房主':''}</h3><p>${player.silver??20}两 · 手牌${player.handCount??0}张</p>${player.roleId?`<p class="hy-public-role"><strong>${esc(getCard(player.roleId).name)}</strong> · ${esc(getCard(player.roleId).compactText)} <button type="button" data-hy-read-card="${esc(player.roleId)}">完整能力</button></p>`:''}${player.goods?`<p>${goodsFor(room.game).map(good=>`${good.name} ${player.goods[good.id]}`).join(' · ')}</p>`:''}${player.goods?`<p>普通容量${player.ordinaryCapacity}格 · 临时格${player.temporaryOccupied?'已占用，已付2两':'空闲，占用付2两'}</p>`:''}${player.tools?.length?`<p>${player.tools.map(tool=>`${esc(getCard(tool.definitionId).name)}：${tool.exhausted?'已用':'可用'}`).join(' · ')}</p>${cardList(player.tools)}`:''}</article>`).join('')}</div><p>观众：${esc(room?.spectators?.map(player=>player.name).join('、')||'暂无')}</p>`);}
+    if(type==='members')return showMembers();
+    if(type==='opponent')return showMembers(fields.playerId);
     if(type==='host')return inspect('房主管理',room.hostId===room.selfId?`<label>将房主交给<select id="hy-host-target">${room.players.filter(player=>player.id!==room.selfId).map(player=>`<option value="${esc(player.id)}">${esc(player.name)}</option>`).join('')}</select></label>${button('host-transfer','确认转交')}`:button('transferHost','接任房主',{playerId:room.selfId}));
     if(type==='host-transfer')return dispatch('transferHost',{playerId:$('hy-host-target').value});
     if(type==='confirm-card'){
@@ -715,7 +723,8 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
     if(node.id==='yg-rules'){stop();inspect('幽街商人规则',(room?.hyakkiConfig?.packId==='six-trades-v1'?'<p>六行百业：六类十二种货物。开局从自己的三位候选中选一位角色，全部确认后统一发牌；初始银两和常驻能力见角色牌。配货单按牌面类别和件数选齐后整组交易。</p>':'')+'<p>每人20两、5张手牌、5个普通货位＋1个临时位。普通扩摊每块增加3格，首次6两，以后3两。新占临时位另付2两。</p><p>每回合必须先摸看一张；弃掉可继续摸，留下或主动结束摸牌后进入用牌。看牌每张1行动。货物牌整组交易；人物用1行动；道具安装不耗行动，使用花1行动，每件每回合限用一次。具体效果以卡牌全文为准。</p><p>已用行动不超过上限的一半（四舍五入），主动结束回合可得1两。回合结束达到'+(room?.game?.configuration?.closingTarget??room?.hyakkiConfig?.closingTarget??60)+'两收市；本轮余下席位完成回合后结算。银两多者胜，平手由最后行动者胜。</p><p>主动回合30分钟，对方选择60秒并冻结主动钟。暂停保留7天，离线保席30分钟；主动退出认输。每局财富独立。</p>');return;}
     if(node.dataset.cardId){const id=node.closest('[data-entity-id]')?.dataset.entityId;if(id){stop();selectHandCard(knownCards(room?.game).get(id));}return;}
     if(node.dataset.toolId){stop();const card=knownCards(room?.game).get(node.dataset.toolId);if(card)selectHandCard(card,true);return;}
-    if(node.dataset.player||node.id==='yg-shop-detail'){stop();handleAction('members',{});return;}
+    if(node.dataset.player){stop();handleAction('opponent',{playerId:node.dataset.player});return;}
+    if(node.id==='yg-shop-detail'){stop();handleAction('members',{});return;}
   });
   const removeInput=listen('input',event=>{
     if(actionRequest)return;
