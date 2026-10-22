@@ -381,6 +381,7 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
     }
   }
   function render({preserveTaskDOM=false}={}){
+    expansionTable.syncView(room);
     restoreActionGate();
     const game=room.game,self=room.players.find(player=>player.id===room.selfId),isPlayer=room.selfRole==='player',host=room.hostId===room.selfId;
     const setup=supplySetup(room.players.length,room.hyakkiConfig);
