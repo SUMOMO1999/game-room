@@ -1402,3 +1402,8 @@ test('a recovered pending new-tool choice stays open until the actual effect com
  assert.equal(f.game.pending.choice.kind,'tool-class-good');f.click(f.command('option'));assert.equal(f.command('pending-confirm').disabled,false);f.apply();assert.ok(f.command('pending-confirm'));
  f.click(f.command('pending-confirm'));assert.equal(f.commands[0].type,'choose-effect');const after=f.commit();assert.equal(after.pending,null);assert.ok(!f.command('pending-confirm'));assert.equal(f.byId('hy-task-materials').hidden,true);assert.equal(f.commands.length,1);
 });
+
+test('reading the source of a recovered new tool cannot leave a completed pending draft behind',async t=>{
+ let toolId;const f=await expandedTable(t,['R08','R12'],(g,r)=>{toolId=r.move(g,'XT12');g.players[0].hand=g.players[0].hand.filter(c=>c!==toolId);g.players[0].tools.push({cardId:toolId,exhausted:false});return r.run(g,'activate-tool',{cardId:toolId});});
+ f.click(f.root.querySelector(`[data-tool-id="${toolId}"]`));f.click(f.command('option'));f.click(f.command('pending-confirm'));const after=f.commit();assert.equal(after.pending,null);assert.ok(!f.command('use'));assert.equal(f.byId('hy-task-materials').hidden,true);assert.equal(f.commands.length,1);
+});
