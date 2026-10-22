@@ -1327,3 +1327,32 @@ test('expansion preparation without an opened game renders ready controls and co
  assert.doesNotThrow(()=>f.ui.applyView({roomId:'waiting',roomCode:'123456',phase:'waiting',selfId:ids[0],selfRole:'player',hostId:ids[0],serverTime:1000,game:null,players,spectators:[],hyakkiConfig:{packId:'six-trades-v1',actionLimit:5,goodsPerType:6,closingTarget:60}}));
  assert.match(f.byId('yg-scene-content').textContent,/取消准备/);assert.match(f.byId('yg-scene-content').textContent,/收市/);assert.deepEqual(f.commands,[]);
 });
+
+
+test('clicking a public peer opens only that player while all shops retain every player',async t=>{
+  const f=await expandedTable(t,['R13','R24','R08']);
+  const peer=f.root.querySelector('[data-player]');assert.ok(peer);
+  const peerId=peer.dataset.player,player=f.view().game.players.find(p=>p.id===peerId);
+  f.click(peer);
+  assert.equal(f.byId('yg-inspector-title').textContent,'对手信息');
+  let articles=f.byId('yg-inspector-body').querySelectorAll('article');assert.equal(articles.length,1);
+  assert.match(articles[0].textContent,new RegExp(String(player.silver)+'两'));
+  assert.ok(articles[0].querySelector('[data-hy-read-card]'),'public role reader retained');
+  f.click(articles[0].querySelector('[data-hy-read-card]'));assert.equal(f.byId('hy-card-reader').open,true);
+  f.click(f.byId('hy-reader-close'));assert.equal(f.byId('yg-inspector').open,true);
+  assert.equal(f.byId('yg-inspector-body').querySelectorAll('article').length,1);
+  f.click(f.byId('yg-inspector-close'));f.click(f.byId('yg-shop-detail'));
+  assert.equal(f.byId('yg-inspector-title').textContent,'成员与公开商铺');
+  assert.equal(f.byId('yg-inspector-body').querySelectorAll('article').length,3);
+  assert.deepEqual(f.commands,[]);
+});
+
+test('base peer information does not start at self or alter an active hand draft',t=>{
+  const f=fixture(t),game=act(act(fresh(),'peek'),'keep-peek');f.ui.applyView(room(game));
+  const card=room(game).game.players[0].hand[0];f.ui.selectHandCard(card);
+  const before=f.byId('yg-scene-content').textContent;
+  f.click(f.root.querySelector('[data-player]'));
+  assert.equal(f.byId('yg-inspector-title').textContent,'对手信息');
+  const articles=f.byId('yg-inspector-body').querySelectorAll('article');assert.equal(articles.length,1);assert.match(articles[0].textContent,/伙伴/);assert.doesNotMatch(articles[0].textContent,/我 · 房主/);
+  f.click(f.byId('yg-inspector-close'));assert.equal(f.byId('yg-scene-content').textContent,before);assert.deepEqual(f.commands,[]);
+});
