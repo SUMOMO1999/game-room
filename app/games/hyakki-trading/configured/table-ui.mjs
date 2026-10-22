@@ -200,11 +200,23 @@ export function mountExpansionTable({root,send,read,rerender,feedback,available,
       :isTool&&!installed?button('install','安装 · 0行动',{},!can):button('use',`${isTool?'使用道具':'确认使用'} · 1行动`,{},!can||installed&&selected.exhausted);
     syncTaskMarkup($('yg-scene-content'),renderTableActionDraft({source:button('read',renderCard({definitionId:face.id},{interactive:false}),{definitionId:face.id},false,'hy-source-reader'),heading:esc(face.name),secondary:button('read','牌文',{definitionId:face.id}),description:`<p class="hy-decision-summary">${esc(face.summary??face.compactText??'')}</p>`,actions:actions+button('close','取消')}),true);
   }
-  function render(next){room=next;$('hy-task-materials').classList.remove('hy-expansion-materials','hy-card-selection');const expansion=isExpansion(room.game??room.hyakkiConfig);root.classList.toggle('ex-preview',expansion);if(expansion){$('yg-catalog').dataset.exCommand='catalog';$('yg-catalog').textContent='查看102种牌与24角色';}else {delete $('yg-catalog').dataset.exCommand;$('yg-catalog').textContent='查看完整51种卡牌';}if(!expansion){work.hidden=true;roles.hidden=true;dock.hidden=true;root.classList.remove('ex-working');delete root.dataset.exScene;return;}
-    const nowScope=`${room.roomId}:${room.matchId}`;if(scope!==nowScope){reset();candidate=null;choiceId=null;scope=nowScope;}
+  // Synchronize draft ownership before the parent decides whether to keep its
+  // task DOM. Installed tools survive settlement, so ownership alone is not a
+  // completion signal; the authoritative exhausted transition is.
+  function syncView(next){
+    room=next;
+    const nowScope=`${room.roomId}:${room.matchId}`;
+    if(scope!==nowScope){reset();candidate=null;choiceId=null;scope=nowScope;}
+    if(selected&&!selectedOwned())reset();
+    const tool=selected&&!selected.roleId?own()?.tools?.find(c=>cardKey(c)===cardKey(selected)):null;
+    if(tool?.exhausted&&!selected.exhausted)reset();
+    else if(tool)selected=tool;
+    if(params.replaceCardId&&!own()?.tools?.some(c=>cardKey(c)===params.replaceCardId))delete params.replaceCardId;
+  }
+  function render(next){syncView(next);$('hy-task-materials').classList.remove('hy-expansion-materials','hy-card-selection');const expansion=isExpansion(room.game??room.hyakkiConfig);root.classList.toggle('ex-preview',expansion);if(expansion){$('yg-catalog').dataset.exCommand='catalog';$('yg-catalog').textContent='查看102种牌与24角色';}else {delete $('yg-catalog').dataset.exCommand;$('yg-catalog').textContent='查看完整51种卡牌';}if(!expansion){work.hidden=true;roles.hidden=true;dock.hidden=true;root.classList.remove('ex-working');delete root.dataset.exScene;return;}
     renderMarket();roleDock();if(room.game?.kind==='hyakki-opening-game'){renderOpening();return;}
     roles.hidden=true;delete root.dataset.exScene;root.querySelector('.yg-playfield').inert=false;
-    if(selected&&!selectedOwned())reset();if(params.replaceCardId&&!own()?.tools.some(c=>cardKey(c)===params.replaceCardId))delete params.replaceCardId;work.hidden=true;root.classList.remove('ex-working');$('hy-task-materials').classList.remove('hy-expansion-materials');
+    work.hidden=true;root.classList.remove('ex-working');$('hy-task-materials').classList.remove('hy-expansion-materials');
     const p=room.game?.pending;
     if(newPending(p)){
       if(choiceId!==p.choice.id){choiceId=p.choice.id;selection=p.choice.kind==='retain-goods'?{goods:{...p.choice.defaultSelection}}:{};}
@@ -279,5 +291,5 @@ export function mountExpansionTable({root,send,read,rerender,feedback,available,
   const onResize=()=>{if(room&&isExpansion(room.game??room.hyakkiConfig))render(room);};
   document.defaultView.addEventListener('resize',onResize);
   root.addEventListener('click',event,true);
-  return {render,hasDraft:()=>!!selected&&selectedOwned(),handlesPending:newPending,select(card){if(!room||!isExpansion(room.game)||!expansionCard(card))return false;clearLegacyDraft();reset();selected=card;rerender();return true;},destroy(){document.defaultView.removeEventListener('resize',onResize);room=null;root.removeEventListener('click',event,true);work.remove();roles.remove();dock.remove();}};
+  return {syncView,render,hasDraft:()=>!!selected&&selectedOwned(),handlesPending:newPending,select(card){if(!room||!isExpansion(room.game)||!expansionCard(card))return false;clearLegacyDraft();reset();selected=card;rerender();return true;},destroy(){document.defaultView.removeEventListener('resize',onResize);room=null;root.removeEventListener('click',event,true);work.remove();roles.remove();dock.remove();}};
 }

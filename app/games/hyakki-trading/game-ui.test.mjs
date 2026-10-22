@@ -1140,11 +1140,11 @@ test('expansion overflow receipt shows named goods and sends the actual retained
 
 // These checks mount the same accepted material pane and exercise the real
 // expansion rules. A visible source or a pager count alone is not acceptance.
-async function expandedTable(t,codes=['R18','R12'],prepare=()=>{}){
+async function expandedTable(t,codes=['R18','R12'],prepare=()=>{},options={}){
   const rules=await import('./configured/test-support/fixture.mjs');
   const {privateView}=await import('./configured/view.mjs');
   let game=rules.use(rules.fixture(codes,{actionLimit:10}));const prepared=prepare(game,rules);if(prepared?.players)game=prepared;
-  const f=fixture(t),selfId=rules.ids[0];
+  const f=fixture(t,options),selfId=rules.ids[0];
   function view(){const players=game.players.map((p,i)=>({id:p.id,name:i?'伙伴'+i:'我',ready:true}));return {roomId:'reuse',roomCode:'123456',phase:'playing',selfId,selfRole:'player',hostId:selfId,serverTime:1001,players,spectators:[],game:privateView(game,selfId),hyakkiConfig:game.configuration};}
   const apply=()=>f.ui.applyView(view());apply();
   const command=(type,accept=()=>true)=>f.root.querySelectorAll(`[data-ex-command="${type}"]`).find(node=>accept(JSON.parse(node.dataset.exFields.replace(/&quot;/gu,'"'))));
@@ -1355,4 +1355,55 @@ test('base peer information does not start at self or alter an active hand draft
   assert.equal(f.byId('yg-inspector-title').textContent,'对手信息');
   const articles=f.byId('yg-inspector-body').querySelectorAll('article');assert.equal(articles.length,1);assert.match(articles[0].textContent,/伙伴/);assert.doesNotMatch(articles[0].textContent,/我 · 房主/);
   f.click(f.byId('yg-inspector-close'));assert.equal(f.byId('yg-scene-content').textContent,before);assert.deepEqual(f.commands,[]);
+});
+
+
+for(let n=1;n<=12;n++){
+ const code='XT'+String(n).padStart(2,'0');
+ test(`expansion ${code} closes its source draft only after authoritative tool exhaustion`,async t=>{
+  let toolId;const f=await expandedTable(t,['R08','R12'],(g,r)=>{toolId=r.move(g,code);g.players[0].hand=g.players[0].hand.filter(id=>id!==toolId);g.players[0].tools.push({cardId:toolId,exhausted:false});});
+  f.click(f.root.querySelector(`[data-tool-id="${toolId}"]`));
+  if(n>=7){const option=f.command('option');assert.ok(option);f.click(option);}
+  const before=structuredClone(f.game),confirm=f.command('use');assert.equal(confirm.disabled,false);f.click(confirm);
+  assert.equal(f.commands.length,1);assert.equal(f.commands[0].type,'activate-tool');
+  f.apply();assert.ok(f.command('use'),'the same uncommitted projection must preserve the choice');assert.deepEqual(f.game,before);
+  const after=f.commit();assert.equal(after.players[0].tools.find(c=>c.cardId===toolId).exhausted,true);assert.equal(after.actionsUsed,before.actionsUsed+1);
+  assert.ok(!f.command('use'),'a used installed tool must not keep its stale confirmation');
+  assert.equal(f.byId('hy-task-materials').hidden,true);assert.equal(after.pending,null);
+  f.apply();assert.ok(!f.command('use'),'later snapshots cannot resurrect a completed draft');
+  assert.equal(f.commands.length,1);
+ });
+}
+
+test('new exchange tool closes a completed draft without changing another selected card',async t=>{
+ let toolId;const f=await expandedTable(t,['R08','R12'],(g,r)=>{toolId=r.move(g,'XT13');g.players[0].hand=g.players[0].hand.filter(id=>id!==toolId);g.players[0].tools.push({cardId:toolId,exhausted:false});g.players[0].goods.firearms=1;g.bankGoods.firearms--;});
+ f.click(f.root.querySelector(`[data-tool-id="${toolId}"]`));f.click(f.command('field',x=>x.key==='ownGoodId'&&x.value==='firearms'));f.click(f.command('field',x=>x.key==='goodId'&&x.value==='timber'));f.click(f.command('use'));f.commit();
+ assert.ok(!f.command('use'));assert.equal(f.byId('hy-task-materials').hidden,true);assert.equal(f.commands.length,1);
+});
+
+
+test('new XT14 completion closes the stale material selector after swapping cards',async t=>{
+ let toolId,payId;const f=await expandedTable(t,['R08','R12'],(g,r)=>{toolId=r.move(g,'XT14');g.players[0].hand=g.players[0].hand.filter(id=>id!==toolId);g.players[0].tools.push({cardId:toolId,exhausted:false});payId=r.move(g,'G02');const takeId=r.move(g,'G01');g.players[0].hand=g.players[0].hand.filter(id=>id!==takeId);g.discard.push(takeId);});
+ f.click(f.root.querySelector(`[data-tool-id="${toolId}"]`));f.click(f.root.querySelector(`[data-entity-id="${payId}"]`));f.click(f.command('field',x=>x.key==='takeCardId'));assert.equal(f.command('use').disabled,false);f.click(f.command('use'));const after=f.commit();
+ assert.equal(after.pending,null);assert.ok(after.discard.includes(payId));assert.ok(!f.command('use'));assert.equal(f.byId('hy-task-materials').hidden,true);assert.equal(f.commands.length,1);
+});
+
+test('a rejected new tool submission preserves its original material choice and retry action',async t=>{
+ let reject,toolId;const promise=new Promise((_,no)=>{reject=no;});
+ const f=await expandedTable(t,['R08','R12'],(g,r)=>{toolId=r.move(g,'XT12');g.players[0].hand=g.players[0].hand.filter(id=>id!==toolId);g.players[0].tools.push({cardId:toolId,exhausted:false});}, {onAction:()=>promise});
+ f.click(f.root.querySelector(`[data-tool-id="${toolId}"]`));f.click(f.command('option'));const before=structuredClone(f.game);f.click(f.command('use'));f.click(f.command('use'));assert.equal(f.commands.length,1,'an in-flight confirmation cannot submit twice');
+ reject(new Error('测试网络中断'));await new Promise(resolve=>setTimeout(resolve,0));
+ assert.deepEqual(f.game,before);assert.ok(f.command('use'));assert.equal(f.command('use').disabled,false);assert.equal(f.byId('hy-task-materials').hidden,false);assert.equal(f.commands.length,1);
+ assert.match(f.byId('yg-scene-content').textContent,/工料货契/);
+});
+
+test('a recovered pending new-tool choice stays open until the actual effect completes',async t=>{
+ const f=await expandedTable(t,['R08','R12'],(g,r)=>{const id=r.move(g,'XT12');g.players[0].hand=g.players[0].hand.filter(c=>c!==id);g.players[0].tools.push({cardId:id,exhausted:false});return r.run(g,'activate-tool',{cardId:id});});
+ assert.equal(f.game.pending.choice.kind,'tool-class-good');f.click(f.command('option'));assert.equal(f.command('pending-confirm').disabled,false);f.apply();assert.ok(f.command('pending-confirm'));
+ f.click(f.command('pending-confirm'));assert.equal(f.commands[0].type,'choose-effect');const after=f.commit();assert.equal(after.pending,null);assert.ok(!f.command('pending-confirm'));assert.equal(f.byId('hy-task-materials').hidden,true);assert.equal(f.commands.length,1);
+});
+
+test('reading the source of a recovered new tool cannot leave a completed pending draft behind',async t=>{
+ let toolId;const f=await expandedTable(t,['R08','R12'],(g,r)=>{toolId=r.move(g,'XT12');g.players[0].hand=g.players[0].hand.filter(c=>c!==toolId);g.players[0].tools.push({cardId:toolId,exhausted:false});return r.run(g,'activate-tool',{cardId:toolId});});
+ f.click(f.root.querySelector(`[data-tool-id="${toolId}"]`));f.click(f.command('option'));f.click(f.command('pending-confirm'));const after=f.commit();assert.equal(after.pending,null);assert.ok(!f.command('use'));assert.equal(f.byId('hy-task-materials').hidden,true);assert.equal(f.commands.length,1);
 });
