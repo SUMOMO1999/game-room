@@ -43,7 +43,7 @@ export function cardDraftChoices(game, selfId, detail) {
     }
     case 'C05': return [options('trade-card', hand.filter(card => {
       const cardFace = getCard(card.definitionId);
-      return cardFace.category === 'goods' && goodsTotal(cardFace.goods) === 3;
+      return cardFace.category === 'goods' && (cardFace.recipe?.count ?? goodsTotal(cardFace.goods)) === 3;
     }).map(card => ({ cardId: cardKey(card) })), '点手牌里的三件货物牌，决定卖价'),
     goods('sell-goods', self.goods, 3, 3, '选择自己出售的3件库存')];
     case 'C06': return [options('exchange', stockIds(self.goods).flatMap(fromGoodsId =>

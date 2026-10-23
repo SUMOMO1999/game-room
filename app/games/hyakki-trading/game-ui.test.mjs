@@ -1407,3 +1407,58 @@ test('reading the source of a recovered new tool cannot leave a completed pendin
  let toolId;const f=await expandedTable(t,['R08','R12'],(g,r)=>{toolId=r.move(g,'XT12');g.players[0].hand=g.players[0].hand.filter(c=>c!==toolId);g.players[0].tools.push({cardId:toolId,exhausted:false});return r.run(g,'activate-tool',{cardId:toolId});});
  f.click(f.root.querySelector(`[data-tool-id="${toolId}"]`));f.click(f.command('option'));f.click(f.command('pending-confirm'));const after=f.commit();assert.equal(after.pending,null);assert.ok(!f.command('use'));assert.equal(f.byId('hy-task-materials').hidden,true);assert.equal(f.commands.length,1);
 });
+
+function compatibilityNative(f,action,accept=()=>true){
+  const node=f.root.querySelectorAll(`[data-hy-action="${action}"]`).find(n=>accept(JSON.parse(n.dataset.hyFields.replace(/&quot;/gu,'"'))));
+  assert.ok(node,action);node.setAttribute('data-hy-fields',node.dataset.hyFields.replace(/&quot;/gu,'"'));return node;
+}
+function compatibilityEquip(game,r,code){const id=r.move(game,code);game.players[0].hand=game.players[0].hand.filter(x=>x!==id);game.players[0].tools.push({cardId:id,exhausted:false});return id;}
+for(let original=1;original<=10;original++)for(let expanded=1;expanded<=14;expanded++){
+ const incoming='T'+String(original).padStart(2,'0'),outgoing='XT'+String(expanded).padStart(2,'0');
+ test(`compat replacement ${incoming} over ${outgoing} keeps install intent and commits once`,async t=>{
+  let target,source;
+  const f=await expandedTable(t,undefined,(g,r)=>{for(const code of ['T01','T02','T03'].filter(c=>c!==incoming).slice(0,2))compatibilityEquip(g,r,code);target=compatibilityEquip(g,r,outgoing);source=r.move(g,incoming);});
+  const before=structuredClone(f.game);f.select(incoming);f.click(f.root.querySelector(`[data-tool-id="${target}"]`));
+  const confirm=compatibilityNative(f,'confirm-card');assert.equal(JSON.parse(confirm.dataset.hyFields).type,'install-tool');assert.equal(confirm.disabled,false);
+  assert.equal(f.command('use'),undefined,'choosing a replacement must not start using it');assert.deepEqual(f.commands,[]);assert.deepEqual(f.game,before);
+  f.click(confirm);assert.deepEqual(f.commands,[{type:'install-tool',fields:{cardId:source,replaceCardId:target}}]);
+  const after=f.commit();assert.equal(after.actionsUsed,before.actionsUsed);assert.equal(after.players[0].silver,before.players[0].silver);assert.equal(after.players[0].tools.length,3);assert.ok(after.players[0].tools.some(c=>c.cardId===source));assert.ok(after.discard.includes(target));
+ });
+}
+for(const paymentCode of ['G01','XG01','XG07','XG13','XG19','XG20'])test(`compat buyer ${paymentCode} stays material and sells once`,async t=>{
+ let source,payment;
+ const f=await expandedTable(t,undefined,(g,r)=>{source=r.move(g,'C05');payment=r.move(g,paymentCode);g.players[0].goods.firearms+=3;g.bankGoods.firearms-=3;});const before=structuredClone(f.game);
+ f.select('C05');f.click(f.root.querySelector(`[data-entity-id="${payment}"] button`));
+ assert.equal(f.command('trade'),undefined,'receipt must not replace the buyer draft');assert.match(f.byId('yg-scene-content').textContent,/买办/);
+ for(let i=0;i<3;i++)f.click(compatibilityNative(f,'native-select',x=>x.part===1&&x.type==='quantity'&&x.id==='firearms'&&x.delta===1));
+ const confirm=compatibilityNative(f,'confirm-card');assert.equal(confirm.disabled,false);assert.deepEqual(f.commands,[]);assert.deepEqual(f.game,before);
+ f.click(confirm);assert.equal(f.commands.length,1);assert.equal(f.commands[0].type,'play-character');assert.equal(f.commands[0].fields.cardId,source);assert.equal(f.commands[0].fields.params.initialChoices[0].selection.cardId,payment);
+ const after=f.commit();assert.equal(after.actionsUsed,before.actionsUsed+1);assert.equal(after.pending,null);assert.ok(after.discard.includes(source));assert.ok(after.discard.includes(payment));assert.equal(after.players[0].goods.firearms,before.players[0].goods.firearms-3);assert.equal(after.players[0].silver>before.players[0].silver,true);
+});
+test('compat legacy replacement direct selection, view, reader and cancellation keep the original hand tool',async t=>{
+ let target;
+ const f=await expandedTable(t,undefined,(g,r)=>{compatibilityEquip(g,r,'T01');compatibilityEquip(g,r,'T02');target=compatibilityEquip(g,r,'XT07');r.move(g,'T04');});const before=structuredClone(f.game);
+ f.select('T04');f.ui.selectHandCard(f.view().game.players[0].tools.find(c=>c.cardId===target),true);f.apply();
+ assert.equal(compatibilityNative(f,'confirm-card').disabled,false);assert.equal(f.command('use'),undefined);
+ const source=f.root.querySelector('.hy-source-reader');f.click(source);assert.equal(f.byId('hy-card-reader').open,true);f.click(f.byId('hy-reader-close'));assert.equal(compatibilityNative(f,'confirm-card').disabled,false);
+ f.click(compatibilityNative(f,'cancel-card'));assert.deepEqual(f.commands,[]);assert.deepEqual(f.game,before);
+});
+test('compat failed replacement retains its hand source and chosen expansion equipment',async t=>{
+ const failure=deferred();let target;
+ const f=await expandedTable(t,undefined,(g,r)=>{compatibilityEquip(g,r,'T01');compatibilityEquip(g,r,'T02');target=compatibilityEquip(g,r,'XT07');r.move(g,'T08');},{onAction:()=>failure.promise});const before=structuredClone(f.game);
+ f.select('T08');f.click(f.root.querySelector(`[data-tool-id="${target}"]`));f.click(compatibilityNative(f,'confirm-card'));failure.reject(new Error('fixture denied'));await flush();
+ assert.match(f.byId('yg-scene-content').textContent,/九转金炉/);assert.equal(compatibilityNative(f,'confirm-card').disabled,false);assert.deepEqual(f.game,before);assert.equal(f.commands.length,1);assert.equal(f.commands[0].fields.replaceCardId,target);
+});
+test('compat buyer all original and expansion three-goods faces qualify while G19 stays excluded',async t=>{
+ const {cardDraftChoices}=await import('./card-draft.mjs');
+ const originals=Array.from({length:19},(_,i)=>'G'+String(i+1).padStart(2,'0')),expanded=Array.from({length:20},(_,i)=>'XG'+String(i+1).padStart(2,'0'));
+ const f=await expandedTable(t,undefined,(g,r)=>{r.move(g,'C05');for(const code of [...originals,...expanded])r.move(g,code);});
+ const game=f.view().game,source=game.players[0].hand.find(c=>c.definitionId==='yousei.c05');
+ const choices=cardDraftChoices(game,game.players[0].id,{card:source,tool:false,choiceInputs:[]})[0].choice.options;
+ const eligible=choices.map(x=>game.players[0].hand.find(c=>c.cardId===x.cardId).definitionId).sort();
+ assert.deepEqual([...new Set(eligible)],[...originals.filter(c=>c!=='G19'),...expanded].map(c=>'yousei.'+c.toLowerCase()).sort());
+});
+test('compat exhausted expansion equipment remains a valid replacement and double confirm dispatches once',async t=>{
+ const pending=deferred();let target;const f=await expandedTable(t,undefined,(g,r)=>{compatibilityEquip(g,r,'T01');compatibilityEquip(g,r,'T02');target=compatibilityEquip(g,r,'XT07');g.players[0].tools.at(-1).exhausted=true;r.move(g,'T04');},{onAction:()=>pending.promise});
+ f.select('T04');f.click(f.root.querySelector(`[data-tool-id="${target}"]`));const confirm=compatibilityNative(f,'confirm-card');f.click(confirm);f.click(confirm);assert.equal(f.commands.length,1);const after=f.commit();pending.resolve(true);await flush();assert.ok(after.discard.includes(target));
+});
