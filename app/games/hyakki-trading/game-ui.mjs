@@ -82,7 +82,7 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
     const modal=root.querySelector('dialog[open]');
     if(modal){let note=modal.querySelector('[data-hy-error]');if(!note){note=document.createElement('p');note.dataset.hyError='true';note.setAttribute('role','alert');modal.querySelector('.dialog-heading').after(note);}note.textContent=text;}
   };
-  const expansionTable=mountExpansionTable({root,send:dispatch,read:readCard,rerender:render,feedback,available:()=>available(),clearLegacyDraft:()=>{detail=null;},isLegacyMaterial:id=>!!ownedDraftInput(id),inspect});
+  const expansionTable=mountExpansionTable({root,send:dispatch,read:readCard,rerender:render,feedback,available:()=>available(),clearLegacyDraft:()=>{detail=null;},isLegacyMaterial:id=>!!ownedDraftInput(id)||isLegacyReplacement(id),inspect});
   function listen(type,handler){root.addEventListener(type,handler,true);return()=>root.removeEventListener(type,handler,true);}
   const selectionScope = value => [value?.roomId,value?.game?.matchId,value?.selfId,value?.selfRole,value?.phase,value?.game?.turnId,value?.game?.stage,value?.game?.actionsUsed,value?.game?.pending?.decisionId].join(':');
   const sameScope = value => [value?.roomId,value?.matchId??value?.game?.matchId,value?.selfId,value?.selfRole].join(':');
@@ -235,6 +235,13 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
     const selectedObject=face.category==='goods'?Object.entries(face.goods).map(([id,count])=>`${goodName(id)}×${count}`).join('／'):face.name;
     return renderTableActionDraft({source:`<button type="button" class="hy-source-reader" data-hy-detail="${esc(cardKey(card))}" aria-label="阅读${esc(face.name)}完整牌文" title="点来源牌阅读完整牌文">${renderCard(card,{interactive:false})}</button>`,heading:`${esc(selectedObject)}${shortScreen()&&needsTarget&&peer?' · '+esc(taskName(peer.id)):''}`,secondary:`<button type="button" data-hy-detail="${esc(cardKey(card))}" aria-label="阅读${esc(face.name)}完整牌文">牌文</button>`,description:`<p class="hy-decision-summary">${esc(summary)}</p>${conditions}`,actions:operations});
   }
+  // An equipped expansion card can be an original hand tool's replacement.
+  // Preserve that installation intent before the expansion click router runs.
+  function isLegacyReplacement(id){
+    if(!detail||detail.tool||!active()||getCard(detail.card.definitionId).category!=='tool')return false;
+    const self=room.game.players.find(player=>player.id===room.selfId);
+    return self.tools.length===3&&self.tools.some(card=>cardKey(card)===id);
+  }
   function selectHandCard(card,tool=false){
     if(!card||!room?.game)return;const self=room.game.players.find(player=>player.id===room.selfId);
     const current=(tool?self?.tools:self?.hand)?.find(item=>cardKey(item)===cardKey(card));if(!current)return;
@@ -243,10 +250,10 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
     if(actionRequest||!active()&&!mine()){readCard(current);return;}
     const localInput=ownedDraftInput(cardKey(current));
     if(localInput){const part=draftParts()[localInput.part];detail.choiceInputs??=[];detail.choiceInputs[localInput.part]=updateNativeChoice(part,draftInput(part,localInput.part),localInput.type,localInput);render();return;}
-    if(!room.game.pending&&expansionTable.select(current))return;
-    if(tool&&detail&&!detail.tool&&getCard(detail.card.definitionId).category==='tool'&&self.tools.length===3&&active()){
+    if(tool&&isLegacyReplacement(cardKey(current))){
       detail.replaceCardId=cardKey(current);render();return;
     }
+    if(!room.game.pending&&expansionTable.select(current))return;
     const borrowedInput=borrowedCardInput(cardKey(current));
     if(borrowedInput&&available()){const part=borrowParts()[borrowedInput.borrowPart];choiceDraft.toolInputs??=[];choiceDraft.toolInputs[borrowedInput.borrowPart]=updateNativeChoice(part,choiceDraft.toolInputs[borrowedInput.borrowPart],borrowedInput.type,borrowedInput);render();return;}
     if(room.game.pending?.choice&&mine()){
