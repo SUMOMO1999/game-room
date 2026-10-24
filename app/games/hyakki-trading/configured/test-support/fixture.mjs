@@ -4,9 +4,10 @@ import {fromOpening,applyGameAction,gameProblem,currentDecision} from '../rules.
 import {privateView,spectatorView} from '../view.mjs';
 
 export const ids=Array.from({length:6},(_,i)=>(i+1).toString(16).repeat(32));
-export function fixture(codes=['R01','R12'],configuration={}){
+export function fixture(codes=['R01','R12'],configuration={}, {contentVersion}={}){
   let opening=createOpening(ids.slice(0,codes.length),{openingId:'a'.repeat(32),hostId:ids[0],now:1000,
     configuration:{packId:'six-trades-v1',...configuration},randomInt:m=>m-1});
+  if(contentVersion)opening.configuration={...opening.configuration,contentVersion};
   // Fixed legal initial candidate material, independent of the runtime chooser.
   const all=[...Object.values(opening.candidates).flat(),...opening.remainingRoles];
   codes.forEach((code,i)=>{const target=`yousei.role.${code.toLowerCase()}`,at=all.indexOf(target);[all[3*i],all[at]]=[all[at],all[3*i]];});

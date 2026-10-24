@@ -64,7 +64,7 @@ for(const n of [2,6])test(`${n}席用真实SQLite双连接同时确认，独立�
   assert.equal(results.length,n);
   const saved=await f.snapshot(),deal=saved.game.opening.deal;
   assert.equal(saved.game.stage,'initialized');assert.equal(saved.turnClock,null);assert.equal(openingGameProblem(saved.game),null);
-  assert.equal(deal.deck.length,180+45*(n-2)-5*n);
+  assert.equal(deal.deck.length,183+45*(n-2)-5*n);
   assert.equal(expansionPartitionProblem([...deal.deck,...deal.players.flatMap(p=>p.hand)],n),null);
   assert.equal(new Set(deal.players.map(p=>p.roleId)).size,n);
   assert.equal(saved.pendingRecords.length,0);
@@ -235,7 +235,7 @@ for(const completed of [false,true])test(`${completed?'已统一发牌及首条�
   const result=JSON.parse(child.stdout);
   assert.deepEqual(result.opening.candidates,saved.game.opening.candidates);
   assert.equal(result.opening.choices[saved.players[0].id],input.roleId);
-  assert.equal(result.opening.status,'completed');assert.equal(result.opening.deal.deck.length,330);
+  assert.equal(result.opening.status,'completed');assert.equal(result.opening.deal.deck.length,333);
   assert.equal(result.opening.deal.createdAt,completed?saved.game.opening.deal.createdAt:70_000);
   assert.equal(result.opening.deal.players.every(p=>p.hand.length===5),true);
   assert.equal(result.page.groups.length,1);assert.equal(result.page.headSequence,1);assert.equal(result.page.groups[0].schemaVersion,4);

@@ -22,7 +22,7 @@ function fixture(kind, count = 6, ownerIndex = 0) {
 function conserved(state) {
   const cards = [...state.deck, ...state.discard, ...state.players.flatMap(owner => [...owner.hand, ...owner.tools.map(tool => tool.cardId)]),
     ...(state.pending?.sourceCards ?? []), ...(state.pending?.poolCards ?? [])];
-  assert.deepEqual([...cards].sort(), createDeck().map(card => card.id).sort()); assert.equal(new Set(cards).size, 180);
+  assert.deepEqual([...cards].sort(), createDeck().map(card => card.id).sort()); assert.equal(new Set(cards).size, 183);
   for (const good of GOODS) assert.equal(state.bankGoods[good.id] + state.players.reduce((sum, owner) => sum + owner.goods[good.id], 0)
     + (state.pending?.goods[good.id] ?? 0), 8);
 }

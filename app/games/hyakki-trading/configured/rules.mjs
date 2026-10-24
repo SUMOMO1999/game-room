@@ -15,7 +15,7 @@ import { TURN_MS, createHyakkiTiming, openHyakkiDecision, closeHyakkiDecision } 
 import { gameProblem } from './validation.mjs';
 import { currentDecision } from '../decision.mjs';
 import {openingProblem} from '../opening.mjs';
-import {getRole} from '../content/expansion-one.mjs';
+import {getRole,inspectionCardCount} from '../content/expansion-one.mjs';
 import {settleGoodsTrade} from '../trade-contract.mjs';
 import {newTurnUsage,newRoleState,economicUsage} from './role-state.mjs';
 import {beginRole,roleProblem,continueRole,chooseRole,beginAfterActions,roleActionCost} from './role-effects.mjs';
@@ -182,8 +182,11 @@ function chooseEffect(state, actorId, selection, ctx) {
   requireRule(state.pending?.choice?.actorId === actorId, '当前没有你的选择。');
   if (state.pending.receipt) resolveReceipt(state, selection);
   else if(state.pending.kind==='peek'&&state.pending.choice?.kind==='peek-select'){
-    const p=state.pending;requireRule(selection&&Object.keys(selection).length===1&&p.poolCards.includes(selection.cardId),'请选择原来的两张候选之一。');
-    removeCard(p.poolCards,selection.cardId);state.deck.unshift(...p.poolCards);p.poolCards=[selection.cardId];p.choice=null;p.stage='decision';
+    const p=state.pending;requireRule(selection&&Object.keys(selection).length===1&&p.poolCards.includes(selection.cardId),'请选择本次候选之一。');
+    removeCard(p.poolCards,selection.cardId);
+    if(inspectionCardCount(state.configuration)===2)state.deck.unshift(...p.poolCards);
+    else{discardCards(state,p.poolCards);emit(state,{type:'cards-revealed',actorSeatId:actorId,cardIds:p.poolCards.map(id=>definition(id).id)});}
+    p.poolCards=[selection.cardId];p.choice=null;p.stage='decision';
   }
   else if (state.pending.kind === 'character') chooseCharacter(state, selection, ctx);
   else if (state.pending.kind === 'tool') chooseTool(state, selection, ctx);
@@ -200,7 +203,7 @@ function dispatch(state, actorId, action, ctx) {
     else if (action.type === 'bid') bid(state, actorId, action.amount, ctx);
     else if (action.type === 'pass-bid') passBid(state, actorId, ctx);
     else if (['keep-peek', 'discard-peek'].includes(action.type) && state.pending.kind === 'peek') {
-      requireRule(!state.pending.choice&&state.pending.stage==='decision'&&state.pending.poolCards.length===1,'请先从两张候选中选择一张。');
+      requireRule(!state.pending.choice&&state.pending.stage==='decision'&&state.pending.poolCards.length===1,'请先从本次候选中选择一张。');
       const [cardId] = state.pending.poolCards.splice(0);
       if (action.type === 'keep-peek') { player(state, actorId).hand.push(cardId); state.stage = 'use'; }
       else discardCards(state, [cardId]);
@@ -216,11 +219,12 @@ function dispatch(state, actorId, action, ctx) {
       requireRule(state.stage === 'draw' && availableCards(state) > 0, '当前没有可看的牌。');
       requireRule(action.inspect===undefined||typeof action.inspect==='boolean','摸牌选项无效。');
       const inspect=action.inspect===true;
+      const inspectCount=inspectionCardCount(state.configuration);
       if(inspect)requireRule(owner.roleId==='yousei.role.r15'&&!state.drawStarted&&!state.turnUsage.firstPeekOffered
-        &&owner.silver>=1&&availableCards(state)>=2,'鉴牌只可在本回合第一次摸看前付1两使用，且须有2张可抽牌。');
+        &&owner.silver>=1&&availableCards(state)>=inspectCount,`鉴牌只可在本回合第一次摸看前付1两使用，且须有${inspectCount}张可抽牌。`);
       consumeAction(state);state.drawStarted=true;state.turnUsage.firstPeekOffered=true;
       createPending(state, { kind: 'peek', ownerId: actorId, code: 'peek' });
-      state.pending.stage = inspect?'inspect':'decision';state.pending.poolCards=drawCards(state,inspect?2:1,ctx);
+      state.pending.stage = inspect?'inspect':'decision';state.pending.poolCards=drawCards(state,inspect?inspectCount:1,ctx);
       if(inspect){
         addSilver(owner,-1);state.pending.data={inspection:true};
         setChoice(state,{kind:'peek-select',actorId,options:state.pending.poolCards.map(cardId=>({cardId})),defaultSelection:{cardId:state.pending.poolCards[0]}});

@@ -10,7 +10,7 @@ const turn=n=>({anchor:{kind:'turn',id:`turn-${n}`,number:n,round:Math.ceil(n/6)
   source:null,rolesRevealed:[],changes:[],discard:{beforeCount:0,afterCount:0,removed:[],added:[]}});
 const size=value=>Buffer.byteLength(JSON.stringify(value),'utf8');
 export function capacityFixture(){
-  const cards=createExpansionDeck(6),source={kind:'role',roleId:'yousei.role.r23',actorSeatId:ids[0]},metadata=turn(123456);
+  const cards=createExpansionDeck(6,context(6).contentVersion),source={kind:'role',roleId:'yousei.role.r23',actorSeatId:ids[0]},metadata=turn(123456);
   const tools=CARDS.filter(c=>c.category==='tool').slice(0,3).map(c=>c.id);
   metadata.source=source;
   metadata.changes=ids.map(seatId=>({seatId,silver:-123456789,goods:GOODS.map(g=>({id:g.id,delta:20})),handCount:360,toolsAdded:tools,toolsRemoved:tools}));

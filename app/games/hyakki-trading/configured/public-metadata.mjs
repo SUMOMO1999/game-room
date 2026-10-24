@@ -15,7 +15,8 @@ function discardOrigin(copyId, before, after, sourceCardId, profile) {
   if (!before) return unknown;
   const pending = before.pending, definitionId = face(copyId, profile), events = after.lastPublicEvents;
   if (pending?.kind === 'peek' && pending.poolCards.includes(copyId)
-    && events.some(event => event.type === 'draw-discarded' && event.actorSeatId === pending.ownerId && event.cardId === definitionId)) {
+    && events.some(event => event.type === 'draw-discarded' && event.actorSeatId === pending.ownerId && event.cardId === definitionId
+      || pending.choice?.kind === 'peek-select' && event.type === 'cards-revealed' && event.actorSeatId === pending.ownerId && event.cardIds.includes(definitionId))) {
     return { actorSeatId: pending.ownerId, reason: 'draw-discarded', sourceCardId: null };
   }
   if (pending?.sourceCards.includes(copyId)) return { actorSeatId: pending.ownerId, reason: 'used', sourceCardId };
@@ -71,7 +72,8 @@ export function projectConfiguredPublicMetadata(before, after) {
   const added = nextDiscard.flatMap((id, index) => reordered || !previousDiscard.includes(id)
     ? [{ index, cardId: face(id, profile), ...(reordered && previousDiscard.includes(id)
       ? { actorSeatId: null, reason: 'unknown', sourceCardId: null } : discardOrigin(id, origin, after, sourceCardId, profile)) }] : []);
-  const role=origin?.pending?.kind==='role'?origin.players.find(p=>p.id===origin.pending.ownerId):null;
+  const role=origin?.pending?.kind==='role'||origin?.pending?.choice?.kind==='peek-select'
+    ?origin.players.find(p=>p.id===origin.pending.ownerId):null;
   const used=after.lastPublicEvents.find(e=>e.type==='role-used')??(!sourceCardId?after.lastPublicEvents.find(e=>e.type==='role-triggered'&&e.roleId==='yousei.role.r15'):null);
   const source=role?{kind:'role',roleId:role.roleId,actorSeatId:role.id}:used?{kind:'role',roleId:used.roleId,actorSeatId:used.actorSeatId}
     :sourceCardId?{kind:'card',definitionId:sourceCardId}:null;

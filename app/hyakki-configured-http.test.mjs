@@ -23,7 +23,7 @@ for(const n of [2,4,6])test(`${n}人默认装配：实际HTTP／SQLite／SSE由�
   const post=async(i,view,command)=>{const body={type:command.type,...hyakkiCommand(view.game,command.type,command),expectedRevision:view.revision,requestId:randomUUID()};
     const result=await f.request(`/api/rooms/${code}/actions`,users[i],body);assert.equal(result.status,200,JSON.stringify({body,result:result.body}));return result.body.view;};
   await Promise.all(initial.map((v,i)=>post(i,v,chooseConfiguredPracticeAction(v.game,v.selfId))));
-  let view=await f.view(code,users[0]),steps=0;assert.equal(view.game.stage,'draw');assert.equal(view.game.deckCount,180+45*(n-2)-5*n);
+  let view=await f.view(code,users[0]),steps=0;assert.equal(view.game.stage,'draw');assert.equal(view.game.deckCount,183+45*(n-2)-5*n);
   while(view.game.status==='playing'&&steps++<1600){
     // A complete match spans elapsed play time; do not batch every HTTP read
     // into one frozen rate-limit window or disable the production limiter.

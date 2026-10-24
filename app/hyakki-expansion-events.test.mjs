@@ -41,9 +41,9 @@ function room(d,sequence=1){return {roomId:d.roomId,matchId:d.matchId,game:{rule
 function ceiling(d){
   const m=metadata(d,2),cards=createExpansionDeck(6),source={kind:'role',roleId:'yousei.role.r01',actorSeatId:hex(1)};
   m.source=source;
-  m.changes=d.participants.map(p=>({seatId:p.seatId,silver:-123456789,goods:GOODS.map(g=>({id:g.id,delta:20})),handCount:360,
+  m.changes=d.participants.map(p=>({seatId:p.seatId,silver:-123456789,goods:GOODS.map(g=>({id:g.id,delta:20})),handCount:363,
     toolsAdded:CARDS.filter(c=>c.category==='tool').slice(0,3).map(c=>c.id),toolsRemoved:[]}));
-  m.discard={beforeCount:360,afterCount:360,removed:cards.map((c,index)=>({index,definitionId:c.definitionId})),
+  m.discard={beforeCount:363,afterCount:363,removed:cards.map((c,index)=>({index,definitionId:c.definitionId})),
     added:cards.map((c,index)=>({index,definitionId:c.definitionId,actorSeatId:hex(6),reason:'draw-discarded',source}))};
   return m;
 }
@@ -63,7 +63,7 @@ test('2～6人实际加密写读按冻结人数和角色公开；头记录仍小
     assert.deepEqual(await rows(f.storage),before);
   }
 });
-test('完整360位置／十二货上界真正存入SQLite；分页按字节停止且游标不丢记录',async t=>{
+test('完整363位置／十二货上界真正存入SQLite；分页按字节停止且游标不丢记录',async t=>{
   const f=fixture(t),d=descriptor(),large=ceiling(d);
   assert.ok(Buffer.byteLength(JSON.stringify(large))>32768);
   await commit(f,await f.events.prepareAppend(input(d)));

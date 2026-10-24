@@ -59,7 +59,7 @@ function accept(state, type, fields = {}, actorId, context) {
 function conserved(state) {
   const cards = [...state.deck, ...state.discard, ...state.players.flatMap(owner => [...owner.hand, ...owner.tools.map(tool => tool.cardId)]),
     ...(state.pending?.sourceCards ?? []), ...(state.pending?.poolCards ?? [])];
-  assert.equal(cards.length,180+45*(state.players.length-2)); assert.equal(new Set(cards).size,180+45*(state.players.length-2));
+  assert.equal(cards.length,183+45*(state.players.length-2)); assert.equal(new Set(cards).size,183+45*(state.players.length-2));
   assert.deepEqual([...cards].sort(), createDeck({playerCount:state.players.length}).map(card => card.id).sort());
   for (const { id } of GOODS) assert.equal(state.bankGoods[id] + state.players.reduce((sum, owner) => sum + owner.goods[id], 0)
     + (state.pending?.goods[id] ?? 0), state.goodsPerType);

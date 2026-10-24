@@ -776,6 +776,17 @@ body.night-market-body{overflow:hidden}
 #hyakki-digital-root.hy-night .nm-self-zone .nm-stall-caption{font-size:10px;line-height:14px}
 #hyakki-digital-root.hy-night .nm-self-zone .nm-stall-expansions{max-width:100%;min-width:0;flex:none}
 #hyakki-digital-root.hy-night .nm-self-zone .nm-expansion-stall{flex:0 0 100%;width:100%}
+/* The warehouse role adds one ordinary slot, not another full-height board.
+   Keep its slot beside the existing three-slot expansion within the same row. */
+#hyakki-digital-root.hy-night .nm-self-zone #yg-stock-slots:has(>.nm-warehouse-row){container-type:size;--nm-caption-space:17px}
+#hyakki-digital-root.hy-night .nm-self-zone #yg-stock-slots:has(>.nm-warehouse-row) .nm-stall-board{--nm-stock-size:min(var(--nm-stall-slot),calc((100cqh - 2 * var(--nm-caption-space) - 2 * var(--nm-slot-gap)) / 3))}
+#hyakki-digital-root.hy-night .nm-self-zone .nm-warehouse-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,3fr);gap:var(--nm-slot-gap);min-width:0;flex:none;align-items:start}
+#hyakki-digital-root.hy-night .nm-self-zone .nm-warehouse-stall .nm-stall-grid{grid-template-columns:minmax(0,1fr)}
+#hyakki-digital-root.hy-night .nm-self-zone .nm-warehouse-stall .nm-stall-caption{order:2;color:#a7bea0}
+#hyakki-digital-root.hy-night .nm-self-zone .nm-warehouse-row .nm-stock-slot{width:min(100%,var(--nm-stock-size));height:auto;min-height:0;min-width:0;aspect-ratio:1}
+#hyakki-digital-root.hy-night .nm-self-zone .nm-warehouse-row .nm-stock-slot :is(.yousei-good-icon,.ex-good-icon){width:calc(100% - 7px);height:auto;aspect-ratio:1}
+@media(max-height:350px) and (orientation:landscape){#hyakki-digital-root.hy-night .nm-self-zone #yg-stock-slots:has(>.nm-warehouse-row){--nm-caption-space:10px}}
+@media(min-height:351px) and (max-height:620px) and (orientation:landscape),(max-width:1150px) and (max-height:500px) and (orientation:landscape){#hyakki-digital-root.hy-night .nm-self-zone #yg-stock-slots:has(>.nm-warehouse-row){--nm-caption-space:0px}}
 #hyakki-digital-root.hy-night .nm-self-zone .yg-shop-note{position:static;flex:none;min-height:26px;max-height:30px;overflow:hidden;font-size:10px;line-height:13px;white-space:normal}
 #hyakki-digital-root.hy-night #yg-feedback:not(.is-feedback){position:absolute;left:max(10px,var(--nm-safe-left));bottom:max(4px,var(--nm-safe-bottom));max-width:calc(100% - 28px);font-size:9px;pointer-events:none;z-index:5}
 #hyakki-digital-root.hy-night #yg-observer-note{grid-column:1;grid-row:3}

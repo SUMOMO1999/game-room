@@ -104,7 +104,7 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
     const players=playerId===null?allPlayers:allPlayers.filter(player=>player.id===playerId);
     if(playerId!==null&&!players.length)return;
     const title=playerId===null?'成员与公开商铺':playerId===room.selfId?'我的商铺':'对手信息';
-    return inspect(title,`<div class="hy-member-list">${players.map(player=>`<article><h3>${esc(name(player.id))}${player.id===room.hostId?' · 房主':''}</h3><p>${player.silver??20}两 · 手牌${player.handCount??0}张</p>${player.roleId?`<p class="hy-public-role"><strong>${esc(getCard(player.roleId).name)}</strong> · ${esc(getCard(player.roleId).compactText)} <button type="button" data-hy-read-card="${esc(player.roleId)}">完整能力</button></p>`:''}${player.goods?`<p>${goodsFor(room.game).map(good=>`${good.name} ${player.goods[good.id]}`).join(' · ')}</p>`:''}${player.goods?`<p>普通容量${player.ordinaryCapacity}格 · 临时格${player.temporaryOccupied?'已占用，已付2两':'空闲，占用付2两'}</p>`:''}${player.tools?.length?`<p>${player.tools.map(tool=>`${esc(getCard(tool.definitionId).name)}：${tool.exhausted?'已用':'可用'}`).join(' · ')}</p>${cardList(player.tools)}`:''}</article>`).join('')}</div>${playerId?'':`<p>观众：${esc(room?.spectators?.map(player=>player.name).join('、')||'暂无')}</p>`}`);
+    return inspect(title,`<div class="hy-member-list">${players.map(player=>`<article><h3>${esc(name(player.id))}${player.id===room.hostId?' · 房主':''}</h3><p>${player.silver??20}两 · 手牌${player.handCount??0}张</p>${player.roleId?`<p class="hy-public-role"><strong>${esc(getCard(player.roleId,room.game.configuration??room.game.opening?.configuration).name)}</strong> · ${esc(getCard(player.roleId,room.game.configuration??room.game.opening?.configuration).compactText)} <button type="button" data-hy-read-card="${esc(player.roleId)}">完整能力</button></p>`:''}${player.goods?`<p>${goodsFor(room.game).map(good=>`${good.name} ${player.goods[good.id]}`).join(' · ')}</p>`:''}${player.goods?`<p>普通容量${player.ordinaryCapacity}格 · 临时格${player.temporaryOccupied?'已占用，已付2两':'空闲，占用付2两'}</p>`:''}${player.tools?.length?`<p>${player.tools.map(tool=>`${esc(getCard(tool.definitionId).name)}：${tool.exhausted?'已用':'可用'}`).join(' · ')}</p>${cardList(player.tools)}`:''}</article>`).join('')}</div>${playerId?'':`<p>观众：${esc(room?.spectators?.map(player=>player.name).join('、')||'暂无')}</p>`}`);
   }
   function showDiscard(page=0){if(!room?.game)return;discardPage=page;discardMarkup=discardList();inspect('公开弃牌',discardMarkup);inspectorKind='discard';}
   function syncDiscardReader(){
@@ -123,7 +123,7 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
     }else content.innerHTML=markup;
     content.scrollTop=top;
   }
-  function readCard(card){if(!card)return;const face=getCard(card.definitionId??card.id);$('hy-reader-title').textContent=face.name+' · 完整牌文';$('hy-reader-body').innerHTML=renderDialogBody(renderCardDetails(face));if(!$('hy-card-reader').open)$('hy-card-reader').showModal();}
+  function readCard(card){if(!card)return;const face=getCard(card.definitionId??card.id);$('hy-reader-title').textContent=face.name+' · 完整牌文';$('hy-reader-body').innerHTML=renderDialogBody(renderCardDetails(face,{configuration:room?.game?.configuration??room?.game?.opening?.configuration}));if(!$('hy-card-reader').open)$('hy-card-reader').showModal();}
   function dispatch(type,fields={},onCommitted=null) {
     if(!available()||actionRequest)return;
     const stamp=generation,current=scope;
@@ -310,7 +310,7 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
     const context=decisionContext(pending,room.game,room.selfId,taskName),own=mine();
     const source=pending.kind==='peek'?pending.privatePool?.[0]:pending.sourceCards?.[0];
     const face=source?getCard(source.definitionId):context.source;
-    const art=source?renderCard(source,{interactive:false}):face?renderCard(face,{interactive:false}):renderCardBack();
+    const art=source?renderCard(source,{interactive:false,configuration:room.game.configuration}):face?renderCard(face,{interactive:false,configuration:room.game.configuration}):renderCardBack();
     const canChoose=own&&available()&&room.phase==='playing';
     let actions='',preview='',cost=context.cost,responseChosen=false;
     const selected=choiceDraft?.optionIndex??-1;
@@ -371,7 +371,6 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
     const remaining=!clock?0:clock.paused||clock.deadlineAt===null?clock.remainingMs:Math.max(0,clock.deadlineAt-serverTime-advance);
     const seconds=Math.ceil(remaining/1000);$('yg-clock').textContent=clock?`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`:'--:--';
     $('yg-clock-label').textContent=clock?.paused?'余时已冻结':clock?.kind==='decision'?'对方选择 · 主动钟冻结':'主动回合余时';
-    const taskClock=$('hy-task-clock');taskClock.hidden=!room.game?.pending||!clock;taskClock.textContent=clock?`${clock.paused?'暂停':clock.kind==='decision'?'选择余时':'回合余时'} ${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`:'';
   }
   function renderRoomControl(){
     const node=$('hy-room-control'),isPlayer=room.selfRole==='player';
@@ -583,7 +582,7 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
     restoreActionGate();root.setAttribute('aria-busy','false');
     handDrag.cancel();motion.cancel();base.cancelTable?.();generation++;actionRequest=null;concealed=true;battleReport.invalidate();closeDialogs();inspectorKind=null;detail=null;choiceDraft=null;responseDraft=null;decisionId=null;presentedDecisionId=null;scope=null;
     if(room)base.applyView(tableProjection({...room,game:null,phase:'waiting',selfRole:'spectator',selfId:null}));
-    peerPresentation=null;room=null;$('hy-task-clock').hidden=true;$('hy-reader-title').textContent='完整牌文';root.querySelectorAll('#yg-scene-content,#hy-task-material-cards,#yg-inspector-body,#yg-decision-body,#hy-reader-body,#hy-decision-sources,#yg-portrait-decision,#yg-chat-decision-label').forEach(node=>node.replaceChildren());
+    peerPresentation=null;room=null;$('hy-reader-title').textContent='完整牌文';root.querySelectorAll('#yg-scene-content,#hy-task-material-cards,#yg-inspector-body,#yg-decision-body,#hy-reader-body,#hy-decision-sources,#yg-portrait-decision,#yg-chat-decision-label').forEach(node=>node.replaceChildren());
     root.classList.add('hy-concealed');$('hy-connection').hidden=false;$('hy-connection-text').textContent=message;
     for(const[id,href]of[['hy-login',loginHref],['hy-reauth',reauthHref]]){const link=$(id);link.hidden=!href;if(href)link.href=href;else link.removeAttribute('href');}
   }
@@ -609,7 +608,7 @@ export function mountHyakkiPage({root,practice=false,onAction=()=>{},onLeave=()=
   }
   // Keep the common audio/theme/dialog owners. Remove only preview-specific menus.
   root.querySelector('.yg-brand span').textContent=practice?'本机练习 · 1～5名电脑对手':'棋牌室 · 2～6人夜市';
-  root.querySelector('.room-toolbar-actions').insertAdjacentHTML('afterbegin','<span id="hy-task-clock" class="hy-task-clock" role="timer" aria-live="off" hidden></span><button type="button" id="hy-room-control" class="room-toolbar-action" hidden></button>');
+  root.querySelector('.room-toolbar-actions').insertAdjacentHTML('afterbegin','<button type="button" id="hy-room-control" class="room-toolbar-action" hidden></button>');
   root.querySelector('#yg-options .game-settings-body section:first-child').hidden=true;
   $('yg-settings-exit').closest('section').innerHTML=`<h3>${practice?'本机练习':'房间安排'}</h3><div class="game-settings-controls"><button type="button" data-hy-action="members">成员与商铺</button><button type="button" data-hy-action="history">战况</button><button type="button" id="hy-pause" data-hy-action="pause">申请暂停</button><button type="button" id="hy-host" data-hy-action="host">房主管理</button>${practice?'<button type="button" data-hy-action="practice-restart">重新开始</button><button type="button" data-hy-action="practice-hint">当前提示</button><button type="button" data-hy-action="practice-reload" id="hy-practice-reload">读取保存进度</button>':'<button type="button" data-hy-action="invite">复制邀请</button><button type="button" data-hy-action="keep-seat">返回大厅，保留席位</button><button type="button" data-hy-action="logout">退出棋牌登录</button><button type="button" data-hy-action="agora">返回 Agora</button><button id="hy-practice-reload" hidden></button>'}<button type="button" data-hy-action="leave">${practice?'返回大厅':'退出房间'}</button></div><p id="hy-practice-state"></p><p id="chat-legacy-note" hidden></p><details><summary>第一次怎么玩？</summary><p>每人20两、5张牌。每回合必须先摸看一张；弃掉可继续摸，留下或主动结束摸牌后进入用牌。用货物牌整组买入／卖出，人物和道具提供其他经营办法。行动条共用本回合额度；已用行动不超过上限的一半（四舍五入），主动结束回合可得1两。回合结束达到房主设定的收市金额（默认60两）触发收市，最后银两多者胜。</p></details>`;
   $('yg-leave').querySelector('p').id='hy-leave-note';

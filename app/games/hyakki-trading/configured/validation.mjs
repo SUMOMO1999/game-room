@@ -2,7 +2,8 @@
 // Existing v1/v2 saves keep their original rules and material boundaries.
 /** Persisted game validation. This module is pure and never repairs untrusted saves. */
 import { CARDS, GOODS, definitionIdForCopy, materialProfile, materialProfileFor, CONTENT_VERSION,
-  PLAYER_COUNT_CONTENT_VERSION, DIGITAL_RULE_VERSION, MULTIPLAYER_RULE_VERSION } from './material.mjs';
+  PLAYER_COUNT_CONTENT_VERSION, DIGITAL_RULE_VERSION, MULTIPLAYER_RULE_VERSION,isExpansionContentVersion } from './material.mjs';
+import {inspectionCardCount} from '../content/expansion-one.mjs';
 import { hyakkiTimingProblem } from '../lifecycle.mjs';
 import { CHARACTER_PENDING_CONTRACTS } from './effects.mjs';
 import { TOOL_PENDING_CONTRACTS, toolProblem } from './tools.mjs';
@@ -246,7 +247,7 @@ function branchProblem(state, pending) {
     const inspect=exactFields(data,['inspection'])&&data.inspection===true&&state.players.find(p=>p.id===pending.ownerId).roleId==='yousei.role.r15';
     if(pending.code!=='peek'||pending.sourceCards.length||countGoods(pending.goods)||pending.response||pending.receipt)return '普通私看区无效。';
     if(inspect&&pending.stage==='inspect'){
-      return pending.poolCards.length===2&&pending.choice?.kind==='peek-select'&&pending.choice.actorId===pending.ownerId
+      return pending.poolCards.length===inspectionCardCount(state.configuration)&&pending.choice?.kind==='peek-select'&&pending.choice.actorId===pending.ownerId
         &&pending.choice.visibility==='private'&&same(pending.choice.options,pending.poolCards.map(cardId=>({cardId})))
         &&pending.choice.options.some(x=>same(x,pending.choice.defaultSelection))?null:'鉴牌候选无效。';
     }
@@ -309,8 +310,7 @@ export function gameProblem(state) {
     const fields = plainObject(state) && (isMultiplayer(state) || Object.hasOwn(state, 'goodsPerType')) ? [...stateFields, 'goodsPerType'] : stateFields;
     const supported=state?.version===3&&state.ruleVersion===MULTIPLAYER_RULE_VERSION;
     if (!exactFields(state, fields) || !supported || state.gameType !== 'hyakki-trading'
-        || ![CONTENT_VERSION, PLAYER_COUNT_CONTENT_VERSION].includes(state.contentVersion)
-        || state.contentVersion !== PLAYER_COUNT_CONTENT_VERSION || !seatId(state.matchId)) return '不支持的幽街存档格式。';
+        || !isExpansionContentVersion(state.contentVersion) || !seatId(state.matchId)) return '不支持的幽街存档格式。';
     const profile = materialProfileFor(state);
     const frozen=materialForConfiguration(state.configuration);
     if(frozen.contentVersion!==state.contentVersion||state.configuration.participantIds.some((id,i)=>id!==state.players[i]?.id)

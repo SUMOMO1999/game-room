@@ -57,14 +57,14 @@ export function openingProblem(state){
         requireValue(Array.isArray(deal.players)&&deal.players.length===ids.length&&Array.isArray(deal.deck),'发牌参赛人无效。');
         const allCards=[...deal.deck];
         for(let i=0;i<ids.length;i++){
-          const p=deal.players[i],role=getRole(state.choices[ids[i]]);
+          const p=deal.players[i],role=getRole(state.choices[ids[i]],state.configuration);
           requireValue(sameKeys(p,['id','roleId','hand','tools','goods','silver','stallCount','temporaryOccupied'])
             &&p.id===ids[i]&&p.roleId===role.id&&p.silver===role.initialSilver&&p.stallCount===0&&p.temporaryOccupied===false
             &&Array.isArray(p.tools)&&p.tools.length===0&&Array.isArray(p.hand)&&p.hand.length===5,'初始角色、银两或手牌无效。');
           requireValue(sameKeys(p.goods,GOODS.map(g=>g.id))&&Object.values(p.goods).every(n=>n===0),'初始库存无效。');
           allCards.push(...p.hand);
         }
-        requireValue(!expansionPartitionProblem(allCards,ids.length),'发牌后牌实体不守恒。');
+        requireValue(!expansionPartitionProblem(allCards,ids.length,state.configuration.contentVersion),'发牌后牌实体不守恒。');
         requireValue(sameKeys(deal.bankGoods,GOODS.map(g=>g.id))&&Object.values(deal.bankGoods).every(n=>n===state.configuration.goodsPerType)
           &&deal.availableStalls===profile.stallBoards,'初始公共材料无效。');
         const selected=Object.values(state.choices);
@@ -91,10 +91,10 @@ export function createOpening(participantIds,{openingId,hostId,now,randomInt,con
 }
 function finish(state,{now,randomInt}){
   requireValue(typeof randomInt==='function','缺少权威随机源。');
-  const profile=materialForConfiguration(state.configuration),deck=shuffled(createExpansionDeck(profile.playerCount).map(card=>card.id),randomInt);
+  const profile=materialForConfiguration(state.configuration),deck=shuffled(createExpansionDeck(profile.playerCount,profile.contentVersion).map(card=>card.id),randomInt);
   const selected=Object.values(state.choices);
   const players=state.configuration.participantIds.map(id=>({id,roleId:state.choices[id],hand:deck.splice(0,5),tools:[],
-    goods:Object.fromEntries(GOODS.map(g=>[g.id,0])),silver:getRole(state.choices[id]).initialSilver,stallCount:0,temporaryOccupied:false}));
+    goods:Object.fromEntries(GOODS.map(g=>[g.id,0])),silver:getRole(state.choices[id],state.configuration).initialSilver,stallCount:0,temporaryOccupied:false}));
   state.status='completed';state.clock={paused:false,remainingMs:0,deadlineAt:null};
   state.deal={matchId:state.openingId,configuration:copy(state.configuration),firstPlayerId:state.firstPlayerId,createdAt:now,deck,players,
     bankGoods:Object.fromEntries(GOODS.map(g=>[g.id,state.configuration.goodsPerType])),availableStalls:profile.stallBoards,

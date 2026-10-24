@@ -1,5 +1,5 @@
 import {CARDS as BASE_CARDS,GOODS as BASE_GOODS,PLAYER_COUNT_CONTENT_VERSION,materialProfile} from './content/definitions.mjs';
-import {CARDS as EXPANSION_CARDS,GOODS as EXPANSION_GOODS,ROLES,EXPANSION_CONTENT_VERSION,CONFIGURABLE_RULE_VERSION,expansionProfile} from './content/expansion-one.mjs';
+import {GOODS as EXPANSION_GOODS,ROLES,EXPANSION_CONTENT_VERSION,LEGACY_EXPANSION_CONTENT_VERSION,cardsForExpansion,isExpansionContentVersion,CONFIGURABLE_RULE_VERSION,expansionProfile} from './content/expansion-one.mjs';
 import {publicBattleMetadataProblem} from './battle-public-metadata.mjs';
 import {encodeExpansionPublicMetadata,decodeExpansionPublicMetadata} from './expansion-public-history.mjs';
 import {materialForConfiguration} from './opening-configuration.mjs';
@@ -15,24 +15,24 @@ const hex=id=>typeof id==='string'&&/^[a-f0-9]{32}$/u.test(id);
 const demand=(yes,message='新版公开战况格式无效。')=>{if(!yes)throw new RangeError(message);};
 const size=value=>new TextEncoder().encode(JSON.stringify(value)).length;
 const catalogs=new Map([[PLAYER_COUNT_CONTENT_VERSION,{cards:BASE_CARDS,goods:BASE_GOODS}],
-  [EXPANSION_CONTENT_VERSION,{cards:EXPANSION_CARDS,goods:EXPANSION_GOODS}]]);
+  ...[LEGACY_EXPANSION_CONTENT_VERSION,EXPANSION_CONTENT_VERSION].map(version=>[version,{cards:cardsForExpansion(version),goods:EXPANSION_GOODS}])]);
 export function history4Material(context){
   demand(exact(context,['contentVersion','participantIds'])&&catalogs.has(context.contentVersion));
   const ids=context.participantIds;
   demand(Array.isArray(ids)&&ids.length>=2&&ids.length<=6&&ids.every(hex)&&new Set(ids).size===ids.length);
-  const profile=context.contentVersion===EXPANSION_CONTENT_VERSION?expansionProfile(ids.length):materialProfile(context.contentVersion,ids.length);
+  const profile=isExpansionContentVersion(context.contentVersion)?expansionProfile(ids.length,context.contentVersion):materialProfile(context.contentVersion,ids.length);
   return {...catalogs.get(context.contentVersion),profile,ids};
 }
 export function encodeHistory4Metadata(metadata,context){
   const {profile,ids}=history4Material(context);
-  if(profile.contentVersion===EXPANSION_CONTENT_VERSION)return encodeExpansionPublicMetadata(metadata,context);
+  if(isExpansionContentVersion(profile.contentVersion))return encodeExpansionPublicMetadata(metadata,context);
   const issue=publicBattleMetadataProblem(metadata,ids,profile);
   demand(!issue&&metadata.turn.round===Math.ceil(metadata.turn.number/ids.length),issue);
   return {format:'base-public-v1',data:structuredClone(metadata)};
 }
 export function decodeHistory4Metadata(encoded,context){
   const {profile,ids}=history4Material(context);
-  if(profile.contentVersion===EXPANSION_CONTENT_VERSION)return decodeExpansionPublicMetadata(encoded,context);
+  if(isExpansionContentVersion(profile.contentVersion))return decodeExpansionPublicMetadata(encoded,context);
   demand(exact(encoded,['format','data'])&&encoded.format==='base-public-v1'&&size(encoded)<=32768);
   const issue=publicBattleMetadataProblem(encoded.data,ids,profile);
   demand(!issue&&encoded.data.turn.round===Math.ceil(encoded.data.turn.number/ids.length),issue);
@@ -67,7 +67,7 @@ export function history4EventProblem(event,context){
       if(key.endsWith('SeatId'))demand(key==='winnerSeatId'&&value===null||ids.includes(value));
       if(key==='cardId')demand(definitions.has(value));
       if(key==='cardIds')demand(Array.isArray(value)&&value.length<=profile.deckSize&&value.every(id=>definitions.has(id)));
-      if(key==='roleId')demand(profile.contentVersion===EXPANSION_CONTENT_VERSION&&ROLES.some(r=>r.id===value));
+      if(key==='roleId')demand(isExpansionContentVersion(profile.contentVersion)&&ROLES.some(r=>r.id===value));
       if(key==='goods')demand(Array.isArray(value)&&value.length<=goods.length&&new Set(value.map(g=>g?.id)).size===value.length
         &&value.every(g=>exact(g,['id','count'])&&knownGoods.has(g.id)&&integer(g.count,1,20)));
       if(key==='silver')demand(integer(value));
@@ -85,7 +85,7 @@ export function history4EventProblem(event,context){
         &&p.printed===printed&&integer(p.bookLayers)&&integer(2*p.bookLayers)
         &&integer(p.roleAdjustment,buying?-1:0,buying?0:3)&&integer(p.goodsPrice)
         &&[0,1].includes(p.buyTax)&&[0,2].includes(p.temporaryFee));
-      demand(profile.contentVersion===EXPANSION_CONTENT_VERSION||p.roleAdjustment===0&&p.buyTax===0);
+      demand(isExpansionContentVersion(profile.contentVersion)||p.roleAdjustment===0&&p.buyTax===0);
       demand(p.goodsPrice===(buying?Math.max(0,printed-2*p.bookLayers):printed+2*p.bookLayers)+p.roleAdjustment);
       demand(event.silver===(buying?p.goodsPrice+p.buyTax+p.temporaryFee:p.goodsPrice)
         &&(buying||p.buyTax===0&&p.temporaryFee===0)&&integer(event.silver));
@@ -108,7 +108,7 @@ export function history4GroupProblem(group,context,{wire=false}={}){
       &&Array.isArray(group.events)&&group.events.length>0&&group.events.length<=64&&size(group)<=32768);
     for(const event of group.events)demand(!history4EventProblem(event,context));
     const metadata=decodeHistory4Metadata(group.metadata,context);
-    if(contentVersion===EXPANSION_CONTENT_VERSION)demand((group.sequence===1)===(metadata.anchor.kind==='opening'));
+    if(isExpansionContentVersion(contentVersion))demand((group.sequence===1)===(metadata.anchor.kind==='opening'));
     if(group.sequence===1)demand(group.events.length===1&&group.events[0].type==='match-started');
     else demand(!group.events.some(e=>e.type==='match-started'));
     if(!wire)demand(group.kind==='group'&&/^[A-Za-z0-9_-]{1,128}$/u.test(group.commitId??'')
@@ -118,7 +118,7 @@ export function history4GroupProblem(group,context,{wire=false}={}){
 }
 /** A valid role definition is not authority to attribute it to any seat. */
 export function history4RoleProblem(group,roster,context){
-  if(context.contentVersion!==EXPANSION_CONTENT_VERSION)return null;
+  if(!isExpansionContentVersion(context.contentVersion))return null;
   try{
     const metadata=decodeHistory4Metadata(group.metadata,context),ids=context.participantIds;
     demand(Array.isArray(roster)&&roster.length===ids.length&&new Set(roster.map(r=>r.seatId)).size===ids.length
@@ -148,7 +148,7 @@ export function history4PacketProblem(packet,room,after=0){
       demand(!history4GroupProblem(group,context,{wire:true})&&group.roomId===room.roomId&&group.matchId===room.matchId
         &&group.sequence===previous+1&&group.sequence<=packet.headSequence&&group.committedAt>=at);
       demand(!history4RoleProblem(group,game.players.map(p=>({seatId:p.id,roleId:p.roleId})),context));
-      if(group.sequence===1&&game.contentVersion===EXPANSION_CONTENT_VERSION){
+      if(group.sequence===1&&isExpansionContentVersion(game.contentVersion)){
         const roles=decodeHistory4Metadata(group.metadata,context).rolesRevealed;
         demand(game.players.every(p=>roles.some(r=>r.seatId===p.id&&r.roleId===p.roleId)));
       }

@@ -1,5 +1,6 @@
 /** New expansion decisions reuse the accepted Step 0 table surfaces. No modal play and no hidden-state simulation. */
-import {GOODS,CATEGORIES,CARDS,ROLES,getRole} from '../content/expansion-one.mjs';
+import {inspectionCardCount} from '../content/expansion-one.mjs';
+import {GOODS,CATEGORIES,ROLES,getRole,cardsForExpansion} from '../content/expansion-one.mjs';
 import {isExpansion,getCard,categoryName,expansionAsset} from '../presentation-content.mjs';
 import {renderCard,renderGoodsIcon} from '../digital-card-ui.mjs';
 import {knownCards,cardKey} from '../game-ui-model.mjs';
@@ -18,9 +19,11 @@ export function mountExpansionTable({root,send,read,rerender,feedback,available,
   const dock=document.createElement('button');dock.type='button';dock.className='ex-role-dock';dock.dataset.exCommand='role';dock.dataset.exFields='{}';dock.hidden=true;$('yg-tool-zone').insertBefore(dock,$('yg-tool-zone').firstElementChild??null);
   let room=null,selected=null,direction=null,selection={},params={},choiceId=null,candidate=null,catalogPage=0,scope=null;
   const own=()=>room?.game?.players.find(p=>p.id===room.selfId);
+  const roleConfiguration=()=>room?.game?.configuration??room?.game?.opening?.configuration;
+  const role=id=>getRole(id,roleConfiguration());
   const usable=()=>available()&&room.phase==='playing'&&room.selfRole==='player';
   const image=role=>`<img class="ex-dock-art" src="${esc(expansionAsset(role.artPath))}" alt="" draggable="false">`;
-  const faceOf=()=>selected?.roleId?getRole(selected.roleId):selected?getCard(selected.definitionId):null;
+  const faceOf=()=>selected?.roleId?role(selected.roleId):selected?getCard(selected.definitionId):null;
   function reset(){selected=null;direction=null;selection={};params={};}
   function selectedOwned(){if(!selected)return false;return selected.roleId===own()?.roleId||[...(own()?.hand??[]),...(own()?.tools??[])].some(c=>cardKey(c)===cardKey(selected));}
   function renderMarket(){
@@ -28,11 +31,11 @@ export function mountExpansionTable({root,send,read,rerender,feedback,available,
     $('yg-stock-limit').textContent=`十二种 · 各${room.game?.goodsPerType??room.hyakkiConfig.goodsPerType}件`;
   }
   function roleDock(){const me=own();dock.hidden=!me?.roleId;if(me?.roleId){
-    const role=getRole(me.roleId);dock.innerHTML=`${image(role)}<span><strong>${esc(role.name)}</strong><small>${esc(role.compactText)}</small></span>`;
-    dock.setAttribute('aria-label',`${role.name}：${role.compactText}，查看能力`);
+    const face=role(me.roleId);dock.innerHTML=`${image(face)}<span><strong>${esc(face.name)}</strong><small>${esc(face.compactText)}</small></span>`;
+    dock.setAttribute('aria-label',`${face.name}：${face.compactText}，查看能力`);
     }
     for(const node of root.querySelectorAll('#yg-peer [data-public-player]')){
-      const p=room.game?.players?.find(p=>p.id===node.dataset.publicPlayer);if(!p?.roleId)continue;const r=getRole(p.roleId);
+      const p=room.game?.players?.find(p=>p.id===node.dataset.publicPlayer);if(!p?.roleId)continue;const r=role(p.roleId);
       const portrait=node.querySelector('.nm-portrait');if(portrait)portrait.src=expansionAsset(r.artPath);
       const seat=node.querySelector('.nm-peer-copy>small');if(seat){
         seat.innerHTML=`<span class="ex-peer-role-name">${room.game.players.indexOf(p)+1}席 · ${esc(r.name)}</span><span class="ex-peer-role-skill">${esc(r.compactText)}</span>`;
@@ -40,12 +43,12 @@ export function mountExpansionTable({root,send,read,rerender,feedback,available,
       }
     }
   }
-  function catalog(){const all=[...CARDS,...ROLES],last=Math.ceil(all.length/8)-1;catalogPage=Math.min(catalogPage,last);
-    inspect('六行百业 · 102种牌与24位角色',`<div class="ex-catalog">${all.slice(catalogPage*8,catalogPage*8+8).map(c=>button('read',renderCard({definitionId:c.id},{interactive:false}),{definitionId:c.id})).join('')}</div>`,`${button('catalog-page','上一页',{delta:-1},!catalogPage)}<span>${catalogPage+1}/${last+1} · 点牌阅读</span>${button('catalog-page','下一页',{delta:1},catalogPage>=last)}`);
+  function catalog(){const cards=cardsForExpansion(roleConfiguration()?.contentVersion),all=[...cards,...ROLES],last=Math.ceil(all.length/8)-1;catalogPage=Math.min(catalogPage,last);
+    inspect(`六行百业 · ${cards.length}种牌与24位角色`,`<div class="ex-catalog">${all.slice(catalogPage*8,catalogPage*8+8).map(c=>button('read',renderCard({definitionId:c.id},{interactive:false,configuration:roleConfiguration()}),{definitionId:c.id})).join('')}</div>`,`${button('catalog-page','上一页',{delta:-1},!catalogPage)}<span>${catalogPage+1}/${last+1} · 点牌阅读</span>${button('catalog-page','下一页',{delta:1},catalogPage>=last)}`);
   }
   function renderOpening(){const o=room.game.opening,self=o.self;roles.hidden=false;root.dataset.exScene='select-role';
     if(candidate&&!self?.candidates.includes(candidate))candidate=null;
-    roles.innerHTML=`<div class="ex-choice-heading"><div><small>候选仅你可见 · ${o.confirmed.filter(p=>p.confirmed).length}/${o.confirmed.length}已确认</small><h1>${self?.confirmedRoleId?'已确认，等待伙伴':'选择你的经营方式'}</h1></div><span>限时60秒 · 到时采用原候选第一位</span></div><div class="ex-candidates">${(self?.candidates??[]).map(id=>{const r=getRole(id);return `<article class="ex-candidate${candidate===id?' is-selected':''}">${button('candidate',renderCard({definitionId:id},{interactive:false}),{roleId:id},!!self.confirmedRoleId)}${button('read','ⓘ',{definitionId:id})}</article>`;}).join('')||'<p>选角进行中；其他人的候选不公开。</p>'}</div><div class="ex-role-confirm"><span>全部确认后统一公开角色、发钱与手牌。</span><div>${button('confirm-role',self?.confirmedRoleId?'已确认':'确认角色',{},!candidate||!!self?.confirmedRoleId||!usable())}</div></div>`;
+    roles.innerHTML=`<div class="ex-choice-heading"><div><small>候选仅你可见 · ${o.confirmed.filter(p=>p.confirmed).length}/${o.confirmed.length}已确认</small><h1>${self?.confirmedRoleId?'已确认，等待伙伴':'选择你的经营方式'}</h1></div><span>限时60秒 · 到时采用原候选第一位</span></div><div class="ex-candidates">${(self?.candidates??[]).map(id=>{const r=role(id);return `<article class="ex-candidate${candidate===id?' is-selected':''}">${button('candidate',renderCard({definitionId:id},{interactive:false,configuration:roleConfiguration()}),{roleId:id},!!self.confirmedRoleId)}${button('read','ⓘ',{definitionId:id})}</article>`;}).join('')||'<p>选角进行中；其他人的候选不公开。</p>'}</div><div class="ex-role-confirm"><span>全部确认后统一公开角色、发钱与手牌。</span><div>${button('confirm-role',self?.confirmedRoleId?'已确认':'确认角色',{},!candidate||!!self?.confirmedRoleId||!usable())}</div></div>`;
     root.querySelector('.yg-playfield').inert=true;
   }
   function tradeQuote(){const face=faceOf();return quoteGoodsTrade({owner:own(),bankGoods:room.game.bankGoods,usage:Object.fromEntries(Object.keys(newTradeUsage()).map(k=>[k,room.game.turnUsage[k]])),
@@ -177,7 +180,7 @@ export function mountExpansionTable({root,send,read,rerender,feedback,available,
     material.classList.toggle('hy-card-selection',body.includes('hy-material-card'));
     $('hy-task-material-title').textContent=title+' · 选择本次材料';$('hy-material-rechoose').hidden=true;
     syncTaskMarkup($('hy-task-material-cards'),`<div class="hy-material-steps">${body}</div>`,true);root.querySelector('.yg-lower').classList.toggle('hy-has-materials',!!body);
-    syncTaskMarkup($('yg-scene-content'),renderTableActionDraft({source:button('read',renderCard({definitionId:source.id},{interactive:false}),{definitionId:source.id},false,'hy-source-reader'),heading:esc(title),secondary:button('read','牌文',{definitionId:source.id}),description:`<p class="hy-decision-summary">${esc(source.summary??source.compactText??'')}</p>${preview}`,actions}),true);
+    syncTaskMarkup($('yg-scene-content'),renderTableActionDraft({source:button('read',renderCard({definitionId:source.id},{interactive:false,configuration:roleConfiguration()}),{definitionId:source.id},false,'hy-source-reader'),heading:esc(title),secondary:button('read','牌文',{definitionId:source.id}),description:`<p class="hy-decision-summary">${esc(source.summary??source.compactText??'')}</p>${preview}`,actions}),true);
   }
   function renderSelected(){const face=faceOf();if(!face)return;
     const me=own(),can=usable()&&room.game.turnPlayerId===room.selfId&&!room.game.pending&&room.game.stage==='use';
@@ -198,7 +201,7 @@ export function mountExpansionTable({root,send,read,rerender,feedback,available,
     const actions=room.game.stage==='draw'?button('start-use',!room.game.drawStarted?'先摸第一张 · 1行动':'进入用牌',{},!usable()):face.category==='goods'?button('trade','买入',{direction:'buy'},!can)+button('trade','卖出',{direction:'sell'},!can)
       :role?activeRoles.has(face.sourceCode)?button('use',`发动角色 · ${face.sourceCode==='R22'?0:1}行动`,{},!can||room.game.turnUsage.roleUsed):''
       :isTool&&!installed?button('install','安装 · 0行动',{},!can):button('use',`${isTool?'使用道具':'确认使用'} · 1行动`,{},!can||installed&&selected.exhausted);
-    syncTaskMarkup($('yg-scene-content'),renderTableActionDraft({source:button('read',renderCard({definitionId:face.id},{interactive:false}),{definitionId:face.id},false,'hy-source-reader'),heading:esc(face.name),secondary:button('read','牌文',{definitionId:face.id}),description:`<p class="hy-decision-summary">${esc(face.summary??face.compactText??'')}</p>`,actions:actions+button('close','取消')}),true);
+    syncTaskMarkup($('yg-scene-content'),renderTableActionDraft({source:button('read',renderCard({definitionId:face.id},{interactive:false,configuration:roleConfiguration()}),{definitionId:face.id},false,'hy-source-reader'),heading:esc(face.name),secondary:button('read','牌文',{definitionId:face.id}),description:`<p class="hy-decision-summary">${esc(face.summary??face.compactText??'')}</p>`,actions:actions+button('close','取消')}),true);
   }
   // Synchronize draft ownership before the parent decides whether to keep its
   // task DOM. Installed tools survive settlement, so ownership alone is not a
@@ -213,14 +216,14 @@ export function mountExpansionTable({root,send,read,rerender,feedback,available,
     else if(tool)selected=tool;
     if(params.replaceCardId&&!own()?.tools?.some(c=>cardKey(c)===params.replaceCardId))delete params.replaceCardId;
   }
-  function render(next){syncView(next);$('hy-task-materials').classList.remove('hy-expansion-materials','hy-card-selection');const expansion=isExpansion(room.game??room.hyakkiConfig);root.classList.toggle('ex-preview',expansion);if(expansion){$('yg-catalog').dataset.exCommand='catalog';$('yg-catalog').textContent='查看102种牌与24角色';}else {delete $('yg-catalog').dataset.exCommand;$('yg-catalog').textContent='查看完整51种卡牌';}if(!expansion){work.hidden=true;roles.hidden=true;dock.hidden=true;root.classList.remove('ex-working');delete root.dataset.exScene;return;}
+  function render(next){syncView(next);$('hy-task-materials').classList.remove('hy-expansion-materials','hy-card-selection');const expansion=isExpansion(room.game??room.hyakkiConfig);root.classList.toggle('ex-preview',expansion);if(expansion){$('yg-catalog').dataset.exCommand='catalog';$('yg-catalog').textContent=`查看${cardsForExpansion(roleConfiguration()?.contentVersion).length}种牌与24角色`;}else {delete $('yg-catalog').dataset.exCommand;$('yg-catalog').textContent='查看完整51种卡牌';}if(!expansion){work.hidden=true;roles.hidden=true;dock.hidden=true;root.classList.remove('ex-working');delete root.dataset.exScene;return;}
     renderMarket();roleDock();if(room.game?.kind==='hyakki-opening-game'){renderOpening();return;}
     roles.hidden=true;delete root.dataset.exScene;root.querySelector('.yg-playfield').inert=false;
     work.hidden=true;root.classList.remove('ex-working');$('hy-task-materials').classList.remove('hy-expansion-materials');
     const p=room.game?.pending;
     if(newPending(p)){
       if(choiceId!==p.choice.id){choiceId=p.choice.id;selection=p.choice.kind==='retain-goods'?{goods:{...p.choice.defaultSelection}}:{};}
-      const source=p.sourceRole?getRole(p.sourceRole.roleId):getCard(p.sourceCards[0]?.definitionId??`yousei.${p.code.toLowerCase()}`);
+      const source=p.sourceRole?role(p.sourceRole.roleId):getCard(p.sourceCards[0]?.definitionId??`yousei.${p.code.toLowerCase()}`);
       const mine=p.actorId===room.selfId,receipt=p.choice.kind==='retain-goods',capacity=p.choice.options?.[0]?.capacity;
       frame(source,receipt?mine?`选择保留的货物 · 最多${capacity}件`:'等待保留货物':source.name,mine?pendingBody(p):`<p>等待${esc(room.players.find(m=>m.id===p.actorId)?.name??'伙伴')}完成选择。</p>`,
         {preview:mine?`<p>${receipt?`保留${count(selection.goods)}/${capacity}件：`:''}${selectedText(p)}</p><p>${receipt?`临时格费${count(selection.goods)>p.choice.options[0].ordinaryCapacity?p.choice.options[0].temporaryFee:0}两 · `:''}本步不再消耗行动</p>`:'',actions:mine?button('undo','撤1项',{},!usable())+button('pending-confirm','确认选择',{},!usable()||!pendingReady(p)):''});
@@ -228,7 +231,7 @@ export function mountExpansionTable({root,send,read,rerender,feedback,available,
     }
     choiceId=null;if(!p&&selected)renderSelected();
     if(!p&&selected)syncPhysicalSelection();
-    const me=own();if(me?.roleId==='yousei.role.r15'&&room.game.stage==='draw'&&!room.game.drawStarted&&!p&&room.game.turnPlayerId===room.selfId){$('yg-scene-content').insertAdjacentHTML('beforeend',button('inspect','鉴牌：付1两，先看2张',{},!usable()||me.silver<1||room.game.deckCount+room.game.discard.length<2));}
+    const me=own();if(me?.roleId==='yousei.role.r15'&&room.game.stage==='draw'&&!room.game.drawStarted&&!p&&room.game.turnPlayerId===room.selfId){$('yg-scene-content').insertAdjacentHTML('beforeend',button('inspect',`鉴牌：付1两，先看${inspectionCardCount(roleConfiguration())}张`,{},!usable()||me.silver<1||room.game.deckCount+room.game.discard.length<inspectionCardCount(roleConfiguration())));}
   }
   // Private hand ids and public equipped-card refs are aliases of the same
   // physical object. Submit the reference supplied by this choice, not a new id.
