@@ -13,7 +13,9 @@ export function renderExpansionPrint(card,{goods,classes}) {
   if(card.category==='goods') {
     const r=card.recipe;
     if(r.type==='fixed') {
-      const [id,n]=Object.entries(r.goods)[0];media=icon(id,27,34,46)+text('×'+n,50,91,17);
+      const entries=Object.entries(r.goods);
+      if(entries.length===1){const [id,n]=entries[0];media=icon(id,27,34,46)+text('×'+n,50,91,17);}
+      else media=entries.map(([id,n],i)=>{const x=8+(i%3)*31,y=33+Math.floor(i/3)*40;return icon(id,x,y,23)+text('×'+n,x+11.5,y+33,10);}).join('');
     } else if(r.category) {
       const pair=goods.filter(g=>g.category===r.category);
       media=pair.map((g,i)=>icon(g.id,17+i*38,35,28)).join('')+text(categoryName(r.category)+'类×'+(r.type==='mixed'?2:3),50,84,14.5)+(r.type==='mixed'?text('其他类×1',50,103,14.5):'');

@@ -15,6 +15,9 @@ const AUCTION_FOCUS_MAX_WIDTH=1150,AUCTION_FOCUS_MAX_HEIGHT=620;
  * can buy capacity, occupy the temporary position or charge a player. */
 export function renderStallStock(player) {
   const occupied = player.goods.flatMap(good => Array(good.count).fill(good.id));
+  const warehouse = player.roleId === 'yousei.role.r10';
+  const baseCapacity = warehouse ? 6 : 5;
+  const stallCount = player.stallCount ?? Math.floor((player.ordinaryCapacity - baseCapacity) / 3);
   const slot = (goodId, index, temporary = false) => {
     const name = GOODS.find(good => good.id === goodId)?.name;
     const fee = temporary ? player.temporaryOccupied ? '已付2两' : '新占用2两' : '';
@@ -24,13 +27,16 @@ export function renderStallStock(player) {
   const board = (label, slots, kind) => `<span class="nm-stall-board ${kind}" aria-label="${label}"><span class="nm-stall-caption">${label}</span><span class="nm-stall-grid">${slots}</span></span>`;
   const base = board('主摊', Array.from({length:5}, (_, i) => slot(occupied[i], i)).join('')
     + slot(occupied[player.ordinaryCapacity], 5, true), 'nm-base-stall');
-  const expansions = Array.from({length:player.stallCount??Math.floor((player.ordinaryCapacity - 5) / 3)}, (_, boardIndex) => {
-    const offset = 5 + boardIndex * 3;
-    return board(`扩摊${boardIndex + 1}${player.ordinaryCapacity > 8 ? ' ↔' : ''}`, Array.from({length:3}, (_, i) => slot(occupied[offset + i], offset + i)).join(''), 'nm-expansion-stall');
+  const expansions = Array.from({length:stallCount}, (_, boardIndex) => {
+    const offset = baseCapacity + boardIndex * 3;
+    return board(`扩摊${boardIndex + 1}${stallCount > 1 ? ' ↔' : ''}`, Array.from({length:3}, (_, i) => slot(occupied[offset + i], offset + i)).join(''), 'nm-expansion-stall');
   }).join('');
   const locked = board('扩摊 · 未解锁', Array.from({length:3}, () => '<span class="nm-stock-slot is-locked" aria-label="未解锁扩摊位，使用摊位许可证解锁"><i aria-hidden="true">锁</i></span>').join(''), 'nm-expansion-stall is-locked');
-  const extra=player.roleId==='yousei.role.r10'?board('仓栈',slot(occupied[5+3*(player.stallCount??0)],5+3*(player.stallCount??0)),'nm-expansion-stall'):'';
-  return base + extra + `<span class="nm-stall-expansions" aria-label="永久扩摊">${expansions || locked}</span>`;
+  const extra=warehouse?board('仓栈',slot(occupied[5],5),'nm-warehouse-stall'):'';
+  const expansionStrip=`<span class="nm-stall-expansions" aria-label="永久扩摊">${expansions || locked}</span>`;
+  // The role's one slot shares the existing lower row; it must not inherit a
+  // horizontal page's 100% flex basis in the stock owner's vertical column.
+  return base + (warehouse?`<span class="nm-warehouse-row">${extra}${expansionStrip}</span>`:expansionStrip);
 }
 
 /** Presentation only: real role-filtered views and the existing UI's event IDs. */
@@ -179,7 +185,7 @@ export function mountNightMarket({root}) {
     if (self) {
       markup($('yg-stock-slots'), renderStallStock(self));
       const count = self.goods.reduce((sum, good) => sum + good.count, 0);
-      const expansions = (self.ordinaryCapacity - 5) / 3;
+      const expansions = self.stallCount ?? Math.floor((self.ordinaryCapacity - (self.roleId==='yousei.role.r10'?6:5)) / 3);
       $('yg-shop-note').textContent = `普通${Math.min(count, self.ordinaryCapacity)}/${self.ordinaryCapacity} · 临时格${self.temporaryOccupied ? '已占用，已付2两' : '空闲，每次2两'}${expansions > 1 ? ` · ${expansions}块扩摊可横滑 →` : ''}`;
       shop.dataset.silver = self.silver; shop.dataset.capacity = self.ordinaryCapacity;
     }

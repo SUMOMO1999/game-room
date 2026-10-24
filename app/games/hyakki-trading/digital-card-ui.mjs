@@ -6,10 +6,10 @@ import { ART_VERSION, assetPath } from './content/manifest.mjs';
 
 const escape = value => String(value).replace(/[&<>"']/gu, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 
-function definition(card) {
-  if (typeof card === 'string') return getCard(card);
+function definition(card,configuration=null) {
+  if (typeof card === 'string') return getCard(card,configuration);
   if (!card || typeof card !== 'object') throw new TypeError('牌面需要已知的内容定义');
-  return getCard(card.definitionId ?? card.id);
+  return getCard(card.definitionId ?? card.id,configuration);
 }
 
 function picture(id, label, className = '') {
@@ -24,8 +24,8 @@ export function renderGoodsIcon(id) {
   return `<span class="yousei-good-icon" aria-hidden="true">${picture(id, good.name.slice(0, 1))}</span>`;
 }
 
-export function renderCard(card, { selected = false, disabled = false, interactive = true, tapped = false } = {}) {
-  const face = definition(card);
+export function renderCard(card, { selected = false, disabled = false, interactive = true, tapped = false,configuration=null } = {}) {
+  const face = definition(card,configuration);
   for (const flag of [selected, disabled, interactive, tapped]) {
     if (typeof flag !== 'boolean') throw new TypeError('牌面显示状态必须为布尔值');
   }
@@ -60,8 +60,8 @@ export function renderCardBack() {
   return `<span class="yousei-card yousei-card--back" role="img" aria-label="未公开的牌，统一牌背" data-art-version="${ART_VERSION}">${picture('card-back', '幽街商人', 'yousei-card__back-art')}<span class="yousei-card__back-label">未公开</span></span>`;
 }
 
-export function renderCardDetails(card) {
-  const face = definition(card);
+export function renderCardDetails(card,{configuration=null}={}) {
+  const face = definition(card,configuration);
   const category = getCategory(face.category);
-  return `<section class="yousei-card-details"><div class="yousei-card-details__face">${renderCard(face, { interactive: false })}</div><div class="yousei-card-details__copy"><p class="yousei-card-details__eyebrow">${escape(category.name)} · ${face.sourceCode} · 牌堆共${face.copies}张</p><h3>${escape(face.name)}</h3><p class="yousei-card-details__timing">${escape(face.timingLabel)}<br>${escape(face.costText)}</p><p class="yousei-card-details__summary">${escape(face.summary)}</p><ul>${face.details.map(text => `<li>${escape(text)}</li>`).join('')}</ul></div></section>`;
+  return `<section class="yousei-card-details"><div class="yousei-card-details__face">${renderCard(face, { interactive: false,configuration })}</div><div class="yousei-card-details__copy"><p class="yousei-card-details__eyebrow">${escape(category.name)} · ${face.sourceCode} · 牌堆共${face.copies}张</p><h3>${escape(face.name)}</h3><p class="yousei-card-details__timing">${escape(face.timingLabel)}<br>${escape(face.costText)}</p><p class="yousei-card-details__summary">${escape(face.summary)}</p><ul>${face.details.map(text => `<li>${escape(text)}</li>`).join('')}</ul></div></section>`;
 }

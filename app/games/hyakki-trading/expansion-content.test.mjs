@@ -1,22 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {CARDS as oldCards,GOODS as oldGoods,CONTENT_VERSION,PLAYER_COUNT_CONTENT_VERSION,createDeck as oldDeck} from './content/definitions.mjs';
-import {CARDS,GOODS,CATEGORIES,ROLES,createExpansionDeck,expansionProfile,expansionPartitionProblem,expansionDefinitionForCopy,getExpansionCard,getRole} from './content/expansion-one.mjs';
+import {CARDS,GOODS,CATEGORIES,ROLES,EXPANSION_CONTENT_VERSION,LEGACY_EXPANSION_CONTENT_VERSION,createExpansionDeck,expansionProfile,expansionPartitionProblem,expansionDefinitionForCopy,getExpansionCard,getRole} from './content/expansion-one.mjs';
 import {waitingConfiguration,updateWaitingConfiguration,freezeMatchConfiguration,materialForConfiguration} from './opening-configuration.mjs';
 
 const ids=Array.from({length:6},(_,i)=>(i+1).toString(16).repeat(32));
-const totals=[180,225,270,315,360];
+const totals=[183,228,273,318,363];
 const categoryCounts=[
-  {goods:71,ordinary_character:50,monitored_character:22,tool:32,stall_permit:5},
-  {goods:91,ordinary_character:66,monitored_character:24,tool:38,stall_permit:6},
-  {goods:111,ordinary_character:82,monitored_character:26,tool:44,stall_permit:7},
-  {goods:131,ordinary_character:98,monitored_character:28,tool:50,stall_permit:8},
-  {goods:151,ordinary_character:114,monitored_character:30,tool:56,stall_permit:9},
+  {goods:74,ordinary_character:50,monitored_character:22,tool:32,stall_permit:5},
+  {goods:94,ordinary_character:66,monitored_character:24,tool:38,stall_permit:6},
+  {goods:114,ordinary_character:82,monitored_character:26,tool:44,stall_permit:7},
+  {goods:134,ordinary_character:98,monitored_character:28,tool:50,stall_permit:8},
+  {goods:154,ordinary_character:114,monitored_character:30,tool:56,stall_permit:9},
 ];
 for(let people=2;people<=6;people++)test(`${people}人实际生成完整牌实体并按牌类独立核账`,()=>{
   const deck=createExpansionDeck(people),profile=expansionProfile(people);
   assert.equal(deck.length,totals[people-2]);assert.equal(new Set(deck.map(c=>c.id)).size,deck.length);
-  assert.equal(new Set(deck.map(c=>c.definitionId)).size,102);
+  assert.equal(new Set(deck.map(c=>c.definitionId)).size,103);
   assert.deepEqual(deck.reduce((all,c)=>{const kind=getExpansionCard(c.definitionId).category;all[kind]=(all[kind]??0)+1;return all;},{}),categoryCounts[people-2]);
   assert.equal(profile.goodsPerTypeRecommended,people*3);assert.equal(profile.stallBoards,people+3);
   assert.equal(expansionPartitionProblem(deck.map(c=>c.id),people),null);
@@ -27,9 +27,9 @@ for(let people=2;people<=6;people++)test(`${people}人实际生成完整牌实�
 test('6类各2货、角色与主牌分区、G19始终只取旧六货',()=>{
   assert.equal(CATEGORIES.length,6);assert.equal(GOODS.length,12);assert.equal(ROLES.length,24);
   for(const c of CATEGORIES)assert.equal(GOODS.filter(g=>g.category===c.id).length,2);
-  assert.equal(CARDS.length,102);assert.equal(CARDS.filter(c=>c.original).length,51);
+  assert.equal(CARDS.length,103);assert.equal(CARDS.filter(c=>c.original).length,51);
   const g19=getExpansionCard('yousei.g19');assert.deepEqual(g19.goods,Object.fromEntries(oldGoods.map(g=>[g.id,1])));
-  for(const role of ROLES){assert.equal(expansionDefinitionForCopy(role.id+'#01',6),null);assert.equal(getRole(role.id),role);}
+  for(const role of ROLES){assert.equal(expansionDefinitionForCopy(role.id+'#01',6),null);if(role.sourceCode!=='R12')assert.equal(getRole(role.id),role);}
   assert.equal(getRole('yousei.role.r12').initialSilver,26);
 });
 test('混包、重复、缺失和超出本人数的副本均拒绝',()=>{

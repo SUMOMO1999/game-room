@@ -4,10 +4,10 @@ import {ids,fixture,move,stripResponse,run,use} from './test-support/fixture.mjs
 import {applyGameAction,gameProblem} from './rules.mjs';
 import {privateView,spectatorView} from './view.mjs';
 
-test('选角统一初始化正式回合；R12只得26，R21开局即有保护，十二货与180牌守恒',()=>{
+test('选角统一初始化正式回合；R12只得26，R21开局即有保护，十二货与183牌守恒',()=>{
   const state=fixture(['R12','R21']);assert.equal(state.players[0].silver,26);assert.equal(state.players[1].silver,20);
   assert.equal(state.players[1].roleState.compensationAvailable,true);assert.equal(state.timing.active.deadlineAt,1001+30*60*1000);
-  assert.equal(state.deck.length,170);assert.equal(Object.keys(state.bankGoods).length,12);
+  assert.equal(state.deck.length,173);assert.equal(Object.keys(state.bankGoods).length,12);
   assert.equal(state.turnUsage.turnId,state.turnId);assert.equal(gameProblem(state),null);
   assert.equal(spectatorView(state).players.some(p=>'hand' in p),false);
   assert.equal(privateView(state,ids[0]).players.filter(p=>'hand' in p).length,1);

@@ -20,7 +20,7 @@ function fixture(kind) {
 function conserved(state) {
   const cards = [...state.deck, ...state.discard, ...state.players.flatMap(owner => owner.hand),
     ...(state.pending?.sourceCards ?? []), ...(state.pending?.poolCards ?? [])];
-  assert.equal(cards.length, 180); assert.equal(new Set(cards).size, 180);
+  assert.equal(cards.length, 183); assert.equal(new Set(cards).size, 183);
   for (const good of GOODS) assert.equal(state.bankGoods[good.id] + state.players.reduce((sum, owner) => sum + owner.goods[good.id], 0)
     + (state.pending?.goods[good.id] ?? 0), 6);
   state.lastPublicEvents.forEach(validateHyakkiPublicEvent);

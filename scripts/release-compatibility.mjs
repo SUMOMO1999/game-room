@@ -27,6 +27,9 @@ export const CURRENT_DATA_COMPATIBILITY = Object.freeze({ format: 1,
   // Snapshot/backup scope names do not change when public event groups gain
   // trusted turn/delta metadata. Group3 additionally pins content/count;
   // every group retains the measured 32 KiB ceiling and original reserve.
+  // Material v4 adds physical cards and new role semantics within snapshot22/group4.
+  // A prior binary without this capability must not be selected after v4 writes.
+  hyakkiMaterials: Object.freeze({ read: Object.freeze([1, 2, 3, 4]), write: Object.freeze([1, 2, 3, 4]) }),
   hyakkiEvents: Object.freeze({ read: Object.freeze([1, 2, 3, 4]), write: Object.freeze([2, 3, 4]) }),
   // Zero means the historical practice envelope without a public journal.
   // Pausing an untouched old save can still write that exact legacy shape.
@@ -46,7 +49,7 @@ function list(value, valid) {
 const includes = (read, write) => write.every((value) => read.includes(value));
 
 export function validateDataCompatibility(value) {
-  keys(value, ['format', 'roomSnapshots', 'backupScopes'], ['wordbankSharedWords', 'wordbankSharedBytes','canvasStrokePoints', 'hyakkiEvents', 'hyakkiPracticeJournal', 'hyakkiPracticeSaveBytes']);
+  keys(value, ['format', 'roomSnapshots', 'backupScopes'], ['wordbankSharedWords', 'wordbankSharedBytes','canvasStrokePoints', 'hyakkiEvents', 'hyakkiPracticeJournal', 'hyakkiPracticeSaveBytes', 'hyakkiMaterials']);
   if (value.format !== 1) invalid('unsupported declaration format');
   keys(value.roomSnapshots, ['read', 'write']); keys(value.backupScopes, ['read', 'write']);
   for (const direction of ['read', 'write']) {
@@ -71,6 +74,10 @@ export function validateDataCompatibility(value) {
   keys(canvasStrokePoints, ['read', 'write']);
   if (['read', 'write'].some(direction => !Number.isSafeInteger(canvasStrokePoints[direction]) || canvasStrokePoints[direction] < 1)) invalid('canvas stroke points');
   if (canvasStrokePoints.read < canvasStrokePoints.write) invalid('release cannot read its own canvas stroke writes');
+  const hyakkiMaterials = Object.hasOwn(value, 'hyakkiMaterials') ? value.hyakkiMaterials : { read: [1, 2, 3], write: [1, 2, 3] };
+  keys(hyakkiMaterials, ['read', 'write']);
+  for (const direction of ['read', 'write']) list(hyakkiMaterials[direction], entry => Number.isSafeInteger(entry) && entry >= 1 && entry <= 4);
+  if (!includes(hyakkiMaterials.read, hyakkiMaterials.write)) invalid('release cannot read its own hyakki material writes');
   const hyakkiEvents = Object.hasOwn(value, 'hyakkiEvents') ? value.hyakkiEvents : { read: [1], write: [1] };
   const hyakkiPracticeJournal = Object.hasOwn(value, 'hyakkiPracticeJournal') ? value.hyakkiPracticeJournal : { read: [0], write: [0] };
   for (const [capability, minimum, maximum] of [[hyakkiEvents, 1, 4], [hyakkiPracticeJournal, 0, 2]]) {
@@ -82,7 +89,7 @@ export function validateDataCompatibility(value) {
   keys(hyakkiPracticeSaveBytes, ['read', 'write']);
   if (['read', 'write'].some(direction => !Number.isSafeInteger(hyakkiPracticeSaveBytes[direction]) || hyakkiPracticeSaveBytes[direction] < 1)
       || hyakkiPracticeSaveBytes.read < hyakkiPracticeSaveBytes.write) invalid('hyakki practice bytes');
-  return { ...structuredClone(value), hyakkiEvents: structuredClone(hyakkiEvents), hyakkiPracticeJournal: structuredClone(hyakkiPracticeJournal),
+  return { ...structuredClone(value), hyakkiMaterials: structuredClone(hyakkiMaterials), hyakkiEvents: structuredClone(hyakkiEvents), hyakkiPracticeJournal: structuredClone(hyakkiPracticeJournal),
     hyakkiPracticeSaveBytes: structuredClone(hyakkiPracticeSaveBytes), wordbankSharedWords: structuredClone(wordbankSharedWords), wordbankSharedBytes: structuredClone(wordbankSharedBytes),
     canvasStrokePoints: structuredClone(canvasStrokePoints) };
 }
@@ -108,6 +115,7 @@ export function compareReleaseCompatibility(candidateManifest, priorManifest = n
     && reader.wordbankSharedWords.read >= writer.wordbankSharedWords.write
     && reader.wordbankSharedBytes.read >= writer.wordbankSharedBytes.write
     && reader.canvasStrokePoints.read >= writer.canvasStrokePoints.write
+    && includes(reader.hyakkiMaterials.read, writer.hyakkiMaterials.write)
     && includes(reader.hyakkiEvents.read, writer.hyakkiEvents.write)
     && includes(reader.hyakkiPracticeJournal.read, writer.hyakkiPracticeJournal.write)
     && reader.hyakkiPracticeSaveBytes.read >= writer.hyakkiPracticeSaveBytes.write;

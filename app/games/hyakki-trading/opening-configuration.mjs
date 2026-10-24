@@ -1,6 +1,6 @@
 import {playerCountProfile} from './content/player-count-profile.mjs';
 import {PLAYER_COUNT_CONTENT_VERSION} from './content/definitions.mjs';
-import {BASE_PACK_ID,EXPANSION_PACK_ID,EXPANSION_CONTENT_VERSION,CONFIGURABLE_RULE_VERSION,expansionProfile,validPlayerCount} from './content/expansion-one.mjs';
+import {BASE_PACK_ID,EXPANSION_PACK_ID,EXPANSION_CONTENT_VERSION,CONFIGURABLE_RULE_VERSION,expansionProfile,validPlayerCount,isExpansionContentVersion} from './content/expansion-one.mjs';
 
 const fields=new Set(['packId','actionLimit','goodsPerType','goodsSupplyMode','closingTarget']);
 const own=(value,key)=>Object.hasOwn(value,key);
@@ -49,10 +49,13 @@ export function materialForConfiguration(configuration){
   const matchFields=new Set([...fields,'playerCount','participantIds','ruleVersion','contentVersion']);
   requireValue(Object.keys(configuration).length===matchFields.size&&Object.keys(configuration).every(key=>matchFields.has(key)),'开局配置含未知或缺失字段。');
   requireValue(configuration.ruleVersion===CONFIGURABLE_RULE_VERSION,'开局规则版本无效。');
-  const expected=freezeMatchConfiguration(configurationForWaiting(configuration),configuration.participantIds);
+  const current=freezeMatchConfiguration(configurationForWaiting(configuration),configuration.participantIds);
+  requireValue(configuration.packId!==EXPANSION_PACK_ID||isExpansionContentVersion(configuration.contentVersion),'开局内容版本无效。');
+  // Validate an existing frozen edition; reading a save must not upgrade it.
+  const expected=configuration.packId===EXPANSION_PACK_ID?{...current,contentVersion:configuration.contentVersion}:current;
   requireValue(Object.keys(expected).every(key=>key==='participantIds'
     ?expected[key].every((id,index)=>id===configuration[key]?.[index])
     :expected[key]===configuration[key]),'开局配置与冻结参赛人不一致。');
-  return configuration.packId===EXPANSION_PACK_ID?expansionProfile(configuration.playerCount):playerCountProfile(configuration.playerCount);
+  return configuration.packId===EXPANSION_PACK_ID?expansionProfile(configuration.playerCount,configuration.contentVersion):playerCountProfile(configuration.playerCount);
 }
 function configurationForWaiting(configuration){return Object.fromEntries([...fields].map(key=>[key,configuration[key]]));}

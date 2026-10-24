@@ -18,7 +18,7 @@ test('private selection saves exactly, bots confirm without revealing candidates
   assert.equal(first.opening.self.candidates.length,3);assert.equal(first.players.some(p=>'roleId'in p),false);
   for(let i=0;i<5;i++){saved=step(saved);assert.equal(saved.journal.groups.length,0);assert.ok(decodeConfiguredPractice(encodeConfiguredPractice(saved)));}
   saved=step(saved);assert.equal(openingGame(saved.game),false);assert.equal(saved.journal.groups.length,1);
-  assert.equal(saved.game.deck.length,330);assert.equal(saved.game.players.length,6);
+  assert.equal(saved.game.deck.length,333);assert.equal(saved.game.players.length,6);
   assert.deepEqual(decodeConfiguredPractice(encodeConfiguredPractice(saved)),saved);
 });
 for(const n of [2,4,6])for(const seed of [2,9,17])test(`complete seeded expansion practice n=${n} seed=${seed} with lawful private-view decisions`,()=>{

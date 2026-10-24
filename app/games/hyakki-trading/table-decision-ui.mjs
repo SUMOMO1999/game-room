@@ -182,7 +182,7 @@ function goodsObject(id,selected,disabled,type,fields,caption=''){
 export function renderNativeWork({pending,game,selfId,draft,step=0,short=false,narrow=false,name,canChoose,readyOverride=true,costOverride=null,borrowPreview=null}){
   const context=decisionContext(pending,game,selfId,name),face=context.source;
   const source=pending.sourceCards?.find(card=>card.definitionId===face?.id)??(face?{definitionId:face.id}:pending.sourceCards?.[0]);
-  const sourceArt=source?renderCard(source,{interactive:false}):renderCardBack();
+  const sourceArt=source?renderCard(source,{interactive:false,configuration:game.configuration}):renderCardBack();
   const ready=(pending.auction?true:nativeChoiceReady(pending,draft))&&readyOverride;
   const summary=borrowPreview|| (pending.auction?`整组拍品${pending.pool?.length?` · ${pending.pool.length}张牌`:""} · 当前最高${pending.auction.highestBid}两${pending.auction.highestBidderId?'（'+name(pending.auction.highestBidderId)+'）':''}`:nativeSelectionText(pending,game,draft,name));
   let cost=context.cost;

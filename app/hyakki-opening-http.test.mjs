@@ -65,7 +65,7 @@ for(const n of [2,6])test(`${n}人真实HTTP／SQLite／SSE：私有选角到统
   assert.equal((await f.runtime.storage.scan('hyakki-events')).length,1);
   assert.deepEqual(await f.runtime.storage.scan('hyakki-event-meta'),before);
   const saved=(await f.runtime.storage.read('rooms',started.view.roomId)).value.snapshot;
-  assert.equal(saved.game.opening.deal.deck.length,180+45*(n-2)-5*n);
+  assert.equal(saved.game.opening.deal.deck.length,183+45*(n-2)-5*n);
 });
 
 test('正式商人页面静态依赖闭包完整，练习所需纯规则显式公开，服务端／适配器／测试不公开',async()=>{

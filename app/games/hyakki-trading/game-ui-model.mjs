@@ -12,7 +12,7 @@ export const goodsTotal = goods => ids.reduce((n, id) => n + (goods?.[id] ?? 0),
 export const cardKey = card => card.cardId ?? card.ref ?? card.id;
 /** A setup display, not the authority that freezes materials when a match starts. */
 export function supplySetup(playerCount, configuration = {}) {
-  const profile = Number.isSafeInteger(playerCount) && playerCount >= 2 && playerCount <= 6 ? (configuration.packId==='six-trades-v1'?{...expansionProfile(playerCount),goodsPerTypeRecommended:3*playerCount}:profileForPlayerCount(playerCount)) : null;
+  const profile = Number.isSafeInteger(playerCount) && playerCount >= 2 && playerCount <= 6 ? (configuration.packId==='six-trades-v1'?{...expansionProfile(playerCount,configuration.contentVersion),goodsPerTypeRecommended:3*playerCount}:profileForPlayerCount(playerCount)) : null;
   const goodsSupplyMode = configuration.goodsSupplyMode === 'recommended' ? 'recommended' : 'custom';
   const saved = Number.isSafeInteger(configuration.goodsPerType) ? configuration.goodsPerType : 6;
   return { playerCount, deckSize: profile?.deckSize ?? null, stallBoards: profile?.stallBoards ?? null,

@@ -33,7 +33,7 @@ export function projectConfiguredHistory(before,room){
       &&game.discard.length===0&&same(game.turnUsage,newTurnUsage())&&game.committedAt>=opening.updatedAt
       &&game.lifecycle.startedAt===opening.createdAt&&game.players.every(p=>opening.candidates[p.id].includes(p.roleId)
         &&(!opening.choices[p.id]||opening.choices[p.id]===p.roleId)&&p.hand.length===5&&p.tools.length===0
-        &&p.silver===getRole(p.roleId).initialSilver&&p.stallCount===0&&Object.values(p.goods).every(n=>n===0)
+        &&p.silver===getRole(p.roleId,game.configuration).initialSilver&&p.stallCount===0&&Object.values(p.goods).every(n=>n===0)
         &&same(p.roleState,newRoleState(p.roleId))));
     metadata={anchor:{kind:'opening'},source:null,rolesRevealed:game.players.map(p=>({seatId:p.id,roleId:p.roleId})),
       changes:game.players.map(p=>({seatId:p.id,silver:p.silver,goods:[],handCount:5,toolsAdded:[],toolsRemoved:[]})),

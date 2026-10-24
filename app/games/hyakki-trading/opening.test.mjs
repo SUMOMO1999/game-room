@@ -28,7 +28,7 @@ for(const n of [2,3,4,5,6])test(`${n}席分别私选，一次公开后才产生�
   }
   assert.equal(state.status,'completed');assert.equal(state.deal.players.length,n);
   const all=[...state.deal.deck,...state.deal.players.flatMap(p=>p.hand)];
-  assert.equal(all.length,180+45*(n-2));assert.equal(expansionPartitionProblem(all,n),null);
+  assert.equal(all.length,183+45*(n-2));assert.equal(expansionPartitionProblem(all,n),null);
   assert.equal(openingView(state).roles.length,n);assert.ok(!openingView(state,ids[0]).self);
   assert.equal(state.deal.unusedRoles.length,24-n);
   assert.equal(fresh(n).deal,null);assert.notEqual(JSON.stringify(state),baseline);
@@ -123,6 +123,6 @@ test('独立文件与全新进程恢复部分确认后到期，候选不变且�
     const script=`import{readFileSync}from'node:fs';import{openingProblem,expireOpening}from${JSON.stringify(moduleUrl)};const s=JSON.parse(readFileSync(process.argv[1],'utf8'));if(openingProblem(s))throw Error('restore rejected');const r=expireOpening(s,{now:61000,randomInt:n=>n-1});if(!r.ok||openingProblem(r.state))throw Error('completion failed');process.stdout.write(JSON.stringify(r.state));`;
     const restored=JSON.parse(execFileSync(process.execPath,['--input-type=module','-e',script,file],{encoding:'utf8',maxBuffer:1_000_000}));
     assert.deepEqual(restored.candidates,state.candidates);assert.equal(restored.choices[ids[0]],state.choices[ids[0]]);assert.equal(restored.status,'completed');
-    assert.equal(restored.deal.deck.length,330);assert.equal(new Set([...restored.deal.deck,...restored.deal.players.flatMap(p=>p.hand)]).size,360);
+    assert.equal(restored.deal.deck.length,333);assert.equal(new Set([...restored.deal.deck,...restored.deal.players.flatMap(p=>p.hand)]).size,363);
   }finally{await unlink(file);await rmdir(dir);}
 });

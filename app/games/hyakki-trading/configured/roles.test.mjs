@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {ids,fixture,move,stripResponse,run,use} from './test-support/fixture.mjs';
 import {applyGameAction,applyTimeout,gameProblem,currentDecision} from './rules.mjs';
 import {privateView,spectatorView} from './view.mjs';
-import {CATEGORIES,GOODS} from '../content/expansion-one.mjs';
+import {CATEGORIES,GOODS,LEGACY_EXPANSION_CONTENT_VERSION} from '../content/expansion-one.mjs';
 const setup=role=>{const g=fixture([role,'R12'],{actionLimit:8});stripResponse(g,'C04');stripResponse(g,'C07');return use(g);};
 function stock(g,goods,index=0){for(const [id,n] of Object.entries(goods)){g.players[index].goods[id]+=n;g.bankGoods[id]-=n;}assert.equal(gameProblem(g),null);}
 for(let i=1;i<=6;i++)test(`R0${i} 实际货物牌买卖各优惠一次，只看实际类别材料`,()=>{
@@ -69,7 +69,7 @@ test('R23实际0牌价买入仍付1行税；R24一次买入后仍能卖出',()=>
   g=run(g,'sell',{cardId:move(g,'XG20'),materials:{firearms:3}});assert.equal(g.players[0].silver,26);
 });
 test('R15付1两秘密看2选1，另一张回顶原序；仍只耗普通摸看的1行动',()=>{
-  let g=fixture(['R15','R12'],{actionLimit:5});const [first,second,third]=g.deck;
+  let g=fixture(['R15','R12'],{actionLimit:5},{contentVersion:LEGACY_EXPANSION_CONTENT_VERSION});const [first,second,third]=g.deck;
   g=run(g,'peek',{inspect:true});assert.equal(g.players[0].silver,19);assert.equal(g.actionsUsed,1);assert.equal(g.pending.poolCards.length,2);
   const other=JSON.stringify(privateView(g,ids[1])),watch=JSON.stringify(spectatorView(g));assert.equal(other.includes(first),false);assert.equal(other.includes(second),false);assert.equal(watch.includes(first),false);
   g=run(JSON.parse(JSON.stringify(g)),'choose-effect',{selection:{cardId:second}});assert.deepEqual(g.deck.slice(0,2),[first,third]);assert.equal(g.pending.poolCards[0],second);
@@ -78,14 +78,14 @@ test('R15付1两秘密看2选1，另一张回顶原序；仍只耗普通摸看�
   g=run(g,'peek');g=run(g,'keep-peek');assert.ok(g.players[0].hand.includes(first));assert.equal(g.players[0].silver,19);assert.equal(g.actionsUsed,2);
 });
 test('R15先正常摸看就放弃当回合增益；不足2张不能付费但仍能正常摸',()=>{
-  let g=fixture(['R15','R12']);g=run(run(g,'peek'),'discard-peek');const money=g.players[0].silver;
+  let g=fixture(['R15','R12'],{},{contentVersion:LEGACY_EXPANSION_CONTENT_VERSION});g=run(run(g,'peek'),'discard-peek');const money=g.players[0].silver;
   const bad=applyGameAction(g,ids[0],{type:'peek',inspect:true,matchId:g.matchId,turnId:g.turnId},{now:g.committedAt+1,randomInt:m=>m-1});assert.equal(bad.ok,false);assert.equal(g.players[0].silver,money);
-  g=fixture(['R15','R12']);const only=g.deck.pop();g.players[0].hand.push(...g.deck,...g.players[1].hand);g.deck=[only];g.players[1].hand=[];assert.equal(gameProblem(g),null);
+  g=fixture(['R15','R12'],{},{contentVersion:LEGACY_EXPANSION_CONTENT_VERSION});const only=g.deck.pop();g.players[0].hand.push(...g.deck,...g.players[1].hand);g.deck=[only];g.players[1].hand=[];assert.equal(gameProblem(g),null);
   const r=applyGameAction(g,ids[0],{type:'peek',inspect:true,matchId:g.matchId,turnId:g.turnId},{now:g.committedAt+1,randomInt:m=>m-1});assert.equal(r.ok,false);assert.equal(g.players[0].silver,20);
   g=run(g,'peek');g=run(g,'keep-peek');assert.ok(g.players[0].hand.includes(only));
 });
 test('R15私选或留弃的超时沿原默认收尾，不再收费、不重新抽两张',()=>{
-  let g=fixture(['R15','R12']);g=run(g,'peek',{inspect:true});const first=g.pending.poolCards[0];
+  let g=fixture(['R15','R12'],{},{contentVersion:LEGACY_EXPANSION_CONTENT_VERSION});g=run(g,'peek',{inspect:true});const first=g.pending.poolCards[0];
   const r=applyTimeout(g,ids[0],{now:g.timing.active.deadlineAt,randomInt:()=>{throw new Error('no redraw expected');}});
   assert.equal(r.ok,true,r.error);assert.equal(r.state.turnPlayerId,ids[1]);assert.equal(r.state.players[0].silver,19);assert.ok(r.state.players[0].hand.includes(first));
 });
