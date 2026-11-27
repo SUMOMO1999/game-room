@@ -3,7 +3,7 @@ import { loadAccount, accountState, accountGeneration, onAccountChange, logoutAc
 import { roomPhaseLabel, exitConsequence, createExitRequest, historyOutcome, historyPoints, historyBalanceLabel,historyParksRating } from './lobby-model.mjs';
 import { gamePath } from './entry-path.mjs';
 import { gameName, roomHref, gameDetails } from './game-routing.mjs';
-import { gamePresentation, creatableGamePresentations } from './games/catalog.mjs';
+import { gamePresentation, gamePresentations, creatableGamePresentations } from './games/catalog.mjs';
 import { parksCreationConfiguration } from './games/parks/configuration.mjs';
 import { gameIllustrationSvg } from './practice-hub.mjs';
 const $=id=>document.getElementById(id);
@@ -225,28 +225,63 @@ function updateCreateGame() {
   const game=gameDetails($('create-game').value);
   const parksSettings=$('create-parks-settings');if(parksSettings)parksSettings.hidden=$('create-game').value!=='parks';
   $('create-game-description').textContent=`${game.name} · ${game.minPlayers===game.maxPlayers?game.minPlayers:`${game.minPlayers}～${game.maxPlayers}`} 人 · ${gamePresentation($('create-game').value).createHint}`;
-  for(const card of $('lobby-games').children)card.setAttribute('aria-pressed',String(card.dataset.game===$('create-game').value));
+  for (const card of $('lobby-games').children) {
+    if (card.tagName === 'BUTTON') card.setAttribute('aria-pressed', String(card.dataset.game === $('create-game').value));
+  }
   const practice=$('selected-practice');practice.href=`./${gamePresentation($('create-game').value).practicePage}`;practice.setAttribute('aria-label',`${game.name}先练一局`);practice.textContent=`练习${game.name} ↗`;
   $('create-form').querySelector('button[type=submit]').textContent=`创建${game.name}房间 →`;
 }
-// Preserve the current choice while the registered games supply the options.
 function refreshGameChoices(state) {
-const previousGameChoice = $('create-game').value;
-const games = creatableGamePresentations(state);
-$('create-game').replaceChildren(...games.map(game => {
-  const option = document.createElement('option'); option.value = game.gameType; option.textContent = game.name; return option;
-}));
-$('create-game').value = games.some(game => game.gameType === previousGameChoice) ? previousGameChoice : games[0].gameType;
-const picker=$('lobby-games');
-if(picker.children.length!==games.length || games.some((game,index)=>picker.children[index].dataset.game!==game.gameType)) {
-picker.replaceChildren(...games.map(game=>{
-  const button=document.createElement('button');button.type='button';button.className='lobby-game';button.dataset.game=game.gameType;
-  const art=document.createElement('span');art.className='lobby-game-art';art.setAttribute('aria-hidden','true');art.innerHTML=gameIllustrationSvg(game.gameType);
-  const caption=document.createElement('span'),title=document.createElement('strong'),players=document.createElement('small');title.textContent=game.name;players.textContent=`${game.minPlayers===game.maxPlayers?game.minPlayers:`${game.minPlayers}～${game.maxPlayers}`} 人`;caption.append(title,players);button.append(art,caption);
-  button.addEventListener('click',()=>{$('create-game').value=game.gameType;updateCreateGame();});return button;
-}));
-}
-updateCreateGame();
+  const select = $('create-game');
+  const previousGameChoice = select.value;
+  const roomGames = creatableGamePresentations(state);
+  const soloGames = gamePresentations().filter(game => game.route === null);
+  const menuGames = [...roomGames, ...soloGames];
+  select.replaceChildren(...roomGames.map(game => {
+    const option = document.createElement('option');
+    option.value = game.gameType;
+    option.textContent = game.name;
+    return option;
+  }));
+  select.value = roomGames.some(game => game.gameType === previousGameChoice)
+    ? previousGameChoice : roomGames[0].gameType;
+
+  const picker = $('lobby-games');
+  if (picker.children.length !== menuGames.length ||
+      menuGames.some((game, index) => picker.children[index].dataset.game !== game.gameType)) {
+    picker.replaceChildren(...menuGames.map(game => {
+      const solo = game.route === null;
+      const card = document.createElement(solo ? 'a' : 'button');
+      card.className = 'lobby-game';
+      card.dataset.game = game.gameType;
+
+      const art = document.createElement('span');
+      art.className = 'lobby-game-art';
+      art.setAttribute('aria-hidden', 'true');
+      art.innerHTML = gameIllustrationSvg(game.gameType);
+
+      const caption = document.createElement('span');
+      const title = document.createElement('strong');
+      const players = document.createElement('small');
+      title.textContent = game.name;
+      if (solo) {
+        players.textContent = '单人';
+        card.href = gamePath('/' + game.practicePage);
+      } else {
+        players.textContent = game.playerLabel ||
+          `${game.minPlayers === game.maxPlayers ? game.minPlayers : `${game.minPlayers}～${game.maxPlayers}`} 人`;
+        card.type = 'button';
+        card.addEventListener('click', () => {
+          select.value = game.gameType;
+          updateCreateGame();
+        });
+      }
+      caption.append(title, players);
+      card.append(art, caption);
+      return card;
+    }));
+  }
+  updateCreateGame();
 }
 $('create-game').addEventListener('change',updateCreateGame);
 $('join-form').addEventListener('submit',event=>{event.preventDefault();enter(event.currentTarget,true);});
