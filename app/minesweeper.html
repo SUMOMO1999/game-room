@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#19372f">
+  <title>扫雷 · 棋牌室</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./app-shell.css">
+  <link rel="stylesheet" href="./platform/room-settings.css">
+  <link rel="stylesheet" href="./games/minesweeper/board.css">
+  <script type="module" src="./app-shell.mjs"></script>
+  <script type="module" src="./platform/room-settings.mjs"></script>
+  <script type="module" src="./platform/practice-navigation.mjs"></script>
+  <script type="module" src="./games/minesweeper/page.mjs"></script>
+</head>
+<body>
+  <main class="mine-screen">
+    <header class="mine-header">
+      <h1>扫雷 <small id="difficulty-name"></small></h1>
+      <nav aria-label="游戏工具">
+        <button id="settings" type="button" data-room-settings data-settings-dialog="settings-panel" data-settings-close="settings-close">设置</button>
+        <a id="exit" data-practice-exit href="./">棋牌室</a>
+      </nav>
+    </header>
+    <div class="mine-controls">
+      <div class="mine-meter"><span>估计剩余雷</span><output id="mine-count" aria-label="估计剩余雷"></output></div>
+      <button type="button" id="restart" class="mine-face" aria-label="重新开始" title="重新开始（F2）">☺</button>
+      <div class="mine-meter"><span>用时</span><time id="elapsed" aria-label="已用秒数">000</time></div>
+    </div>
+    <div class="mine-modes" role="group" aria-label="棋盘操作模式">
+      <button type="button" id="reveal-mode" aria-pressed="true">开格</button>
+      <button type="button" id="flag-mode" aria-pressed="false">标记</button>
+      <small>离开仍计时</small>
+    </div>
+    <p id="turn-hint" hidden>横屏可看更多棋盘，也可滑动棋盘继续。</p>
+    <section id="save-message" hidden><span id="save-note"></span><button type="button" id="take-over" hidden>接管此局</button></section>
+    <div id="board-scroll" class="mine-scroll"><div id="board" role="grid" aria-label="扫雷棋盘" aria-busy="true"></div></div>
+    <div id="result" class="mine-result" hidden><strong id="result-text" role="status"></strong><button type="button" id="again">再来一局</button></div>
+    <p id="feedback" class="visually-hidden" role="status"></p>
+  </main>
+  <dialog id="settings-panel" aria-labelledby="settings-title">
+    <div class="mine-dialog">
+      <header><h2 id="settings-title">设置</h2><button type="button" id="settings-close">关闭</button></header>
+      <label>难度 <select id="difficulty">
+        <option value="beginner">初级 · 9 × 9 · 10 雷</option>
+        <option value="intermediate">中级 · 16 × 16 · 40 雷</option>
+        <option value="expert">高级 · 30 × 16 · 99 雷</option>
+      </select></label>
+      <label><input type="checkbox" id="question-pref" checked> 使用问号标记</label>
+      <div class="mine-dialog-actions"><button type="button" id="sound-toggle">音效</button><button type="button" id="rules" data-settings-target="setting-actions" data-settings-dismiss>规则</button><button type="button" id="bests" data-settings-target="setting-actions" data-settings-dismiss>最快纪录</button></div>
+      <div class="mine-dialog-actions" id="setting-actions"></div>
+    </div>
+  </dialog>
+  <dialog id="popup" aria-labelledby="popup-title">
+    <div class="mine-dialog">
+      <h2 id="popup-title"></h2>
+      <div id="popup-body"></div>
+      <div class="mine-dialog-actions" id="popup-actions"></div>
+    </div>
+  </dialog>
+</body>
+</html>

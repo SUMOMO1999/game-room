@@ -94,7 +94,7 @@ try {
   }
   browser=await chromium.launch({channel:process.env.GAME_ROOM_BROWSER_CHANNEL || 'chrome',headless:true});
   const cases=[];
-  for(const game of gamePresentations()) {
+  for(const game of gamePresentations().filter(game => game.route)) {
     const members=[];
     for(let i=0;i<game.minPlayers+1;i++) members.push(await member(`${game.gameType}-${i}`));
     const created=await runtime.rooms.createRoom(members[0].userKey,'很长的中文昵称与オウ',randomUUID(),game.gameType);

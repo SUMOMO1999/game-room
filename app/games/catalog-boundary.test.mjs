@@ -47,6 +47,13 @@ test('browser game catalog contains only immutable presentation metadata matchin
     assert.equal(Object.isFrozen(game.timeout), true); assert.equal(Object.isFrozen(game.route), true);
     assert.equal(Object.isFrozen(game.practiceLinks), true);
     for (const link of game.practiceLinks) assert.equal(Object.isFrozen(link), true);
+    if (!game.route) {
+      assert.equal(game.timeout, null);
+      assert.throws(() => gameDetails(game.gameType), TypeError);
+      assert.throws(() => gameAdapter(game.gameType), TypeError);
+      assert(!creatableGamePresentations({}).includes(game));
+      continue;
+    }
     assert.deepEqual(gameInfo(game.gameType), { gameType: game.gameType, minPlayers: game.minPlayers, maxPlayers: game.maxPlayers });
     assert.equal(gameAdapter(game.gameType).gameType, game.gameType);
     assert.deepEqual(gameDetails(game.gameType), game.route);
