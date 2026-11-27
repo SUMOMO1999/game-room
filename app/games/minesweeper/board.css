@@ -8,6 +8,15 @@
   --accent: var(--theme-accent, #e3c184);
   --ink: var(--theme-ink, #f6ecd9);
   --muted: var(--theme-muted, #ced9c9);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --usable-width: calc(100dvw - var(--safe-left) - var(--safe-right));
+  --usable-height: calc(100dvh - var(--safe-top) - var(--safe-bottom));
+  --view-width: var(--usable-width);
+  --view-height: var(--usable-height);
+  --view-angle: 0deg;
   background: var(--table);
   color: var(--ink);
   overscroll-behavior: none;
@@ -17,6 +26,7 @@
 html, body { overflow: clip; }
 body {
   margin: 0;
+  min-height: 100dvh;
   background:
     radial-gradient(ellipse at 52% 36%, var(--theme-glow, #305449) 0%, transparent 74%),
     repeating-linear-gradient(135deg, #ffffff02 0 1px, transparent 1px 5px),
@@ -24,93 +34,81 @@ body {
 }
 [hidden] { display: none !important; }
 
+.mine-viewport {
+  position: fixed;
+  top: var(--safe-top);
+  left: var(--safe-left);
+  width: var(--usable-width);
+  height: var(--usable-height);
+  overflow: clip;
+}
+.mine-view {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--view-width);
+  height: var(--view-height);
+  transform: translate(-50%, -50%) rotate(var(--view-angle));
+  container: mine-view / size;
+}
 .mine-screen {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  height: 100dvh;
-  gap: clamp(7px, 1.4vmin, 16px);
+  height: 100%;
+  gap: clamp(5px, 1.2vmin, 12px);
   margin-inline: auto;
   max-width: 1800px;
-  padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right))
-    max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  padding: 8px 10px 10px;
 }
-.mine-header, .mine-header nav { display: flex; align-items: center; gap: 8px; }
-.mine-header { justify-content: space-between; }
+.mine-header {
+  display: grid;
+  grid-template: "title navigation" auto "toolbar toolbar" auto / minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px 8px;
+}
 .mine-header h1 {
+  grid-area: title;
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: 5px;
   margin: 0;
-  font-size: clamp(20px, 3.4vmin, 29px);
+  font-size: clamp(18px, 3.4vmin, 26px);
+  white-space: nowrap;
 }
-.mine-header small,
-.mine-timing-note { color: var(--muted); font-size: 12px; font-weight: 500; }
-
-.mine-play { container-type: size; min-width: 0; min-height: 0; }
-.mine-layout {
-  --board-rows: 9;
-  --board-columns: 9;
-  --frame: 4px;
-  --frame-trim: calc(2 * var(--frame) + 1px);
-  --layout-gap: clamp(8px, 2vmin, 24px);
-  --natural-height: calc((100cqw - var(--frame-trim)) * var(--board-rows) / var(--board-columns) + var(--frame-trim));
-  --natural-width: calc((100cqh - var(--frame-trim)) * var(--board-columns) / var(--board-rows) + var(--frame-trim));
-  --rail-width: clamp(130px, 24cqw, 216px);
-  --rail-layout: "panel board" minmax(0, 1fr) /
-    var(--rail-width) minmax(0, min(calc(100cqw - var(--rail-width) - var(--layout-gap)), var(--natural-width)));
-  --rail-counters: "remaining time" auto "restart restart" auto / minmax(0, 1fr) minmax(0, 1fr);
-  display: grid;
-  grid-template: var(--play-layout,
-    "above" 1fr "panel" auto "board" minmax(0, var(--natural-height)) "below" 1fr / minmax(0, 1fr));
-  column-gap: var(--layout-gap);
+.mine-header small { color: var(--muted); font-size: 12px; font-weight: 500; }
+.mine-header nav, .mine-toolbar, .mine-modes {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.mine-header nav { grid-area: navigation; justify-self: end; }
+.mine-toolbar { grid-area: toolbar; justify-content: center; }
+.mine-status {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
   justify-content: center;
-  height: 100%;
-}
-.mine-panel {
-  grid-area: panel;
-  display: grid;
-  grid-template-columns: var(--panel-columns, minmax(0, 1fr));
   align-items: center;
-  align-self: center;
-  justify-self: center;
-  width: var(--panel-width, min(100%, 384px));
-  min-width: 0;
-  margin-bottom: var(--panel-offset, var(--layout-gap));
-  gap: 7px;
-  padding: 7px;
-  border: 1px solid var(--edge);
-  border-radius: 13px;
-  background: linear-gradient(150deg, #ffffff08, transparent 66%), var(--surface);
-  box-shadow: 0 4px 12px #0002;
-  text-align: center;
+  gap: 5px 10px;
 }
-.mine-panel > :not(.mine-controls, .mine-modes) { grid-column: 1 / -1; }
-.mine-controls {
-  display: grid;
-  grid-template: var(--counter-layout, "remaining restart time" auto / minmax(0, 1fr) auto minmax(0, 1fr));
-  align-items: center;
-  gap: 6px;
-}
-.mine-remaining { grid-area: remaining; }
-.mine-time { grid-area: time; }
+.mine-status:not(:has(> :not([hidden]))) { display: none; }
 .mine-meter {
   display: grid;
   gap: 1px;
-  min-width: 0;
-  padding: 4px;
+  min-width: 54px;
+  padding: 2px 5px;
+  border: 1px solid var(--edge);
   border-radius: 7px;
   background: var(--table);
+  text-align: center;
 }
-.mine-meter span { color: var(--muted); font-size: 11px; }
+.mine-meter span { color: var(--muted); font-size: 10px; }
 .mine-meter output, .mine-meter time {
   color: var(--accent);
-  font: 700 clamp(19px, 3.3cqw, 30px)/1 ui-monospace, monospace;
+  font: 700 clamp(16px, 2.4cqw, 24px)/1 ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
 }
-.mine-modes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
-.mine-timing-note { line-height: 1; }
-.mine-panel:has(> :is(.mine-result, #save-message):not([hidden])) > .mine-timing-note { display: none; }
-.mine-header a, .mine-header button, .mine-restart, .mine-modes button, .mine-result button, .mine-dialog button, #take-over {
+.mine-header :is(a, button), .mine-dialog button {
   min-height: 36px;
   padding: 5px 10px;
   border: 1px solid var(--edge);
@@ -124,13 +122,12 @@ body {
 }
 .mine-header a { display: grid; place-items: center; text-decoration: none; }
 .mine-restart {
-  grid-area: restart;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 5px;
 }
-#restart-face { font: 700 22px/1 system-ui; }
+#restart-face { font: 700 18px/1 system-ui; }
 .mine-modes [aria-pressed="true"] {
   background: var(--accent);
   border-color: var(--accent);
@@ -142,7 +139,10 @@ body {
 }
 
 .mine-stage {
-  grid-area: board;
+  --board-rows: 9;
+  --board-columns: 9;
+  --frame: 4px;
+  --frame-trim: calc(2 * var(--frame) + 1px);
   container-type: size;
   display: grid;
   place-items: center;
@@ -202,9 +202,28 @@ body {
 .mine-result { display: flex; align-items: center; justify-content: center; gap: 7px; flex-wrap: wrap; }
 .mine-result strong { font-size: 13px; }
 .mine-result button:disabled { display: none; }
-#save-message, #turn-hint { margin: 0; color: var(--muted); font-size: 12px; }
-#save-message button { margin-inline-start: 6px; }
-dialog { width: min(410px, 94vw); max-height: 90dvh; padding: 0; border: 1px solid var(--edge); border-radius: 14px; color: inherit; background: var(--surface); }
+#save-message { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 5px; margin: 0; color: var(--muted); font-size: 12px; }
+/* Native modal dialogs enter the top layer and need the table's orientation too. */
+dialog {
+  position: fixed;
+  inset: calc(var(--safe-top) + var(--usable-height) / 2) auto auto
+    calc(var(--safe-left) + var(--usable-width) / 2);
+  transform: translate(-50%, -50%) rotate(var(--view-angle));
+  width: min(410px, calc(var(--view-width) * .94));
+  max-width: none;
+  max-height: calc(var(--view-height) * .9);
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--edge);
+  border-radius: 14px;
+  color: inherit;
+  background: var(--surface);
+}
+#settings-panel.game-settings-dialog[open] {
+  width: min(440px, calc(var(--view-width) - 24px));
+  max-width: calc(var(--view-width) - 24px);
+  max-height: calc(var(--view-height) - 24px);
+}
 dialog::backdrop { background: #0e231fc9; }
 .mine-dialog { display: grid; gap: 12px; padding: 15px; }
 .mine-dialog header, .mine-dialog-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -215,40 +234,38 @@ dialog::backdrop { background: #0e231fc9; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 
 @media (pointer: coarse) {
-  .mine-header a, .mine-header button, .mine-restart, .mine-modes button, .mine-result button, .mine-dialog button, #take-over { min-height: 44px; min-width: 44px; }
+  .mine-header :is(a, button), .mine-dialog button { min-height: 44px; min-width: 44px; }
 }
 
-@media (min-width: 560px) and (min-aspect-ratio: 6/5) {
-  .mine-layout:not([data-level="expert"]) {
-    --play-layout: var(--rail-layout);
-    --panel-width: 100%;
-    --panel-offset: 0px;
-    --counter-layout: var(--rail-counters);
-  }
-  .mine-layout[data-level="expert"] {
-    --panel-columns: minmax(0, 3fr) minmax(0, 2fr);
-    --panel-width: min(100%, 536px);
+@media (max-width: 650px) and (max-aspect-ratio: 4/5) and (any-pointer: coarse) {
+  :root {
+    --view-width: var(--usable-height);
+    --view-height: var(--usable-width);
+    --view-angle: 90deg;
   }
 }
 
-@media (min-width: 560px) and (max-height: 440px) and (min-aspect-ratio: 7/4) {
-  .mine-layout[data-level="expert"] {
-    --play-layout: var(--rail-layout);
-    --panel-columns: minmax(0, 1fr);
-    --panel-width: 100%;
-    --panel-offset: 0px;
-    --counter-layout: var(--rail-counters);
-  }
+@container mine-view (min-width: 480px) {
+  .mine-header { grid-template: "title toolbar navigation" auto / auto minmax(0, 1fr) auto; }
 }
 
-@media (max-height: 400px) {
-  .mine-layout { --frame: 3px; --layout-gap: 6px; }
-  .mine-panel { gap: 4px; padding: 5px; }
-  .mine-header :is(a, button), .mine-panel button { min-height: 36px; }
-  .mine-result { gap: 4px; }
+@container mine-view (max-width: 600px) {
+  .mine-header { column-gap: 5px; }
+  .mine-header h1 { font-size: 16px; gap: 4px; }
+  .mine-header small { font-size: 10px; }
+  .mine-header :is(a, button) { padding-inline: 6px; font-size: 14px; }
+  .mine-meter { min-width: 44px; padding-inline: 3px; }
+  .mine-header nav, .mine-toolbar, .mine-modes { gap: 4px; }
+  #restart-face { font-size: 16px; }
 }
 
-@media (max-width: 360px) {
-  .mine-screen { padding-inline: max(6px, env(safe-area-inset-left)) max(6px, env(safe-area-inset-right)); }
-  .mine-layout { --frame: 3px; }
+@container mine-view (max-height: 440px) {
+  .mine-screen { gap: 4px; padding: 4px 6px 6px; }
+  .mine-stage { --frame: 3px; }
+  .mine-header :is(a, button) { min-height: 34px; padding-block: 4px; }
+}
+
+@container mine-view (max-width: 360px) {
+  .mine-screen { padding-inline: 6px; }
+  .mine-stage { --frame: 3px; }
 }
