@@ -5,7 +5,7 @@ import {GOODS,ROLES,cardsForExpansion,isExpansionContentVersion,expansionProfile
 // hidden hands, candidates, draw order or random state. Old group1/2/3 readers
 // and their original bounds stay unchanged.
 export const EXPANSION_HISTORY_FORMAT='six-trades-public-v1';
-const goods=GOODS.map(g=>g.id),roles=ROLES.map(r=>r.id);
+const goods=GOODS.map(g=>g.id),defaultRoles=ROLES.map(r=>r.id);
 const reasons=['used','draw-discarded','replaced','payment','response','auction-unsold','removed','unknown'];
 const exact=(value,keys)=>value&&typeof value==='object'&&!Array.isArray(value)
   &&Object.keys(value).length===keys.length&&keys.every(key=>Object.hasOwn(value,key));
@@ -18,9 +18,9 @@ function material(context){
   const ids=context.participantIds;
   demand(Array.isArray(ids)&&ids.every(id=>typeof id==='string'&&/^[a-f0-9]{32}$/u.test(id))&&new Set(ids).size===ids.length,'公开记录参赛席位无效。');
   const definitions=cardsForExpansion(context.contentVersion);
-  return {ids,definitions,cards:definitions.map(c=>c.id),profile:expansionProfile(ids.length,context.contentVersion)};
+  return {ids,definitions,cards:definitions.map(c=>c.id),roles:defaultRoles,profile:expansionProfile(ids.length,context.contentVersion),format:EXPANSION_HISTORY_FORMAT};
 }
-function sourceProblem(value,ids,cards){
+function sourceProblem(value,ids,cards,roles){
   return value!==null&&!(exact(value,['kind','definitionId'])&&value.kind==='card'&&cards.includes(value.definitionId))
     &&!(exact(value,['kind','roleId','actorSeatId'])&&value.kind==='role'&&roles.includes(value.roleId)&&ids.includes(value.actorSeatId));
 }
@@ -33,15 +33,15 @@ function boundedFaces(values,profile,definitions){
   }
   return true;
 }
-export function expansionPublicMetadataProblem(value,context){
+export function expansionPublicMetadataProblem(value,context,resolveMaterial=material){
   try{
-    const {ids,profile,cards,definitions}=material(context),max=profile.deckSize;
+    const {ids,profile,cards,definitions,roles}=resolveMaterial(context),max=profile.deckSize;
     const face=id=>cards.includes(id),tool=id=>definitions.find(c=>c.id===id)?.category==='tool';
     demand(exact(value,['anchor','source','rolesRevealed','changes','discard']));
     const a=value.anchor,opening=exact(a,['kind'])&&a.kind==='opening';
     demand(opening||exact(a,['kind','id','number','round','ownerSeatId'])&&a.kind==='turn'
       &&integer(a.number,1)&&a.id===`turn-${a.number}`&&a.round===Math.ceil(a.number/ids.length)&&ids.includes(a.ownerSeatId));
-    demand(!sourceProblem(value.source,ids,cards));
+    demand(!sourceProblem(value.source,ids,cards,roles));
     const revealed=value.rolesRevealed;
     demand(Array.isArray(revealed)&&revealed.length===(opening?ids.length:0)
       &&new Set(revealed.map(p=>p?.seatId)).size===revealed.length&&new Set(revealed.map(p=>p?.roleId)).size===revealed.length
@@ -64,32 +64,32 @@ export function expansionPublicMetadataProblem(value,context){
       &&new Set(d.removed.map(r=>r?.index)).size===d.removed.length&&new Set(d.added.map(r=>r?.index)).size===d.added.length
       &&d.removed.every(r=>exact(r,['index','definitionId'])&&integer(r.index,0,d.beforeCount-1)&&face(r.definitionId))
       &&d.added.every(r=>exact(r,['index','definitionId','actorSeatId','reason','source'])&&integer(r.index,0,d.afterCount-1)
-        &&face(r.definitionId)&&(r.actorSeatId===null||ids.includes(r.actorSeatId))&&reasons.includes(r.reason)&&!sourceProblem(r.source,ids,cards))
+        &&face(r.definitionId)&&(r.actorSeatId===null||ids.includes(r.actorSeatId))&&reasons.includes(r.reason)&&!sourceProblem(r.source,ids,cards,roles))
       &&boundedFaces(d.removed.map(r=>r.definitionId),profile,definitions)&&boundedFaces(d.added.map(r=>r.definitionId),profile,definitions));
     if(opening)demand(value.source===null&&d.beforeCount===0&&d.afterCount===0,'统一公开前不能伪造经营回合或弃牌。');
     return null;
   }catch(error){if(error instanceof RangeError)return error.message;throw error;}
 }
-function sourceTuple(value,ids,cards){return value===null?[]:value.kind==='card'?[1,cards.indexOf(value.definitionId)]:[2,roles.indexOf(value.roleId),ids.indexOf(value.actorSeatId)];}
-function sourceValue(value,ids,cards){
+function sourceTuple(value,ids,cards,roles){return value===null?[]:value.kind==='card'?[1,cards.indexOf(value.definitionId)]:[2,roles.indexOf(value.roleId),ids.indexOf(value.actorSeatId)];}
+function sourceValue(value,ids,cards,roles){
   demand(Array.isArray(value));if(!value.length)return null;
   if(tuple(value,2)&&value[0]===1){demand(integer(value[1],0,cards.length-1));return {kind:'card',definitionId:cards[value[1]]};}
   demand(tuple(value,3)&&value[0]===2&&integer(value[1],0,roles.length-1)&&integer(value[2],0,ids.length-1));
   return {kind:'role',roleId:roles[value[1]],actorSeatId:ids[value[2]]};
 }
-export function encodeExpansionPublicMetadata(value,context){
-  const issue=expansionPublicMetadataProblem(value,context);demand(!issue,issue);
-  const {ids,cards}=material(context),a=value.anchor,d=value.discard;
-  return {format:EXPANSION_HISTORY_FORMAT,data:[a.kind==='opening'?[0]:[1,a.number,a.round,ids.indexOf(a.ownerSeatId)],
-    sourceTuple(value.source,ids,cards),value.rolesRevealed.map(p=>[ids.indexOf(p.seatId),roles.indexOf(p.roleId)]),
+export function encodeExpansionPublicMetadata(value,context,resolveMaterial=material){
+  const issue=expansionPublicMetadataProblem(value,context,resolveMaterial);demand(!issue,issue);
+  const {ids,cards,roles,format}=resolveMaterial(context),a=value.anchor,d=value.discard;
+  return {format,data:[a.kind==='opening'?[0]:[1,a.number,a.round,ids.indexOf(a.ownerSeatId)],
+    sourceTuple(value.source,ids,cards,roles),value.rolesRevealed.map(p=>[ids.indexOf(p.seatId),roles.indexOf(p.roleId)]),
     value.changes.map(c=>[ids.indexOf(c.seatId),c.silver,c.goods.map(g=>[goods.indexOf(g.id),g.delta]),c.handCount,
       c.toolsAdded.map(id=>cards.indexOf(id)),c.toolsRemoved.map(id=>cards.indexOf(id))]),
     [d.beforeCount,d.afterCount,d.removed.map(r=>[r.index,cards.indexOf(r.definitionId)]),
-      d.added.map(r=>[r.index,cards.indexOf(r.definitionId),r.actorSeatId===null?-1:ids.indexOf(r.actorSeatId),reasons.indexOf(r.reason),sourceTuple(r.source,ids,cards)])]]};
+      d.added.map(r=>[r.index,cards.indexOf(r.definitionId),r.actorSeatId===null?-1:ids.indexOf(r.actorSeatId),reasons.indexOf(r.reason),sourceTuple(r.source,ids,cards,roles)])]]};
 }
-export function decodeExpansionPublicMetadata(value,context){
-  const {ids,profile,cards}=material(context);
-  demand(exact(value,['format','data'])&&value.format===EXPANSION_HISTORY_FORMAT&&tuple(value.data,5)&&bytes(value)<=32*1024);
+export function decodeExpansionPublicMetadata(value,context,resolveMaterial=material){
+  const {ids,profile,cards,roles,format}=resolveMaterial(context);
+  demand(exact(value,['format','data'])&&value.format===format&&tuple(value.data,5)&&bytes(value)<=32*1024);
   const [a,s,revealed,changes,d]=value.data;
   demand(tuple(a,1)&&a[0]===0||tuple(a,4)&&a[0]===1&&integer(a[1],1)&&integer(a[2],1)&&integer(a[3],0,ids.length-1));
   demand(Array.isArray(revealed)&&revealed.length<=ids.length&&revealed.every(p=>tuple(p,2)&&integer(p[0],0,ids.length-1)&&integer(p[1],0,roles.length-1)));
@@ -102,10 +102,10 @@ export function decodeExpansionPublicMetadata(value,context){
     &&Array.isArray(d[3])&&d[3].length<=profile.deckSize&&d[3].every(r=>tuple(r,5)&&integer(r[0],0,d[1]-1)&&integer(r[1],0,cards.length-1)
       &&integer(r[2],-1,ids.length-1)&&integer(r[3],0,reasons.length-1)));
   const result={anchor:a[0]===0?{kind:'opening'}:{kind:'turn',id:`turn-${a[1]}`,number:a[1],round:a[2],ownerSeatId:ids[a[3]]},
-    source:sourceValue(s,ids,cards),rolesRevealed:revealed.map(p=>({seatId:ids[p[0]],roleId:roles[p[1]]})),
+    source:sourceValue(s,ids,cards,roles),rolesRevealed:revealed.map(p=>({seatId:ids[p[0]],roleId:roles[p[1]]})),
     changes:changes.map(c=>({seatId:ids[c[0]],silver:c[1],goods:c[2].map(g=>({id:goods[g[0]],delta:g[1]})),handCount:c[3],
       toolsAdded:c[4].map(i=>cards[i]),toolsRemoved:c[5].map(i=>cards[i])})),
     discard:{beforeCount:d[0],afterCount:d[1],removed:d[2].map(r=>({index:r[0],definitionId:cards[r[1]]})),
-      added:d[3].map(r=>({index:r[0],definitionId:cards[r[1]],actorSeatId:r[2]===-1?null:ids[r[2]],reason:reasons[r[3]],source:sourceValue(r[4],ids,cards)}))}};
-  const issue=expansionPublicMetadataProblem(result,context);demand(!issue,issue);return result;
+      added:d[3].map(r=>({index:r[0],definitionId:cards[r[1]],actorSeatId:r[2]===-1?null:ids[r[2]],reason:reasons[r[3]],source:sourceValue(r[4],ids,cards,roles)}))}};
+  const issue=expansionPublicMetadataProblem(result,context,resolveMaterial);demand(!issue,issue);return result;
 }

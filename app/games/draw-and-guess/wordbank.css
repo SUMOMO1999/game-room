@@ -3,7 +3,7 @@
 .wordbank-body {margin:0;background:#eef2e9;color:#252c28;font-family:Inter,-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;line-height:1.5;overflow-y:auto;}
 .wordbank-page {box-sizing:border-box;width:min(1280px,100%);margin:0 auto;padding:24px max(24px,env(safe-area-inset-right)) calc(48px + env(safe-area-inset-bottom)) max(24px,env(safe-area-inset-left));color:var(--ink,#252c28);}
 .wordbank-page *, .wordbank-page *::before,.wordbank-page *::after {box-sizing:border-box;}
-.wordbank-heading h1 {font-size:clamp(25px,3vw,34px);line-height:1.25;margin:8px 0 10px;}
+.wordbank-heading h1 {font-size:clamp(25px,calc(3 * var(--room-vw,1vw)),34px);line-height:1.25;margin:8px 0 10px;}
 .wordbank-note {color:var(--appearance-muted,var(--muted,#677169));font-size:14px;line-height:1.65;overflow-wrap:anywhere;margin:8px 0;}
 .wordbank-heading>.wordbank-note {max-width:660px;}
 .wordbank-page .eyebrow {color:var(--appearance-muted,var(--muted,#6d7b69));font-size:11px;letter-spacing:.16em;margin:22px 0 8px;}
@@ -82,6 +82,39 @@
 .wordbank-page [hidden] {display:none!important;}
 .wordbank-page :focus-visible {outline:3px solid var(--appearance-accent,#638063);outline-offset:3px;}
 @media(max-width:850px) {
+  .wordbank-page:where(:not(:root[data-room-viewport] *)) {padding-top:12px;}
+  .wordbank-heading:where(:not(:root[data-room-viewport] *)) {display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;column-gap:16px;}
+  .wordbank-heading>.quiet-link:where(:not(:root[data-room-viewport] *)) {grid-column:1;grid-row:1;display:flex;align-items:center;min-height:44px;}
+  .wordbank-heading>.appearance-open:where(:not(:root[data-room-viewport] *)) {grid-column:3;grid-row:1;width:auto;min-width:44px;}
+  .wordbank-heading>.appearance-open>span>small:where(:not(:root[data-room-viewport] *)) {display:none;}
+  .wordbank-heading h1:where(:not(:root[data-room-viewport] *)) {grid-column:2;grid-row:1;font-size:24px;line-height:1.25;margin:0;}
+  .wordbank-heading>.eyebrow:where(:not(:root[data-room-viewport] *)),.wordbank-heading>.wordbank-note:where(:not(:root[data-room-viewport] *)) {display:none;}
+  .wordbank-workbench:where(:not(:root[data-room-viewport] *)) {grid-template-columns:minmax(0,1fr);grid-template-areas:"words" "composer" "save";gap:16px;}
+  .wordbank-composer:where(:not(:root[data-room-viewport] *)) {padding:0;border:0;scroll-margin-block:12px;}
+  .wordbank-save-actions:where(:not(:root[data-room-viewport] *)) {padding:14px 0 0;border-left:0;}
+  .wordbank-category-list:where(:not(:root[data-room-viewport] *)) {grid-template-columns:1fr;}
+  .wordbank-mobile-navigation:where(:not(:root[data-room-viewport] *)) {display:flex;gap:8px;margin:12px 0 18px;}
+  .wordbank-mobile-navigation>button:where(:not(:root[data-room-viewport] *)) {flex:1;font-weight:600;}
+  .wordbank-workspace[data-mobile-view=browse] .wordbank-composer:where(:not(:root[data-room-viewport] *)),
+  .wordbank-workspace[data-mobile-view=compose] .wordbank-words:where(:not(:root[data-room-viewport] *)) {display:none;}
+  .wordbank-workspace[data-mobile-view=browse] .wordbank-workbench:where(:not(:root[data-room-viewport] *)) {grid-template-areas:"words" "save";}
+  .wordbank-workspace[data-mobile-view=compose] .wordbank-workbench:where(:not(:root[data-room-viewport] *)) {grid-template-areas:"composer" "save";}
+  .wordbank-library-toggle:where(:not(:root[data-room-viewport] *)) {display:block;width:100%;text-align:left;font-weight:600;overflow-wrap:anywhere;}
+  .wordbank-library[data-open=false]>.wordbank-library-controls:where(:not(:root[data-room-viewport] *)) {display:none;}
+  .wordbank-library-controls:where(:not(:root[data-room-viewport] *)) {padding-top:12px;}
+  .wordbank-status[data-quiet=true]:where(:not(:root[data-room-viewport] *)) {display:none;}
+  .wordbank-pack-summary:where(:not(:root[data-room-viewport] *)) {margin:10px 0;font-size:12px;line-height:1.5;}
+  .wordbank-words>h2:where(:not(:root[data-room-viewport] *)),.wordbank-words>.wordbank-note:where(:not(:root[data-room-viewport] *)) {display:none;}
+  .wordbank-filters:where(:not(:root[data-room-viewport] *)) {margin-top:0;}
+  .wordbank-word-list:where(:not(:root[data-room-viewport] *)) {max-height:min(52dvh,480px);overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;}
+  .wordbank-word-list>.wordbank-word-row:where(:not(:root[data-room-viewport] *)) {padding:10px 0;min-height:72px;gap:10px;}
+  .wordbank-row-actions:where(:not(:root[data-room-viewport] *)) {gap:4px;}
+  .wordbank-row-actions>button:where(:not(:root[data-room-viewport] *)) {padding:8px;}
+  .wordbank-pager:where(:not(:root[data-room-viewport] *)) {margin:12px 0 0;}
+  .wordbank-draft-count:where(:not(:root[data-room-viewport] *)) {margin:8px 0;}
+  .wordbank-management:where(:not(:root[data-room-viewport] *)) {margin-top:20px;}
+}
+@container room-viewport (max-width:850px) {
   .wordbank-page {padding-top:12px;}
   .wordbank-heading {display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;column-gap:16px;}
   .wordbank-heading>.quiet-link {grid-column:1;grid-row:1;display:flex;align-items:center;min-height:44px;}
@@ -115,6 +148,30 @@
   .wordbank-management {margin-top:20px;}
 }
 @media(max-width:540px) {
+  .wordbank-page:where(:not(:root[data-room-viewport] *)) {padding:12px max(16px,env(safe-area-inset-right)) calc(32px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));}
+  .wordbank-heading:where(:not(:root[data-room-viewport] *)) {display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:12px;}
+  .wordbank-heading>.quiet-link:where(:not(:root[data-room-viewport] *)) {grid-column:1;grid-row:1;display:flex;align-items:center;min-height:44px;}
+  .wordbank-heading>.appearance-open:where(:not(:root[data-room-viewport] *)) {grid-column:2;grid-row:1;width:auto;min-width:44px;}
+  .wordbank-heading>.appearance-open>span>small:where(:not(:root[data-room-viewport] *)) {display:none;}
+  .wordbank-heading h1:where(:not(:root[data-room-viewport] *)) {grid-column:1/-1;grid-row:2;font-size:24px;margin:10px 0 16px;}
+  .wordbank-heading>.eyebrow:where(:not(:root[data-room-viewport] *)),.wordbank-heading>.wordbank-note:where(:not(:root[data-room-viewport] *)) {display:none;}
+  .wordbank-library:where(:not(:root[data-room-viewport] *)) {padding-bottom:10px;}
+  .wordbank-pack-toolbar:where(:not(:root[data-room-viewport] *)) {grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:10px;}
+  .wordbank-pack-toolbar>button:where(:not(:root[data-room-viewport] *)) {grid-column:1/-1;}
+  .wordbank-filters:where(:not(:root[data-room-viewport] *)) {grid-template-columns:1fr 1fr;gap:8px;}
+  .wordbank-filters>label:first-child:where(:not(:root[data-room-viewport] *)) {grid-column:1/-1;}
+  .wordbank-toolbar>label:where(:not(:root[data-room-viewport] *)) {flex-basis:100%;}
+  .wordbank-category-row:where(:not(:root[data-room-viewport] *)) {flex-wrap:wrap;}
+  .wordbank-category-row>label:where(:not(:root[data-room-viewport] *)) {flex-basis:100%;}
+  .wordbank-pager:where(:not(:root[data-room-viewport] *)) {gap:8px;}
+  .wordbank-pager>button:where(:not(:root[data-room-viewport] *)) {padding:8px 10px;}
+  .wordbank-action-row:where(:not(:root[data-room-viewport] *)) {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));}
+  .wordbank-action-row>button:where(:not(:root[data-room-viewport] *)) {min-width:0;}
+  .wordbank-action-row>button:not([hidden]):last-child:where(:not(:root[data-room-viewport] *)) {grid-column:1/-1;}
+  .wordbank-editor-mode:where(:not(:root[data-room-viewport] *)) {margin:10px 0 14px;}
+  .wordbank-region h2:where(:not(:root[data-room-viewport] *)),.wordbank-composer>h2:where(:not(:root[data-room-viewport] *)) {font-size:18px;}
+}
+@container room-viewport (max-width:540px) {
   .wordbank-page {padding:12px max(16px,env(safe-area-inset-right)) calc(32px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));}
   .wordbank-heading {display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:12px;}
   .wordbank-heading>.quiet-link {grid-column:1;grid-row:1;display:flex;align-items:center;min-height:44px;}
@@ -138,10 +195,19 @@
   .wordbank-editor-mode {margin:10px 0 14px;}
   .wordbank-region h2,.wordbank-composer>h2 {font-size:18px;}
 }
-@media(max-height:480px) and (orientation:landscape) {.wordbank-page {padding-top:12px;}.wordbank-composer {position:static;}.wordbank-page input,.wordbank-page textarea {scroll-margin-block:20px;}}
+@media(max-height:480px) and (orientation:landscape) {.wordbank-page:where(:not(:root[data-room-viewport] *)) {padding-top:12px;}.wordbank-composer:where(:not(:root[data-room-viewport] *)) {position:static;}.wordbank-page input:where(:not(:root[data-room-viewport] *)),.wordbank-page textarea:where(:not(:root[data-room-viewport] *)) {scroll-margin-block:20px;}}
+@container room-viewport (max-height:480px) and (orientation:landscape) {.wordbank-page {padding-top:12px;}.wordbank-composer {position:static;}.wordbank-page input,.wordbank-page textarea {scroll-margin-block:20px;}}
 
 
 @media(min-width:851px){
+  .wordbank-heading:where(:not(:root[data-room-viewport] *)){position:relative;padding-right:240px}
+  .wordbank-heading .appearance-open:where(:not(:root[data-room-viewport] *)){position:absolute;top:0;right:0;width:220px}
+  .wordbank-page .eyebrow:where(:not(:root[data-room-viewport] *)){margin-top:12px}
+  .wordbank-word-list:where(:not(:root[data-room-viewport] *)){max-height:min(62dvh,650px);overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+}
+
+
+@container room-viewport (min-width:851px){
   .wordbank-heading{position:relative;padding-right:240px}
   .wordbank-heading .appearance-open{position:absolute;top:0;right:0;width:220px}
   .wordbank-page .eyebrow{margin-top:12px}
@@ -149,6 +215,9 @@
 }
 @layer game-appearance-material {
 @media(min-width:851px) {
+html:root[data-game-appearance] .wordbank-heading button.user-menu-item.appearance-open[data-open-appearance]:not(:where(.appearance-dialog,.appearance-dialog *)):where(:not(:root[data-room-viewport] *)) {width:220px!important;max-width:220px!important}
+}
+@container room-viewport (min-width:851px) {
 html:root[data-game-appearance] .wordbank-heading button.user-menu-item.appearance-open[data-open-appearance]:not(:where(.appearance-dialog,.appearance-dialog *)) {width:220px!important;max-width:220px!important}
 }
 html[data-game-appearance] :is(.wordbank-editor-mode,.wordbank-mobile-navigation) button[aria-pressed=true]{border-color:var(--appearance-accent)!important;background:color-mix(in srgb,var(--appearance-accent) 9%,var(--appearance-surface))!important;box-shadow:inset 0 0 0 1px var(--appearance-accent)!important;color:var(--appearance-accent)!important}
@@ -174,7 +243,7 @@ dialog.appearance-dialog,html[data-appearance] dialog.appearance-dialog{
   --ui-accent:var(--plum);--ui-on-accent:var(--appearance-on-accent);
   --ui-input-bg:var(--appearance-control-surface);--ui-radius:var(--appearance-control-radius);
   --ui-control-shadow:var(--appearance-control-shadow);--ui-inset:var(--appearance-control-inset);
-  width:min(640px,calc(100vw - 32px));max-width:none;
+  width:min(640px,calc(calc(100 * var(--room-vw,1vw)) - 32px));max-width:none;
   max-height:calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   margin:auto;padding:0;overflow:hidden;box-sizing:border-box;
   border:1px solid var(--line);border-radius:14px;
@@ -282,10 +351,22 @@ html[data-appearance=soft] .appearance-dialog .appearance-done:active{box-shadow
   html[data-appearance=glass] .appearance-dialog::backdrop{-webkit-backdrop-filter:none;backdrop-filter:none}
 }
 @media(max-width:520px){
+  .appearance-dialog .appearance-palettes:where(:not(:root[data-room-viewport] *)){grid-template-columns:repeat(3,minmax(0,1fr))}
+  .appearance-dialog .appearance-palette:where(:not(:root[data-room-viewport] *)){min-height:68px}
+}
+@container room-viewport (max-width:520px){
   .appearance-dialog .appearance-palettes{grid-template-columns:repeat(3,minmax(0,1fr))}
   .appearance-dialog .appearance-palette{min-height:68px}
 }
 @media(max-width:400px){
+  .appearance-dialog .appearance-header:where(:not(:root[data-room-viewport] *)),.appearance-dialog .appearance-body:where(:not(:root[data-room-viewport] *)),.appearance-dialog .appearance-actions:where(:not(:root[data-room-viewport] *)){padding-left:16px;padding-right:16px}
+  .appearance-dialog .appearance-backgrounds:where(:not(:root[data-room-viewport] *)){grid-template-columns:repeat(2,minmax(0,1fr))}
+  .appearance-dialog .appearance-colors:where(:not(:root[data-room-viewport] *)){grid-template-columns:minmax(0,1fr)}
+  .appearance-dialog .appearance-choice:where(:not(:root[data-room-viewport] *)){gap:6px;font-size:13px}
+  .appearance-dialog .appearance-style-swatch:where(:not(:root[data-room-viewport] *)){flex-basis:20px;width:20px;height:24px}
+  .appearance-dialog .appearance-actions button:where(:not(:root[data-room-viewport] *)){padding-left:10px;padding-right:10px}
+}
+@container room-viewport (max-width:400px){
   .appearance-dialog .appearance-header,.appearance-dialog .appearance-body,.appearance-dialog .appearance-actions{padding-left:16px;padding-right:16px}
   .appearance-dialog .appearance-backgrounds{grid-template-columns:repeat(2,minmax(0,1fr))}
   .appearance-dialog .appearance-colors{grid-template-columns:minmax(0,1fr)}
@@ -294,6 +375,11 @@ html[data-appearance=soft] .appearance-dialog .appearance-done:active{box-shadow
   .appearance-dialog .appearance-actions button{padding-left:10px;padding-right:10px}
 }
 @media(max-height:560px){
+  .appearance-dialog .appearance-header:where(:not(:root[data-room-viewport] *)){padding-top:10px;padding-bottom:10px}
+  .appearance-dialog .appearance-body:where(:not(:root[data-room-viewport] *)){padding-top:14px;padding-bottom:14px}
+  .appearance-dialog .appearance-actions:where(:not(:root[data-room-viewport] *)){padding-top:10px;padding-bottom:10px}
+}
+@container room-viewport (max-height:560px){
   .appearance-dialog .appearance-header{padding-top:10px;padding-bottom:10px}
   .appearance-dialog .appearance-body{padding-top:14px;padding-bottom:14px}
   .appearance-dialog .appearance-actions{padding-top:10px;padding-bottom:10px}
@@ -1062,6 +1148,41 @@ html[data-appearance=soft] .appearance-dialog .appearance-done:active{box-shadow
   }
 
   @media (orientation:landscape) and (max-height:540px) {
+  html[data-game-appearance] :where([id=p414-clear]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):where(:not(:root[data-room-viewport] *)) {
+    --game-clear-current-surface:var(--game-button-surface)!important;
+    background-color:var(--game-clear-current-surface)!important;
+    background-image:var(--game-button-image)!important;
+    color:var(--appearance-ink)!important;
+    border-color:var(--game-button-line)!important;
+    box-shadow:var(--game-button-shadow)!important;
+  }
+  @media (hover:hover) {
+  html[data-game-appearance] :where([id=p414-clear]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):hover:where(:not(:disabled)):where(:not(:root[data-room-viewport] *)) {
+    --game-clear-current-surface:var(--game-button-hover-surface)!important;
+    background-color:var(--game-clear-current-surface)!important;
+    color:var(--appearance-ink)!important;
+    border-color:var(--game-button-hover-line)!important;
+  }
+  }
+  html[data-game-appearance] :where([id=p414-clear]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):active:where(:not(:disabled)):where(:not(:root[data-room-viewport] *)) {
+    background-color:var(--game-clear-current-surface)!important;
+    color:var(--appearance-ink)!important;
+    box-shadow:var(--game-button-active-shadow)!important;
+  }
+  html[data-game-appearance=paper] :where([id=p414-clear]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):active:where(:not(:disabled)):where(:not(:root[data-room-viewport] *)) {
+    background-color:var(--game-button-active-surface)!important;
+    border-color:var(--game-button-active-line)!important;
+  }
+  html[data-game-appearance] :where([id=p414-clear]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):disabled:where(:not(:root[data-room-viewport] *)) {
+    background-color:var(--game-button-disabled-surface)!important;
+    background-image:none!important;
+    color:var(--game-button-disabled-ink)!important;
+    border-color:var(--game-button-disabled-line)!important;
+    box-shadow:var(--game-button-disabled-shadow)!important;
+  }
+  }
+
+  @container room-viewport (orientation:landscape) and (max-height:540px) {
   html[data-game-appearance] :where([id=p414-clear]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
     --game-clear-current-surface:var(--game-button-surface)!important;
     background-color:var(--game-clear-current-surface)!important;

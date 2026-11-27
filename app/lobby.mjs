@@ -160,7 +160,7 @@ function drawAccount() {
   $('account-reauth').href=reauth || '#';
   $('account-heading').textContent=state.authenticated?`来一局，${state.profile?.nickname || '新朋友'}`:state.failureStatus===503?'暂时连不上登录服务。':'来一局。';
   $('account-description').textContent=state.authenticated
-    ?'选个游戏开房，或输入朋友的房间号。'
+    ?'选个游戏，或输入朋友的房间号。'
     :state.failureStatus===503?'请稍后重试，你在房间的座位会保留。':state.loginReady
       ?`使用原日历账号，无需重新注册。${reauth?'若登录仍失败，请在 Agora 完成账号验证后返回，再登录棋牌室。':''}`
       :'登录入口正在准备，请稍后再来。';
@@ -198,6 +198,14 @@ function drawAccount() {
 }
 async function enter(form,join) {
   const state=accountState();if(!privateReady || state.mode!=='legacy' && !state.authenticated) {notice('请先完成登录核验。');return;}
+  if (!join && $('create-game').value === 'last-hand') {
+    location.assign(gamePath('/games/last-hand/index.html?play=friends'));
+    return;
+  }
+  if (!join && $('create-game').value === 'noname') {
+    if (state.nonameEnabled) location.assign(gamePath('/noname.html'));
+    return;
+  }
   if(entrySubmissions.has(form)) return;
   const button=form.querySelector('button[type=submit]'),name=$('create-name').value.trim(),code=normalizeCode($('join-code').value);
   if(!name || [...name].length>16) {notice('昵称需要 1～16 个字。');$('lobby-name-field').open=true;$('create-name').focus();return;}
@@ -222,17 +230,25 @@ async function enter(form,join) {
 }
 $('create-form').addEventListener('submit',event=>{event.preventDefault();enter(event.currentTarget,false);});
 function updateCreateGame() {
-  const game=gameDetails($('create-game').value);
+  const selected = $('create-game').value;
+  const launcher = selected === 'noname';
+  $('noname-launch-row').hidden = !launcher;
+  $('create-form').closest('.create-card').hidden = launcher;
+  const practice = $('selected-practice');
+  practice.hidden = launcher;
+  for (const card of $('lobby-games').children) card.setAttribute('aria-pressed', String(card.dataset.game === selected));
+  if (launcher) return;
+  const game=gameDetails(selected);
   const parksSettings=$('create-parks-settings');if(parksSettings)parksSettings.hidden=$('create-game').value!=='parks';
   $('create-game-description').textContent=`${game.name} · ${game.minPlayers===game.maxPlayers?game.minPlayers:`${game.minPlayers}～${game.maxPlayers}`} 人 · ${gamePresentation($('create-game').value).createHint}`;
-  for(const card of $('lobby-games').children)card.setAttribute('aria-pressed',String(card.dataset.game===$('create-game').value));
-  const practice=$('selected-practice');practice.href=`./${gamePresentation($('create-game').value).practicePage}`;practice.setAttribute('aria-label',`${game.name}先练一局`);practice.textContent=`练习${game.name} ↗`;
+  practice.href=`./${gamePresentation($('create-game').value).practicePage}`;practice.setAttribute('aria-label',`${game.name}先练一局`);practice.textContent=`练习${game.name} ↗`;
   $('create-form').querySelector('button[type=submit]').textContent=`创建${game.name}房间 →`;
 }
 // Preserve the current choice while the registered games supply the options.
 function refreshGameChoices(state) {
 const previousGameChoice = $('create-game').value;
 const games = creatableGamePresentations(state);
+if (state.nonameEnabled) games.push({ gameType: 'noname', name: '三国杀', playerLabel: '联机对战' });
 $('create-game').replaceChildren(...games.map(game => {
   const option = document.createElement('option'); option.value = game.gameType; option.textContent = game.name; return option;
 }));
@@ -242,7 +258,7 @@ if(picker.children.length!==games.length || games.some((game,index)=>picker.chil
 picker.replaceChildren(...games.map(game=>{
   const button=document.createElement('button');button.type='button';button.className='lobby-game';button.dataset.game=game.gameType;
   const art=document.createElement('span');art.className='lobby-game-art';art.setAttribute('aria-hidden','true');art.innerHTML=gameIllustrationSvg(game.gameType);
-  const caption=document.createElement('span'),title=document.createElement('strong'),players=document.createElement('small');title.textContent=game.name;players.textContent=`${game.minPlayers===game.maxPlayers?game.minPlayers:`${game.minPlayers}～${game.maxPlayers}`} 人`;caption.append(title,players);button.append(art,caption);
+  const caption=document.createElement('span'),title=document.createElement('strong'),players=document.createElement('small');title.textContent=game.name;players.textContent=game.playerLabel || `${game.minPlayers===game.maxPlayers?game.minPlayers:`${game.minPlayers}～${game.maxPlayers}`} 人`;caption.append(title,players);button.append(art,caption);
   button.addEventListener('click',()=>{$('create-game').value=game.gameType;updateCreateGame();});return button;
 }));
 }

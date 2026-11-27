@@ -3,10 +3,17 @@ import { createHyakkiPracticeSession, PRACTICE_SELF, PRACTICE_STORAGE_KEY } from
 import {chooseConfiguredPracticeAction as chooseHyakkiPracticeAction} from './configured/practice-runtime.mjs';
 import { hyakkiCues } from './presentation.mjs';
 import { getCard } from './presentation-content.mjs';
+import {EXPANSION_TWO_PACK_ID,TRADE_ROUTES_VARIANTS} from './content/expansion-two.mjs';
+import { expansionTwoMode } from './expansion-two-mode.mjs';
 import { entryStorageKey } from '../../entry-path.mjs';
 import { replacePracticeWithLobby } from '../../platform/practice-navigation.mjs';
 
 const root = document.getElementById('hyakki-digital-root');
+const query=new URLSearchParams(location.search);
+const resumeOnly=expansionTwoMode==='resume-only';
+const orderCandidate=!resumeOnly&&query.get('pack')===EXPANSION_TWO_PACK_ID;
+const variant=orderCandidate?query.get('modules'):null;
+const modules=Object.hasOwn(TRADE_ROUTES_VARIANTS,variant)?TRADE_ROUTES_VARIANTS[variant]:undefined;
 let session, snapshot, destroyed = false, leaving = false, running = false;
 const removers = [];
 const ui = mountHyakkiPage({ root, practice: true, onAction: action, onLeave: leave,
@@ -19,7 +26,7 @@ const task = fn => (...args) => Promise.resolve().then(() => fn(...args)).catch(
 // reading panel suspends it; neither room presence nor account state is created.
 function syncActivity() {
   if (!session || destroyed) return;
-  const active = !leaving && !document.hidden && !root.querySelector('dialog[open]');
+  const active = !leaving && !document.hidden && !root.querySelector('dialog[open]') && !document.body.hasAttribute('data-merchant-reading');
   if (active === running) return;
   running = active; session.setActive(active).catch(report);
 }
@@ -46,7 +53,8 @@ function hint() {
     'finish-draw': '结束取牌，开始用牌', 'end-turn': '结束回合', buy: '买入这组货物', sell: '卖出这组货物',
     'buy-stall': '购买扩摊', 'play-character': '使用人物牌', 'install-tool': '放置道具',
     'activate-tool': '使用道具', respond: '打出回应牌', 'decline-response': '放弃回应',
-    'choose-effect': '完成当前选择', bid: `报价${command.amount}两`, 'pass-bid': '放弃竞价' };
+    'choose-effect': '完成当前选择','order-deliver':'交付公单','order-replace':'更换公单','refine-stock':'精制货物',
+    'offer-post':'用富余货物或手牌在商会挂牌',bid: `报价${command.amount}两`, 'pass-bid': '放弃竞价' };
   const card = command.cardId && getCard(command.cardId.split('#')[0]);
   ui.feedback(`建议：${card ? `${card.name} · ` : ''}${labels[command.type] || '按提示完成当前步骤'}。这只是建议，由你确认操作。`);
 }
@@ -71,12 +79,15 @@ function applySnapshot(next) {
   }
 }
 ui.configurePractice({
+  allowNewTradeRoutes:!resumeOnly,
+  orderCandidate:orderCandidate||expansionTwoMode==='enabled',
   onRestart: task(async options => { await session.restart(options); ui.audio.play('start'); syncActivity(); }),
   onReload: task(async () => { await session.reload(); syncActivity(); }), onHint: hint,
 });
 const observer = new MutationObserver(syncActivity);
 observer.observe(root, { subtree: true, attributes: true, attributeFilter: ['open'] });
 listen(document, 'visibilitychange', syncActivity);
+listen(window, 'merchant-reading', syncActivity);
 listen(window, 'pageshow', syncActivity);
 listen(window, 'pagehide', event => {
   running = false; void session?.setActive(false).catch(report);
@@ -87,7 +98,7 @@ function dispose() {
   destroyed = true; observer.disconnect(); removers.forEach(remove => remove()); ui.destroy();
 }
 try {
-  session = await createHyakkiPracticeSession({packId:'six-trades-v1', key: entryStorageKey(PRACTICE_STORAGE_KEY), onChange: applySnapshot });
+  session = await createHyakkiPracticeSession({packId:orderCandidate?EXPANSION_TWO_PACK_ID:'six-trades-v1', modules, key: entryStorageKey(PRACTICE_STORAGE_KEY), onChange: applySnapshot });
   applySnapshot(session.snapshot()); syncActivity();
 } catch (error) {
   report(error);

@@ -1,0 +1,2 @@
+/*! Noname v1.11.6.1, GPL-3.0. See noname-license.html for license and source. */
+import{a as p}from"./5APY45AI.mjs";import{n as a,o as s}from"./IEZPORJF.mjs";import{a as c}from"./L7PDUQN2.mjs";var i=o(s.prototype),l=o(p.prototype),G=o(c.prototype),P=a;function o(e){let r={},t=Object.getOwnPropertyNames(e);t[0]==="constructor"?t.shift():t[t.length-1]==="constructor"?t.pop():t.remove("constructor");for(let n of t)r[n]=e[n];return r}export{i as a,l as b,G as c,P as d};

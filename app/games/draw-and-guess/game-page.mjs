@@ -4,9 +4,9 @@ import { createGameAudio } from '../../game-audio.mjs';
 import { mountRoomAudioControls } from '../../platform/room-audio-controls.mjs';
 import { mountRoomSettings } from '../../platform/room-settings.mjs';
 import { mountGameAppearancePicker } from '../../platform/game-appearance.mjs';
-import { mountGameViewport } from '../../platform/room-viewport.mjs';
-import { createRoomClock } from '../../platform/room-clock.mjs';
+import { mountGameViewport, roomViewportFrame } from '../../platform/room-viewport.mjs';
 import { gameViewport } from '../../game-viewport.mjs';
+import { createRoomClock } from '../../platform/room-clock.mjs';
 import { orderedRoomPlayers, gameErrorMessage, roomExitExplanation } from '../../platform/room-presentation.mjs';
 import { roomChatMarkup, mountRoomChat } from '../../room-chat.mjs';
 import { mountPracticeExit, replacePracticeWithLobby } from '../../platform/practice-navigation.mjs';
@@ -271,19 +271,22 @@ export function createDrawingGamePage({mode='room',root=globalThis.document?.get
     $('drawing-retry').hidden=!unknown;$('drawing-retry').disabled=!active()||busy;$('drawing-refresh').disabled=busy;
     paint.setContext(canvasContext());renderTools();fit();
   }
-  let keyboardWidth=null;
+  let legacyKeyboardWidth=null;
   function fit(){
     const editing=['INPUT','TEXTAREA','SELECT'].includes(doc.activeElement?.tagName),visual=win.visualViewport;
     const normalScale=!visual||Math.abs((visual.scale??1)-1)<.01;
-    let frame=gameViewport({width:win.innerWidth,height:win.innerHeight,visual,editing});
+    let frame=roomViewportFrame(win,doc);
+    // Unsupported size-container browsers keep the previously published native
+    // CSS/input recovery. Modern entries receive this correction from the sole
+    // shared owner and never run a second local geometry branch.
+    if(frame.layoutHeight===undefined){
+      const compressed=frame.height<win.innerHeight*.78;
+      if(normalScale&&editing&&compressed)legacyKeyboardWidth=frame.width;
+      if(normalScale&&!editing&&legacyKeyboardWidth!==null&&Math.abs(legacyKeyboardWidth-frame.width)<4&&compressed)
+        frame=gameViewport({width:win.innerWidth,height:win.innerHeight,editing:false});
+      if(normalScale&&!editing&&(!compressed||legacyKeyboardWidth!==null&&Math.abs(legacyKeyboardWidth-frame.width)>=4))legacyKeyboardWidth=null;
+    }
     const compressed=frame.height<win.innerHeight*.78;
-    if(normalScale&&editing&&compressed)keyboardWidth=frame.width;
-    // WebKit can retain its keyboard-sized visual viewport after blur without
-    // another resize event. Only repair a compression observed while editing,
-    // at the same width and normal scale; genuine zoom/rotation stays intact.
-    if(normalScale&&!editing&&keyboardWidth!==null&&Math.abs(keyboardWidth-frame.width)<4&&compressed)
-      frame=gameViewport({width:win.innerWidth,height:win.innerHeight,editing:false});
-    if(normalScale&&!editing&&(!compressed||keyboardWidth!==null&&Math.abs(keyboardWidth-frame.width)>=4))keyboardWidth=null;
     for(const [name,value]of Object.entries({width:frame.width,height:frame.height,top:frame.top,left:frame.left}))root.style.setProperty('--drawing-'+name,`${value}px`);
     const keyboardOpen=normalScale&&compressed&&doc.activeElement===$('drawing-guess-input');
     root.classList.toggle('drawing-keyboard-open',keyboardOpen);
@@ -301,7 +304,7 @@ export function createDrawingGamePage({mode='room',root=globalThis.document?.get
     paint.fit();}
   // Viewport recovery only refits the same logical paper. Hiding, losing the
   // writer or changing tools ends ink at its own owner, not on rotation.
-  const viewport=mountGameViewport({window:win,document:doc,sync:fit,recoveryDelays:[0,100,350]});
+  const viewport=mountGameViewport({coherent:true,recoverKeyboardCompression:true,window:win,document:doc,sync:fit,recoveryDelays:[0,100,350]});
   const audioControls=mountRoomAudioControls({audio,document:doc});
   const settings=mountRoomSettings({document:doc,buttonId:'drawing-settings',dialogId:'drawing-settings-dialog',closeButtonId:'drawing-settings-close'});
   const removeAppearance=mountGameAppearancePicker(doc,$('drawing-settings-dialog'),{scope:'draw-and-guess'});

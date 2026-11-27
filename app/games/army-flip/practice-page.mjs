@@ -1,12 +1,11 @@
 import { mountRoomAudioControls } from '../../platform/room-audio-controls.mjs';
-import { mountGameViewport } from '../../platform/room-viewport.mjs';
+import { roomViewportFrame, mountGameViewport } from '../../platform/room-viewport.mjs';
 import { entryBase, entryStorageKey } from '../../entry-path.mjs';
 import { createPracticeSession, PRACTICE_SELF, PRACTICE_STORAGE_KEY, PRACTICE_V2_STORAGE_KEY, PRACTICE_LEGACY_STORAGE_KEY } from './practice-engine.mjs';
 import { BOARD_CELLS, ROAD_EDGES, RAIL_EDGES } from './board.mjs';
 import { armySideLabel, armyAssignmentText, armyBoardGeometry, armyPoint, armyCellPosition, fitArmyBoard, armyCellLabel, armyTargets, armyIntent,
   armyTransition, armyResultText, armyLastActionText, armyUsesFlagTransport, armyFlagMarks, armyPickups, armyRulePages, armyRuleModeLabel } from './presentation.mjs';
 import { createGameAudio } from '../../game-audio.mjs';
-import { gameViewport } from '../../game-viewport.mjs';
 import { mountArmyMotion } from './motion-ui.mjs';
 
 const $ = id => document.getElementById(id);
@@ -193,7 +192,7 @@ function renderRules() {
 }
 function showDialog(id) { session.suspend(); selected = null; renderBoard(); $(id).showModal(); }
 function syncViewport() {
-  const v = gameViewport({ width:window.innerWidth, height:window.innerHeight, visual:window.visualViewport });
+  const v = roomViewportFrame(window,document);
   document.body.style.setProperty('--army-viewport-height', `${v.height}px`);
   document.body.style.setProperty('--army-viewport-width', `${v.width}px`);
   const geometry = armyBoardGeometry(v);
@@ -213,7 +212,7 @@ window.addEventListener('pagehide', () => { leaving = true; session.suspend();cl
 window.addEventListener('pageshow', returnToPractice);
 window.addEventListener('focus', returnToPractice);
 window.addEventListener('storage', event => { if ([PRACTICE_STORAGE_KEY,PRACTICE_V2_STORAGE_KEY,PRACTICE_LEGACY_STORAGE_KEY].map(key => entryStorageKey(key)).includes(event.key) && available()) session.resume(); });
-mountGameViewport({ window, document, sync: syncViewport });
+mountGameViewport({ coherent:true, window, document, sync: syncViewport });
 $('exit-practice').addEventListener('click', () => { leaving = true; session.suspend(); });
 $('army-cancel').addEventListener('click', () => { if(!selected)return;selected = null; renderBoard(); $('army-feedback').textContent = turnText();audio.play('undo',{gesture:true}); });
 $('show-rules').addEventListener('click', () => { renderRules(); showDialog('rules-dialog'); });

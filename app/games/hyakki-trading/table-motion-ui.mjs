@@ -6,7 +6,7 @@ export function mountTableMotion({root,onError=error=>root.ownerDocument.default
   const reduced=()=>window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   function capture(selector) {
     const node=typeof selector==='string'?root.querySelector(selector):selector;
-    if(!node)return null;
+    if(!node || window.getComputedStyle(node).visibility!=='visible')return null;
     const rect=node.getBoundingClientRect();
     if(!rect.width||!rect.height)return null;
     const copy=node.cloneNode(true);

@@ -1,3 +1,5 @@
+// Schema25 pins the Last Hand points and post-hand interaction rules when resuming an existing match.
+// Schema24 permits extended Last Hand matches and frozen room clocks.
 // Schema22 pins configurable Merchant v3, including private selection and full play.
 // Production activation remains gated by the candidate release checks.
 // Schema21 freezes player-count merchant materials and recommended/custom goods.
@@ -7,7 +9,7 @@
 // Keep schema 1..8 readable; 9 is flying-chess, 10 draw-and-guess, and 11
 // poker414-2, 12 legacy hyakki-trading, 13 configurable hyakki goods, 14 multiplayer hyakki.
 // 15 is PARKS; other games retain their historical write versions.
-export const snapshotHasRoles = data => [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 18, 19, 20, 21, 22].includes(data?.schemaVersion);
+export const snapshotHasRoles = data => [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 18, 19, 20, 21, 22, 23, 24, 25].includes(data?.schemaVersion);
 export function snapshotGameType(data) {
   if (snapshotHasRoles(data)) return data.gameType;
   return data.schemaVersion === 3 ? 'army-flip' : 'rummikub';
@@ -17,11 +19,11 @@ export function snapshotGameType(data) {
 // the stable saved room ID rather than a legacy synthesized one.
 export function snapshotAuthorityBindingProblem(data, { roomId, code }) {
   return data.code !== code || data.roomId !== undefined && data.roomId !== roomId
-    || [10, 11, 12, 13, 14, 15, 17, 18, 19, 20, 21, 22].includes(data.schemaVersion) && data.roomId !== roomId;
+    || [10, 11, 12, 13, 14, 15, 17, 18, 19, 20, 21, 22, 23, 24, 25].includes(data.schemaVersion) && data.roomId !== roomId;
 }
 export function snapshotFormatProblem(data, adapter) {
   const hasRoles = snapshotHasRoles(data);
-  return ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 18, 19, 20, 21, 22].includes(data?.schemaVersion)
+  return ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 18, 19, 20, 21, 22, 23, 24, 25].includes(data?.schemaVersion)
     // These historical envelope guards preceded game dispatch. Keep their
     // ordering even for a corrupt snapshot carrying another game's type so
     // the existing INVALID_SNAPSHOT response stays identical.
@@ -40,8 +42,9 @@ export function snapshotFormatProblem(data, adapter) {
     || ![12, 13, 14, 21, 22].includes(data.schemaVersion) && data.gameType === 'hyakki-trading'
     || data.schemaVersion === 15 && (data.gameType !== 'parks' || adapter.gameType !== 'parks')
     || data.schemaVersion !== 15 && data.gameType === 'parks'
+    || ([23, 24, 25].includes(data.schemaVersion)) !== (data.gameType === 'last-hand')
     || adapter.snapshotProblem(data)
-    || ![7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 18, 19, 20, 21, 22].includes(data.schemaVersion) && Object.hasOwn(data, 'turnClock')
+    || ![7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 18, 19, 20, 21, 22, 23, 24, 25].includes(data.schemaVersion) && Object.hasOwn(data, 'turnClock')
     || [7, 9, 10, 11, 12, 13, 14, 15, 17, 18, 19].includes(data.schemaVersion) && !Object.hasOwn(data, 'turnClock')
     || (hasRoles ? data.gameType !== adapter.gameType || !Array.isArray(data.spectators)
       : data.schemaVersion === 3 ? data.gameType !== adapter.gameType : data.gameType !== undefined && data.gameType !== adapter.gameType)

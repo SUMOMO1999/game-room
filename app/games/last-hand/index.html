@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#403334" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <title>最后一手 · 竞拍牌会</title>
+    <link rel="apple-touch-icon" href="./assets/mark-180.png" />
+    <link rel="icon" href="./assets/mark.svg" />
+    <link rel="manifest" href="./practice.webmanifest" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div id="tableViewport">
+    <main id="world" data-screen="home">
+      <canvas id="arena" aria-label="六席立体竞技场"></canvas>
+      <div class="vignette"></div>
+      <div class="tableHeader"><header id="route" hidden>
+        <div class="routeHeading"><div id="phaseBar"></div><small id="routeStatus"></small></div>
+        <b id="phaseTitle"></b>
+        <time id="matchClock" hidden></time>
+      </header>
+      <aside id="scoreboard" aria-label="全桌席位" hidden></aside></div>
+      <div id="topTools" role="group" aria-label="牌桌工具">
+        <button id="codexBtn" title="展开或收起牌谱" aria-controls="bookPanel" aria-expanded="false">牌谱<span aria-hidden="true" class="bookCaret"></span></button>
+        <aside id="bookPanel" aria-label="牌谱" hidden>
+          <nav id="bookTabs" aria-label="牌谱分类"></nav>
+          <select id="bookSection" aria-label="查看牌谱栏目"></select>
+          <div id="bookBody" tabindex="0" aria-label="牌谱内容"></div>
+        </aside>
+        <div class="room-header" data-chat-notice-anchor><div class="room-toolbar-actions">
+          <button id="chat-toggle" class="room-toolbar-action chat-toggle" aria-controls="room-chat" aria-expanded="false" hidden>聊天<span id="chat-unread" hidden></span></button>
+          <button id="settingsBtn" class="room-toolbar-action" title="设置" aria-label="设置">设置</button>
+          <a id="leaveBtn" class="room-toolbar-action" href="../../" aria-label="返回棋牌室" title="返回棋牌室，保留座位和进度">大厅</a>
+        </div></div>
+      </div>
+      <div id="tableStatus" hidden></div>
+      <div id="pauseNotice" role="status" hidden></div>
+      <div class="entryArea"><div id="home" class="entry"></div></div>
+      <div id="seatTags"></div>
+      <section id="market" aria-label="桌心" hidden></section>
+      <section id="center" aria-live="polite" hidden></section>
+      <div id="actions" hidden></div>
+      <div id="hand" aria-label="我的私牌" hidden></div>
+      <div id="relics" class="pockets" aria-label="我的技能" hidden></div>
+      <div id="tools" class="pockets" aria-label="我的道具" hidden></div>
+      <div id="notice" role="status" hidden></div>
+    </main>
+    </div>
+    <dialog id="settings">
+      <header>
+        <h2>牌桌设置</h2>
+        <button id="closeSettings" aria-label="关闭设置">×</button>
+      </header>
+      <div class="settingsBody game-settings-body">
+        <section id="roomArrangement"></section>
+        <h3>声音与显示</h3>
+        <label>牌桌声音 <input id="sound" type="checkbox" checked /></label
+        ><label>音量 <input id="volume" type="range" min="0" max="100" value="45" /></label
+        ><label>试听音效 <select id="soundCue"><option value="select">选牌</option><option value="roll">掷骰</option><option value="draw">摸牌</option><option value="turn">轮到你</option><option value="chat">聊天</option></select></label>
+        <button id="soundPreview" type="button">试听</button> <span id="previewStatus" role="status"></span>
+        <label>减少动效 <input id="motion" type="checkbox" /></label>
+        <label id="fastOption">练习电脑快速行动 <input id="fast" type="checkbox" /></label>
+        <p id="chat-legacy-note" hidden>此房间未启用聊天。</p>
+      </div>
+    </dialog>
+    <dialog id="sheet">
+      <header>
+        <h2></h2>
+        <button aria-label="收起">×</button>
+      </header>
+      <div id="sheetBody"></div>
+    </dialog>
+    <script type="module" src="./main.mjs"></script>
+  </body>
+</html>

@@ -1,8 +1,9 @@
 import {GOODS,CATEGORIES} from '../content/expansion-one.mjs';
-import {goodsVector as vectorOf,receiptPlan,categoryCounts} from '../trade-contract.mjs';
-import {RuleError,requireRule,definition,player,opponent,emptyGoods,goodsCount,addSilver,moveGoods,removeCard,discardCards,
-  drawCards,availableCards,refreshTemporary,createPending,setChoice,clearChoice,completePending,receiveGoods,legalResponseCards,emit} from './model.mjs';
+import {goodsVector as vectorOf,applyGoodsReceipt,receiptPlan,categoryCounts} from '../trade-contract.mjs';
+import {RuleError,requireRule,definition,player,opponent,emptyGoods,goodsCount,addSilver,moveGoods,checkedRefinedWithdrawal,removeCard,discardCards,
+  drawCards,availableCards,bankStock,refreshTemporary,createPending,setChoice,clearChoice,completePending,receiveGoods,legalResponseCards,emit} from './model.mjs';
 import {compensateMonitorLoss} from './role-effects.mjs';
+import {qualityFields} from './refining.mjs';
 
 const exact=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).every(k=>keys.includes(k));
 const category=id=>CATEGORIES.some(c=>c.id===id);
@@ -21,11 +22,11 @@ function checkedVector(value,stock,count,{cat,maximum=count}={}){
   const v=vectorOf(value);requireRule(goodsCount(v)>=count&&goodsCount(v)<=maximum&&GOODS.every(g=>v[g.id]<=stock[g.id]&&(!cat||!v[g.id]||inClass(g.id,cat))),'所选货物不符合数量、类别或库存。');return v;
 }
 function exchange(state,owner,selection){
-  requireRule(exact(selection,['give','receive'])&&Object.keys(selection).length===2,'请选择交出和换入的货物。');
+  requireRule(exact(selection,qualityFields(owner,['give','receive'],'giveRefined')),'请选择交出和换入的货物。');
   const give=checkedVector(selection.give,owner.goods,2),receive=checkedVector(selection.receive,state.bankGoods,2);
   const own=Object.keys(categoryCounts(give)),incoming=Object.keys(categoryCounts(receive));
   requireRule(own.length===1&&incoming.length===1&&own[0]!==incoming[0],'须用同一类的2件货换另一类的2件货。');
-  const plan=receiptPlan(owner,state.bankGoods,{give,receive,cost:1});return {give,receive,plan};
+  const plan=receiptPlan(owner,state.bankGoods,{give,receive,cost:1,giveRefined:selection.giveRefined});return {give,receive,plan};
 }
 function defaultExchange(state,owner){
   for(const from of CATEGORIES)if(totalClass(owner.goods,from.id)>=2)for(const to of CATEGORIES)if(to.id!==from.id&&totalClass(state.bankGoods,to.id)>=2)
@@ -33,24 +34,26 @@ function defaultExchange(state,owner){
   return null;
 }
 const guards=state=>state.discard.filter(id=>codeOf(id)==='C07');
-const inputKeys=code=>counter(code)?['targetId',...(['XM05','XM06'].includes(code)?['categoryId']:[])]
-  :categoryFor(code)||code==='XC11'?['goods']:code==='XC07'?['categoryId']:code==='XC08'?['give','receive']:code==='XC10'?['cardId']:[];
+const inputKeys=(code,owner)=>counter(code)?['targetId',...(['XM05','XM06'].includes(code)?['categoryId']:[])]
+  :code==='XC11'?qualityFields(owner,['goods']):categoryFor(code)?['goods']:code==='XC07'?['categoryId']
+    :code==='XC08'?qualityFields(owner,['give','receive'],'giveRefined'):code==='XC10'?['cardId']:[];
 export const isNewCharacter=code=>/^XC(?:0[1-9]|1[01])$/u.test(code)||counter(code);
 export function newCharacterProblem(state,actorId,copyId,params={}){
   try{
-    const code=codeOf(copyId),owner=player(state,actorId);requireRule(isNewCharacter(code)&&exact(params,inputKeys(code)),'新人物选择参数无效。');
+    const code=codeOf(copyId),owner=player(state,actorId);requireRule(isNewCharacter(code)&&exact(params,inputKeys(code,owner)),'新人物选择参数无效。');
     const cat=categoryFor(code),peer=counter(code)?opponent(state,actorId,params.targetId):null;
     if(cat){requireRule(owner.silver>=2&&totalClass(state.bankGoods,cat)>=2,'需要2两及该类至少2件公货。');if(params.goods!==undefined)checkedVector(params.goods,state.bankGoods,2,{cat});}
     if(code==='XC07')requireRule(owner.silver>=1&&category(params.categoryId)&&totalClass(state.bankGoods,params.categoryId)>=2,'请选择至少有2件公货的一类，并支付1两。');
     if(code==='XC08'){
       requireRule(owner.silver>=1&&defaultExchange(state,owner),'需要1两和能换出的同类2件货。');
-      if(params.give!==undefined||params.receive!==undefined)exchange(state,owner,params);
+      if(Object.keys(params).length)exchange(state,owner,params);
     }
     if(code==='XC09')requireRule(availableCards(state)>0,'没有可翻的牌。');
     if(code==='XC10')requireRule(guards(state).length&&(params.cardId===undefined||guards(state).includes(params.cardId)),'弃牌区没有可取回的锦衣卫。');
     if(code==='XC11'){
       requireRule(goodsCount(owner.goods)>0,'至少需要自己的1件货物。');
-      if(params.goods!==undefined){const v=checkedVector(params.goods,owner.goods,1,{maximum:3});requireRule(Object.keys(categoryCounts(v)).length===1,'交出的货物必须同类。');
+      if(Object.keys(params).length){const v=checkedVector(params.goods,owner.goods,1,{maximum:3});requireRule(Object.keys(categoryCounts(v)).length===1,'交出的货物必须同类。');
+        if(owner.refined)checkedRefinedWithdrawal(owner,v,params.refined);
         requireRule(Number.isSafeInteger(owner.silver+2*goodsCount(v)+(stocked(v).length===2?1:0)),'银两超出可保存范围。');}
     }
     if(code==='XM01')requireRule(peer.silver>=1&&Number.isSafeInteger(owner.silver+Math.min(2,peer.silver)),'对手须有银两。');
@@ -67,7 +70,7 @@ function offer(state,kind,actorId,options,defaultSelection,visibility='public'){
   setChoice(state,{kind,actorId,options,defaultSelection,visibility});
 }
 function deliver(state,actorId,goods){
-  moveGoods(state.bankGoods,state.pending.goods,goods);state.pending.stage='done';receiveGoods(state,actorId,goods);
+  moveGoods(bankStock(state),state.pending,goods);state.pending.stage='done';receiveGoods(state,actorId,goods);
   if(!state.pending.receipt)completePending(state);
 }
 function randomGoods(state,cat,count,ctx){
@@ -131,22 +134,22 @@ export function chooseNewCharacter(state,selection,ctx){
     const goods=checkedVector(selection.goods,state.bankGoods,2,{cat:categoryFor(code)});addSilver(owner,-2);p.data.paid=true;clearChoice(state);deliver(state,owner.id,goods);return;
   }
   if(kind==='class-exchange'){
-    const {plan}=exchange(state,owner,selection);addSilver(owner,-1-plan.temporaryFee);owner.goods=plan.goods;owner.temporaryOccupied=plan.temporaryOccupied;state.bankGoods=plan.bankGoods;
+    const {plan}=exchange(state,owner,selection);addSilver(owner,-1-plan.temporaryFee);applyGoodsReceipt(owner,plan);state.bankGoods=plan.bankGoods;
   }else if(kind==='recover-guard'){
     requireRule(exact(selection,['cardId'])&&Object.keys(selection).length===1&&guards(state).includes(selection.cardId),'请选择弃牌区的锦衣卫。');
     removeCard(state.discard,selection.cardId);owner.hand.push(selection.cardId);
   }else if(kind==='class-surrender'){
-    requireRule(exact(selection,['goods'])&&Object.keys(selection).length===1,'请选择同类货物。');
+    requireRule(exact(selection,qualityFields(owner,['goods'])),'请选择同类货物。');
     const goods=checkedVector(selection.goods,owner.goods,1,{maximum:3});requireRule(Object.keys(categoryCounts(goods)).length===1,'交出货物必须同类。');
-    addSilver(owner,2*goodsCount(goods)+(stocked(goods).length===2?1:0));moveGoods(owner.goods,state.bankGoods,goods);refreshTemporary(owner);
+    addSilver(owner,2*goodsCount(goods)+(stocked(goods).length===2?1:0));moveGoods(owner,bankStock(state),goods,selection.refined);refreshTemporary(owner);
   }else if(kind==='penalty-branch'){
     requireRule(exact(selection,['branch'])&&Object.keys(selection).length===1&&p.choice.options.some(x=>x.branch===selection.branch),'请选择可支付的分支。');
     if(selection.branch==='silver')addSilver(peer,-2);
     else{clearChoice(state);p.stage='choose';offer(state,'monitored-return',peer.id,[{goods:{...peer.goods},categoryId:null,count:1}],{goods:firstVector(peer.goods,1)});return;}
   }else if(kind==='monitored-return'){
-    requireRule(exact(selection,['goods'])&&Object.keys(selection).length===1,'请选择要交回的货物。');
+    requireRule(exact(selection,qualityFields(peer,['goods'])),'请选择要交回的货物。');
     const option=p.choice.options[0],goods=checkedVector(selection.goods,peer.goods,option.count,{cat:option.categoryId});
-    moveGoods(peer.goods,state.bankGoods,goods);refreshTemporary(peer);if(code==='XM06'){addSilver(peer,2);addSilver(owner,1);}
+    moveGoods(peer,bankStock(state),goods,selection.refined);refreshTemporary(peer);if(code==='XM06'){addSilver(peer,2);addSilver(owner,1);}
   }else requireRule(false,'人物选择无效。');
   compensateMonitorLoss(state,before,owner.id);clearChoice(state);completePending(state);
 }
@@ -157,7 +160,7 @@ export function newCharacterPendingProblem(state,p){
     const owner=player(state,p.ownerId),code=p.code,params=p.data.params,cat=categoryFor(code),peer=counter(code)?opponent(state,owner.id,p.data.targetId):null;
     requireRule(isNewCharacter(code)&&p.sourceCards.length===1&&codeOf(p.sourceCards[0])===code&&!p.poolCards.length
       &&exact(p.data,['params','paid',...(counter(code)?['targetId']:[])])&&Object.keys(p.data).length===(counter(code)?3:2)
-      &&typeof p.data.paid==='boolean'&&exact(params,inputKeys(code)),'新人物来源或参数无效。');
+      &&typeof p.data.paid==='boolean'&&exact(params,inputKeys(code,owner)),'新人物来源或参数无效。');
     if(counter(code))requireRule(opponent(state,owner.id,params.targetId).id===peer.id&&state.turnUsage.monitorUsed,'监视人物目标或额度无效。');
     if(p.response){requireRule(counter(code)&&p.stage==='start'&&!p.data.paid&&p.choice===null&&p.receipt===null
       &&goodsCount(p.goods)===0&&legalResponseCards(state).length>0,'新监视人物回应无效。');return null;}

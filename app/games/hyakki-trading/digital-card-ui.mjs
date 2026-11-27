@@ -1,6 +1,6 @@
 import {renderExpansionPrint} from './expansion-card-ui.mjs';
 import {GOODS as EXP_GOODS} from './presentation-content.mjs';
-import {CATEGORIES as EXP_CLASSES} from './content/expansion-one.mjs';
+import {getExpansionCard,CATEGORIES as EXP_CLASSES} from './content/expansion-one.mjs';
 import { getCard, getGood, getCategory } from './presentation-content.mjs';
 import { ART_VERSION, assetPath } from './content/manifest.mjs';
 
@@ -20,8 +20,7 @@ function picture(id, label, className = '') {
 
 export function renderGoodsIcon(id) {
   const good = getGood(id);
-  if(good.icon?.includes('/expansion-one/'))return `<span class="yousei-good-icon yousei-expansion-good" aria-hidden="true"><span class="yousei-art"><img src=".${escape(good.icon)}" alt="" draggable="false" decoding="sync"></span></span>`;
-  return `<span class="yousei-good-icon" aria-hidden="true">${picture(id, good.name.slice(0, 1))}</span>`;
+  return `<span class="yousei-good-icon" data-goods-icon="${escape(good.id)}" aria-hidden="true"><span class="yousei-art"><img src=".${escape(good.icon)}" alt="" draggable="false" decoding="sync"></span></span>`;
 }
 
 export function renderCard(card, { selected = false, disabled = false, interactive = true, tapped = false,configuration=null } = {}) {
@@ -30,29 +29,15 @@ export function renderCard(card, { selected = false, disabled = false, interacti
     if (typeof flag !== 'boolean') throw new TypeError('牌面显示状态必须为布尔值');
   }
   if (tapped && face.category !== 'tool') throw new RangeError('只有道具可以横置');
-  if(face.sourceCode?.startsWith('X')||face.category==='role'){
-    const raw=renderExpansionPrint(face,{goods:EXP_GOODS,classes:EXP_CLASSES});
-    const tag=interactive?'button':'span';
-    return `<${tag} ${interactive?`type="button" aria-pressed="${selected}"`:'role="img"'} class="yousei-card${selected?' is-selected':''}${disabled?' is-unavailable':''}${tapped?' is-tapped':''}" data-card-id="${escape(face.id)}" data-card-category="${face.category}" aria-label="${escape(face.name)}">${raw}</${tag}>`;
-  }
-  const category = getCategory(face.category);
-  const goods = face.category === 'goods';
-  const watched = face.category === 'monitored_character';
-  const goodsLabel = goods ? Object.entries(face.goods).map(([id,count]) => `${getGood(id).name}×${count}`).join('，') : '';
-  const label = [face.name, category.name, goodsLabel, face.summary, face.costText, tapped ? '已横置' : '', selected ? '已选中' : '', disabled ? '当前不可使用，可查看说明' : ''].filter(Boolean).join('，');
-  const tag = interactive ? 'button' : 'span';
-  const semantics = interactive ? `type="button" aria-pressed="${selected}"` : 'role="img"';
-  const body = goods
-    ? `<span class="yousei-card__goods yousei-card__goods--${Object.keys(face.goods).length}">${Object.entries(face.goods).map(([id, count]) => `<span class="yousei-card__good" aria-label="${escape(getGood(id).name)}×${count}" title="${escape(getGood(id).name)}×${count}">${renderGoodsIcon(id)}<b>×${count}</b></span>`).join('')}</span>`
-    : picture(face.artId, face.name, 'yousei-card__portrait');
-  const faceCost = face.category === 'tool' ? '装0步 · 用1步' : face.category === 'stall_permit' ? '1步 · 扩摊3格' : ['ordinary_character','monitored_character'].includes(face.category) ? ['C04','C07'].includes(face.sourceCode) ? '回应 · 0步' : '行动 · 1步' : face.costText;
-  const footer = goods
-    ? `<span class="yousei-card__prices"><span>买<b>${face.buySilver}</b></span><span>卖<b>${face.sellSilver}</b></span></span>`
-    : `<span class="yousei-card__cost">${escape(faceCost)}</span>`;
-  const effect = !goods && face.compactText ? `<span class="yousei-card__effect">${escape(face.compactText)}</span>` : '';
-  const state = [selected ? '已选中' : '', tapped ? '已横置' : '', disabled ? '暂不可用' : ''].filter(Boolean).join(' · ');
-  // Face IDs identify public definitions. Never serialize a private entity ID, owner, or deck order.
-  return `<${tag} ${semantics} class="yousei-card${selected ? ' is-selected' : ''}${disabled ? ' is-unavailable' : ''}${tapped ? ' is-tapped' : ''}" data-card-id="${escape(face.id)}" data-card-category="${face.category}" data-art-version="${ART_VERSION}" aria-label="${escape(label)}"><span class="yousei-card__heading"><span class="yousei-card__category">${watched ? '◉ ' : ''}${escape(category.name)}</span><span class="yousei-card__code">${face.sourceCode}</span></span><span class="yousei-card__name">${goods ? '货物交易' : escape(face.name)}</span>${body}${effect}${footer}${state ? `<span class="yousei-card__state" aria-hidden="true">${escape(state)}</span>` : ''}</${tag}>`;
+  const original=!/^(X|E2)/.test(face.sourceCode)&&face.category!=='role';
+  const print=original?getExpansionCard(face.id):face;
+  const artwork=original&&face.artId?assetPath(face.artId):print.artPath;
+  const footerLabel=face.category==='stall_permit'?'1步 · 扩摊3格':['C04','C07'].includes(face.sourceCode)?'回应 · 0步':undefined;
+  const contents=renderExpansionPrint({...print,artPath:artwork},{goods:EXP_GOODS,classes:EXP_CLASSES,footerLabel,wrap:false});
+  const tag=interactive?'button':'span';
+  const semantics=interactive?`type="button" aria-pressed="${selected}"`:'role="img"';
+  const label=[face.name,face.summary,face.costText,tapped?'已横置':'',disabled?'暂不可用':''].filter(Boolean).join('，');
+  return `<${tag} ${semantics} class="yousei-card ex-new-card${selected?' is-selected':''}${disabled?' is-unavailable':''}${tapped?' is-tapped':''}" data-card-id="${escape(face.id)}" data-card-category="${escape(face.category)}" aria-label="${escape(label)}">${contents}</${tag}>`;
 }
 
 /** No card input is read: every hidden face produces exactly the same markup and asset URL. */
@@ -63,5 +48,6 @@ export function renderCardBack() {
 export function renderCardDetails(card,{configuration=null}={}) {
   const face = definition(card,configuration);
   const category = getCategory(face.category);
-  return `<section class="yousei-card-details"><div class="yousei-card-details__face">${renderCard(face, { interactive: false,configuration })}</div><div class="yousei-card-details__copy"><p class="yousei-card-details__eyebrow">${escape(category.name)} · ${face.sourceCode} · 牌堆共${face.copies}张</p><h3>${escape(face.name)}</h3><p class="yousei-card-details__timing">${escape(face.timingLabel)}<br>${escape(face.costText)}</p><p class="yousei-card-details__summary">${escape(face.summary)}</p><ul>${face.details.map(text => `<li>${escape(text)}</li>`).join('')}</ul></div></section>`;
+  const example = face.example ? `<p><strong>使用例子</strong><br>${escape(face.example)}</p>` : '';
+  return `<section class="yousei-card-details"><div class="yousei-card-details__face">${renderCard(face, { interactive: false,configuration })}</div><div class="yousei-card-details__copy"><p class="yousei-card-details__eyebrow">${escape(category.name)} · ${face.sourceCode} · 牌堆共${face.copies}张</p><h3>${escape(face.name)}</h3>${example}<p class="yousei-card-details__timing">${escape(face.timingLabel)}<br>${escape(face.costText)}</p><p class="yousei-card-details__summary">${escape(face.summary)}</p><ul>${face.details.map(text => `<li>${escape(text)}</li>`).join('')}</ul></div></section>`;
 }

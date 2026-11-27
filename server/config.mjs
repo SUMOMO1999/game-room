@@ -138,6 +138,6 @@ export function readSettings(env = process.env) {
 // URL text is checked before parsing: encoded delimiters and duplicate parameters never enter a transaction.
 export function safeReturnTo(value, origin) {
   if (typeof value !== 'string' || value.length > 80 || /[\\\x00-\x20\x7f%#]/.test(value)) return '/';
-  if (!/^(?:\/|\/\?room=\d{6}|\/words(?:\.html)?|\/(?:room|army|flying|drawing|poker414|hyakki|parks)\.html\?code=\d{6})$/.test(value)) return '/';
+  if (!/^(?:\/|\/\?room=\d{6}|\/words(?:\.html)?|\/noname\.html|\/last-hand\.html(?:\?code=\d{6})?|\/(?:room|army|flying|drawing|poker414|hyakki|parks)\.html\?code=\d{6})$/.test(value)) return '/';
   try { return new URL(value, origin).origin === origin ? value : '/'; } catch { return '/'; }
 }

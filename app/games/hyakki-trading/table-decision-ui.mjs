@@ -1,6 +1,7 @@
+import { tablePrompt } from './table/prompt.mjs';
 import { GOODS, getCard } from './presentation-content.mjs';
 import { renderCard, renderCardBack, renderGoodsIcon } from './digital-card-ui.mjs';
-import { choiceModel, buildChoiceSelection, defaultChoiceInput, knownCards, cardKey, goodsTotal } from './game-ui-model.mjs';
+import { choiceModel, buildChoiceSelection, defaultChoiceInput, knownCards, cardKey, goodsTotal, stockQualityOptions } from './game-ui-model.mjs';
 import { decisionContext } from './game-dialog-ui.mjs';
 
 const esc=value=>String(value??'').replace(/[&<>"']/gu,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[char]);
@@ -34,7 +35,7 @@ export function syncTaskMarkup(container, markup, preserve) {
 /** Shared accepted source / explanation / confirmation surface. Domain callers
  * supply their own safe markup and authoritative command wiring. */
 export function renderTableActionDraft({source,heading,secondary='',description,actions,label='确认前的选牌与材料'}){
-  return `<section class="hy-card-play hy-action-draft" aria-label="${esc(label)}"><div class="hy-inline-card">${source}</div><div class="hy-inline-copy"><div class="hy-decision-heading"><strong>${heading}</strong><div class="hy-inline-secondary">${secondary}</div></div><div class="hy-source-description">${description}</div><div class="hy-inline-actions">${actions}</div></div></section>`;
+  return tablePrompt({visual: source, title: heading, secondary, description, actions, kind:'draft', label:esc(label)});
 }
 export function renderMaterialTarget({label,fields,disabled=false,selected=false,renderAction=action}){
   return renderAction('draft-value',esc(label),fields,disabled,`hy-material-player${selected?' is-selected':''}`);
@@ -76,7 +77,11 @@ export function updateNativeChoice(pending,draft,type,fields){
     else if(type==='option'&&exchange.step==='to'&&exchange.options[fields.index]?.fromGoodsId===exchange.fromGoodsId)next.optionIndex=fields.index;
     return next;
   }
-  if(type==='option'&&model.type==='option'&&model.options[fields.index])next.optionIndex=fields.index;
+  if(type==='option'&&model.type==='option'&&model.options[fields.index]){
+    next.optionIndex=fields.index;
+    if(typeof fields.refined==='boolean')next.refined=fields.refined;
+    else delete next.refined;
+  }
   else if(type==='card'&&model.type==='cards'&&model.cardIds.includes(fields.id)){
     const selected=next.cardIds??[];
     next.cardIds=selected.includes(fields.id)?selected.filter(id=>id!==fields.id):selected.length<model.maximum?[...selected,fields.id]:selected;
@@ -84,7 +89,12 @@ export function updateNativeChoice(pending,draft,type,fields){
     const value=(next.goods?.[fields.id]??0)+fields.delta;
     if(Number.isInteger(value)&&value>=0&&value<=model.stock[fields.id]&&(fields.delta<0||goodsTotal(next.goods)<model.maximum))next.goods={...zeros(),...next.goods,[fields.id]:value};
   }else if(type==='exchange'&&model.type==='exchange'&&['ownGoodId','otherGoodId'].includes(fields.field)){
-    if((fields.field==='ownGoodId'?model.own:model.other).includes(fields.id))next[fields.field]=fields.id;
+    const own=fields.field==='ownGoodId',quality=own?'ownRefined':'otherRefined';
+    if((own?model.own:model.other).includes(fields.id)){
+      next[fields.field]=fields.id;
+      if(typeof fields.refined==='boolean')next[quality]=fields.refined;
+      else delete next[quality];
+    }
   }else if(type==='good'&&model.type==='payment-good'&&model.goods.includes(fields.id))next.goodId=fields.id;
   else if(type==='payment'&&model.type==='payment-good'&&model.payments[fields.index])next.paymentIndex=fields.index;
   return next;
@@ -95,21 +105,22 @@ export function nativeSelectionText(pending,game,draft,name){
   if(!model)return '';
   const exchange=nativeExchangeState(pending,draft);
   if(exchange){
-    const own=game.players.find(player=>player.id===pending.actorId)?.goods??{},from=exchange.fromGoodsId,count=own[from]??0;
+    const owner=game.players.find(player=>player.id===pending.actorId),own=owner?.goods??{},from=exchange.fromGoodsId,count=own[from]??0;
+    const clearQuality=owner?.refined?.[from]?`（其中${owner.refined[from]}件精制，退回公栈清标）`:'';
     if(exchange.step==='from')return '先选交出哪一类：该类现有货物必须全部换出。';
     const option=exchange.options[draft.optionIndex];
-    if(!option||option.fromGoodsId!==from)return `交回全部${goodName(from)}${count}件；再选公库中另一类${count}件。`;
+    if(!option||option.fromGoodsId!==from)return `交回全部${goodName(from)}${count}件${clearQuality}；再选公库中另一类${count}件。`;
     const to=option.toGoodsId;
-    return `交回全部${goodName(from)}${count}件 → 换入${goodName(to)}${count}件。你的${goodName(from)}归零、${goodName(to)}${own[to]??0}→${(own[to]??0)+count}件；公库${goodName(to)}剩${(game.bankGoods[to]??0)-count}件。`;
+    return `交回全部${goodName(from)}${count}件${clearQuality} → 换入${goodName(to)}${count}件。你的${goodName(from)}归零、${goodName(to)}${own[to]??0}→${(own[to]??0)+count}件；公库${goodName(to)}剩${(game.bankGoods[to]??0)-count}件。`;
   }
   if(model.type==='goods')return `${model.raw?'保留':'已选'}${goodsTotal(draft.goods)}件：${GOODS.filter(good=>draft.goods?.[good.id]).map(good=>`${good.name}×${draft.goods[good.id]}`).join('、')||'无'}${model.raw?`；${goodsTotal(model.stock)-goodsTotal(draft.goods)}件退公库`:''}`;
   if(model.type==='cards')return `已选${draft.cardIds?.length??0}/${model.minimum===model.maximum?model.minimum:`${model.minimum}～${model.maximum}`}张：${draft.cardIds?.map(cardName).join('、')||'点实际手牌选择'}`;
-  if(model.type==='exchange')return draft.ownGoodId&&draft.otherGoodId?`交出${goodName(draft.ownGoodId)}1件，换取${goodName(draft.otherGoodId)}1件。`:'分别点选双方各一件库存。';
+  if(model.type==='exchange')return draft.ownGoodId&&draft.otherGoodId?`交出${draft.ownRefined?'精制':''}${goodName(draft.ownGoodId)}1件，换取${draft.otherRefined?'精制':''}${goodName(draft.otherGoodId)}1件。`:'分别点选双方各一件库存。';
   if(model.type==='payment-good')return draft.goodId&&model.payments[draft.paymentIndex]?`取得${goodName(draft.goodId)}1件，弃掉${cardName(model.payments[draft.paymentIndex].cardId)}。`:'点选所需货物和自己作为费用的牌。';
   const option=model.options[draft.optionIndex];if(!option)return '材料尚未选定；点物件可预览。';
   if(option.cardId)return `已选${cardName(option.cardId)}`;
   if(option.payment)return `将弃掉${cardName(option.payment.cardId)}${option.payment.zone==='tool'?'（已装道具）':''}`;
-  if(option.goodsId||option.goodId)return `已选${goodName(option.goodsId??option.goodId)}`;
+  if(option.goodsId||option.goodId)return `已选${(option.refined??draft.refined)?'精制':''}${goodName(option.goodsId??option.goodId)}`;
   if(option.fromGoodsId)return `交回${goodName(option.fromGoodsId)}${game.players.find(player=>player.id===pending.actorId)?.goods[option.fromGoodsId]??0}件，换成同数${goodName(option.toGoodsId)}。`;
   if(option.targetId)return `本次借用作用于${name(option.targetId)}`;
   if(option.kind==='silver')return '支付1两，取得搜寻出的货物牌。';
@@ -122,7 +133,7 @@ export function nativeSelectionText(pending,game,draft,name){
 export function renderNativeMaterials({pending,game,selfId,draft,name,canChoose,partIndex,borrowPartIndex,modelOverride=null,renderAction=action,canIncreaseGood=()=>true,optionLabel=null}){
   const chooseAction=(type,label,fields={},disabled=false,className='')=>renderAction(type,label,{...fields,...(partIndex!==undefined?{part:partIndex}:{}),...(borrowPartIndex!==undefined?{borrowPart:borrowPartIndex}:{})},disabled,className);
 function materialCard(card,selected,disabled,type,fields,caption=''){
-  return chooseAction('native-select',`${renderCard(card,{interactive:false})}${caption?`<span class="hy-material-caption">${esc(caption)}</span>`:''}`,{type,...fields},disabled,`hy-material-card${selected?' is-selected':''}`).replace('<button ',`<button data-material-card="${esc(cardKey(card))}" `);
+  return chooseAction('native-select',`${renderCard(card,{interactive:false})}${caption?`<span class="hy-material-caption">${esc(caption)}</span>`:''}`,{type,...fields},disabled,`hy-material-card${selected?' is-selected':''}`).replace('<button ',`<button aria-pressed="${!!selected}" aria-label="${esc(getCard(card.definitionId??card.id).name)}" data-material-card="${esc(cardKey(card))}" `);
 }
 function goodsObject(id,selected,disabled,type,fields,caption=''){
   return chooseAction('native-select',`${renderGoodsIcon(id)}<strong>${goodName(id)}</strong>${caption?`<small>${esc(caption)}</small>`:''}`,{type,...fields},disabled,`hy-material-good${selected?' is-selected':''}`).replace('<button ',`<button data-material-good="${esc(id)}" `);
@@ -136,7 +147,10 @@ function goodsObject(id,selected,disabled,type,fields,caption=''){
       return `<button type="button" class="hy-material-card hy-source-reader" data-material-card="${esc(cardKey(card))}" data-auction-card-index="${index}" data-detail-id="${esc(face.id)}" aria-label="阅读${esc(face.name)}完整牌文">${renderCard(card,{interactive:false})}</button>`;
     }).join('')+GOODS.filter(good=>pending.goods[good.id]).map(good=>`<article class="hy-material-good" data-material-good="${good.id}">${renderGoodsIcon(good.id)}<strong>${good.name} ×${pending.goods[good.id]}</strong><small>整组拍品</small></article>`).join('');
   }
-  if(!model)return (pending.pool??[]).map(card=>`<article class="hy-material-card" data-material-card="${esc(cardKey(card))}">${renderCard(card,{interactive:false})}</article>`).join('');
+  if(!model)return (pending.pool??[]).map(card=>{
+    const id=card.definitionId??card.id;
+    return `<button type="button" class="hy-material-card hy-source-reader" data-material-card="${esc(cardKey(card))}" data-detail-id="${esc(id)}" aria-label="查看${esc(getCard(id).name)}的牌文">${renderCard(card,{interactive:false})}</button>`;
+  }).join('');
   const exchange=nativeExchangeState(pending,draft);
   if(exchange){
     const owner=game.players.find(player=>player.id===pending.actorId),stock=owner?.goods??{};
@@ -159,7 +173,18 @@ function goodsObject(id,selected,disabled,type,fields,caption=''){
     return `<article data-material-good="${good.id}" class="hy-material-quantity${count?' is-selected':''}">${renderGoodsIcon(good.id)}<strong>${good.name}</strong><small>${model.raw?'共':'可选'}${model.stock[good.id]}件</small><div>${chooseAction('native-select','−',{type:'quantity',id:good.id,delta:-1},disabled||count===0)}<b aria-live="polite">${count}</b>${chooseAction('native-select','＋',{type:'quantity',id:good.id,delta:1},disabled||count===model.stock[good.id]||goodsTotal(draft.goods)>=model.maximum||!canIncreaseGood(good.id))}</div></article>`;
   }).join('');
   if(model.type==='cards')return model.cardIds.filter(id=>!owned.has(id)).map(id=>cards.get(id)?materialCard(cards.get(id),draft.cardIds?.includes(id),disabled,'card',{id}):'').join('');
-  if(model.type==='exchange')return `<div class="hy-material-steps" data-material-flow="exchange"><section class="hy-material-step" data-material-step="own"><h3>${esc(model.ownLabel??'交出自己的1件')}</h3><div class="hy-material-options">${model.own.map(id=>goodsObject(id,draft.ownGoodId===id,disabled,'exchange',{field:'ownGoodId',id},`${self?.goods?.[id]??0}件`)).join('')}</div></section><section class="hy-material-step" data-material-step="other"><h3>${esc(model.otherLabel??'换取对方的1件')}</h3><div class="hy-material-options">${model.other.map(id=>goodsObject(id,draft.otherGoodId===id,disabled,'exchange',{field:'otherGoodId',id})).join('')}</div></section></div>`;
+  if(model.type==='exchange'){
+    const peer=game.players.find(player=>player.id===(pending.borrowedTargetId??pending.targetId))
+      ??(game.players.length===2?game.players.find(player=>player.id!==selfId):null);
+    const quality=pending.choice.kind==='tool-exchange'&&self?.refined&&peer?.refined;
+    const bankExchange=pending.choice.kind==='tool-class-exchange'&&self?.refined;
+    const material=(id,field,qualityField,player,showCount)=>{
+      if(!quality&&!(bankExchange&&showCount))return goodsObject(id,draft[field]===id,disabled,'exchange',{field,id},showCount?`${self?.goods?.[id]??0}件`:'');
+      return stockQualityOptions(player,id).map(({count,refined})=>goodsObject(id,draft[field]===id&&draft[qualityField]===refined,
+        disabled,'exchange',{field,id,refined},`${refined?'精制':'普通'}${count}件`)).join('');
+    };
+    return `<div class="hy-material-steps" data-material-flow="exchange"><section class="hy-material-step" data-material-step="own"><h3>${esc(model.ownLabel??'交出自己的1件')}</h3><div class="hy-material-options">${model.own.map(id=>material(id,'ownGoodId','ownRefined',self,true)).join('')}</div></section><section class="hy-material-step" data-material-step="other"><h3>${esc(model.otherLabel??'换取对方的1件')}</h3><div class="hy-material-options">${model.other.map(id=>material(id,'otherGoodId','otherRefined',peer,false)).join('')}</div></section></div>`;
+  }
   if(model.type==='payment-good'){
     const selected=model.payments[draft.paymentIndex],selectedCard=selected?cards.get(selected.cardId):null;
     const ownedPayments=model.payments.filter(payment=>owned.has(payment.cardId));
@@ -169,10 +194,24 @@ function goodsObject(id,selected,disabled,type,fields,caption=''){
     return `<div class="hy-material-steps" data-material-flow="payment-good"><section class="hy-material-step" data-material-step="good"><h3>取得公库的1件货物</h3><div class="hy-material-options">${model.goods.map(id=>goodsObject(id,draft.goodId===id,disabled,'good',{id},`公库${game.bankGoods[id]}件`)).join('')}</div></section><section class="hy-material-step" data-material-step="payment"><h3>支付1张牌</h3><p class="hy-material-payment-note">${esc(paymentNote)}</p>${otherPayments.length?`<div class="hy-material-payment-cards">${otherPayments.map(({payment,index})=>cards.get(payment.cardId)?materialCard(cards.get(payment.cardId),draft.paymentIndex===index,disabled,'payment',{index},'作为费用弃掉'):'').join('')}</div>`:''}</section></div>`;
   }
   const contextual=pending.choice.kind==='tool-search-payment'?(pending.pool??[]).map(card=>`<article class="hy-material-card" data-material-card="${esc(cardKey(card))}">${renderCard(card,{interactive:false})}<span class="hy-material-caption">支付后取得</span></article>`).join(''):['borrow-tool','borrowed-target'].includes(pending.choice.kind)&&pending.target?.definitionId?`<article class="hy-material-card">${renderCard(pending.target,{interactive:false})}<span class="hy-material-caption">刚拆除 · ${pending.choice.kind==='borrowed-target'?'本次借用':'可借用一次'}</span></article>`:'';
-  return contextual+model.options.map((option,index)=>{
+  // Preserve the order of the actual cards on the table and in a private peek.
+  // The rule's option index still identifies the command, even when it was sorted separately.
+  const pool=pending.privatePool??pending.pool;
+  const entries=[...model.options.entries()];
+  const byCard=new Map(entries.map(entry=>[entry[1].cardId,entry]));
+  const ordered=pool?.length===entries.length && pool.every(card=>byCard.has(cardKey(card)))
+    ? pool.map(card=>byCard.get(cardKey(card))) : entries;
+  return contextual+ordered.map(([index,option])=>{
     const selected=draft.optionIndex===index;
-    if(option.cardId||option.payment?.cardId){const id=option.cardId??option.payment.cardId;if(owned.has(id))return '';return cards.get(id)?materialCard(cards.get(id),selected,disabled,'option',{index},option.payment?'作为费用弃掉':'') : '';}
-    if(option.goodsId||option.goodId)return goodsObject(option.goodsId??option.goodId,selected,disabled,'option',{index});
+    if(option.cardId||option.payment?.cardId){const id=option.cardId??option.payment.cardId;if(owned.has(id)&&pending.choice.kind!=='keep-tool')return '';return cards.get(id)?materialCard(cards.get(id),selected,disabled,'option',{index},option.payment?'作为费用弃掉':pending.choice.kind==='keep-tool'?'只保留这件道具':'') : '';}
+    if(option.goodsId||option.goodId){
+      const id=option.goodsId??option.goodId;
+      if(pending.choice.kind==='tool-goods-draw'&&self?.refined){
+        return stockQualityOptions(self,id).map(({count,refined})=>goodsObject(id,selected&&draft.refined===refined,disabled,'option',
+          {index,refined},`${refined?'精制':'普通'}${count}件`)).join('');
+      }
+      return goodsObject(id,selected,disabled,'option',{index},option.refined===undefined?'':option.refined?'精制':'普通');
+    }
     if(option.fromGoodsId)return chooseAction('native-select',`${renderGoodsIcon(option.fromGoodsId)}<span>全部${goodName(option.fromGoodsId)} →</span>${renderGoodsIcon(option.toGoodsId)}<strong>${goodName(option.toGoodsId)}</strong>`,{type:'option',index},disabled,`hy-material-exchange${selected?' is-selected':''}`);
     const label=optionLabel?.(option)??(option.targetId?name(option.targetId):option.kind==='silver'?'支付1两':option.borrow!==undefined?option.borrow?'借用一次':'不借用':option.branch?pending.choice.kind==='benefit-branch'?option.branch==='draw'?'自己抽2张':'自己取得货物':pending.choice.kind==='tribute-branch'?option.branch==='pay'?'付给发动者2两':'让发动者抽2张':option.branch==='draw'?'自己补至5张':'对方弃至3张':'选择此项');
     return chooseAction('native-select',`${option.kind==='silver'||option.branch==='pay'?'<span class="hy-material-coin">两</span>':option.branch==='draw'?renderCardBack():''}<strong>${esc(label)}</strong>`,{type:'option',index},disabled,`hy-material-branch${selected?' is-selected':''}`);
@@ -224,5 +263,8 @@ export function renderNativeWork({pending,game,selfId,draft,step=0,short=false,n
     actions=action('native-confirm','确认选择',{},!canChoose||!ready,'hy-primary-action')+action('native-reset','重新选择',{},!canChoose);
   }
   const borrowedLabel=pending.choice?.kind==='borrowed-target'&&pending.target?.definitionId?` · 借${getCard(pending.target.definitionId).name}`:'';
-  return `<section class="hy-table-work hy-native-work" data-step-kind="${esc(pending.choice?.kind??'auction')}" data-native-step="all" aria-label="来源牌、当前任务与确认"><div class="hy-work-face">${face?`<button type="button" class="hy-source-reader" data-detail-id="${esc(face.id)}" aria-label="阅读${esc(face.name)}完整牌文" title="点来源牌阅读完整牌文">${sourceArt}</button>`:sourceArt}</div><div class="hy-work-copy"><div class="hy-work-heading"><strong>${esc(short&&pending.ownerId===selfId?'你':context.owner)} · ${esc(face?.name??'当前牌')}${esc(borrowedLabel)}</strong><small>${pending.actorId===selfId?'轮到你':esc(name(pending.actorId))} · ${pending.choice?.kind==='retain-goods'?'确定最终库存':pending.auction?'整组竞价':'结算这一步'}</small></div><div class="hy-work-description">${body}</div>${actions?`<div class="hy-work-actions">${actions}</div>`:''}</div></section>`;
+  const visual = face ? `<button type="button" class="hy-source-reader" data-detail-id="${esc(face.id)}" aria-label="阅读${esc(face.name)}完整牌文">${sourceArt}</button>` : sourceArt;
+  return tablePrompt({visual, title:esc(face?.name ?? '当前牌') + esc(borrowedLabel),
+    context:esc(pending.actorId === selfId ? '轮到你' : name(pending.actorId))+' · '+esc(context.owner),
+    description:body, actions, kind:'resolve', step:esc(pending.choice?.kind ?? 'auction')});
 }

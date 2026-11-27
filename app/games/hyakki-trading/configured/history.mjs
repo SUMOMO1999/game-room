@@ -1,14 +1,22 @@
 import {gameProblem} from './validation.mjs';
 import {projectConfiguredPublicMetadata} from './public-metadata.mjs';
 import {openingProblem} from '../opening.mjs';
-import {CONFIGURABLE_RULE_VERSION,getRole} from '../content/expansion-one.mjs';
+import {CONFIGURABLE_RULE_VERSION} from '../content/expansion-one.mjs';
+import {getRole,materialProfileFor} from './material.mjs';
 import {newTurnUsage,newRoleState} from './role-state.mjs';
 import {isConfiguredBase,baseGameProblem,baseToLegacy} from './base.mjs';
 import {projectPublicBattleMetadata} from '../battle-public-metadata.mjs';
 import {getCard} from '../content/definitions.mjs';
+import {PUBLIC_ORDER_HISTORY_VERSION} from '../public-history-v5.mjs';
+import {EXPANSION_TWO_CONTENT_VERSION} from '../content/expansion-two.mjs';
+import {closeExchangeOffers,exchangeHistoryMatches} from './exchange-market.mjs';
 const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 const demand=yes=>{if(!yes)throw new TypeError('扩展权威回合与公开战况不一致。');};
 export const isConfiguredGame=game=>game?.version===3&&game.ruleVersion===CONFIGURABLE_RULE_VERSION&&game.kind!=='hyakki-opening-game';
+function historyEdition(game){
+  return game.contentVersion===EXPANSION_TWO_CONTENT_VERSION
+    ?{schemaVersion:PUBLIC_ORDER_HISTORY_VERSION,modules:game.configuration.modules,orders:game.publicOrders?.slots??[]}:{schemaVersion:4};
+}
 export function projectConfiguredHistory(before,room){
   const game=room?.game,old=before?.game;
   demand(isConfiguredGame(game)&&(isConfiguredBase(game)?baseGameProblem(game):gameProblem(game))===null&&room.matchId===game.matchId);
@@ -50,9 +58,10 @@ export function projectConfiguredHistory(before,room){
     return {...event,silver:event.silver+temporaryFee,price:{printed:buying?card.buySilver:card.sellSilver,bookLayers:old.bookLayers,
       roleAdjustment:0,goodsPrice:event.silver,buyTax:0,temporaryFee}};
   }):game.lastPublicEvents;
+  if(game.exchangeMarket)demand(exchangeHistoryMatches(old?.exchangeMarket,game.exchangeMarket,events,materialProfileFor(game)));
   const mode=events.some(e=>e.type==='match-ended')?'terminal':events.some(e=>e.type==='suspended'&&e.reason==='capacity')?'capacity'
     :old?.lifecycle?.capacity&&!game.lifecycle.capacity?'resume':'normal';
-  return {schemaVersion:4,contentVersion:game.contentVersion,participantIds:game.configuration.participantIds,metadata,
+  return {...historyEdition(game),contentVersion:game.contentVersion,participantIds:game.configuration.participantIds,metadata,
     match:{roomId:room.roomId,matchId:game.matchId,ruleVersion:game.ruleVersion,contentVersion:game.contentVersion,
       startedAt:room.matchStartedAt,participants,configuration:game.configuration},
     sequence:game.publicEventSequence,commitId:`${game.matchId}-${game.publicEventSequence}`,committedAt:game.committedAt,mode,events};
@@ -62,9 +71,11 @@ export function projectConfiguredHistory(before,room){
 export function projectConfiguredDetachedEnd(before,summary){
   const game=before?.game;
   if(!isConfiguredGame(game)||game.status!=='playing'||summary?.matchId!==before.matchId)return null;
-  const events=[{type:'match-ended',reason:summary.reason,winnerSeatId:summary.players.find(p=>p.outcome==='win')?.seatId??null}],
-    after={...game,lastPublicEvents:events};
-  return {schemaVersion:4,contentVersion:game.contentVersion,participantIds:game.configuration.participantIds,
+  const events=[],after={...game,lastPublicEvents:events};
+  if(game.exchangeMarket)after.exchangeMarket=structuredClone(game.exchangeMarket);
+  closeExchangeOffers(after,'ended');
+  events.push({type:'match-ended',reason:summary.reason,winnerSeatId:summary.players.find(p=>p.outcome==='win')?.seatId??null});
+  return {...historyEdition(game),contentVersion:game.contentVersion,participantIds:game.configuration.participantIds,
     metadata:isConfiguredBase(game)?projectPublicBattleMetadata(baseToLegacy(game),baseToLegacy(after)):projectConfiguredPublicMetadata(game,after),
     match:{roomId:before.roomId,matchId:before.matchId,ruleVersion:game.ruleVersion,contentVersion:game.contentVersion,
       startedAt:before.matchStartedAt,participants:before.matchParticipants.map(p=>({seatId:p.playerId,userKey:p.userKey})),configuration:game.configuration},

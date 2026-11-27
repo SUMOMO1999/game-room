@@ -1,5 +1,6 @@
 import {supportsRoomVoice,roomVoicePages} from '../app/platform/room-voice-policy.mjs';
 import http from 'node:http';
+import { createNonameHttp } from './noname-http.mjs';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -9,6 +10,7 @@ import { IdentityFailure } from './auth.mjs';
 import { requestCookie } from './session-service.mjs';
 import { createRuntime } from './runtime.mjs';
 import { chatQuery } from './chat.mjs';
+import { publicLastHandTables } from './games/last-hand/directory.mjs';
 import { createMatchHistory, historyQuery } from './match-history.mjs';
 import { safeReturnTo } from './config.mjs';
 import { createRoomPreview } from './room-preview.mjs';
@@ -27,7 +29,7 @@ import { createHyakkiEventHttp } from './games/hyakki-trading/event-http.mjs';
 
 const root = fileURLToPath(new URL('../app/', import.meta.url));
 const files = new Set(publicAssetPaths());
-const mime = {'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.js':'text/javascript; charset=utf-8','.webmanifest':'application/manifest+json; charset=utf-8','.png':'image/png','.webp':'image/webp','.svg':'image/svg+xml'};
+const mime = {'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.js':'text/javascript; charset=utf-8','.webmanifest':'application/manifest+json; charset=utf-8','.png':'image/png','.webp':'image/webp','.svg':'image/svg+xml','.woff2':'font/woff2','.jpg':'image/jpeg','.glb':'model/gltf-binary','.json':'application/json; charset=utf-8','.txt':'text/plain; charset=utf-8','.md':'text/plain; charset=utf-8'};
 const baseHeaders = {'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' data:; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"};
 const reauthHref='https://agora.sumomoli.com/#account';
 const publicCanvasWatchdogMs=15000,publicCanvasLeaseMs=25000;
@@ -92,7 +94,7 @@ export function createUnifiedServer(options) {
   // Startup recovery may fail temporarily; the committed room outbox remains retryable.
   const historyRecovery=Promise.resolve().then(()=>rooms.flushPendingRecords?.()).catch(()=>{});
   const security={...baseHeaders,...(settings.production?{'Strict-Transport-Security':'max-age=31536000'}:{})};
-  const accountPublic={voiceEnabled:!!voice,voiceKind:voice?.kind??null,mode:settings.mode,loginReady:sessions.loginReady,drawingEnabled,poker414Enabled,hyakkiEnabled,parksEnabled,reauthReady:settings.mode==='cognito',...(settings.mode==='cognito'?{reauthHref}:{})};
+  const accountPublic={lastHandEnabled:runtime.gameRegistry.creationTypes().includes('last-hand'),nonameEnabled:!!options.nonameRuntime,voiceEnabled:!!voice,voiceKind:voice?.kind??null,mode:settings.mode,loginReady:sessions.loginReady,drawingEnabled,poker414Enabled,hyakkiEnabled,parksEnabled,reauthReady:settings.mode==='cognito',...(settings.mode==='cognito'?{reauthHref}:{})};
   const connections=new Set();const buckets=new Map();
   let queuedCanvasBytes=0;
   const maxQueuedCanvasBytes=2*1024*1024;
@@ -111,11 +113,12 @@ export function createUnifiedServer(options) {
   }
   const wordbankRoute = wordbanks && drawingEnabled ? createWordbankHttp({sessions,rooms,wordbanks,ready:wordbankReady,limit,reply,readJson:req=>readJson(req,65536)}) : null;
   const canvasRoute = canvases && drawingEnabled ? createCanvasHttp({sessions,rooms,canvases,limit,reply,readJson}) : null;
-  const voiceProxy=voice?createRoomVoiceProxy({sessions,rooms,voice,entries:()=>entries||makeEntries(settings),origin:options.voiceOrigin??'http://127.0.0.1:7880',limit}):null;
+  const noname=options.nonameRuntime ? createNonameHttp({...options.nonameRuntime,sessions,voice,limit,readJson,reply}) : null;
+  const voiceProxy=voice?createRoomVoiceProxy({sessions,rooms,voice,noname,entries:()=>entries||makeEntries(settings),origin:options.voiceOrigin??'http://127.0.0.1:7880',limit}):null;
   const voiceRoute=voice?createRoomVoiceHttp({sessions,rooms,voice,limit,reply,readJson}):null;
   let scoresRoute = null;
   const hyakkiEventRoute = runtime.hyakkiEvents ? createHyakkiEventHttp({ sessions, rooms, events: runtime.hyakkiEvents, limit, reply }) : null;
-  const unsubscribeInvalidation=sessions.subscribeInvalidation(({sessionId,userKey,status})=>{preview.clearSession(sessionId);voice?.invalidateSession(sessionId);if(userKey) canvases?.invalidateActor(userKey);canvases?.invalidateAuthorization?.(sessionId);for(const connection of connections) if(connection.id===sessionId) connection.end(status);});
+  const unsubscribeInvalidation=sessions.subscribeInvalidation(({sessionId,userKey,status})=>{preview.clearSession(sessionId);noname?.invalidate(sessionId);voice?.invalidateSession(sessionId);if(userKey) canvases?.invalidateActor(userKey);canvases?.invalidateAuthorization?.(sessionId);for(const connection of connections) if(connection.id===sessionId) connection.end(status);});
   const viewSignature=value=>{const {serverTime,...stable}=value || {};return JSON.stringify(stable);};
   async function stream(webRequest,res,code,session,roomId,withPreview=false,setupContext=null,streamGameType=null) {
     if (res.destroyed || res.writableEnded) return;
@@ -400,6 +403,7 @@ export function createUnifiedServer(options) {
       const fence = async (session,guards=[]) => {
         if(identityContext) { await sessions.assertCurrent(session,{context:identityContext,guards});identityContext.assert(); }
       };
+      if(noname && url.pathname.startsWith('/api/noname/') && await noname.route({req,res,url,webRequest,entry,fence}))return;
       if(wordbankRoute && await wait(() => wordbankRoute({req,res,url,webRequest}))) return;
       if(hyakkiEventRoute && await wait(() => hyakkiEventRoute({req,res,url,webRequest}))) return;
       if(/^\/api\/rooms\/[^/]+\/scores(?:\/|$)/.test(url.pathname)) {
@@ -434,6 +438,15 @@ export function createUnifiedServer(options) {
         const session=await sessions.authorize(webRequest,{fresh:true});sessions.checkWrite(webRequest,session);
         const profile=await wait(() => rooms.setProfile(session.userKey,body.nickname));const after=await sessions.authorize(webRequest,{touch:false});await fence(after);
         return reply(res,200,{profile:{nickname:profile.nickname}});
+      }
+      if(url.pathname==='/api/last-hand/tables') {
+        if(req.method!=='GET') return reply(res,405,{error:'请使用 GET。'},{Allow:'GET'});
+        const session=await sessions.authorize(webRequest,{fresh:true});
+        limit('last-hand-list:'+session.userKey,60);
+        const publicRooms=await wait(() => publicLastHandTables(storage,storage.now()));
+        const after=await sessions.authorize(webRequest,{touch:false});
+        await fence(after);
+        return reply(res,200,{publicRooms});
       }
       if(url.pathname==='/api/history') {
         if(req.method!=='GET') return reply(res,405,{error:'请使用 GET。'},{Allow:'GET'});
@@ -485,10 +498,10 @@ export function createUnifiedServer(options) {
           result=await wait(() => write?chat.send(code,session.userKey,body):chat.get(code,session.userKey,chatQuery(url.searchParams)));
         } else if(write) {
           if(create || endpoint==='join') {
-            const fields=create?['name','requestId','gameType','initialConfiguration']:['name','requestId','role'];
+            const fields=create?['name','requestId','gameType','initialConfiguration']:['name','requestId','role','expectedGameType'];
             if(Object.keys(body).some(key=>!fields.includes(key))) throw new RoomError(400,'INVALID_BODY','创建只需要称呼、游戏类型和请求编号；加入使用已有房间的游戏。');
             limit(`${create?'create':'join'}:${session.userKey}`,create?20:40);
-            result=await wait(() => create?rooms.createRoom(session.userKey,body.name,body.requestId,body.gameType,body.initialConfiguration):rooms.joinRoom(code,session.userKey,body.name,body.requestId,body.role));
+            result=await wait(() => create?rooms.createRoom(session.userKey,body.name,body.requestId,body.gameType,body.initialConfiguration):rooms.joinRoom(code,session.userKey,body.name,body.requestId,body.role,body.expectedGameType));
           } else result=await wait(() => rooms.action(code,session.userKey,body,{signal:identityContext?.signal}));
         } else result={view:await wait(() => rooms.getView(code,session.userKey))};
         const after=await sessions.authorize(webRequest,{touch:false});
@@ -528,8 +541,20 @@ export function createUnifiedServer(options) {
       if(!['GET','HEAD'].includes(req.method)) return reply(res,405,{error:'请求方法不支持。'},{Allow:'GET, HEAD'});
       const filename=url.pathname==='/'?'index.html':url.pathname==='/words'?'words.html':url.pathname.slice(1);if(!files.has(filename)) return reply(res,404,{error:'页面不存在。'});
       const body=await readFile(path.join(root,filename));
-      const pageSecurity=voice&&roomVoicePages.includes(filename)?{...security,'Content-Security-Policy':security['Content-Security-Policy'].replace("connect-src 'self';","connect-src 'self' "+entry.origin.replace(/^http/,'ws')+entryPath(entry,'/voice/')+';')}:security;
-      res.writeHead(200,{...pageSecurity,'Content-Type':mime[path.extname(filename)]});res.end(req.method==='HEAD'?undefined:body);
+      let pageSecurity=voice&&roomVoicePages.includes(filename)?{...security,'Content-Security-Policy':security['Content-Security-Policy'].replace("connect-src 'self';","connect-src 'self' "+entry.origin.replace(/^http/,'ws')+entryPath(entry,'/voice/')+';')}:security;
+      if(filename==='games/last-hand/index.html') {
+        pageSecurity={...pageSecurity,'Content-Security-Policy':pageSecurity['Content-Security-Policy'].replace("img-src 'self' data:;", "img-src 'self' data: blob:;"),'Permissions-Policy':'microphone=(self), camera=()'};
+      }
+      if(filename==='noname.html') {
+        if(!noname)return reply(res,404,{error:'入口暂未开放。'});
+        pageSecurity={...pageSecurity,'Content-Security-Policy':pageSecurity['Content-Security-Policy']+'; frame-src '+options.nonameRuntime.gameOrigin,'Permissions-Policy':'microphone=(self), camera=()'};
+      }
+      // These public engine files are named by their build hashes. Reopening a table can reuse
+      // them; mutable entry modules, room snapshots and account replies follow their existing policy.
+      const pinnedMerchantAsset = /^games\/hyakki-trading\/table\/engine\/(?:[A-Z0-9]{8}\.mjs|images\/[A-Z0-9]{8}\.(?:png|jpg|gif|svg|webp))$/.test(filename);
+      const headers = {...pageSecurity, 'Content-Type':mime[path.extname(filename)]};
+      if (pinnedMerchantAsset) headers['Cache-Control'] = 'private, max-age=31536000, immutable';
+      res.writeHead(200,headers);res.end(req.method==='HEAD'?undefined:body);
     } catch(error) {
       const known=error instanceof RoomError || error instanceof IdentityFailure || error instanceof WordbankError;
       reply(res,known?error.status:503,{error:known?(error instanceof WordbankError?error.message:message(error)):'服务暂时无法完成操作。',code:known?error.code:'SERVICE_UNAVAILABLE',
@@ -557,10 +582,10 @@ export function createUnifiedServer(options) {
   },60000);sweep.unref();
   function cleanup() {
     if(!cleanupPromise) {
-      clearInterval(sweep);voiceProxy?.close();unsubscribeInvalidation();for(const connection of [...connections]) connection.end(503);
+      clearInterval(sweep);noname?.close();voiceProxy?.close();unsubscribeInvalidation();for(const connection of [...connections]) connection.end(503);
       preview.close();
       cleanupPromise=sweepFlight.then(()=>historyRecovery).then(async()=>{
-        try{await voice?.close();}finally{await canvases?.close();
+        try{try{await options.nonameRuntime?.stop();}finally{await voice?.close();}}finally{await canvases?.close();
         try {await chat?.close();} finally {await rooms.close();}}
       }).finally(async()=>{try {await runtime.identityRuntime?.close();} finally {storage?.close();}});
     }
@@ -569,7 +594,7 @@ export function createUnifiedServer(options) {
   server.on('close',()=>{cleanup().catch(()=>{});});
   server.requestTimeout=10000;server.headersTimeout=10000;server.keepAliveTimeout=5000;
   server.shutdown=async()=>{
-    voiceProxy?.close();
+    noname?.close();voiceProxy?.close();
     for(const connection of [...connections]) connection.end(503);server.closeIdleConnections();
     try {await new Promise((resolve,reject)=>server.close(error=>error && error.code!=='ERR_SERVER_NOT_RUNNING'?reject(error):resolve()));}
     finally {await cleanup();}

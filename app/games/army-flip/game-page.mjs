@@ -1,6 +1,6 @@
 import {withRoomVoice} from '../../platform/room-voice-session.mjs';
 import { mountRoomAudioControls } from '../../platform/room-audio-controls.mjs';
-import { mountGameViewport, mountCanvasPin } from '../../platform/room-viewport.mjs';
+import { roomViewportFrame, mountGameViewport, mountCanvasPin } from '../../platform/room-viewport.mjs';
 import { createRoomClock, renderRoomClock } from '../../platform/room-clock.mjs';
 import { createRoomSession, createRoomExit } from '../../platform/room-session.mjs';
 import { accountState, accountGeneration, onAccountChange, loadAccount, watchAccountLifecycle, logoutAccount, loginHref, reauthenticationHref } from '../../account-client.mjs';
@@ -11,7 +11,6 @@ import { gameErrorMessage, roomExitExplanation, orderedRoomPlayers } from '../..
 import { roomHref } from '../../game-routing.mjs';
 import { BOARD_CELLS, ROAD_EDGES, RAIL_EDGES } from './board.mjs';
 import { armySideLabel, armyAssignmentText, armyBoardGeometry, armyPoint, armyCellPosition, fitArmyBoard, armyCellLabel, armyTargets, armyIntent, armyTransition, armyResultText, armyLastActionText, armyUsesFlagTransport, armyFlagMarks, armyPickups, armyRulePages, armyRuleModeLabel } from './presentation.mjs';
-import { gameViewport } from '../../game-viewport.mjs';
 import { mountArmyMotion } from './motion-ui.mjs';
 
 const RoomClient=withRoomVoice(BaseRoomClient,{gameType:'army-flip',getAccount:accountState,document,window});
@@ -55,7 +54,7 @@ const canvasPin = mountCanvasPin({ document, pinOnFocus: true,
   containers: [document.querySelector('.shell'), document.querySelector('main'), $('room-play'), $('room-players'), $('army-board-stage')] });
 function syncViewport() {
   canvasPin.pin();
-  const viewport = gameViewport({ width:window.innerWidth, height:window.innerHeight, visual:window.visualViewport });
+  const viewport = roomViewportFrame(window,document);
   document.body.style.setProperty('--army-viewport-height', `${viewport.height}px`);
   document.body.style.setProperty('--army-viewport-width', `${viewport.width}px`);
   const geometry = armyBoardGeometry(viewport);
@@ -372,7 +371,7 @@ function bootRoom(verifiedState) {
 }
 
 mountRoomAudioControls({ audio, document });
-mountGameViewport({ window, document, sync: syncViewport });
+mountGameViewport({ coherent:true, window, document, sync: syncViewport });
 $('army-cancel').addEventListener('click',()=>{if(!selected)return;selected=null;renderBoard();feedback(turnText());audio.play('undo',{gesture:true});});
 $('show-rules').addEventListener('click',()=>{renderRules();$('rules-dialog').showModal();});
 for(const id of ['close-rules','start-playing'])$(id).addEventListener('click',()=>$('rules-dialog').close());

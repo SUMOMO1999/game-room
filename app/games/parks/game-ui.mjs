@@ -9,6 +9,7 @@ import { mountGameAppearancePicker } from '../../platform/game-appearance.mjs';
 import { mountGameStageFit } from '../../platform/game-stage-fit.mjs';
 import { createObjectMotion } from '../../platform/object-motion.mjs';
 import { roomChatMarkup } from '../../room-chat.mjs';
+import { mountFixedGameDocument } from '../../game-viewport.mjs';
 
 const tokens = new Map(CANTEEN_TOKENS.map(value => [value.id, value.definitionId]));
 const definition = id => { try { return getDefinition(tokens.get(id) || id); } catch { return null; } };
@@ -84,6 +85,7 @@ export function mountParksPage({ root, practice = false, tutorial = false, onAct
     onFit(value) { motion.cancel(); $('pg-too-small').hidden = !value.unsupported; orient(); } });
   function orient() { if (!room && $('pg-content').hidden) return; const portrait = win.innerHeight > win.innerWidth; $('pg-rotate').hidden = !portrait; $('pg-content').inert = portrait || !$('pg-too-small').hidden; }
   listen(win, 'resize', orient); orient();
+  listeners.push(mountFixedGameDocument(win));
   function feedback(text) { if (!closed) $('pg-feedback').textContent = String(text || ''); }
   function hint(fields) { if (locked() || !fields) { feedback('当前没有需要你选择的动作。'); return false; } const action = legal().find(value => JSON.stringify(value.fields) === JSON.stringify(fields));
     if (!action || !draft.select(action, room)) return false; hikerId = action.fields.hikerId || hikerId; source = action.opportunityId; selectedTarget = action.fields.targetId || null; renderTask(room.game); renderTrail(room.game); feedback('这是一个合法建议。看清费用与结果后，由你确认或取消。'); return true; }

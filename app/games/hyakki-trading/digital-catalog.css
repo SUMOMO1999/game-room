@@ -4,7 +4,7 @@ body:has(.yousei-catalog) { margin: 0; background: var(--theme-base, #173a31); c
 .yousei-catalog { max-width: 1440px; margin: auto; padding: 32px 28px max(32px, env(safe-area-inset-bottom)); }
 .yousei-catalog__heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
 .yousei-catalog__eyebrow { margin: 0; color: var(--theme-accent, #e4ce9b); font-size: 14px; letter-spacing: .08em; }
-.yousei-catalog h1 { margin: 8px 0; font-size: clamp(28px, 5vw, 42px); letter-spacing: .06em; }
+.yousei-catalog h1 { margin: 8px 0; font-size: clamp(28px, calc(5 * var(--room-vw,1vw)), 42px); letter-spacing: .06em; }
 .yousei-catalog h2 { margin: 0 0 12px; font-size: 21px; }
 .yousei-catalog p { line-height: 1.7; }
 .yousei-catalog__heading p:last-child { margin: 0; color: var(--theme-muted, #ccd8c8); }
@@ -33,13 +33,21 @@ body:has(.yousei-catalog) { margin: 0; background: var(--theme-base, #173a31); c
 .yousei-catalog__states > div:last-child { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 18px; }
 .yousei-catalog__states p { max-width: 440px; color: var(--theme-muted, #ccd8c8); }
 .yousei-catalog__footer { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--theme-border, #728b77); color: var(--theme-muted, #ccd8c8); font-size: 14px; line-height: 1.7; }
-.yousei-catalog__dialog { width: min(820px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); padding: 0; border: 1px solid var(--theme-border, #728b77); border-radius: 16px; background: var(--theme-surface, #234b3f); color: var(--theme-ink, #f7f4e8); overscroll-behavior: contain; }
+.yousei-catalog__dialog { width: min(820px, calc(calc(100 * var(--room-vw,1vw)) - 24px)); max-height: calc(100dvh - 24px); padding: 0; border: 1px solid var(--theme-border, #728b77); border-radius: 16px; background: var(--theme-surface, #234b3f); color: var(--theme-ink, #f7f4e8); overscroll-behavior: contain; }
 .yousei-catalog__dialog::backdrop { background: #071521ba; }
 .yousei-catalog__dialog > header { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--theme-border, #728b77); background: var(--theme-surface, #234b3f); }
 .yousei-catalog__dialog > header h2 { margin: 0; font-size: 18px; }
 .yousei-catalog__dialog > header button { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 44px; height: 44px; padding: 0; border: 1px solid var(--theme-border, #728b77); border-radius: 10px; background: var(--theme-control, #294e42); color: inherit; font: 28px/1 system-ui, sans-serif; cursor: pointer; }
 .yousei-catalog__dialog > [data-catalog-detail] { padding: 22px; }
 @media (max-width: 780px) {
+  .yousei-catalog:where(:not(:root[data-room-viewport] *)) { padding: 22px 16px 32px; }
+  .yousei-catalog__intro:where(:not(:root[data-room-viewport] *)) { grid-template-columns: minmax(0, 1fr); gap: 20px; padding: 20px; }
+  .yousei-catalog__stock:where(:not(:root[data-room-viewport] *)) { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .yousei-catalog__stock > span:where(:not(:root[data-room-viewport] *)) { flex-direction: column; }
+  .yousei-catalog__states:where(:not(:root[data-room-viewport] *)) { grid-template-columns: minmax(0, 1fr); }
+  .yousei-catalog__states p:where(:not(:root[data-room-viewport] *)) { max-width: none; }
+}
+@container room-viewport (max-width: 780px) {
   .yousei-catalog { padding: 22px 16px 32px; }
   .yousei-catalog__intro { grid-template-columns: minmax(0, 1fr); gap: 20px; padding: 20px; }
   .yousei-catalog__stock { grid-template-columns: repeat(6, minmax(0, 1fr)); }
@@ -48,6 +56,15 @@ body:has(.yousei-catalog) { margin: 0; background: var(--theme-base, #173a31); c
   .yousei-catalog__states p { max-width: none; }
 }
 @media (max-width: 440px) {
+  .yousei-catalog:where(:not(:root[data-room-viewport] *)) { padding-inline: 14px; }
+  .yousei-catalog__heading:where(:not(:root[data-room-viewport] *)) { align-items: start; flex-direction: column; gap: 16px; }
+  .yousei-catalog__filters:where(:not(:root[data-room-viewport] *)) { gap: 12px; }
+  .yousei-catalog__filters label:first-child:where(:not(:root[data-room-viewport] *)) { flex-basis: 100%; }
+  .yousei-catalog__filters label:not(:first-child):where(:not(:root[data-room-viewport] *)) { flex: 1; min-width: 140px; }
+  .yousei-catalog__cards:where(:not(:root[data-room-viewport] *)) { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 12px; }
+  .yousei-catalog__dialog > [data-catalog-detail]:where(:not(:root[data-room-viewport] *)) { padding: 18px; }
+}
+@container room-viewport (max-width: 440px) {
   .yousei-catalog { padding-inline: 14px; }
   .yousei-catalog__heading { align-items: start; flex-direction: column; gap: 16px; }
   .yousei-catalog__filters { gap: 12px; }
@@ -77,7 +94,7 @@ dialog.appearance-dialog,html[data-appearance] dialog.appearance-dialog{
   --ui-accent:var(--plum);--ui-on-accent:var(--appearance-on-accent);
   --ui-input-bg:var(--appearance-control-surface);--ui-radius:var(--appearance-control-radius);
   --ui-control-shadow:var(--appearance-control-shadow);--ui-inset:var(--appearance-control-inset);
-  width:min(640px,calc(100vw - 32px));max-width:none;
+  width:min(640px,calc(calc(100 * var(--room-vw,1vw)) - 32px));max-width:none;
   max-height:calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   margin:auto;padding:0;overflow:hidden;box-sizing:border-box;
   border:1px solid var(--line);border-radius:14px;
@@ -185,10 +202,22 @@ html[data-appearance=soft] .appearance-dialog .appearance-done:active{box-shadow
   html[data-appearance=glass] .appearance-dialog::backdrop{-webkit-backdrop-filter:none;backdrop-filter:none}
 }
 @media(max-width:520px){
+  .appearance-dialog .appearance-palettes:where(:not(:root[data-room-viewport] *)){grid-template-columns:repeat(3,minmax(0,1fr))}
+  .appearance-dialog .appearance-palette:where(:not(:root[data-room-viewport] *)){min-height:68px}
+}
+@container room-viewport (max-width:520px){
   .appearance-dialog .appearance-palettes{grid-template-columns:repeat(3,minmax(0,1fr))}
   .appearance-dialog .appearance-palette{min-height:68px}
 }
 @media(max-width:400px){
+  .appearance-dialog .appearance-header:where(:not(:root[data-room-viewport] *)),.appearance-dialog .appearance-body:where(:not(:root[data-room-viewport] *)),.appearance-dialog .appearance-actions:where(:not(:root[data-room-viewport] *)){padding-left:16px;padding-right:16px}
+  .appearance-dialog .appearance-backgrounds:where(:not(:root[data-room-viewport] *)){grid-template-columns:repeat(2,minmax(0,1fr))}
+  .appearance-dialog .appearance-colors:where(:not(:root[data-room-viewport] *)){grid-template-columns:minmax(0,1fr)}
+  .appearance-dialog .appearance-choice:where(:not(:root[data-room-viewport] *)){gap:6px;font-size:13px}
+  .appearance-dialog .appearance-style-swatch:where(:not(:root[data-room-viewport] *)){flex-basis:20px;width:20px;height:24px}
+  .appearance-dialog .appearance-actions button:where(:not(:root[data-room-viewport] *)){padding-left:10px;padding-right:10px}
+}
+@container room-viewport (max-width:400px){
   .appearance-dialog .appearance-header,.appearance-dialog .appearance-body,.appearance-dialog .appearance-actions{padding-left:16px;padding-right:16px}
   .appearance-dialog .appearance-backgrounds{grid-template-columns:repeat(2,minmax(0,1fr))}
   .appearance-dialog .appearance-colors{grid-template-columns:minmax(0,1fr)}
@@ -197,6 +226,11 @@ html[data-appearance=soft] .appearance-dialog .appearance-done:active{box-shadow
   .appearance-dialog .appearance-actions button{padding-left:10px;padding-right:10px}
 }
 @media(max-height:560px){
+  .appearance-dialog .appearance-header:where(:not(:root[data-room-viewport] *)){padding-top:10px;padding-bottom:10px}
+  .appearance-dialog .appearance-body:where(:not(:root[data-room-viewport] *)){padding-top:14px;padding-bottom:14px}
+  .appearance-dialog .appearance-actions:where(:not(:root[data-room-viewport] *)){padding-top:10px;padding-bottom:10px}
+}
+@container room-viewport (max-height:560px){
   .appearance-dialog .appearance-header{padding-top:10px;padding-bottom:10px}
   .appearance-dialog .appearance-body{padding-top:14px;padding-bottom:14px}
   .appearance-dialog .appearance-actions{padding-top:10px;padding-bottom:10px}
@@ -965,6 +999,41 @@ html[data-appearance=soft] .appearance-dialog .appearance-done:active{box-shadow
   }
 
   @media (orientation:landscape) and (max-height:540px) {
+  html[data-game-appearance] :where([id=p414-clear]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):where(:not(:root[data-room-viewport] *)) {
+    --game-clear-current-surface:var(--game-button-surface)!important;
+    background-color:var(--game-clear-current-surface)!important;
+    background-image:var(--game-button-image)!important;
+    color:var(--appearance-ink)!important;
+    border-color:var(--game-button-line)!important;
+    box-shadow:var(--game-button-shadow)!important;
+  }
+  @media (hover:hover) {
+  html[data-game-appearance] :where([id=p414-clear]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):hover:where(:not(:disabled)):where(:not(:root[data-room-viewport] *)) {
+    --game-clear-current-surface:var(--game-button-hover-surface)!important;
+    background-color:var(--game-clear-current-surface)!important;
+    color:var(--appearance-ink)!important;
+    border-color:var(--game-button-hover-line)!important;
+  }
+  }
+  html[data-game-appearance] :where([id=p414-clear]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):active:where(:not(:disabled)):where(:not(:root[data-room-viewport] *)) {
+    background-color:var(--game-clear-current-surface)!important;
+    color:var(--appearance-ink)!important;
+    box-shadow:var(--game-button-active-shadow)!important;
+  }
+  html[data-game-appearance=paper] :where([id=p414-clear]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):active:where(:not(:disabled)):where(:not(:root[data-room-viewport] *)) {
+    background-color:var(--game-button-active-surface)!important;
+    border-color:var(--game-button-active-line)!important;
+  }
+  html[data-game-appearance] :where([id=p414-clear]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):disabled:where(:not(:root[data-room-viewport] *)) {
+    background-color:var(--game-button-disabled-surface)!important;
+    background-image:none!important;
+    color:var(--game-button-disabled-ink)!important;
+    border-color:var(--game-button-disabled-line)!important;
+    box-shadow:var(--game-button-disabled-shadow)!important;
+  }
+  }
+
+  @container room-viewport (orientation:landscape) and (max-height:540px) {
   html[data-game-appearance] :where([id=p414-clear]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
     --game-clear-current-surface:var(--game-button-surface)!important;
     background-color:var(--game-clear-current-surface)!important;

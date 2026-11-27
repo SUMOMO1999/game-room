@@ -1,0 +1,2 @@
+/*! Noname v1.11.6.1, GPL-3.0. See noname-license.html for license and source. */
+import{a,b,c,d,e}from"./TPGXRPLJ.mjs";import"./3FK7PQOD.mjs";import"./PRDVFZGU.mjs";import"./EW653G7N.mjs";import"./BWS4DK36.mjs";import"./LKIF4YDK.mjs";import"./4CZMQUGA.mjs";import"./WGEVGE7S.mjs";import"./36TINACD.mjs";import"./RTAPJ4OR.mjs";import"./PVLPO2V3.mjs";import"./SMJJDMMS.mjs";export{e as autoCloseTags,d as html,a as htmlCompletionSource,b as htmlCompletionSourceWith,c as htmlLanguage};

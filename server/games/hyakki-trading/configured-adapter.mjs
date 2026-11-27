@@ -1,4 +1,5 @@
 /** Version-dispatching adapter for frozen legacy, configurable base and expansion games. */
+import {closeExchangeOffers,exchangeTermsProblem,validExchangeOfferReference} from '../../../app/games/hyakki-trading/configured/exchange-market.mjs';
 import { randomInt } from 'node:crypto';
 import * as core from '../../../app/games/hyakki-trading/configured/rules.mjs';
 import { privateView, spectatorView } from '../../../app/games/hyakki-trading/configured/view.mjs';
@@ -8,22 +9,30 @@ import { recommendedGoodsPerType } from '../../../app/games/hyakki-trading/conte
 import { currentDecision } from '../../../app/games/hyakki-trading/decision.mjs';
 import { goodsPerTypeOf } from '../../../app/games/hyakki-trading/configured/model.mjs';
 import { transitionHyakkiLifecycle, hyakkiCommonActionProblem, changeHyakkiPause,
-  hyakkiGameClock, hyakkiRetentionDeadline } from '../../../app/games/hyakki-trading/lifecycle.mjs';
+  hyakkiGameClock, hyakkiRetentionDeadline, offlineHyakkiPlayers, OFFLINE_DEFAULT_GRACE_MS } from '../../../app/games/hyakki-trading/lifecycle.mjs';
 import { problem } from '../adapter-contract.mjs';
 import {isOpeningHistoryGame} from './opening-history.mjs';
 import {createHyakkiOpeningContractAdapter} from './opening-contract-adapter.mjs';
-import {waitingConfiguration,updateWaitingConfiguration} from '../../../app/games/hyakki-trading/opening-configuration.mjs';
+import {waitingConfiguration,updateWaitingConfiguration,sameOpeningConfigurationValue} from '../../../app/games/hyakki-trading/opening-configuration.mjs';
 import {CONFIGURABLE_RULE_VERSION} from '../../../app/games/hyakki-trading/content/expansion-one.mjs';
+import {EXPANSION_TWO_PACK_ID,EXPANSION_TWO_CONTENT_VERSION,composeTradeRoutes} from '../../../app/games/hyakki-trading/content/expansion-two.mjs';
+import {validOrderDeliveryInput} from '../../../app/games/hyakki-trading/configured/order-actions.mjs';
 import {createHyakkiAdapter} from './adapter.mjs';
 import {isConfiguredBase,baseToLegacy,wrapBase,baseGameProblem,createConfiguredBase,baseAction,baseTimeout,basePrivateView,baseSpectatorView} from '../../../app/games/hyakki-trading/configured/base.mjs';
 
 const gameType = 'hyakki-trading';
 const clone = value => structuredClone(value);
 const fences = ['matchId', 'turnId', 'effectId', 'decisionId'];
+const orderExtras=Object.freeze({'order-deliver':['position','generation','selection'],'order-replace':['position','generation']});
+const exchangeExtras=Object.freeze({'offer-post':['provide','receive'],'offer-edit':['offerId','generation','receive'],
+  'offer-withdraw':['offerId','generation'],'offer-accept':['offerId','generation','cardId']});
 const actionExtras = Object.freeze({ peek: ['inspect'], 'keep-peek': [], 'discard-peek': [], 'finish-draw': [], 'end-turn': [],
-  buy: ['cardId','materials'], sell: ['cardId','materials'], 'use-role':['params'], 'buy-stall': ['cardId'], 'play-character': ['cardId', 'params'],
+  buy: ['cardId','materials'], sell: ['cardId','materials','refinedMaterials'], 'refine-stock':['ordinary'],
+  'use-role':['params'], 'buy-stall': ['cardId'], 'play-character': ['cardId', 'params'],
   'install-tool': ['cardId', 'replaceCardId'], 'activate-tool': ['cardId', 'params'], respond: ['cardId'],
-  'decline-response': [], 'choose-effect': ['selection'], bid: ['amount'], 'pass-bid': [] });
+  'decline-response': [], 'choose-effect': ['selection'], bid: ['amount'], 'pass-bid': [], ...orderExtras,...exchangeExtras });
+const orderAction=type=>Object.hasOwn(orderExtras,type);
+const exchangeAction=type=>Object.hasOwn(exchangeExtras,type);
 const token = value => typeof value === 'string' && value.length > 0 && value.length <= 180 && !/\p{Cc}/u.test(value);
 const modeOf = config => config.goodsSupplyMode ?? 'custom';
 const waitingCount = room => Math.max(2, room.players?.length ?? 2);
@@ -45,7 +54,20 @@ function actionProblem(action, profile = materialProfile(PLAYER_COUNT_CONTENT_VE
     return problem(400, 'INVALID_ACTION', '操作需要当前对局、回合与有效请求编号。');
   }
   if(action.inspect!==undefined&&typeof action.inspect!=='boolean'||action.materials!==undefined&&(!plainObject(action.materials)||!jsonInput(action.materials,profile)))return problem(400,'INVALID_ACTION','具体货物或摸牌选项无效。');
-  if (actionExtras[action.type].includes('cardId') && !reference(action.cardId, profile)
+  const refining=profile.modules?.refining===true;
+  const stockVector=value=>plainObject(value)&&jsonInput(value,profile);
+  if(action.type==='refine-stock'&&(!refining||!stockVector(action.ordinary))
+    ||action.refinedMaterials!==undefined&&(!refining||!stockVector(action.refinedMaterials)))return problem(400,'INVALID_ACTION','请选择有效的精制材料。');
+  if(orderAction(action.type)&&(!profile.modules?.orders||!integer(action.position,0,2)||!integer(action.generation,1)
+    ||action.type==='order-deliver'&&!validOrderDeliveryInput(action.selection,{refining})))return problem(400,'INVALID_ACTION','请选择有效的公单位及货物。');
+  if(exchangeAction(action.type)){
+    if(!profile.modules?.exchange||action.type!=='offer-post'&&!validExchangeOfferReference(action)
+      ||action.type==='offer-post'&&(action.provide===undefined||exchangeTermsProblem(action.provide,action.receive,profile))
+      ||action.type==='offer-edit'&&exchangeTermsProblem(undefined,action.receive,profile)
+      ||action.type==='offer-accept'&&action.cardId!==undefined&&!validCopy(action.cardId,profile))
+      return problem(400,'INVALID_ACTION','请选择有效的商会报价和资产。');
+  }
+  if (action.type!=='offer-accept'&&actionExtras[action.type].includes('cardId') && !reference(action.cardId, profile)
       || action.replaceCardId !== undefined && !reference(action.replaceCardId, profile)
       || action.params !== undefined && (!plainObject(action.params) || !jsonInput(action.params, profile))
       || action.type === 'choose-effect' && !jsonInput(action.selection, profile)
@@ -72,7 +94,17 @@ function record(state, events, now) {
 function wealth(state) { return state.players.map(player => ({ playerId: player.id, silver: player.silver })); }
 function lifecycle(game, context) {
   const change = transitionHyakkiLifecycle(game, context);
-  if (!change.ok || !change.changed || change.checkpointOnly) return change;
+  if (!change.ok) return change;
+  const offline = offlineHyakkiPlayers(change.state, context.presence, context.now, OFFLINE_DEFAULT_GRACE_MS);
+  const actor = currentDecision(change.state)?.actorId ?? change.state.turnPlayerId;
+  if (['presence', 'disconnected'].includes(context.reason) && change.roomPhase === 'playing' && offline.includes(actor)) {
+    const settled = core.applyOfflineDefaults(change.state, offline, { now: context.now, randomInt: context.serverRandomInt ?? randomInt });
+    if (!settled.ok) return settled;
+    return { ...change, ...settled, changed: true, checkpointOnly: false,
+      roomPhase: settled.state.status, terminal: settled.state.status !== 'playing',
+      ...(settled.state.status !== 'playing' ? { status: settled.state.status === 'finished' ? 'completed' : 'aborted' } : {}) };
+  }
+  if (!change.changed || change.checkpointOnly) return change;
   if (change.terminal) {
     change.state.result.wealth = wealth(change.state);
     if (change.state.pending?.data.auction) change.state.pending.data.auction.released = true;
@@ -82,6 +114,11 @@ function lifecycle(game, context) {
     : change.state.lifecycle.capacity && !game.lifecycle.capacity ? [{ type: 'suspended', reason: 'capacity' }]
       : change.roomPhase === 'playing' || game.lifecycle.capacity && !change.state.lifecycle.capacity ? [{ type: 'resumed' }]
         : [{ type: 'suspended', reason: context.reason === 'server-recovery' ? 'server-recovery' : 'disconnected' }];
+  if(change.terminal){
+    const closures=[];
+    closeExchangeOffers(change.state,'ended',closures);
+    events.unshift(...closures);
+  }
   record(change.state, events, context.now);
   const issue = gameProblem(change.state);
   return issue ? { ok: false, error: issue, code: 'INVALID_GAME_STATE' } : change;
@@ -92,6 +129,8 @@ function roomStateProblem(room, hasRoles) {
     || effectiveGoods(room) !== goodsPerTypeOf(room.hyakkiConfig) ? '等待房间状态无效。' : null;
   const issue = gameProblem(room.game); if (issue) return issue;
   const game = room.game, ids = game.players.map(player => player.id);
+  if(game.contentVersion===EXPANSION_TWO_CONTENT_VERSION&&Object.keys(room.hyakkiConfig).some(key=>
+    !sameOpeningConfigurationValue(key,game.configuration[key],room.hyakkiConfig[key])))return '商路风云冻结配置不一致。';
   if (game.matchId !== room.matchId || room.matchStartedAt !== game.lifecycle.startedAt || game.actionLimit !== room.hyakkiConfig.actionLimit
       || goodsPerTypeOf(game) !== goodsPerTypeOf(room.hyakkiConfig) || effectiveGoods(room) !== goodsPerTypeOf(game)
       || !Array.isArray(room.matchParticipants) || room.matchParticipants.length !== ids.length
@@ -111,10 +150,13 @@ function roomStateProblem(room, hasRoles) {
   return null;
 }
 
-function createOrdinaryConfiguredAdapter() {
-  return Object.freeze({ actionTypes: Object.freeze(Object.keys(actionExtras)),
-    actionFields: type => Object.hasOwn(actionExtras, type) ? [...fences, ...actionExtras[type]] : null,
-    validateAction: action => Object.hasOwn(actionExtras, action?.type) ? actionProblem(action) : null,
+function createOrdinaryConfiguredAdapter(modules) {
+  const types=Object.keys(actionExtras).filter(type=>(modules.orders||!orderAction(type))
+    &&(modules.refining||type!=='refine-stock')&&(modules.exchange||!exchangeAction(type)));
+  const transportProfile=Object.values(modules).some(Boolean)?composeTradeRoutes(6,modules):materialProfile();
+  return Object.freeze({ actionTypes: Object.freeze(types),
+    actionFields: type => types.includes(type) ? [...fences, ...actionExtras[type].filter(field=>modules.refining||field!=='refinedMaterials')] : null,
+    validateAction: action => types.includes(action?.type) ? actionProblem(action,transportProfile) : null,
     applyGameAction(game, actorId, action, context) {
       const invalid = actionProblem(action, materialProfileFor(game)); if (invalid) return fail(invalid);
       try { return core.applyGameAction(game, actorId, domainAction(action), { now: context.now, randomInt: context.serverRandomInt ?? randomInt }); }
@@ -147,12 +189,28 @@ function createOrdinaryConfiguredAdapter() {
 
 const configured=game=>game?.version===3&&game.ruleVersion===CONFIGURABLE_RULE_VERSION&&!isOpeningHistoryGame(game);
 /** One registry slot routes each match by its frozen rule and material versions. */
-export function createConfiguredHyakkiAdapter(){
-  const ordinary=createOrdinaryConfiguredAdapter(),opening=createHyakkiOpeningContractAdapter({initializeGame:core.fromOpening}),legacy=createHyakkiAdapter();
+export function createConfiguredHyakkiAdapter({tradeRoutesOrders=false,tradeRoutesRefining=false,tradeRoutesExchange=false,allowNewTradeRoutes=true}={}){
+  const enabledModules={orders:tradeRoutesOrders,refining:tradeRoutesRefining,exchange:tradeRoutesExchange};
+  const ordinary=createOrdinaryConfiguredAdapter(enabledModules),legacy=createHyakkiAdapter();
+  const tradeRoutesAvailable=Object.values(enabledModules).some(Boolean);
+  const newTradeRoutes=tradeRoutesAvailable&&allowNewTradeRoutes;
+  const fullTradeRoutes=newTradeRoutes&&Object.values(enabledModules).every(Boolean);
+  const resumeOnly=room=>!newTradeRoutes&&tradeRoutesAvailable&&room.phase==='waiting'
+    &&room.hyakkiConfig.packId===EXPANSION_TWO_PACK_ID;
+  const packUnavailable=()=>problem(409,'PACK_UNAVAILABLE',tradeRoutesAvailable
+    ?'商路风云暂只可续玩已有对局。请改用其他牌组开局。':'商路风云尚未开放。');
+  const opening=createHyakkiOpeningContractAdapter({initializeGame:core.fromOpening,tradeRoutesContract:tradeRoutesAvailable});
+  const availableModules=modules=>modules&&Object.values(modules).some(Boolean)
+    &&Object.entries(modules).every(([key,enabled])=>!enabled||enabledModules[key]);
+  const unavailable=game=>game?.contentVersion===EXPANSION_TWO_CONTENT_VERSION
+    &&!availableModules((game.configuration??game.opening?.configuration)?.modules);
   const oldRoom=room=>({...room,game:baseToLegacy(room.game),hyakkiConfig:{actionLimit:room.hyakkiConfig.actionLimit,
     goodsPerType:room.hyakkiConfig.goodsPerType,goodsSupplyMode:room.hyakkiConfig.goodsSupplyMode}});
   const wrapped=(result,game)=>result.ok&&result.state?{...result,state:wrapBase(result.state,game.configuration)}:result;
   return Object.freeze({...opening,
+    roomDefaults:fullTradeRoutes?()=>({turnClock:null,hyakkiConfig:waitingConfiguration(
+      {packId:EXPANSION_TWO_PACK_ID},{playerCount:2,newRoom:true})}):opening.roomDefaults,
+    presenceBlocksActions: () => false,
     actionTypes:Object.freeze([...new Set([...opening.actionTypes,...ordinary.actionTypes])]),
     actionFields:type=>['confirm-role','cancel-opening'].includes(type)?opening.actionFields(type):ordinary.actionFields(type),
     validateAction(action){
@@ -172,8 +230,15 @@ export function createConfiguredHyakkiAdapter(){
     createGame:(players,options)=>options.baseConfiguration?createConfiguredBase(players.map(p=>p.id),
       {...options,configuration:options.baseConfiguration}):opening.createGame(players,options),
     configure(room,action){
+      if(action.hyakkiConfig?.packId===EXPANSION_TWO_PACK_ID&&!newTradeRoutes)return {problem:packUnavailable()};
       if(!Object.hasOwn(room.hyakkiConfig,'packId')&&!Object.hasOwn(action.hyakkiConfig??{},'packId')&&!Object.hasOwn(action.hyakkiConfig??{},'closingTarget'))return legacy.configure(room,action);
-      try{return {updates:{hyakkiConfig:updateWaitingConfiguration(room.hyakkiConfig,action.hyakkiConfig,Math.max(2,room.players.length)).configuration}};}
+      try{
+        const configuration=updateWaitingConfiguration(room.hyakkiConfig,action.hyakkiConfig,Math.max(2,room.players.length)).configuration;
+        if(configuration.packId===EXPANSION_TWO_PACK_ID&&!newTradeRoutes)return {problem:packUnavailable()};
+        if(configuration.packId===EXPANSION_TWO_PACK_ID&&!availableModules(configuration.modules))
+          return {problem:problem(409,'PACK_UNAVAILABLE','当前房间未启用所选模块。')};
+        return {updates:{hyakkiConfig:configuration}};
+      }
       catch(error){if(error instanceof RangeError)return {problem:problem(400,'INVALID_CONFIG',error.message)};throw error;}
     },
     applyGameAction(game,actor,action,context){
@@ -182,18 +247,27 @@ export function createConfiguredHyakkiAdapter(){
     },
     privateView:(game,...args)=>isConfiguredBase(game)?basePrivateView(game,...args):configured(game)?ordinary.privateView(game,...args):opening.privateView(game,...args),
     spectatorView:(game,...args)=>isConfiguredBase(game)?baseSpectatorView(game,...args):configured(game)?ordinary.spectatorView(game,...args):opening.spectatorView(game,...args),
-    stateProblem:game=>isConfiguredBase(game)?baseGameProblem(game):configured(game)?ordinary.stateProblem(game):opening.stateProblem(game),
-    roomStateProblem:(room,...args)=>isConfiguredBase(room.game)?baseGameProblem(room.game)||legacy.roomStateProblem(oldRoom(room),...args)
+    stateProblem:game=>unavailable(game)?'商路风云尚未开放。':isConfiguredBase(game)?baseGameProblem(game):configured(game)?ordinary.stateProblem(game):opening.stateProblem(game),
+    roomStateProblem:(room,...args)=>unavailable(room.game)?'商路风云尚未开放。':isConfiguredBase(room.game)?baseGameProblem(room.game)||legacy.roomStateProblem(oldRoom(room),...args)
       :configured(room.game)?ordinary.roomStateProblem(room,...args):opening.roomStateProblem(room,...args),
-    roomView:room=>configured(room.game)?{hyakkiConfig:clone(room.hyakkiConfig),exitPolicy:room.game.players.length===2?'resign':'cancel'}:opening.roomView(room),
+    roomView:room=>({
+      ...(configured(room.game)?{hyakkiConfig:clone(room.hyakkiConfig),exitPolicy:room.game.players.length===2?'resign':'cancel'}:opening.roomView(room)),
+      ...(resumeOnly(room)?{tradeRoutesResumeOnly:true}:{}),
+      ...(newTradeRoutes&&tradeRoutesOrders&&room.phase==='waiting'?{tradeRoutesOrdersAvailable:true}:{}),
+      ...(newTradeRoutes&&tradeRoutesRefining&&room.phase==='waiting'?{tradeRoutesRefiningAvailable:true}:{}),
+      ...(newTradeRoutes&&tradeRoutesExchange&&room.phase==='waiting'?{tradeRoutesExchangeAvailable:true}:{}),
+    }),
     gameClock:game=>configured(game)?ordinary.gameClock(game):opening.gameClock(game),
     supportsTimeout:game=>isConfiguredBase(game)?legacy.supportsTimeout(baseToLegacy(game)):configured(game)?ordinary.supportsTimeout(game):opening.supportsTimeout(game),
     applyTimeout:(game,actor,context)=>isConfiguredBase(game)?baseTimeout(game,actor,{now:context.now,randomInt:context.serverRandomInt??randomInt})
       :configured(game)?ordinary.applyTimeout(game,actor,context):opening.applyTimeout(game,actor,context),
-    commonActionProblem:(room,...args)=>configured(room.game)?ordinary.commonActionProblem(room,...args):opening.commonActionProblem(room,...args),
+    commonActionProblem(room,id,action,context){
+      if(action.type==='start'&&resumeOnly(room))return packUnavailable();
+      return configured(room.game)?ordinary.commonActionProblem(room,id,action,context):opening.commonActionProblem(room,id,action,context);
+    },
     onPhaseChanged:(game,...args)=>isConfiguredBase(game)?wrapped(legacy.onPhaseChanged(baseToLegacy(game),...args),game)
       :configured(game)?ordinary.onPhaseChanged(game,...args):opening.onPhaseChanged(game,...args),
-    lifecycleTransition:(game,...args)=>isConfiguredBase(game)?wrapped(legacy.lifecycleTransition(baseToLegacy(game),...args),game)
+    lifecycleTransition:(game,...args)=>isConfiguredBase(game)?wrapped(legacy.lifecycleTransition(baseToLegacy(game),{...args[0],closingTarget:game.configuration.closingTarget}),game)
       :configured(game)?ordinary.lifecycleTransition(game,...args):opening.lifecycleTransition(game,...args),
     actionDeadline:(room,...args)=>configured(room.game)?ordinary.actionDeadline(room,...args):opening.actionDeadline(room,...args),
     roomRetentionDeadline:game=>configured(game)?ordinary.roomRetentionDeadline(game):opening.roomRetentionDeadline(game),

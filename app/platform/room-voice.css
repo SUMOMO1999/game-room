@@ -17,7 +17,8 @@
 .room-voice-indicator{flex:none;border:0;min-width:44px;min-height:44px;width:52px;padding:4px;font-size:10px;white-space:nowrap}
 .room-voice-indicator[aria-pressed=true]{opacity:.65}
 .room-voice-indicator.speaking{background:var(--theme-accent,#ead39a);color:var(--theme-base,#173d31);font-weight:750}
-@media(orientation:landscape) and (max-height:500px){.room-voice{padding:3px 5px;gap:3px}.room-voice-title{display:none}.room-voice-status{font-size:9px}.room-voice-listen{top:3px;left:5px;right:54px}}
+@media(orientation:landscape) and (max-height:500px){.room-voice:where(:not(:root[data-room-viewport] *)){padding:3px 5px;gap:3px}.room-voice-title:where(:not(:root[data-room-viewport] *)){display:none}.room-voice-status:where(:not(:root[data-room-viewport] *)){font-size:9px}.room-voice-listen:where(:not(:root[data-room-viewport] *)){top:3px;left:5px;right:54px}}
+@container room-viewport (orientation:landscape) and (max-height:500px){.room-voice{padding:3px 5px;gap:3px}.room-voice-title{display:none}.room-voice-status{font-size:9px}.room-voice-listen{top:3px;left:5px;right:54px}}
 /* Optional split presentation. Media ownership and recovery stay in the same
    controller; only its stable mount slots differ from the original seat card. */
 .room-voice.room-voice-compact{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0;border:0;background:transparent;box-shadow:none}

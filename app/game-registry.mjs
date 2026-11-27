@@ -6,6 +6,9 @@ import { createFlyingChessAdapter } from '../server/games/flying-chess/adapter.m
 import { createDrawAndGuessAdapter } from '../server/games/draw-and-guess/adapter.mjs';
 import { createPoker414Adapter } from '../server/games/poker414-2/adapter.mjs';
 import {createConfiguredHyakkiAdapter as createHyakkiAdapter} from '../server/games/hyakki-trading/configured-adapter.mjs';
+import { expansionTwoMode } from './games/hyakki-trading/expansion-two-mode.mjs';
+import { adapter as lastHandAdapter } from '../server/games/last-hand/adapter.mjs';
+import { lastHandEnabled } from './games/last-hand-availability.mjs';
 import { createParksAdapter } from '../server/games/parks/adapter.mjs';
 import { requireAdapter } from '../server/games/adapter-contract.mjs';
 
@@ -44,8 +47,15 @@ export function createGameRegistry(adapters, { creationTypes } = {}) {
     activityTypes: () => [...new Set([...catalog.values()].flatMap(adapter => adapter.actionTypes))] });
 }
 
-export const defaultGameRegistry = createGameRegistry([createRummikubAdapter(), createArmyFlipAdapter(), createFlyingChessAdapter(), createDrawAndGuessAdapter(), createPoker414Adapter(), createHyakkiAdapter(), createParksAdapter()],
-  { creationTypes: ['rummikub', 'army-flip', 'flying-chess', 'draw-and-guess'] });
+const readsExpansionTwo = ['enabled', 'resume-only'].includes(expansionTwoMode);
+const merchant = createHyakkiAdapter({
+  tradeRoutesOrders: readsExpansionTwo,
+  tradeRoutesRefining: readsExpansionTwo,
+  tradeRoutesExchange: readsExpansionTwo,
+  allowNewTradeRoutes: expansionTwoMode === 'enabled',
+});
+export const defaultGameRegistry = createGameRegistry([createRummikubAdapter(), createArmyFlipAdapter(), createFlyingChessAdapter(), createDrawAndGuessAdapter(), createPoker414Adapter(), merchant, createParksAdapter(), lastHandAdapter],
+  { creationTypes: ['rummikub', 'army-flip', 'flying-chess', 'draw-and-guess', ...(lastHandEnabled ? ['last-hand'] : [])] });
 // Historical exports and default game remain available to existing callers.
 export const normalizeGameType = defaultGameRegistry.normalizeGameType;
 export const gameInfo = defaultGameRegistry.gameInfo;

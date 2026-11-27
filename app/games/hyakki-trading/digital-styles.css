@@ -30,7 +30,7 @@ html:has(body.hyakki-digital-body),body.hyakki-digital-body { margin:0; min-heig
 .yg-centre { grid-column:2; grid-row:2; display:flex; flex-direction:column; min-height:0; min-width:0; gap:16px; }
 .yg-stage { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
 .yg-stage > div:first-child { min-width:0; }
-.yg-stage h1 { margin:0 0 5px; font:700 clamp(18px,1.65vw,24px)/1.3 ui-serif,"Songti SC",serif; }
+.yg-stage h1 { margin:0 0 5px; font:700 clamp(18px,calc(1.65 * var(--room-vw,1vw)),24px)/1.3 ui-serif,"Songti SC",serif; }
 .yg-stage #yg-room-code { display:block; color:var(--theme-muted); font-size:12px; }
 .yg-time { text-align:right; flex:none; }
 .yg-time strong { display:block; color:var(--theme-accent); font-size:24px; font-variant-numeric:tabular-nums; }
@@ -138,7 +138,7 @@ html:has(body.hyakki-digital-body),body.hyakki-digital-body { margin:0; min-heig
 .yg-observer-note h2 { margin:0 0 8px; font-size:20px; }.yg-observer-note p { margin:0; color:var(--theme-muted); }
 .yg-feedback { margin:0; min-width:0; font-size:12px; line-height:20px; white-space:nowrap; text-overflow:ellipsis; overflow:hidden; color:var(--theme-muted); }
 .yg-feedback.is-feedback { color:var(--theme-accent); }
-.yg-dialog { width:min(960px,calc(100vw - 28px)); max-height:calc(100dvh - 28px); border:1px solid var(--theme-border); border-radius:20px; padding:20px; overflow:auto; }
+.yg-dialog { width:min(960px,calc(calc(100 * var(--room-vw,1vw)) - 28px)); max-height:calc(100dvh - 28px); border:1px solid var(--theme-border); border-radius:20px; padding:20px; overflow:auto; }
 #hyakki-digital-root .yg-dialog { background:var(--theme-surface); color:var(--theme-ink); }
 .yg-dialog::backdrop { background:#071410a6; backdrop-filter:blur(3px); }
 .yg-dialog .dialog-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:0 0 16px; }
@@ -179,9 +179,22 @@ html:has(body.hyakki-digital-body),body.hyakki-digital-body { margin:0; min-heig
 .yg-rotation h2 { font:700 24px/1.5 ui-serif,serif; margin:0; }.yg-rotation p { margin:0; font-size:16px; line-height:1.7; max-width:25em; }
 .yg-rotation small { color:var(--theme-muted); }.yg-rotation #yg-portrait-decision { display:grid; justify-items:center; gap:12px; }
 .yg-portrait .yg-table,.yg-portrait .yg-lower,.yg-portrait .yg-feedback { visibility:hidden; }
-.yg-chat-decision { position:fixed; z-index:180; bottom:12px; left:16px; display:flex; align-items:center; gap:12px; max-width:calc(100vw - 410px); padding:8px; border:1px solid var(--theme-accent); border-radius:12px; background:var(--theme-surface); box-shadow:0 6px 25px var(--theme-shadow); }
+.yg-chat-decision { position:fixed; z-index:180; bottom:12px; left:16px; display:flex; align-items:center; gap:12px; max-width:calc(calc(100 * var(--room-vw,1vw)) - 410px); padding:8px; border:1px solid var(--theme-accent); border-radius:12px; background:var(--theme-surface); box-shadow:0 6px 25px var(--theme-shadow); }
 .yg-chat-decision strong { font-size:14px; }
 @media (max-width:1100px) {
+  .yg-shell:where(:not(:root[data-room-viewport] *)) { gap:8px; padding:8px max(10px,env(safe-area-inset-right)) max(6px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left)); grid-template-rows:44px minmax(0,1fr) 222px 18px; }
+  .yg-table:where(:not(:root[data-room-viewport] *)) { grid-template-columns:80px minmax(0,1fr) 270px; gap:12px; padding:12px; border-radius:16px; }
+  .yg-piles:where(:not(:root[data-room-viewport] *)) { grid-template-rows:128px 128px; gap:10px; }
+  .yg-pile-art:where(:not(:root[data-room-viewport] *)) { --hyakki-card-width:52px; --hyakki-card-height:72px; }
+  .yg-peer-panel:where(:not(:root[data-room-viewport] *)) { grid-template-columns:minmax(172px,210px) max-content; gap:6px; padding:6px; }
+  .yg-peer-tools:where(:not(:root[data-room-viewport] *)) { grid-auto-columns:48px; gap:3px; }
+  #hyakki-digital-root .yg-equipped:where(:not(:root[data-room-viewport] *)) { width:58px; flex-basis:58px; }
+  .yg-lower:where(:not(:root[data-room-viewport] *)) { grid-template-columns:210px minmax(0,1fr); gap:12px; }
+  .yg-hand:where(:not(:root[data-room-viewport] *)) { --hyakki-card-width:126px; --hyakki-card-height:188px; }
+  .yg-brand:where(:not(:root[data-room-viewport] *)) { gap:9px; }.yg-brand span:where(:not(:root[data-room-viewport] *)) { max-width:240px; }
+  .yg-stage h1:where(:not(:root[data-room-viewport] *)) { font-size:19px; }.yg-centre:where(:not(:root[data-room-viewport] *)) { gap:10px; }.yg-scene-content:where(:not(:root[data-room-viewport] *)) { gap:8px; }
+}
+@container room-viewport (max-width:1100px) {
   .yg-shell { gap:8px; padding:8px max(10px,env(safe-area-inset-right)) max(6px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left)); grid-template-rows:44px minmax(0,1fr) 222px 18px; }
   .yg-table { grid-template-columns:80px minmax(0,1fr) 270px; gap:12px; padding:12px; border-radius:16px; }
   .yg-piles { grid-template-rows:128px 128px; gap:10px; }
@@ -195,6 +208,35 @@ html:has(body.hyakki-digital-body),body.hyakki-digital-body { margin:0; min-heig
   .yg-stage h1 { font-size:19px; }.yg-centre { gap:10px; }.yg-scene-content { gap:8px; }
 }
 @media (max-height:600px) and (orientation:landscape) {
+  .yg-shell:where(:not(:root[data-room-viewport] *)) { grid-template-rows:44px minmax(0,1fr) 148px; gap:4px; padding:4px max(10px,env(safe-area-inset-right)) max(3px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left)); }
+  .yg-brand strong:where(:not(:root[data-room-viewport] *)) { font-size:20px; }.yg-brand span:where(:not(:root[data-room-viewport] *)) { font-size:11px; }
+  .yg-table:where(:not(:root[data-room-viewport] *)) { padding:6px; gap:10px; grid-template-columns:64px minmax(0,1fr) 266px; }
+  .yg-piles:where(:not(:root[data-room-viewport] *)) { gap:6px; }.yg-pile-art:where(:not(:root[data-room-viewport] *)),.yg-discard-mark:where(:not(:root[data-room-viewport] *)) { display:none; }#hyakki-digital-root .yg-pile:where(:not(:root[data-room-viewport] *)) { padding:3px; }.yg-pile>span:last-child:where(:not(:root[data-room-viewport] *)) { gap:0; font-size:12px; }
+  .yg-centre:where(:not(:root[data-room-viewport] *)) { gap:2px; }.yg-stage h1:where(:not(:root[data-room-viewport] *)) { font:700 16px/1.1 system-ui; margin:0; }.yg-stage #yg-room-code:where(:not(:root[data-room-viewport] *)) { font-size:10px; line-height:12px; margin-top:1px; }
+  .yg-time strong:where(:not(:root[data-room-viewport] *)) { font-size:17px; }.yg-time small:where(:not(:root[data-room-viewport] *)) { display:none; }
+  .yg-track:where(:not(:root[data-room-viewport] *)) { display:flex; width:100%; height:38px; gap:6px; align-items:center; padding:3px 14px; border-radius:10px; }
+  .yg-track>span:where(:not(:root[data-room-viewport] *)) { font:11px/1.2 system-ui; letter-spacing:0; white-space:nowrap; }.yg-track:where(:not(:root[data-room-viewport] *))::before,.yg-track:where(:not(:root[data-room-viewport] *))::after { width:4px; height:4px; top:calc(50% - 2px); }.yg-track:where(:not(:root[data-room-viewport] *))::before { left:5px; }.yg-track:where(:not(:root[data-room-viewport] *))::after { right:5px; }
+  #yg-track-steps:where(:not(:root[data-room-viewport] *)) { flex:1; padding-inline:10px; }.yg-action-rail:where(:not(:root[data-room-viewport] *)) { height:30px; }.yg-action-line:where(:not(:root[data-room-viewport] *)),.yg-action-fill:where(:not(:root[data-room-viewport] *)) { top:15px; }.yg-action-tick:where(:not(:root[data-room-viewport] *)) { top:7px; height:18px; }.yg-action-tick>i:where(:not(:root[data-room-viewport] *)) { width:18px; height:18px; margin-left:-9px; }.yg-action-tick small:where(:not(:root[data-room-viewport] *)) { top:3px; font-size:10px; }.yg-action-cursor:where(:not(:root[data-room-viewport] *)) { top:3px; width:22px; height:26px; }.yg-action-cursor>b:where(:not(:root[data-room-viewport] *)) { font-size:14px; }.yg-action-cursor:where(:not(:root[data-room-viewport] *))::before,.yg-action-cursor:where(:not(:root[data-room-viewport] *))::after { height:2px; }.yg-action-cursor:where(:not(:root[data-room-viewport] *))::before { top:-3px; }.yg-action-cursor:where(:not(:root[data-room-viewport] *))::after { bottom:-3px; }
+  .yg-readiness:where(:not(:root[data-room-viewport] *)) { gap:5px; }.yg-readiness>span:where(:not(:root[data-room-viewport] *)) { padding:2px 4px; font-size:11px; line-height:16px; }
+  .yg-scene-content:where(:not(:root[data-room-viewport] *)) { gap:3px; justify-content:flex-end; }.yg-scene-note:where(:not(:root[data-room-viewport] *)) { display:none; }.yg-table-actions:where(:not(:root[data-room-viewport] *)) { gap:4px; }#hyakki-digital-root .yg-table-actions button:where(:not(:root[data-room-viewport] *)) { padding:5px 7px; font-size:12px; }
+  .yg-storage:where(:not(:root[data-room-viewport] *)) { gap:4px; padding-top:0; justify-content:flex-start; }.yg-public:where(:not(:root[data-room-viewport] *)) { gap:2px; }.yg-public-heading:where(:not(:root[data-room-viewport] *)) { font-size:12px; line-height:15px; }.yg-public-heading span:where(:not(:root[data-room-viewport] *)) { font-size:10px; }
+  #hyakki-digital-root .yg-market:where(:not(:root[data-room-viewport] *)) { grid-template-columns:repeat(6,minmax(0,1fr)); gap:3px; padding:2px; }
+  .yg-market-good:where(:not(:root[data-room-viewport] *)) { display:flex; flex-direction:column; gap:1px; }.yg-market-good .yousei-good-icon:where(:not(:root[data-room-viewport] *)) { width:24px; height:24px; }.yg-market-good>span:not(.yousei-good-icon):where(:not(:root[data-room-viewport] *)) { display:none; }.yg-market-good strong:where(:not(:root[data-room-viewport] *)) { font-size:12px; }
+  .yg-personal:where(:not(:root[data-room-viewport] *)) { padding:2px 4px; border-radius:10px; }
+  #hyakki-digital-root #yg-shop-detail:where(:not(:root[data-room-viewport] *)) { gap:2px; font-size:12px; }
+  .yg-stock-slots:where(:not(:root[data-room-viewport] *)) { gap:2px; }.yg-owned-good:where(:not(:root[data-room-viewport] *)) { display:flex; flex-direction:column; align-items:center; gap:1px; }.yg-owned-good .yousei-good-icon:where(:not(:root[data-room-viewport] *)) { width:24px; height:24px; }.yg-owned-good b:where(:not(:root[data-room-viewport] *)) { font-size:12px; }
+  .yg-shop-note:where(:not(:root[data-room-viewport] *)) { font-size:9px; line-height:12px; white-space:nowrap; }
+  .yg-lower:where(:not(:root[data-room-viewport] *)) { grid-template-columns:180px minmax(0,1fr); gap:10px; }
+  .yg-tool-zone:where(:not(:root[data-room-viewport] *)),.yg-hand-section:where(:not(:root[data-room-viewport] *)) { grid-template-rows:18px minmax(0,1fr); gap:4px; }.yg-tool-zone:where(:not(:root[data-room-viewport] *)) { padding-right:8px; }
+  .yg-hand:where(:not(:root[data-room-viewport] *)) { --hyakki-card-width:86px; --hyakki-card-height:119px; gap:6px; padding:2px 3px 4px; }
+  .yg-hand-heading>strong:where(:not(:root[data-room-viewport] *)),.yg-tool-heading>strong:where(:not(:root[data-room-viewport] *)) { font-size:12px; }.yg-hand-guide:where(:not(:root[data-room-viewport] *)) { font-size:10px; }
+  #hyakki-digital-root .yg-hand .yousei-card:where(:not(:root[data-room-viewport] *)) { padding:4px; border-radius:8px; }
+  #hyakki-digital-root .yg-equipped:where(:not(:root[data-room-viewport] *)) { width:50px; flex-basis:50px; padding:3px; gap:3px; }#hyakki-digital-root .yg-equipped .yousei-card:where(:not(:root[data-room-viewport] *)) { height:88px; }.yg-equipped .yousei-card__name:where(:not(:root[data-room-viewport] *)) { font-size:11px; line-height:13px; white-space:normal; }
+  .yg-feedback:where(:not(:root[data-room-viewport] *)) { display:none; }.yg-feedback.is-feedback:where(:not(:root[data-room-viewport] *)) { display:block; position:absolute; bottom:8px; left:50%; transform:translateX(-50%); z-index:10; max-width:calc(100% - 24px); padding:8px 12px; border:1px solid var(--theme-border); border-radius:10px; background:var(--theme-surface); font-size:12px; line-height:16px; pointer-events:none; }
+  .yg-dialog:where(:not(:root[data-room-viewport] *)) { max-height:calc(100dvh - 16px); width:min(960px,calc(calc(100 * var(--room-vw,1vw)) - 20px)); padding:14px; border-radius:15px; }
+  .yg-dialog .dialog-heading:where(:not(:root[data-room-viewport] *)) { margin-bottom:12px; }.yg-dialog .dialog-heading h2:where(:not(:root[data-room-viewport] *)) { font-size:20px; }.yg-decision-actions:where(:not(:root[data-room-viewport] *)) { bottom:-14px; }
+}
+@container room-viewport (max-height:600px) and (orientation:landscape) {
   .yg-shell { grid-template-rows:44px minmax(0,1fr) 148px; gap:4px; padding:4px max(10px,env(safe-area-inset-right)) max(3px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left)); }
   .yg-brand strong { font-size:20px; }.yg-brand span { font-size:11px; }
   .yg-table { padding:6px; gap:10px; grid-template-columns:64px minmax(0,1fr) 266px; }
@@ -220,16 +262,35 @@ html:has(body.hyakki-digital-body),body.hyakki-digital-body { margin:0; min-heig
   #hyakki-digital-root .yg-hand .yousei-card { padding:4px; border-radius:8px; }
   #hyakki-digital-root .yg-equipped { width:50px; flex-basis:50px; padding:3px; gap:3px; }#hyakki-digital-root .yg-equipped .yousei-card { height:88px; }.yg-equipped .yousei-card__name { font-size:11px; line-height:13px; white-space:normal; }
   .yg-feedback { display:none; }.yg-feedback.is-feedback { display:block; position:absolute; bottom:8px; left:50%; transform:translateX(-50%); z-index:10; max-width:calc(100% - 24px); padding:8px 12px; border:1px solid var(--theme-border); border-radius:10px; background:var(--theme-surface); font-size:12px; line-height:16px; pointer-events:none; }
-  .yg-dialog { max-height:calc(100dvh - 16px); width:min(960px,calc(100vw - 20px)); padding:14px; border-radius:15px; }
+  .yg-dialog { max-height:calc(100dvh - 16px); width:min(960px,calc(calc(100 * var(--room-vw,1vw)) - 20px)); padding:14px; border-radius:15px; }
   .yg-dialog .dialog-heading { margin-bottom:12px; }.yg-dialog .dialog-heading h2 { font-size:20px; }.yg-decision-actions { bottom:-14px; }
 }
 @media (max-width:750px) and (orientation:landscape) {
+  .yg-brand:where(:not(:root[data-room-viewport] *)) { display:grid; gap:2px; }.yg-brand strong:where(:not(:root[data-room-viewport] *)) { font-size:18px; }.yg-brand span:where(:not(:root[data-room-viewport] *)) { font-size:10px; }
+  .yg-table:where(:not(:root[data-room-viewport] *)) { grid-template-columns:52px minmax(0,1fr) 238px; padding:4px; gap:6px; }.yg-stage h1:where(:not(:root[data-room-viewport] *)) { font-size:14px; }.yg-stage:where(:not(:root[data-room-viewport] *)) { gap:4px; }
+  .yg-track:where(:not(:root[data-room-viewport] *)) { padding-inline:12px; }.yg-track>span:where(:not(:root[data-room-viewport] *)) { display:none; }
+  .yg-lower:where(:not(:root[data-room-viewport] *)) { grid-template-columns:168px minmax(0,1fr); gap:8px; }.yg-tool-zone:where(:not(:root[data-room-viewport] *)) { padding-right:6px; }.yg-tools:where(:not(:root[data-room-viewport] *)) { gap:3px; }
+}
+@container room-viewport (max-width:750px) and (orientation:landscape) {
   .yg-brand { display:grid; gap:2px; }.yg-brand strong { font-size:18px; }.yg-brand span { font-size:10px; }
   .yg-table { grid-template-columns:52px minmax(0,1fr) 238px; padding:4px; gap:6px; }.yg-stage h1 { font-size:14px; }.yg-stage { gap:4px; }
   .yg-track { padding-inline:12px; }.yg-track>span { display:none; }
   .yg-lower { grid-template-columns:168px minmax(0,1fr); gap:8px; }.yg-tool-zone { padding-right:6px; }.yg-tools { gap:3px; }
 }
 @media (max-width:750px) and (max-height:600px) and (orientation:landscape) {
+  /* Keep the turn instruction above the 44px actions, even when it wraps to two lines. */
+  .hy-real:not(.hy-card-selected):has(#yg-readiness[hidden]) .yg-stage>div:first-child:where(:not(:root[data-room-viewport] *)) { display:flex;align-items:center;gap:6px;min-width:0; }
+  .hy-real:not(.hy-card-selected):has(#yg-readiness[hidden]) .yg-stage h1:where(:not(:root[data-room-viewport] *)) { flex:none; }
+  .hy-real:not(.hy-card-selected):has(#yg-readiness[hidden]) #yg-room-code:where(:not(:root[data-room-viewport] *)) { overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin:0; }
+  .hy-real .yg-track:where(:not(:root[data-room-viewport] *)) { height:28px;padding-block:1px; }
+  .hy-real .yg-action-rail:where(:not(:root[data-room-viewport] *)) { height:24px; }
+  .hy-real .yg-action-line:where(:not(:root[data-room-viewport] *)),.hy-real .yg-action-fill:where(:not(:root[data-room-viewport] *)) { top:12px; }
+  .hy-real .yg-action-tick:where(:not(:root[data-room-viewport] *)) { top:3px; }
+  .hy-real .yg-action-cursor:where(:not(:root[data-room-viewport] *)) { top:1px;height:22px; }
+  .hy-real:not(.hy-card-selected) #yg-scene-content:where(:not(:root[data-room-viewport] *)) { justify-content:center;padding-block:0; }
+  .hy-real #yg-scene-content>.yg-scene-note:where(:not(:root[data-room-viewport] *)),.hy-real #yg-scene-content>.yg-table-actions:where(:not(:root[data-room-viewport] *)) { flex:none; }
+}
+@container room-viewport (max-width:750px) and (max-height:600px) and (orientation:landscape) {
   /* Keep the turn instruction above the 44px actions, even when it wraps to two lines. */
   .hy-real:not(.hy-card-selected):has(#yg-readiness[hidden]) .yg-stage>div:first-child { display:flex;align-items:center;gap:6px;min-width:0; }
   .hy-real:not(.hy-card-selected):has(#yg-readiness[hidden]) .yg-stage h1 { flex:none; }
@@ -243,9 +304,17 @@ html:has(body.hyakki-digital-body),body.hyakki-digital-body { margin:0; min-heig
   .hy-real #yg-scene-content>.yg-scene-note,.hy-real #yg-scene-content>.yg-table-actions { flex:none; }
 }
 @media (orientation:portrait) {
+  .yg-shell:where(:not(:root[data-room-viewport] *)) { grid-template-rows:52px minmax(0,1fr) 160px 18px; padding-top:max(8px,env(safe-area-inset-top)); }
+  .yg-brand:where(:not(:root[data-room-viewport] *)) { display:grid; gap:3px; }.yg-brand strong:where(:not(:root[data-room-viewport] *)) { font-size:20px; }.yg-brand span:where(:not(:root[data-room-viewport] *)) { max-width:150px; font-size:10px; }.yg-header .room-toolbar-actions:where(:not(:root[data-room-viewport] *)) { gap:5px; }
+  #hyakki-digital-root .room-toolbar-action:where(:not(:root[data-room-viewport] *)) { padding-inline:10px; }.yg-dialog:where(:not(:root[data-room-viewport] *)) { width:calc(calc(100 * var(--room-vw,1vw)) - 20px); padding:14px; }.yg-dialog .dialog-heading h2:where(:not(:root[data-room-viewport] *)) { font-size:20px; }
+  .yg-detail-goods:where(:not(:root[data-room-viewport] *)) { grid-template-columns:repeat(3,minmax(0,1fr)); }.yg-candidates:where(:not(:root[data-room-viewport] *)) { gap:8px; }.yg-candidate:where(:not(:root[data-room-viewport] *)) { padding:4px; }.yg-decision-actions:where(:not(:root[data-room-viewport] *)) { bottom:-14px; }
+  .yg-chat-decision:where(:not(:root[data-room-viewport] *)) { z-index:180; left:10px; right:10px; bottom:10px; max-width:none; flex-wrap:wrap; justify-content:space-between; }
+  .yg-has-chat-decision .room-chat:where(:not(:root[data-room-viewport] *)) { bottom:98px; }.yg-chat-decision strong:where(:not(:root[data-room-viewport] *)) { max-width:55%; }.yg-keyboard .yg-chat-decision:where(:not(:root[data-room-viewport] *)) { position:absolute; bottom:0; }
+}
+@container room-viewport (orientation:portrait) {
   .yg-shell { grid-template-rows:52px minmax(0,1fr) 160px 18px; padding-top:max(8px,env(safe-area-inset-top)); }
   .yg-brand { display:grid; gap:3px; }.yg-brand strong { font-size:20px; }.yg-brand span { max-width:150px; font-size:10px; }.yg-header .room-toolbar-actions { gap:5px; }
-  #hyakki-digital-root .room-toolbar-action { padding-inline:10px; }.yg-dialog { width:calc(100vw - 20px); padding:14px; }.yg-dialog .dialog-heading h2 { font-size:20px; }
+  #hyakki-digital-root .room-toolbar-action { padding-inline:10px; }.yg-dialog { width:calc(calc(100 * var(--room-vw,1vw)) - 20px); padding:14px; }.yg-dialog .dialog-heading h2 { font-size:20px; }
   .yg-detail-goods { grid-template-columns:repeat(3,minmax(0,1fr)); }.yg-candidates { gap:8px; }.yg-candidate { padding:4px; }.yg-decision-actions { bottom:-14px; }
   .yg-chat-decision { z-index:180; left:10px; right:10px; bottom:10px; max-width:none; flex-wrap:wrap; justify-content:space-between; }
   .yg-has-chat-decision .room-chat { bottom:98px; }.yg-chat-decision strong { max-width:55%; }.yg-keyboard .yg-chat-decision { position:absolute; bottom:0; }
@@ -263,6 +332,27 @@ html:has(body.hyakki-digital-body),body.hyakki-digital-body { margin:0; min-heig
 .hy-real .yg-hand-card.is-selected .yousei-card { outline:4px solid var(--theme-accent); outline-offset:-4px; border-top-color:var(--theme-accent); box-shadow:inset 0 3px var(--theme-accent); }
 
 @media (max-height:600px) and (orientation:landscape) {
+  .yg-table:where(:not(:root[data-room-viewport] *)) { grid-template-columns:140px minmax(0,1fr) 218px; grid-template-rows:minmax(0,1fr) 44px; gap:4px 10px; }
+  .yg-peer:where(:not(:root[data-room-viewport] *)) { grid-column:1; grid-row:1; display:grid; justify-self:stretch; justify-content:stretch; width:100%; gap:4px; align-content:start; }
+  .yg-piles:where(:not(:root[data-room-viewport] *)) { grid-column:1; grid-row:2; grid-template-columns:1fr 1fr; grid-template-rows:44px; gap:4px; }
+  .yg-centre:where(:not(:root[data-room-viewport] *)) { grid-column:2; grid-row:1 / 3; }
+  .yg-peer-panel:where(:not(:root[data-room-viewport] *)) { grid-template-columns:minmax(0,1fr); width:100%; padding:2px; gap:2px; border-radius:9px; }
+  #hyakki-digital-root .yg-peer-overview:where(:not(:root[data-room-viewport] *)) { padding:0 2px; gap:1px; min-height:0; }
+  .yg-peer-heading:where(:not(:root[data-room-viewport] *)) { display:flex; gap:3px; font-size:11px; line-height:14px; }
+  .yg-peer-heading>span:where(:not(:root[data-room-viewport] *)) { font-size:10px; }
+  .yg-peer-goods:where(:not(:root[data-room-viewport] *)) { gap:2px; }.yg-peer-good:where(:not(:root[data-room-viewport] *)) { gap:0; }
+  .yg-peer-good .yousei-good-icon:where(:not(:root[data-room-viewport] *)) { width:18px; height:18px; }.yg-peer-good b:where(:not(:root[data-room-viewport] *)) { font-size:11px; line-height:11px; }
+  .yg-peer-badges:where(:not(:root[data-room-viewport] *)) { font-size:10px; line-height:11px; }
+  .yg-peer-tools:where(:not(:root[data-room-viewport] *)) { grid-auto-columns:44px; gap:0; }
+  #hyakki-digital-root .yg-peer-tool:where(:not(:root[data-room-viewport] *)) { padding:0 1px; gap:0; min-height:44px; border-radius:5px; }
+  #hyakki-digital-root .yg-peer-tool .yousei-card:where(:not(:root[data-room-viewport] *)) { width:22px; height:20px; }
+  .yg-peer-tool-name:where(:not(:root[data-room-viewport] *)) { font-size:11px; line-height:12px; }.yg-peer-tool-state:where(:not(:root[data-room-viewport] *)) { font-size:10px; line-height:11px; }
+  .yg-peer-no-tools:where(:not(:root[data-room-viewport] *)) { min-height:20px; min-width:0; display:grid; place-items:center; font-size:11px; }
+  .yg-shell:has(#yg-observer-note:not([hidden])):where(:not(:root[data-room-viewport] *)) { grid-template-rows:44px minmax(0,1fr) 48px; }
+  .yg-observer-note:where(:not(:root[data-room-viewport] *)) { padding:4px; }.yg-observer-note h2:where(:not(:root[data-room-viewport] *)) { margin:0; font-size:13px; }.yg-observer-note p:where(:not(:root[data-room-viewport] *)) { font-size:11px; }
+}
+
+@container room-viewport (max-height:600px) and (orientation:landscape) {
   .yg-table { grid-template-columns:140px minmax(0,1fr) 218px; grid-template-rows:minmax(0,1fr) 44px; gap:4px 10px; }
   .yg-peer { grid-column:1; grid-row:1; display:grid; justify-self:stretch; justify-content:stretch; width:100%; gap:4px; align-content:start; }
   .yg-piles { grid-column:1; grid-row:2; grid-template-columns:1fr 1fr; grid-template-rows:44px; gap:4px; }
@@ -283,6 +373,13 @@ html:has(body.hyakki-digital-body),body.hyakki-digital-body { margin:0; min-heig
   .yg-observer-note { padding:4px; }.yg-observer-note h2 { margin:0; font-size:13px; }.yg-observer-note p { font-size:11px; }
 }
 @media (max-width:750px) and (max-height:600px) and (orientation:landscape) {
+  .yg-shell:where(:not(:root[data-room-viewport] *)) { grid-template-rows:44px minmax(0,1fr) 148px; }
+  .yg-table:where(:not(:root[data-room-viewport] *)) { grid-template-columns:140px minmax(0,1fr) 202px; gap:4px 6px; }
+  .yg-hand:where(:not(:root[data-room-viewport] *)) { --hyakki-card-width:86px; --hyakki-card-height:119px; }
+  .yg-table-actions:where(:not(:root[data-room-viewport] *)) { width:100%; flex-wrap:nowrap; }
+  #hyakki-digital-root .yg-table-actions button:where(:not(:root[data-room-viewport] *)) { min-width:0; flex:1; padding:4px 3px; white-space:normal; line-height:16px; }
+}
+@container room-viewport (max-width:750px) and (max-height:600px) and (orientation:landscape) {
   .yg-shell { grid-template-rows:44px minmax(0,1fr) 148px; }
   .yg-table { grid-template-columns:140px minmax(0,1fr) 202px; gap:4px 6px; }
   .yg-hand { --hyakki-card-width:86px; --hyakki-card-height:119px; }
@@ -291,6 +388,17 @@ html:has(body.hyakki-digital-body),body.hyakki-digital-body { margin:0; min-heig
 }
 
 @media (max-height:600px) and (orientation:landscape) {
+  /* Waiting rooms have settings instead of a hand, so keep all setup controls on the table. */
+  .hy-real:has(#yg-readiness:not([hidden])) .yg-shell:where(:not(:root[data-room-viewport] *)) { grid-template-rows:44px minmax(0,1fr) 48px; }
+  .hy-real:has(#yg-readiness:not([hidden])) .yg-table-actions:where(:not(:root[data-room-viewport] *)) { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); width:100%; gap:4px; }
+  #hyakki-digital-root.hy-real:has(#yg-readiness:not([hidden])) .yg-table-actions button:where(:not(:root[data-room-viewport] *)) { width:100%; min-width:0; min-height:44px; white-space:normal; padding:4px; }
+  .hy-real:has(#yg-readiness:not([hidden])) .hy-config:where(:not(:root[data-room-viewport] *)) { flex-direction:column; align-items:stretch; gap:1px; font-size:11px; line-height:13px; }
+  #hyakki-digital-root.hy-real:has(#yg-readiness:not([hidden])) .hy-config select:where(:not(:root[data-room-viewport] *)) { width:100%; min-height:44px!important; padding:4px 24px 4px 8px; }
+  .hy-real:has(#yg-readiness:not([hidden])) .yg-tool-empty:where(:not(:root[data-room-viewport] *)) { padding:0; font-size:10px; line-height:11px; }
+  .hy-real:has(#yg-readiness:not([hidden])) .yg-empty:where(:not(:root[data-room-viewport] *)) { margin:0; font-size:11px; }
+}
+
+@container room-viewport (max-height:600px) and (orientation:landscape) {
   /* Waiting rooms have settings instead of a hand, so keep all setup controls on the table. */
   .hy-real:has(#yg-readiness:not([hidden])) .yg-shell { grid-template-rows:44px minmax(0,1fr) 48px; }
   .hy-real:has(#yg-readiness:not([hidden])) .yg-table-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); width:100%; gap:4px; }
@@ -302,6 +410,21 @@ html:has(body.hyakki-digital-body),body.hyakki-digital-body { margin:0; min-heig
 }
 
 @media (max-height:600px) and (orientation:landscape) {
+  .yg-shell:has(.yg-peer.is-multiplayer):where(:not(:root[data-room-viewport] *)) { grid-template-rows:44px minmax(0,1fr) 136px; }
+  .yg-table:has(.yg-peer.is-multiplayer):where(:not(:root[data-room-viewport] *)) { grid-template-columns:54px 140px minmax(0,1fr) 202px; grid-template-rows:44px minmax(0,1fr); gap:4px 6px; }
+  .yg-peer.is-multiplayer:where(:not(:root[data-room-viewport] *)) { display:contents; }
+  .yg-peer.is-multiplayer .yg-seat-strip:where(:not(:root[data-room-viewport] *)) { grid-column:2/4; grid-row:1; gap:4px; overflow-x:auto; scrollbar-width:thin; overscroll-behavior-x:contain; }
+  #hyakki-digital-root .yg-seat:where(:not(:root[data-room-viewport] *)) { padding:3px 5px; gap:2px; flex:0 0 90px; height:44px; font-size:11px; }
+  .yg-seat strong:where(:not(:root[data-room-viewport] *)) { font-size:11px; }
+  .yg-seat-status>span:where(:not(:root[data-room-viewport] *)) { font-size:11px; }
+  .yg-peer.is-multiplayer .yg-peer-detail:where(:not(:root[data-room-viewport] *)) { grid-column:2; grid-row:2; justify-self:stretch; align-self:start; }
+  .yg-table:has(.yg-peer.is-multiplayer) .yg-piles:where(:not(:root[data-room-viewport] *)) { grid-column:1; grid-row:1/3; grid-template-columns:1fr; grid-template-rows:44px 44px; gap:5px; align-content:start; }
+  .yg-table:has(.yg-peer.is-multiplayer) .yg-centre:where(:not(:root[data-room-viewport] *)) { grid-column:3; grid-row:2; }
+  .yg-table:has(.yg-peer.is-multiplayer) .yg-storage:where(:not(:root[data-room-viewport] *)) { grid-column:4; grid-row:1/3; }
+  .yg-shell:has(.yg-peer.is-multiplayer) .yg-hand:where(:not(:root[data-room-viewport] *)) { --hyakki-card-width:80px; --hyakki-card-height:107px; }
+}
+
+@container room-viewport (max-height:600px) and (orientation:landscape) {
   .yg-shell:has(.yg-peer.is-multiplayer) { grid-template-rows:44px minmax(0,1fr) 136px; }
   .yg-table:has(.yg-peer.is-multiplayer) { grid-template-columns:54px 140px minmax(0,1fr) 202px; grid-template-rows:44px minmax(0,1fr); gap:4px 6px; }
   .yg-peer.is-multiplayer { display:contents; }
@@ -317,6 +440,17 @@ html:has(body.hyakki-digital-body),body.hyakki-digital-body { margin:0; min-heig
 }
 
 @media (max-height:600px) and (orientation:landscape) {
+  #hyakki-digital-root .yg-hand .yousei-card:where(:not(:root[data-room-viewport] *)) { min-height:0; gap:3px; }
+  .yg-hand .yousei-card__name:where(:not(:root[data-room-viewport] *)) { font-size:12px; line-height:15px; }
+  .yg-hand .yousei-card__goods--1:where(:not(:root[data-room-viewport] *)) { --yousei-good-size:42px; }
+  .yg-hand .yousei-card__goods--2:where(:not(:root[data-room-viewport] *)) { --yousei-good-size:30px; }
+  .yg-hand .yousei-card__goods--6:where(:not(:root[data-room-viewport] *)) { --yousei-good-size:19px; row-gap:0; }
+  .yg-hand .yousei-card__goods--6 .yousei-card__good b:where(:not(:root[data-room-viewport] *)) { font-size:13px; line-height:14px; }
+  .yg-shell:has(.yg-peer.is-multiplayer) .yg-hand .yousei-card__goods--6:where(:not(:root[data-room-viewport] *)) { --yousei-good-size:13px; }
+  .yg-hand .yousei-card__goods--1 .yousei-card__good b:where(:not(:root[data-room-viewport] *)),.yg-hand .yousei-card__goods--2 .yousei-card__good b:where(:not(:root[data-room-viewport] *)) { font-size:16px; }
+}
+
+@container room-viewport (max-height:600px) and (orientation:landscape) {
   #hyakki-digital-root .yg-hand .yousei-card { min-height:0; gap:3px; }
   .yg-hand .yousei-card__name { font-size:12px; line-height:15px; }
   .yg-hand .yousei-card__goods--1 { --yousei-good-size:42px; }
@@ -329,6 +463,24 @@ html:has(body.hyakki-digital-body),body.hyakki-digital-body { margin:0; min-heig
 
 /* Mid-height desktops need a decision surface, not four vertically stacked bands. */
 @media (min-width:1101px) and (min-height:601px) and (max-height:800px) and (orientation:landscape) {
+  .yg-shell:where(:not(:root[data-room-viewport] *)) { grid-template-rows:44px minmax(0,1fr) 222px 18px; gap:8px; padding:8px max(20px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left)); }
+  .yg-table:where(:not(:root[data-room-viewport] *)) { grid-template-columns:84px minmax(0,1fr) 280px; padding:12px; gap:12px; }
+  .yg-piles:where(:not(:root[data-room-viewport] *)) { grid-template-rows:128px 128px; gap:10px; }
+  .yg-pile-art:where(:not(:root[data-room-viewport] *)) { --hyakki-card-width:52px; --hyakki-card-height:72px; }
+  .yg-centre:where(:not(:root[data-room-viewport] *)) { display:grid; grid-template-columns:minmax(0,1fr) minmax(250px,42%); grid-template-rows:auto minmax(0,1fr); gap:10px; }
+  .yg-stage:where(:not(:root[data-room-viewport] *)) { grid-column:1; grid-row:1; align-items:center; }
+  .yg-stage h1:where(:not(:root[data-room-viewport] *)) { font-size:20px; margin-bottom:3px; }
+  .yg-time strong:where(:not(:root[data-room-viewport] *)) { font-size:20px; }
+  .yg-time small:where(:not(:root[data-room-viewport] *)) { font-size:10px; }
+  .yg-track:where(:not(:root[data-room-viewport] *)) { grid-column:2; grid-row:1; display:flex; align-items:center; gap:6px; width:100%; padding:6px 16px; }
+  .yg-track>span:where(:not(:root[data-room-viewport] *)) { font:11px/1.3 system-ui; letter-spacing:0; white-space:nowrap; }
+  #yg-track-steps:where(:not(:root[data-room-viewport] *)) { flex:1; min-width:0; padding-inline:10px; }
+  .yg-scene-content:where(:not(:root[data-room-viewport] *)) { grid-column:1/-1; grid-row:2; gap:10px; }
+  .yg-readiness:where(:not(:root[data-room-viewport] *)) { grid-column:1/-1; grid-row:2; }
+  .yg-centre:has(.yg-readiness:not([hidden])) .yg-scene-content:where(:not(:root[data-room-viewport] *)) { grid-row:3; }
+  .yg-hand:where(:not(:root[data-room-viewport] *)) { --hyakki-card-width:126px; --hyakki-card-height:188px; }
+}
+@container room-viewport (min-width:1101px) and (min-height:601px) and (max-height:800px) and (orientation:landscape) {
   .yg-shell { grid-template-rows:44px minmax(0,1fr) 222px 18px; gap:8px; padding:8px max(20px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left)); }
   .yg-table { grid-template-columns:84px minmax(0,1fr) 280px; padding:12px; gap:12px; }
   .yg-piles { grid-template-rows:128px 128px; gap:10px; }
@@ -442,6 +594,17 @@ html:has(body.hyakki-digital-body),body.hyakki-digital-body { margin:0; min-heig
 /* The shortest supported phone keeps full card costs; counters sit beside
    their icons so the same inventory fits without borrowing the hand's space. */
 @media (max-height:350px) and (orientation:landscape) {
+  .yg-shell .yg-playfield[data-stage-profile="mobile"]:where(:not(:root[data-room-viewport] *)) { --yg-mobile-hand-budget:106px; }
+  .yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-table:where(:not(:root[data-room-viewport] *)) { padding:1px; }
+  .yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-hand:where(:not(:root[data-room-viewport] *)) { --hyakki-card-width:80px; }
+  #hyakki-digital-root .yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-hand .yousei-card:where(:not(:root[data-room-viewport] *)) { padding:2px; gap:1px; }
+  #hyakki-digital-root .yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-equipped:where(:not(:root[data-room-viewport] *)) { padding:2px; gap:0; }
+  #hyakki-digital-root .yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-equipped .yousei-card:where(:not(:root[data-room-viewport] *)) { padding:2px; gap:1px; }
+  .yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-stock-slots:where(:not(:root[data-room-viewport] *)) { gap:0; }
+  .yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-owned-good:where(:not(:root[data-room-viewport] *)) { flex-direction:row; gap:0; }
+  .yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-owned-good .yousei-good-icon:where(:not(:root[data-room-viewport] *)) { flex:0 1 18px; min-width:12px; }
+}
+@container room-viewport (max-height:350px) and (orientation:landscape) {
   .yg-shell .yg-playfield[data-stage-profile="mobile"] { --yg-mobile-hand-budget:106px; }
   .yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-table { padding:1px; }
   .yg-shell .yg-playfield[data-stage-profile="mobile"] .yg-hand { --hyakki-card-width:80px; }

@@ -9,14 +9,24 @@
 .room-voice-settings .room-voice-status{display:block;width:100%;height:auto;min-height:24px;white-space:normal;line-height:1.5;font-size:13px;padding-top:8px}
 .room-voice-peers{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .room-voice-peer{min-height:44px;padding:6px 10px;font-size:13px}
-@media(max-width:740px){.room-voice-toolbar .room-voice-compact-join{width:var(--room-header-join-width,68px);min-width:var(--room-header-join-width,68px);padding-inline:4px}}
+@media(max-width:740px){.room-voice-toolbar .room-voice-compact-join:where(:not(:root[data-room-viewport] *)){width:var(--room-header-join-width,68px);min-width:var(--room-header-join-width,68px);padding-inline:4px}}
+@container room-viewport (max-width:740px){.room-voice-toolbar .room-voice-compact-join{width:var(--room-header-join-width,68px);min-width:var(--room-header-join-width,68px);padding-inline:4px}}
 @media(max-width:600px){
+ .p414-header:has(.room-voice-toolbar) .p414-brand:where(:not(:root[data-room-viewport] *)){flex:none}
+ .p414-header:has(.room-voice-toolbar) .p414-brand strong:where(:not(:root[data-room-viewport] *)){display:flex;flex-direction:column;gap:2px;white-space:nowrap}
+ .p414-header:has(.room-voice-toolbar) .p414-brand>span:where(:not(:root[data-room-viewport] *)){display:none}
+ .p414-header:has(.room-voice-toolbar) .p414-brand small:where(:not(:root[data-room-viewport] *)){white-space:nowrap}
+}
+@container room-viewport (max-width:600px){
  .p414-header:has(.room-voice-toolbar) .p414-brand{flex:none}
  .p414-header:has(.room-voice-toolbar) .p414-brand strong{display:flex;flex-direction:column;gap:2px;white-space:nowrap}
  .p414-header:has(.room-voice-toolbar) .p414-brand>span{display:none}
  .p414-header:has(.room-voice-toolbar) .p414-brand small{white-space:nowrap}
 }
 @media(max-width:600px){
+ .flying-header:has(.room-voice-toolbar) .flying-brand:where(:not(:root[data-room-viewport] *)){flex-direction:column;align-items:flex-start;justify-content:center;gap:0;line-height:16px;min-width:44px;min-height:44px}
+}
+@container room-viewport (max-width:600px){
  .flying-header:has(.room-voice-toolbar) .flying-brand{flex-direction:column;align-items:flex-start;justify-content:center;gap:0;line-height:16px;min-width:44px;min-height:44px}
 }
 .flying-page:has(.room-voice-toolbar) .flying-header-actions{min-width:0;justify-content:flex-end}

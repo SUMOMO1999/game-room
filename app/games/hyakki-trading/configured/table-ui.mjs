@@ -1,9 +1,9 @@
 /** New expansion decisions reuse the accepted Step 0 table surfaces. No modal play and no hidden-state simulation. */
-import {inspectionCardCount} from '../content/expansion-one.mjs';
-import {GOODS,CATEGORIES,ROLES,getRole,cardsForExpansion} from '../content/expansion-one.mjs';
-import {isExpansion,getCard,categoryName,expansionAsset} from '../presentation-content.mjs';
+import {inspectionCardCount,unrestrictedRoleExchange} from '../content/expansion-one.mjs';
+import {GOODS,CATEGORIES} from '../content/expansion-one.mjs';
+import {isExpansion,getCard,getRole,cardsFor,rolesFor,categoryName,expansionAsset} from '../presentation-content.mjs';
 import {renderCard,renderGoodsIcon} from '../digital-card-ui.mjs';
-import {knownCards,cardKey} from '../game-ui-model.mjs';
+import {knownCards,cardKey,stockQualityOptions,turnOrder} from '../game-ui-model.mjs';
 import {syncTaskMarkup,renderNativeMaterials,renderMaterialTarget,renderTableActionDraft} from '../table-decision-ui.mjs';
 import {resolveTradeMaterials,quoteGoodsTrade,newTradeUsage,receiptPlan,categoryCounts} from '../trade-contract.mjs';
 const esc=v=>String(v??'').replace(/[&<>"']/gu,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -11,20 +11,21 @@ const count=v=>Object.values(v??{}).reduce((a,b)=>a+b,0),zeros=()=>Object.fromEn
 const button=(type,label,fields={},disabled=false,className='')=>`<button type="button"${className?` class="${className}"`:''} data-ex-command="${type}" data-ex-fields="${esc(JSON.stringify(fields))}" ${disabled?'disabled':''}>${label}</button>`;
 const activeRoles=new Set(['R09','R14','R16','R17','R18','R20','R22','R23','R24']);
 const expansionCard=c=>{const f=getCard(c.definitionId);return f.category==='goods'?!!f.recipe&&f.recipe.type!=='fixed':f.sourceCode.startsWith('X');};
-const newPending=p=>!!p&&(!p.response&&p.choice&&(p.code?.startsWith('X')||p.kind==='role'||p.choice.kind==='peek-select'));
-export function mountExpansionTable({root,send,read,rerender,feedback,available,clearLegacyDraft,isLegacyMaterial=()=>false,inspect}){
+const newPending=p=>!!p&&(!p.response&&p.choice&&!(p.refined&&p.choice.kind==='retain-goods')
+  &&(p.code?.startsWith('X')||p.kind==='role'||p.choice.kind==='peek-select'));
+export function mountExpansionTable({root,send,read,rerender,feedback,available,clearLegacyDraft,isLegacyMaterial=()=>false,openQualitySale=()=>false,inspect}){
   const document=root.ownerDocument,$=id=>document.getElementById(id);
   const work=document.createElement('section');work.id='ex-workbench';work.className='ex-workbench';work.hidden=true;work.setAttribute('aria-labelledby','ex-work-title');$('yg-scene-content').after(work);
   const roles=document.createElement('section');roles.className='ex-role-stage';roles.hidden=true;roles.setAttribute('aria-label','选择本局角色');root.querySelector('.yg-shell').append(roles);
   const dock=document.createElement('button');dock.type='button';dock.className='ex-role-dock';dock.dataset.exCommand='role';dock.dataset.exFields='{}';dock.hidden=true;$('yg-tool-zone').insertBefore(dock,$('yg-tool-zone').firstElementChild??null);
-  let room=null,selected=null,direction=null,selection={},params={},choiceId=null,candidate=null,catalogPage=0,scope=null;
+  let room=null,selected=null,direction=null,selection={},params={},choiceId=null,candidate=null,catalogPage=0,scope=null,quality='ordinary';
   const own=()=>room?.game?.players.find(p=>p.id===room.selfId);
-  const roleConfiguration=()=>room?.game?.configuration??room?.game?.opening?.configuration;
+  const roleConfiguration=()=>room?.game?.configuration??room?.game?.opening?.configuration??room?.hyakkiConfig;
   const role=id=>getRole(id,roleConfiguration());
   const usable=()=>available()&&room.phase==='playing'&&room.selfRole==='player';
-  const image=role=>`<img class="ex-dock-art" src="${esc(expansionAsset(role.artPath))}" alt="" draggable="false">`;
+  const image=role=>role.artPath?`<img class="ex-dock-art" src="${esc(expansionAsset(role.artPath))}" alt="" draggable="false">`:'';
   const faceOf=()=>selected?.roleId?role(selected.roleId):selected?getCard(selected.definitionId):null;
-  function reset(){selected=null;direction=null;selection={};params={};}
+  function reset(){selected=null;direction=null;selection={};params={};quality='ordinary';}
   function selectedOwned(){if(!selected)return false;return selected.roleId===own()?.roleId||[...(own()?.hand??[]),...(own()?.tools??[])].some(c=>cardKey(c)===cardKey(selected));}
   function renderMarket(){
     $('yg-market').classList.add('ex-market');$('yg-market').innerHTML=`<button type="button" class="ex-market-board" data-hy-action="members" aria-label="查看十二种公共货物及公开商铺">${CATEGORIES.map(c=>`<span class="ex-market-pair"><small>${c.name}</small><span>${GOODS.filter(g=>g.category===c.id).map(g=>`<span class="ex-market-good"><img src="${esc(expansionAsset(g.icon))}" alt=""><span>${g.name}</span><b>${room.game?.bankGoods?.[g.id]??room.hyakkiConfig.goodsPerType}</b></span>`).join('')}</span></span>`).join('')}</button>`;
@@ -34,17 +35,19 @@ export function mountExpansionTable({root,send,read,rerender,feedback,available,
     const face=role(me.roleId);dock.innerHTML=`${image(face)}<span><strong>${esc(face.name)}</strong><small>${esc(face.compactText)}</small></span>`;
     dock.setAttribute('aria-label',`${face.name}：${face.compactText}，查看能力`);
     }
+    const ordered=turnOrder(room.game);
     for(const node of root.querySelectorAll('#yg-peer [data-public-player]')){
       const p=room.game?.players?.find(p=>p.id===node.dataset.publicPlayer);if(!p?.roleId)continue;const r=role(p.roleId);
-      const portrait=node.querySelector('.nm-portrait');if(portrait)portrait.src=expansionAsset(r.artPath);
+      const portrait=node.querySelector('.nm-portrait');if(portrait&&r.artPath)portrait.src=expansionAsset(r.artPath);
       const seat=node.querySelector('.nm-peer-copy>small');if(seat){
-        seat.innerHTML=`<span class="ex-peer-role-name">${room.game.players.indexOf(p)+1}席 · ${esc(r.name)}</span><span class="ex-peer-role-skill">${esc(r.compactText)}</span>`;
+        const position=ordered.findIndex(player=>player.id===p.id)+1;
+        seat.innerHTML=`<span class="ex-peer-role-name">${position?`第${position}手 · `:''}${esc(r.name)}</span><span class="ex-peer-role-skill">${esc(r.compactText)}</span>`;
         seat.title=`${r.name}：${r.compactText}；点商铺查看完整能力`;
       }
     }
   }
-  function catalog(){const cards=cardsForExpansion(roleConfiguration()?.contentVersion),all=[...cards,...ROLES],last=Math.ceil(all.length/8)-1;catalogPage=Math.min(catalogPage,last);
-    inspect(`六行百业 · ${cards.length}种牌与24位角色`,`<div class="ex-catalog">${all.slice(catalogPage*8,catalogPage*8+8).map(c=>button('read',renderCard({definitionId:c.id},{interactive:false,configuration:roleConfiguration()}),{definitionId:c.id})).join('')}</div>`,`${button('catalog-page','上一页',{delta:-1},!catalogPage)}<span>${catalogPage+1}/${last+1} · 点牌阅读</span>${button('catalog-page','下一页',{delta:1},catalogPage>=last)}`);
+  function catalog(){const config=roleConfiguration(),cards=cardsFor(config),roleList=rolesFor(config),all=[...cards,...roleList],last=Math.ceil(all.length/8)-1;catalogPage=Math.min(catalogPage,last);
+    inspect(`${config.packId==='trade-routes-v1'?'商路风云':'六行百业'} · ${cards.length}种牌与${roleList.length}位角色`,`<div class="ex-catalog">${all.slice(catalogPage*8,catalogPage*8+8).map(c=>button('read',renderCard({definitionId:c.id},{interactive:false,configuration:config}),{definitionId:c.id})).join('')}</div>`,`${button('catalog-page','上一页',{delta:-1},!catalogPage)}<span>${catalogPage+1}/${last+1} · 点牌阅读</span>${button('catalog-page','下一页',{delta:1},catalogPage>=last)}`);
   }
   function renderOpening(){const o=room.game.opening,self=o.self;roles.hidden=false;root.dataset.exScene='select-role';
     if(candidate&&!self?.candidates.includes(candidate))candidate=null;
@@ -61,8 +64,8 @@ export function mountExpansionTable({root,send,read,rerender,feedback,available,
   }
   // Reuse the original quantity objects, action draft and material container.
   // Only new recipe validation and command fields remain expansion-owned.
-  function materials(model,draft,handle,{canIncreaseGood=()=>true,optionLabel=null}={}){
-    return renderNativeMaterials({pending:{choice:{kind:'expansion-materials',options:[]}},game:room.game,selfId:room.selfId,draft,name:id=>room.players.find(p=>p.id===id)?.name??'伙伴',canChoose:usable(),modelOverride:model,canIncreaseGood,optionLabel,
+  function materials(model,draft,handle,{canIncreaseGood=()=>true,optionLabel=null,choiceKind='expansion-materials'}={}){
+    return renderNativeMaterials({pending:{choice:{kind:choiceKind,options:[]}},game:room.game,selfId:room.selfId,draft,name:id=>room.players.find(p=>p.id===id)?.name??'伙伴',canChoose:usable(),modelOverride:model,canIncreaseGood,optionLabel,
       renderAction:(type,label,fields,disabled,className)=>{const mapped=handle(fields);return button(mapped.type,label,mapped.fields,disabled,className);}});
   }
   // Like the accepted card-draft flow, select visible materials before the one
@@ -88,18 +91,53 @@ export function mountExpansionTable({root,send,read,rerender,feedback,available,
     }
     return kind?{code,choice:{kind,options}}:null;
   }
-  function goodsPicker(stock,field,{category=null}={}){
-    const filtered=Object.fromEntries(GOODS.filter(g=>!category||g.category===category).map(g=>[g.id,stock[g.id]??0]));
-    const option=(room.game.pending??localMaterialChoice())?.choice?.options[0],maximum=direction?faceOf().recipe.count:option?.capacity??option?.count??option?.maximum??2;
-    return `<div class="hy-material-options hy-material-options--quantities">${materials({type:'goods',stock:filtered,minimum:0,maximum,raw:room.game.pending?.choice?.kind==='retain-goods'},{goods:selection[field]??zeros()},fields=>({type:'amount',fields:{field,id:fields.id,delta:fields.delta}}),{canIncreaseGood:id=>!direction||field!=='goods'||canAddTrade(id)})}</div>`;
+  // The desktop reads the same draft as the quantity controls, including both qualities.
+  function exchangePieces(){
+    if(!room?.game||!usable())return null;
+    const pending=room.game.pending;
+    if(pending && pending.actorId!==room.selfId)return null;
+    const choice=(pending??localMaterialChoice())?.choice?.options?.[0];
+    if(!choice?.ownGoods||!choice.bankGoods)return null;
+    return {
+      give: {ordinary: selection.give ?? {}, refined: selection.giveRefined ?? {}},
+      receive: selection.receive ?? {},
+      limit: choice.count ?? choice.maximum
+    };
   }
-  function selectionSummary(){if(selection.give||selection.receive)return `交${named(selection.give)} → 换${named(selection.receive)}`;
-    return selection.goods?named(selection.goods):Object.keys(selection).length?choiceName(selection):'请选择材料';}
-  function undoSelection(){for(const field of ['receive','give','goods']){const id=GOODS.findLast(g=>selection[field]?.[g.id]>0)?.id;if(id){selection[field][id]--;return;}}selection={};}
-  function named(v){return GOODS.filter(g=>v?.[g.id]).map(g=>`${g.name}×${v[g.id]}`).join('、')||'未选';}
+  function goodsPicker(stock,field,{category=null,grade=false}={}){
+    const graded=grade&&own().refined,refinedField=field+'Refined';
+    const shown=graded&&quality==='refined'?refinedField:field;
+    const filtered=Object.fromEntries(GOODS.filter(g=>!category||g.category===category).map(({id})=>{
+      const refined=graded?(own().refined[id]??0):0;
+      return [id,shown===refinedField?refined:(stock[id]??0)-refined];
+    }));
+    const option=(room.game.pending??localMaterialChoice())?.choice?.options[0],maximum=direction?faceOf().recipe.count:option?.capacity??option?.count??option?.maximum??2;
+    const remaining=maximum-(graded?count(selection[shown===field?refinedField:field]):0);
+    const tabs=graded?`<div class="e2-quality" aria-label="交出货物的品质">${[['ordinary','普通货'],['refined','精制货']].map(([value,label])=>
+      button('stock-quality',label,{value}).replace('<button ',`<button aria-pressed="${quality===value}" `)).join('')}</div>`:'';
+    return `${tabs}<div class="hy-material-options hy-material-options--quantities">${materials({type:'goods',stock:filtered,minimum:0,maximum:remaining,raw:room.game.pending?.choice?.kind==='retain-goods'},{goods:selection[shown]??zeros()},fields=>({type:'amount',fields:{field:shown,id:fields.id,delta:fields.delta}}),{canIncreaseGood:id=>!direction||field!=='goods'||canAddTrade(id)})||(graded?'<p>没有可选货物。</p>':'')}</div>`;
+  }
+  const sumField=field=>Object.fromEntries(GOODS.map(({id})=>[id,(selection[field]?.[id]??0)+(selection[field+'Refined']?.[id]??0)]));
+  function selectedMaterials(p){
+    if(!own()?.refined)return selection;
+    if(['class-surrender','monitored-return'].includes(p?.choice?.kind))
+      return {goods:sumField('goods'),refined:selection.goodsRefined??{}};
+    if(['class-exchange','role-class-exchange'].includes(p?.choice?.kind))
+      return {give:sumField('give'),receive:selection.receive??{},giveRefined:selection.giveRefined??{}};
+    return selection;
+  }
+  const namedQuality=field=>[count(selection[field])?named(selection[field]):'',count(selection[field+'Refined'])?named(selection[field+'Refined'],'精制'):'']
+    .filter(Boolean).join('、')||'未选';
+  function selectionSummary(){
+    if(selection.give||selection.giveRefined||selection.receive)return `交${namedQuality('give')} → 换${named(selection.receive)}`;
+    return selection.goods||selection.goodsRefined?namedQuality('goods'):Object.keys(selection).length?choiceName(selection):'请选择材料';
+  }
+  function undoSelection(){for(const field of ['receive','giveRefined','give','goodsRefined','goods']){const id=GOODS.findLast(g=>selection[field]?.[g.id]>0)?.id;if(id){selection[field][id]--;return;}}selection={};}
+  function named(v,prefix=''){return GOODS.filter(g=>v?.[g.id]).map(g=>`${prefix}${g.name}×${v[g.id]}`).join('、')||'未选';}
   function choiceName(value){const cards=knownCards(room.game),items=[];for(const [key,v] of Object.entries(value)){
     if(key==='cardId'||key.endsWith('CardId')||key==='toolCardId'){const c=cards.get(v);items.push(c?getCard(c.definitionId).name:'当前候选牌');}
-    else if(key==='goodId'||key==='ownGoodId')items.push(GOODS.find(g=>g.id===v)?.name??'货物');
+    else if(key==='goodId'||key==='ownGoodId')items.push((selection.refined&&(key==='ownGoodId'||!selection.ownGoodId)?'精制':'')+(GOODS.find(g=>g.id===v)?.name??'货物'));
+    else if(key==='refined')continue;
     else if(key==='branch')items.push(v==='silver'?'支付2两':'交回1件货物');
     else items.push(String(v));}return esc(items.join(' → '));}
   function choiceBrowser(label,items){
@@ -122,30 +160,40 @@ export function mountExpansionTable({root,send,read,rerender,feedback,available,
   function selectedText(p){return Object.keys(selection).length?selectionSummary():selectionPrompt(p);}
   function pendingBody(p){const first=p.choice.options[0]??{},kind=p.choice.kind;
     if(kind==='retain-goods')return goodsPicker(first.combined,'goods');
-    if(first.goods)return goodsPicker(first.goods,'goods',{category:first.categoryId});
-    if(first.ownGoods)return `<div class="hy-material-steps"><section class="hy-material-step"><h3>交出</h3>${goodsPicker(first.ownGoods,'give')}</section><section class="hy-material-step"><h3>换入</h3>${goodsPicker(first.bankGoods,'receive')}</section></div>`;
+    if(first.goods)return goodsPicker(first.goods,'goods',{category:first.categoryId,grade:['class-surrender','monitored-return'].includes(kind)});
+    if(first.ownGoods)return `<div class="hy-material-steps"><section class="hy-material-step"><h3>交出</h3>${goodsPicker(first.ownGoods,'give',{grade:true})}</section><section class="hy-material-step"><h3>换入</h3>${goodsPicker(first.bankGoods,'receive')}</section></div>`;
     if(first.tools)return '';
     if(p.choice.kind==='tool-class-exchange'){
       const options=p.choice.options,from=[...new Set(options.map(o=>o.ownGoodId))],to=[...new Set(options.filter(o=>o.ownGoodId===selection.ownGoodId).map(o=>o.goodId))];
-      return materials({type:'exchange',own:from,other:to,otherLabel:'换入公库的1件'}, {ownGoodId:selection.ownGoodId,otherGoodId:selection.goodId},fields=>({type:'field',fields:{key:fields.field==='otherGoodId'?'goodId':'ownGoodId',value:fields.id}}));
+      return materials({type:'exchange',own:from,other:to,otherLabel:'换入公库的1件'}, {ownGoodId:selection.ownGoodId,ownRefined:selection.refined,otherGoodId:selection.goodId},
+        fields=>({type:'field',fields:{key:fields.field==='otherGoodId'?'goodId':'ownGoodId',value:fields.id,refined:fields.refined}}),{choiceKind:kind});
     }
     if(first.payments)return cardPicker('取弃牌区的货物牌',first.targets,'takeCardId');
-    const options=p.choice.options,index=options.findIndex(v=>JSON.stringify(v)===JSON.stringify(selection));
+    const options=visibleOptions(p),index=options.findIndex(v=>JSON.stringify(v)===JSON.stringify(selection));
     const choices=materials({type:'option',options},{optionIndex:index},fields=>({type:'option',fields:{index:fields.index}}),{optionLabel:value=>value.branch?value.branch==='silver'?'支付2两':'交回1件货物':null});
     return choices;
   }
+  function visibleOptions(p){
+    if(p.code!=='R20'||!own()?.refined)return p.choice.options;
+    return p.choice.options.flatMap(({goodId})=>stockQualityOptions(own(),goodId).map(({refined})=>({goodId,refined})));
+  }
   function pendingReady(p){const first=p.choice.options[0]??{};try{
+    const selection=selectedMaterials(p);
     if(p.choice.kind==='retain-goods')return !!selection.goods&&count(selection.goods)<=first.capacity&&GOODS.every(g=>Number.isSafeInteger(selection.goods[g.id])&&selection.goods[g.id]>=0&&selection.goods[g.id]<=first.combined[g.id]);
     if(first.goods){const n=count(selection.goods);if(n<(first.count??first.minimum??1)||n>(first.count??first.maximum??3))return false;
       if(GOODS.some(g=>(selection.goods?.[g.id]??0)>first.goods[g.id]||first.categoryId&&selection.goods?.[g.id]>0&&g.category!==first.categoryId))return false;
       if(p.choice.kind==='class-surrender'&&Object.keys(categoryCounts(selection.goods)).length!==1)return false;return true;}
+    if(first.ownGoods&&p.choice.kind==='role-class-exchange'&&unrestrictedRoleExchange(roleConfiguration())){const n=count(selection.give),m=count(selection.receive);return n>=1&&n<=2&&m===n&&GOODS.every(g=>Number.isSafeInteger(selection.give?.[g.id]??0)&&(selection.give?.[g.id]??0)>=0&&(selection.give?.[g.id]??0)<=first.ownGoods[g.id]&&Number.isSafeInteger(selection.receive?.[g.id]??0)&&(selection.receive?.[g.id]??0)>=0&&(selection.receive?.[g.id]??0)<=first.bankGoods[g.id]+(selection.give?.[g.id]??0))&&GOODS.some(g=>(selection.give?.[g.id]??0)!==(selection.receive?.[g.id]??0));}
     if(first.ownGoods){const a=categoryCounts(selection.give??{}),b=categoryCounts(selection.receive??{}),n=count(selection.give);if(n<1||n>(first.count??2)||n!==count(selection.receive)||first.count&&n!==first.count||Object.keys(a).length!==1||Object.keys(b).length!==1)return false;
       if((p.choice.kind==='class-exchange')===(Object.keys(a)[0]===Object.keys(b)[0]))return false;
       if(!GOODS.some(g=>selection.give?.[g.id]!==selection.receive?.[g.id]))return false;
-      receiptPlan(own(),room.game.bankGoods,{give:selection.give,receive:selection.receive,cost:p.choice.kind==='class-exchange'?1:0});return true;}
+      receiptPlan(own(),room.game.bankGoods,{give:selection.give,receive:selection.receive,giveRefined:selection.giveRefined,cost:p.choice.kind==='class-exchange'?1:0});return true;}
+    if(p.choice.kind==='tool-class-exchange'){
+      return p.choice.options.some(option=>option.ownGoodId===selection.ownGoodId&&option.goodId===selection.goodId);
+    }
     if(first.tools)return first.payments.includes(selection.cardId)&&first.tools.includes(selection.toolCardId);
     if(first.payments)return first.payments.includes(selection.payCardId)&&first.targets.includes(selection.takeCardId);
-    return p.choice.options.some(o=>JSON.stringify(o)===JSON.stringify(selection));
+    return visibleOptions(p).some(o=>JSON.stringify(o)===JSON.stringify(selection));
   }catch{return false;}}
   const needsTarget=code=>/^XM|^R2[34]$/u.test(code);
   const needsCategory=code=>['XC07','XM05','XM06','R17'].includes(code);
@@ -216,13 +264,13 @@ export function mountExpansionTable({root,send,read,rerender,feedback,available,
     else if(tool)selected=tool;
     if(params.replaceCardId&&!own()?.tools?.some(c=>cardKey(c)===params.replaceCardId))delete params.replaceCardId;
   }
-  function render(next){syncView(next);$('hy-task-materials').classList.remove('hy-expansion-materials','hy-card-selection');const expansion=isExpansion(room.game??room.hyakkiConfig);root.classList.toggle('ex-preview',expansion);if(expansion){$('yg-catalog').dataset.exCommand='catalog';$('yg-catalog').textContent=`查看${cardsForExpansion(roleConfiguration()?.contentVersion).length}种牌与24角色`;}else {delete $('yg-catalog').dataset.exCommand;$('yg-catalog').textContent='查看完整51种卡牌';}if(!expansion){work.hidden=true;roles.hidden=true;dock.hidden=true;root.classList.remove('ex-working');delete root.dataset.exScene;return;}
+  function render(next){syncView(next);$('hy-task-materials').classList.remove('hy-expansion-materials','hy-card-selection');const expansion=isExpansion(room.game??room.hyakkiConfig);root.classList.toggle('ex-preview',expansion);if(expansion){$('yg-catalog').dataset.exCommand='catalog';$('yg-catalog').textContent=`查看${cardsFor(roleConfiguration()).length}种牌与${rolesFor(roleConfiguration()).length}角色`;}else {delete $('yg-catalog').dataset.exCommand;$('yg-catalog').textContent='查看完整51种卡牌';}if(!expansion){work.hidden=true;roles.hidden=true;dock.hidden=true;root.classList.remove('ex-working');delete root.dataset.exScene;return;}
     renderMarket();roleDock();if(room.game?.kind==='hyakki-opening-game'){renderOpening();return;}
     roles.hidden=true;delete root.dataset.exScene;root.querySelector('.yg-playfield').inert=false;
     work.hidden=true;root.classList.remove('ex-working');$('hy-task-materials').classList.remove('hy-expansion-materials');
     const p=room.game?.pending;
     if(newPending(p)){
-      if(choiceId!==p.choice.id){choiceId=p.choice.id;selection=p.choice.kind==='retain-goods'?{goods:{...p.choice.defaultSelection}}:{};}
+      if(choiceId!==p.choice.id){choiceId=p.choice.id;quality='ordinary';selection=p.choice.kind==='retain-goods'?{goods:{...p.choice.defaultSelection}}:{};}
       const source=p.sourceRole?role(p.sourceRole.roleId):getCard(p.sourceCards[0]?.definitionId??`yousei.${p.code.toLowerCase()}`);
       const mine=p.actorId===room.selfId,receipt=p.choice.kind==='retain-goods',capacity=p.choice.options?.[0]?.capacity;
       frame(source,receipt?mine?`选择保留的货物 · 最多${capacity}件`:'等待保留货物':source.name,mine?pendingBody(p):`<p>等待${esc(room.players.find(m=>m.id===p.actorId)?.name??'伙伴')}完成选择。</p>`,
@@ -249,7 +297,7 @@ export function mountExpansionTable({root,send,read,rerender,feedback,available,
     if(!room||!isExpansion(room.game??room.hyakkiConfig))return;
     const command=event.target.closest('[data-ex-command]'),hand=event.target.closest('#yg-hand [data-entity-id]'),tool=event.target.closest('#yg-tools [data-tool-id]');
     let intercept=!!command;
-    const physicalId=hand?.dataset.entityId??tool?.dataset.toolId,pending=room.game.pending,materialChoice=pending??localMaterialChoice();
+    const physicalId=hand?.dataset.entityId??tool?.dataset.toolId,pending=room.game?.pending,materialChoice=pending??localMaterialChoice();
     if(physicalId&&materialChoice&&(!pending||newPending(pending)&&pending.actorId===room.selfId)&&usable()){
       const first=materialChoice.choice.options[0]??{};let key=null,value=null;
       if(first.tools){const payment=hand&&first.payments.find(id=>physicalMatches(id,physicalId)),resetTool=tool&&first.tools.find(id=>physicalMatches(id,physicalId));key=payment?'cardId':resetTool?'toolCardId':null;value=payment||resetTool;}
@@ -274,25 +322,40 @@ export function mountExpansionTable({root,send,read,rerender,feedback,available,
     else if(type==='role'){reset();selected={roleId:own().roleId};}
     else if(type==='close'){reset();}
     else if(type==='back'){direction=null;}
-    else if(type==='trade'){direction=fields.direction;const f=faceOf();selection={goods:f.recipe?.type==='fixed'?{...f.recipe.goods}:zeros()};}
+    else if(type==='trade'){
+      if(fields.direction==='sell'&&openQualitySale(selected)){reset();rerender();return;}
+      direction=fields.direction;const f=faceOf();selection={goods:f.recipe?.type==='fixed'?{...f.recipe.goods}:zeros()};
+    }
     else if(type==='undo')undoSelection();
+    else if(type==='stock-quality')quality=fields.value;
     else if(type==='amount'){selection[fields.field]??=zeros();selection[fields.field][fields.id]=Math.max(0,selection[fields.field][fields.id]+fields.delta);}
-    else if(type==='option')selection=structuredClone((room.game.pending??localMaterialChoice()).choice.options[fields.index]);
-    else if(type==='field'){if(fields.key==='ownGoodId'&&selection.ownGoodId!==fields.value)delete selection.goodId;selection[fields.key]=fields.value;}
+    else if(type==='option')selection=structuredClone(visibleOptions(room.game.pending??localMaterialChoice())[fields.index]);
+    else if(type==='field'){
+      if(fields.key==='ownGoodId'){
+        if(selection.ownGoodId!==fields.value)delete selection.goodId;
+        if(typeof fields.refined==='boolean')selection.refined=fields.refined;
+        else delete selection.refined;
+      }
+      selection[fields.key]=fields.value;
+    }
     else if(type==='param'){if(fields.key==='targetId'&&params.targetId!==fields.value)delete params.categoryId;params[fields.key]=fields.value;}
     else if(type==='param-back'){delete params.targetId;delete params.categoryId;}
-    else if(type==='pending-confirm')return send('choose-effect',{selection:room.game.pending.choice.kind==='retain-goods'?selection.goods:selection});
+    else if(type==='pending-confirm')return send('choose-effect',{selection:room.game.pending.choice.kind==='retain-goods'?selection.goods:selectedMaterials(room.game.pending)});
     else if(type==='trade-confirm')return send(direction,{cardId:cardKey(selected),materials:selection.goods});
     else if(type==='inspect')return send('peek',{inspect:true});
     else if(type==='start-use')return send(room.game.drawStarted?'finish-draw':'peek');
     else if(type==='install'){if(own().tools.length>=3&&!params.replaceCardId)return feedback('请选择要替换的装备。');return send('install-tool',{cardId:cardKey(selected),...(params.replaceCardId?{replaceCardId:params.replaceCardId}:{})});}
     else if(type==='use'){const f=faceOf();if((/^XM|^R2[34]$/u.test(f.sourceCode))&&!params.targetId)return feedback('请先选择一名对手。');if(['XC07','XM05','XM06','R17'].includes(f.sourceCode)&&!params.categoryId)return feedback('请先选择类别。');
-      const chosen=localMaterialChoice()?{...params,...selection}:params;
+      const local=localMaterialChoice(),chosen=local?{...params,...selectedMaterials(local)}:params;
       return send(selected.roleId?'use-role':own().tools.some(t=>cardKey(t)===cardKey(selected))?'activate-tool':'play-character',selected.roleId?{params:chosen}:{cardId:cardKey(selected),params:chosen});}
     rerender();
   }
   const onResize=()=>{if(room&&isExpansion(room.game??room.hyakkiConfig))render(room);};
   document.defaultView.addEventListener('resize',onResize);
   root.addEventListener('click',event,true);
-  return {syncView,render,hasDraft:()=>!!selected&&selectedOwned(),handlesPending:newPending,select(card){if(!room||!isExpansion(room.game)||!expansionCard(card))return false;clearLegacyDraft();reset();selected=card;rerender();return true;},destroy(){document.defaultView.removeEventListener('resize',onResize);room=null;root.removeEventListener('click',event,true);work.remove();roles.remove();dock.remove();}};
+  function saleDraft(){
+    if(direction!=='sell'||!selected||room?.game?.pending)return null;
+    return {cardId:selected.definitionId,quality:'ordinary',selection:{ordinary:selection.goods??{}}};
+  }
+  return {syncView,render,exchangePieces,saleDraft,clearDraft:reset,hasDraft:()=>!!selected&&selectedOwned(),handlesPending:newPending,select(card){if(!room||!isExpansion(room.game)||!expansionCard(card))return false;clearLegacyDraft();reset();selected=card;rerender();return true;},destroy(){document.defaultView.removeEventListener('resize',onResize);room=null;root.removeEventListener('click',event,true);work.remove();roles.remove();dock.remove();}};
 }

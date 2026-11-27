@@ -1,0 +1,28 @@
+{
+  "name": "最后一手 · 竞拍牌会",
+  "short_name": "最后一手",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#392d33",
+  "theme_color": "#392d33",
+  "icons": [
+    {
+      "src": "./assets/mark-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "./assets/mark-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    },
+    {
+      "src": "./assets/mark.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    }
+  ],
+  "id": "./index.html"
+}

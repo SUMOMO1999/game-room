@@ -1,5 +1,6 @@
+import {refinedEventPremium} from './configured/refining.mjs';
 import {CARDS as BASE_CARDS,GOODS as BASE_GOODS,PLAYER_COUNT_CONTENT_VERSION,materialProfile} from './content/definitions.mjs';
-import {GOODS as EXPANSION_GOODS,ROLES,EXPANSION_CONTENT_VERSION,LEGACY_EXPANSION_CONTENT_VERSION,cardsForExpansion,isExpansionContentVersion,CONFIGURABLE_RULE_VERSION,expansionProfile} from './content/expansion-one.mjs';
+import {GOODS as EXPANSION_GOODS,ROLES,EXPANSION_CONTENT_VERSIONS,cardsForExpansion,isExpansionContentVersion,CONFIGURABLE_RULE_VERSION,expansionProfile} from './content/expansion-one.mjs';
 import {publicBattleMetadataProblem} from './battle-public-metadata.mjs';
 import {encodeExpansionPublicMetadata,decodeExpansionPublicMetadata} from './expansion-public-history.mjs';
 import {materialForConfiguration} from './opening-configuration.mjs';
@@ -15,7 +16,7 @@ const hex=id=>typeof id==='string'&&/^[a-f0-9]{32}$/u.test(id);
 const demand=(yes,message='新版公开战况格式无效。')=>{if(!yes)throw new RangeError(message);};
 const size=value=>new TextEncoder().encode(JSON.stringify(value)).length;
 const catalogs=new Map([[PLAYER_COUNT_CONTENT_VERSION,{cards:BASE_CARDS,goods:BASE_GOODS}],
-  ...[LEGACY_EXPANSION_CONTENT_VERSION,EXPANSION_CONTENT_VERSION].map(version=>[version,{cards:cardsForExpansion(version),goods:EXPANSION_GOODS}])]);
+  ...EXPANSION_CONTENT_VERSIONS.map(version=>[version,{cards:cardsForExpansion(version),goods:EXPANSION_GOODS}])]);
 export function history4Material(context){
   demand(exact(context,['contentVersion','participantIds'])&&catalogs.has(context.contentVersion));
   const ids=context.participantIds;
@@ -59,15 +60,24 @@ const vocabulary=Object.freeze({
   'role-triggered':[['actorSeatId','roleId'],['targetSeatId','silver','count']],
 });
 export function history4EventProblem(event,context){
+  try{return configuredEventProblem(event,history4Material(context));}
+  catch(error){if(error instanceof RangeError)return error.message;throw error;}
+}
+// The vocabulary is also used for ordinary events in a newer edition. Its
+// archive reader supplies a separate material context and version envelope.
+export function configuredEventProblem(event,{cards,goods,ids,profile,roles=ROLES,expansion=isExpansionContentVersion(profile.contentVersion)}){
   try{
-    const {cards,goods,ids,profile}=history4Material(context),shape=Object.hasOwn(vocabulary,event?.type)?vocabulary[event.type]:null;
-    demand(shape&&fields(event,['type',...shape[0],...shape[1]])&&shape[0].every(k=>Object.hasOwn(event,k)));
+    const refining=profile.modules?.refining===true;
+    const shape=Object.hasOwn(vocabulary,event?.type)?vocabulary[event.type]
+      :refining&&event?.type==='stock-refined'?[['actorSeatId','goods','source'],[]]:null;
+    const saleQuality=refining&&event?.type==='trade-sold'?['refinedGoods']:[];
+    demand(shape&&fields(event,['type',...shape[0],...shape[1],...saleQuality])&&shape[0].every(k=>Object.hasOwn(event,k)));
     const definitions=new Map(cards.map(c=>[c.id,c])),knownGoods=new Set(goods.map(g=>g.id));
     for(const [key,value] of Object.entries(event)){
       if(key.endsWith('SeatId'))demand(key==='winnerSeatId'&&value===null||ids.includes(value));
       if(key==='cardId')demand(definitions.has(value));
       if(key==='cardIds')demand(Array.isArray(value)&&value.length<=profile.deckSize&&value.every(id=>definitions.has(id)));
-      if(key==='roleId')demand(isExpansionContentVersion(profile.contentVersion)&&ROLES.some(r=>r.id===value));
+      if(key==='roleId')demand(expansion&&roles.some(r=>r.id===value));
       if(key==='goods')demand(Array.isArray(value)&&value.length<=goods.length&&new Set(value.map(g=>g?.id)).size===value.length
         &&value.every(g=>exact(g,['id','count'])&&knownGoods.has(g.id)&&integer(g.count,1,20)));
       if(key==='silver')demand(integer(value));
@@ -78,6 +88,7 @@ export function history4EventProblem(event,context){
       demand(Object.hasOwn(event,'cardIds')!==Object.hasOwn(event,'goods'));
       demand(event.cardIds?event.cardIds.length===3:event.goods.reduce((sum,g)=>sum+g.count,0)===2);
     }
+    if(event.type==='stock-refined')demand(['ordinary','artisan','hammer'].includes(event.source)&&[1,2].includes(event.goods.reduce((sum,g)=>sum+g.count,0)));
     if(['trade-bought','trade-sold'].includes(event.type)){
       const buying=event.type==='trade-bought',card=definitions.get(event.cardId),p=event.price;
       const printed=buying?card?.buySilver:card?.sellSilver;
@@ -85,9 +96,10 @@ export function history4EventProblem(event,context){
         &&p.printed===printed&&integer(p.bookLayers)&&integer(2*p.bookLayers)
         &&integer(p.roleAdjustment,buying?-1:0,buying?0:3)&&integer(p.goodsPrice)
         &&[0,1].includes(p.buyTax)&&[0,2].includes(p.temporaryFee));
-      demand(isExpansionContentVersion(profile.contentVersion)||p.roleAdjustment===0&&p.buyTax===0);
+      demand(expansion||p.roleAdjustment===0&&p.buyTax===0);
       demand(p.goodsPrice===(buying?Math.max(0,printed-2*p.bookLayers):printed+2*p.bookLayers)+p.roleAdjustment);
-      demand(event.silver===(buying?p.goodsPrice+p.buyTax+p.temporaryFee:p.goodsPrice)
+      const premium=refinedEventPremium(event,{refining});
+      demand(premium!==null&&event.silver===(buying?p.goodsPrice+p.buyTax+p.temporaryFee:p.goodsPrice+premium)
         &&(buying||p.buyTax===0&&p.temporaryFee===0)&&integer(event.silver));
       const count=event.goods.reduce((sum,g)=>sum+g.count,0);
       demand(count===(card.recipe?.count??Object.values(card.goods).reduce((sum,n)=>sum+n,0)));

@@ -1,5 +1,8 @@
 import {openingProblem,openingView} from './opening.mjs';
 import {isExpansionContentVersion,CONFIGURABLE_RULE_VERSION,expansionDefinitionForCopy} from './content/expansion-one.mjs';
+import {EXPANSION_TWO_CONTENT_VERSION} from './content/expansion-two.mjs';
+import {materialForConfiguration} from './opening-configuration.mjs';
+import {projectPublicOrders} from './configured/public-order-market.mjs';
 
 const copy=value=>structuredClone(value);
 const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
@@ -12,7 +15,8 @@ export const wrapOpeningGame=opening=>({kind:'hyakki-opening-game',version:3,gam
 export function openingGameProblem(game){
   if(!exact(game,['kind','version','gameType','ruleVersion','contentVersion','matchId','status','result','stage','players','opening'])
     ||!openingGame(game)||game.version!==3||game.gameType!=='hyakki-trading'||game.ruleVersion!==CONFIGURABLE_RULE_VERSION
-    ||!isExpansionContentVersion(game.contentVersion)||game.status!=='playing'||game.result!==null)return '扩展开局外壳无效。';
+    ||(!isExpansionContentVersion(game.contentVersion)&&game.contentVersion!==EXPANSION_TWO_CONTENT_VERSION)
+    ||game.status!=='playing'||game.result!==null)return '扩展开局外壳无效。';
   const issue=openingProblem(game.opening);if(issue)return issue;
   if(game.contentVersion!==game.opening.configuration.contentVersion||game.matchId!==game.opening.openingId||game.stage!==(game.opening.status==='completed'?'initialized':'role-selection')
     ||!same(game.players,game.opening.configuration.participantIds.map(id=>({id}))))return '扩展开局归属无效。';
@@ -21,12 +25,16 @@ export function openingGameProblem(game){
 export function openingGameView(game,viewerId,{now}={}){
   const issue=openingGameProblem(game);if(issue)throw new TypeError(issue);
   const view=openingView(game.opening,viewerId,{now});
-  const players=game.opening.status==='completed'?game.opening.deal.players.map(p=>({id:p.id,roleId:p.roleId,silver:p.silver,
+  const deal=game.opening.deal;
+  const editionDeck=deal&&game.contentVersion===EXPANSION_TWO_CONTENT_VERSION?materialForConfiguration(deal.configuration).deck:null;
+  const copies=editionDeck?new Map(editionDeck.map(card=>[card.id,card.definitionId])):null;
+  const players=deal?deal.players.map(p=>({id:p.id,roleId:p.roleId,silver:p.silver,
     goods:copy(p.goods),stallCount:p.stallCount,temporaryOccupied:p.temporaryOccupied,tools:[],handCount:5,
-    ...(p.id===viewerId?{hand:p.hand.map(cardId=>({cardId,definitionId:expansionDefinitionForCopy(cardId,game.players.length,game.contentVersion)}))}:{})}))
+    ...(p.id===viewerId?{hand:p.hand.map(cardId=>({cardId,definitionId:copies?copies.get(cardId):expansionDefinitionForCopy(cardId,game.players.length,game.contentVersion)}))}:{})}))
     :game.players.map(p=>({id:p.id}));
   return {kind:game.kind,version:3,ruleVersion:game.ruleVersion,contentVersion:game.contentVersion,matchId:game.matchId,
-    status:game.status,stage:game.stage,players,opening:view};
+    status:game.status,stage:game.stage,players,opening:view,
+    ...(deal?.publicOrders?{publicOrders:projectPublicOrders(deal.publicOrders,viewerId)}:{})};
 }
 export function openingGameClock(game){
   if(!openingGame(game)||game.opening.status!=='selecting')return null;

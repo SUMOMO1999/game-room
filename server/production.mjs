@@ -1,3 +1,4 @@
+import { startNonameRuntime } from './noname-runtime.mjs';
 import {readVoiceConfiguration,startProductionVoice} from './room-voice-process.mjs';
 import { DatabaseSync } from 'node:sqlite';
 import { lstatSync, statfsSync } from 'node:fs';
@@ -19,7 +20,7 @@ export function runtimeVersions() {
   return { node: process.versions.node, sqlite };
 }
 export async function closeRuntime(runtime) {
-  let voiceError;try{await runtime.voiceHub?.close();}catch(error){voiceError=error;}runtime.preview?.close();
+  let voiceError;try{try{await runtime.nonameRuntime?.stop();}finally{await runtime.voiceHub?.close();}}catch(error){voiceError=error;}runtime.preview?.close();
   try { try { await runtime.canvases?.close(); } finally { await runtime.chat?.close(); } }
   finally { try { await runtime.rooms.close(); } finally {
     try { await runtime.identityRuntime?.close(); } finally { runtime.storage.close(); }
@@ -60,6 +61,7 @@ export async function startProduction(env = process.env) {
   let server;
   try {
     runtime.voiceHub=await startProductionVoice(runtime.voiceConfiguration);
+    runtime.nonameRuntime=await startNonameRuntime(env,runtime.settings,runtime.storage);
     server = createUnifiedServer({ ...runtime, entries: runtime.settings.entries });
     await new Promise((resolve, reject) => { server.once('error', reject); server.listen(runtime.settings.port, runtime.settings.host, resolve); });
   } catch (error) {

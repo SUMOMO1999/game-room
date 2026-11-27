@@ -1,6 +1,6 @@
 import {withRoomVoice} from '../../platform/room-voice-session.mjs';
 import { mountRoomAudioControls } from '../../platform/room-audio-controls.mjs';
-import { mountGameViewport, mountCanvasPin } from '../../platform/room-viewport.mjs';
+import { roomViewportFrame, mountGameViewport, mountCanvasPin } from '../../platform/room-viewport.mjs';
 import { createRoomClock, renderRoomClock } from '../../platform/room-clock.mjs';
 import { createRoomSession, createRoomExit } from '../../platform/room-session.mjs';
 import { entryStorageKey, gamePath } from '../../entry-path.mjs';
@@ -17,7 +17,6 @@ import { roomHref } from '../../game-routing.mjs';
 import { updateTurnFeedback, turnFeedbackMessage } from './feedback.mjs';
 import { mountRummikubMotion, placementCue } from './motion-ui.mjs';
 import { sortPlayableRack, autoSplitDuplicateRun, splitRunAfterExtraction } from './assist.mjs';
-import { gameViewport } from '../../game-viewport.mjs';
 import { createPreviewPublisher,encodeBoardPositions,decodeBoardPositions } from './preview-client.mjs';
 
 const RoomClient=withRoomVoice(BaseRoomClient,{gameType:'rummikub',getAccount:accountState,document,window});
@@ -394,12 +393,12 @@ function syncViewport() {
   canvasPin.pin();
   const viewport=window.visualViewport;
   const editing=Boolean(document.activeElement?.matches?.('input,textarea,[contenteditable="true"]'));
-  const values=gameViewport({width:window.innerWidth || innerWidth,height:window.innerHeight || innerHeight,visual:viewport,editing});
+  const values=roomViewportFrame(window,document);
   for(const key of ['width','height','top','left']) document.documentElement.style.setProperty(`--game-viewport-${key}`,`${values[key]}px`);
   if(values.resetScroll && (window.scrollX || window.scrollY)) window.scrollTo?.(0,0);
   queueBoardFit();queueRackFit();
 }
-mountGameViewport({ window, document, sync: syncViewport, onRecover: clearDrag,
+mountGameViewport({ coherent:true, window, document, sync: syncViewport, onRecover: clearDrag,
   recoveryDelays: [120, 350, 750], setTimeout, clearTimeout });
 
 function toast(message) {

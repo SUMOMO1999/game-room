@@ -1,4 +1,5 @@
-import {GOODS,getRole,getExpansionCard} from './content/expansion-one.mjs';
+import {GOODS,getExpansionCard} from './content/expansion-one.mjs';
+import {getRole} from './configured/material.mjs';
 
 // These functions own materials, price, capacity and per-turn trade accounting.
 // The rules caller still owns phase/action/source-card fences and merchant
@@ -28,6 +29,22 @@ export function goodsVector(value,{complete=false}={}){
   return Object.fromEntries(GOODS.map(good=>[good.id,value[good.id]??0]));
 }
 export const countGoods=vector=>Object.values(vector).reduce((sum,count)=>sum+count,0);
+/** The quantity vector includes both qualities. Unspecified withdrawals use ordinary stock first. */
+export function refinedWithdrawal(stock, goods, selected) {
+  const available=goodsVector(stock.goods,{complete:true});
+  const refined=stock.refined===undefined?goodsVector({}):goodsVector(stock.refined,{complete:true});
+  const withdrawal=goodsVector(goods);
+  const exact=selected===undefined?null:goodsVector(selected);
+  const result={};
+  for(const {id} of GOODS){
+    check(refined[id]<=available[id]&&withdrawal[id]<=available[id],'货物或精制库存不足。');
+    const minimum=Math.max(0,withdrawal[id]-(available[id]-refined[id]));
+    const maximum=Math.min(refined[id],withdrawal[id]);
+    result[id]=exact?exact[id]:minimum;
+    check(result[id]>=minimum&&result[id]<=maximum,'所选普通或精制货物不足。');
+  }
+  return result;
+}
 export function categoryCounts(vector){
   const result={};
   for(const [id,count] of Object.entries(goodsVector(vector)))if(count){
@@ -53,6 +70,20 @@ export function resolveTradeMaterials(definitionId,selection,{broker=false}={}){
   }
   check(valid,'所选货物不满足本牌配方的种类或类别要求。');return vector;
 }
+export function recipeMaterials(face,stock){
+  return findMaterials(stock,face.recipe.count,selection=>resolveTradeMaterials(face.id,selection));
+}
+export function findMaterials(stock,n,accept){
+  const goods=GOODS.filter(g=>(stock[g.id]??0)>0),out={};
+  function visit(index,left){if(left===0){try{return accept(out);}catch(error){if(error instanceof RangeError)return null;throw error;}}
+    if(index>=goods.length)return null;const id=goods[index].id;
+    for(let take=Math.min(left,stock[id]);take>=0;take--){if(take)out[id]=take;else delete out[id];const result=visit(index+1,left-take);if(result)return result;}
+    delete out[id];return null;}
+  return visit(0,n);
+}
+export function isSameKindBatch(goods, minimum=3){
+  return Object.values(goods).some(count=>count>=minimum);
+}
 export function ordinaryCapacity(owner){
   check(integer(owner.stallCount,0,5),'摊位扩展数量无效。');
   return 5+3*owner.stallCount+(getRole(owner.roleId).sourceCode==='R10'?1:0);
@@ -64,7 +95,7 @@ function ownerProblem(owner){
   return goods;
 }
 /** Net exchange and all receipts share the same final-capacity rule. */
-export function receiptPlan(owner,bankGoods,{give={},receive={},cost=0}={}){
+export function receiptPlan(owner,bankGoods,{give={},receive={},cost=0,giveRefined}={}){
   const before=ownerProblem(owner),bank=goodsVector(bankGoods,{complete:true});
   const outgoing=goodsVector(give),incoming=goodsVector(receive);check(integer(cost),'费用无效。');
   const after={},bankAfter={};
@@ -78,9 +109,11 @@ export function receiptPlan(owner,bankGoods,{give={},receive={},cost=0}={}){
   check(count<=ordinary+1,'没有足够的货位。');
   const temporaryOccupied=count>ordinary,temporaryFee=temporaryOccupied&&!owner.temporaryOccupied?2:0;
   check(integer(cost+temporaryFee)&&owner.silver>=cost+temporaryFee,'银两不足以支付本笔费用与临时格费。');
-  return {goods:after,bankGoods:bankAfter,temporaryOccupied,temporaryFee};
+  const refined=owner.refined===undefined&&giveRefined===undefined?null:refinedWithdrawal(owner,outgoing,giveRefined);
+  return {goods:after,bankGoods:bankAfter,temporaryOccupied,temporaryFee,
+    ...(owner.refined===undefined?{}:{refined:Object.fromEntries(GOODS.map(({id})=>[id,owner.refined[id]-refined[id]]))})};
 }
-export function quoteGoodsTrade({owner,bankGoods,usage,bookLayers,definitionId,direction,materials,broker=false}){
+export function quoteGoodsTrade({owner,bankGoods,usage,bookLayers,definitionId,direction,materials,broker=false,refinedMaterials}){
   check(['buy','sell'].includes(direction)&&(!broker||direction==='sell'),'交易方向无效。');
   check(!tradeUsageProblem(usage)&&integer(bookLayers)&&integer(2*bookLayers),'交易修正状态无效。');
   ownerProblem(owner);
@@ -96,15 +129,19 @@ export function quoteGoodsTrade({owner,bankGoods,usage,bookLayers,definitionId,d
     if(!usage[flag]&&(!buying||bookPrice>0)){roleAdjustment=buying?-1:1;usedFlag=flag;}
   }else if(!buying&&!usage.saleBonus){
     if(role.sourceCode==='R07'&&Object.keys(categories).length>=3){roleAdjustment=3;usedFlag='saleBonus';}
-    if(role.sourceCode==='R08'&&countGoods(goods)===3&&Object.values(goods).filter(n=>n>0).length===1){roleAdjustment=2;usedFlag='saleBonus';}
+    if(role.sourceCode==='R08'&&countGoods(goods)===3&&isSameKindBatch(goods)){roleAdjustment=2;usedFlag='saleBonus';}
   }
   const goodsPrice=bookPrice+roleAdjustment,buyTax=buying&&role.sourceCode==='R23'?1:0;
   check(integer(goodsPrice)&&integer(goodsPrice+buyTax),'交易价格超出可保存范围。');
-  const plan=receiptPlan(owner,bankGoods,{give:buying?{}:goods,receive:buying?goods:{},cost:buying?goodsPrice+buyTax:0});
+  check(!buying||refinedMaterials===undefined,'公共货栈只提供普通货物。');
+  const refined=buying||owner.refined===undefined&&refinedMaterials===undefined?null:refinedWithdrawal(owner,goods,refinedMaterials);
+  const premium=refined?Math.min(4,2*countGoods(refined)):0;
+  const plan=receiptPlan(owner,bankGoods,{give:buying?{}:goods,receive:buying?goods:{},cost:buying?goodsPrice+buyTax:0,giveRefined:refined??undefined});
   const totalPayment=buying?goodsPrice+buyTax+plan.temporaryFee:0;
-  check(integer(owner.silver+(buying?-totalPayment:goodsPrice)),'交易银两超出可保存范围。');
+  check(integer(owner.silver+(buying?-totalPayment:goodsPrice+premium)),'交易银两超出可保存范围。');
   return {definitionId,direction,broker,goods,printedPrice:printed,bookLayers,roleAdjustment,usedFlag,
-    goodsPrice,buyTax,temporaryFee:plan.temporaryFee,totalPayment,saleProceeds:buying?0:goodsPrice};
+    goodsPrice,buyTax,temporaryFee:plan.temporaryFee,totalPayment,saleProceeds:buying?0:goodsPrice+premium,
+    ...(refined?{refined,premium}:{})};
 }
 /** Returns a new economic fragment and deferred obligations; never mutates inputs.
  * R11 must run after merchant responses/source disposition, before turn-end.
@@ -112,8 +149,9 @@ export function quoteGoodsTrade({owner,bankGoods,usage,bookLayers,definitionId,d
  */
 export function settleGoodsTrade(input){
   const quote=quoteGoodsTrade(input),owner=copy(input.owner),usage=copy(input.usage),buying=quote.direction==='buy';
-  const plan=receiptPlan(owner,input.bankGoods,{give:buying?{}:quote.goods,receive:buying?quote.goods:{},cost:buying?quote.goodsPrice+quote.buyTax:0});
-  Object.assign(owner,{silver:owner.silver+(buying?-quote.totalPayment:quote.saleProceeds),goods:plan.goods,temporaryOccupied:plan.temporaryOccupied});
+  const plan=receiptPlan(owner,input.bankGoods,{give:buying?{}:quote.goods,receive:buying?quote.goods:{},cost:buying?quote.goodsPrice+quote.buyTax:0,giveRefined:quote.refined});
+  applyGoodsReceipt(owner,plan);
+  owner.silver+=buying?-quote.totalPayment:quote.saleProceeds;
   if(quote.usedFlag)usage[quote.usedFlag]=true;
   if(buying){usage.goodsBuys++;usage.paidBuy||=quote.goodsPrice>0;}else usage.sold=true;
   check(integer(usage.goodsBuys),'交易次数超出可保存范围。');
@@ -123,4 +161,11 @@ export function settleGoodsTrade(input){
   if(turnoverReward){check(integer(owner.silver+1),'周转奖励超出可保存范围。');owner.silver++;usage.turnoverReward=true;}
   return {owner,bankGoods:plan.bankGoods,usage,quote,bankSilverDelta:(buying?quote.totalPayment: -quote.saleProceeds)-turnoverReward,
     turnoverReward,afterSourceSettled:accountant?{kind:'accountant-draw-discard',playerId:owner.id}:null};
+}
+
+/** Apply a checked stock plan, leaving price and effects to the caller. */
+export function applyGoodsReceipt(owner,plan){
+  owner.goods=plan.goods;
+  owner.temporaryOccupied=plan.temporaryOccupied;
+  if(plan.refined!==undefined)owner.refined=plan.refined;
 }

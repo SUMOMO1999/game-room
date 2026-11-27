@@ -292,3 +292,30 @@ export function applyTimeout(game, actorId, ctx = {}) {
     return commit(state, ctx, game.turnId);
   } catch (error) { if (error instanceof RuleError) return failure(error); throw error; }
 }
+
+/** Trusted presence may use the same conservative defaults as a timeout.
+ * Complete bounded chunks in one authoritative commit; never play cards or
+ * award idle silver on behalf of an absent player. */
+export function applyOfflineDefaults(game, offlineIds, ctx = {}) {
+  try {
+    const firstActor = currentDecision(game)?.actorId ?? game.turnPlayerId;
+    ensureActive(game, firstActor, ctx.now);
+    requireRule(Array.isArray(offlineIds) && offlineIds.includes(firstActor)
+      && game.players.some(player => !offlineIds.includes(player.id)), '没有需要处理的离线玩家。');
+    const state = structuredClone(game); state.lastPublicEvents = [];
+    for (let step = 0; step < 24 && state.status === 'playing'; step++) {
+      const actor = currentDecision(state)?.actorId ?? state.turnPlayerId;
+      if (!offlineIds.includes(actor)) break;
+      if (state.pending) defaultPending(state, ctx);
+      else endTurn(state, ctx.now,{closingTarget:ctx.closingTarget??60});
+      synchronizeClock(state, ctx.now);
+      // A public history group owns at most one turn boundary. Remaining
+      // absent seats advance on the next authoritative lifecycle sweep.
+      if (state.turnId !== game.turnId) break;
+      // Keep each persisted public event group below its existing size bound.
+      // Further pending defaults are continued by the next lifecycle sweep.
+      if (state.lastPublicEvents.length >= 40) break;
+    }
+    return commit(state, ctx, game.turnId);
+  } catch (error) { if (error instanceof RuleError || error instanceof RangeError) return failure(error); throw error; }
+}

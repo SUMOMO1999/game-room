@@ -27,7 +27,9 @@ export function publicGroupResult(group, players) {
 
 function groupMarkup(group, entries, players, formatEvent) {
   group=readableBattleGroup(group);
-  const publicIds = new Set([group.sourceCardId,group.sourceRole?.roleId, ...entries.flatMap(({event}) => [event.cardId, ...(event.cardIds ?? [])])].filter(id => cardName(id)));
+  const publicIds = new Set([group.sourceCardId,group.sourceRole?.roleId,...entries.flatMap(({event})=>[
+    event.cardId,...(event.cardIds??[]),...(event.offer?.provide.cards??[]),...(event.provide?.cards??[]),...(event.receive?.cards??[]),
+  ])].filter(id=>cardName(id)));
   const results = publicGroupResult(group, players);
   const reasons = { used:'使用后弃置', 'draw-discarded':'摸看后弃置', replaced:'替换装备', payment:'作为费用', response:'用于回应', 'auction-unsold':'拍卖未成交', removed:'被移除' };
   const discarded = (group.discard?.added ?? []).filter(item => cardName(item.cardId)).map(item => `${item.actorSeatId?`${playerName(players,item.actorSeatId)} · `:''}${cardName(item.cardId)}${reasons[item.reason] ? ` · ${reasons[item.reason]}` : ' · 来源未记录'}`);
@@ -137,7 +139,7 @@ export function mountBattleReport({ dialog, title, body, getContext, requestPage
       else if (loadedHead < capturedHead) await readRange(loadedHead,capturedHead);
       while (live() && loadedStart > origin) {
         // Legacy groups need a continuous origin before their owner can be known.
-        const legacy = [...groups.values()].some(group=>group.schemaVersion===4?(!readableBattleGroup(group).turn&&!readableBattleGroup(group).opening):group.schemaVersion!==2||!group.turn);
+        const legacy = [...groups.values()].some(group=>[4,5].includes(group.schemaVersion)?(!readableBattleGroup(group).turn&&!readableBattleGroup(group).opening):group.schemaVersion!==2||!group.turn);
         const previous = earlierThan && model.turns.filter(turn=>turn.ownerId===selectedPlayer && turn.number<earlierThan).at(-1);
         if (previous) { selectedTurn=previous.id;earlierThan=null;rebuild();render({resetScroll:true}); }
         const selected = model.turns.find(turn=>turn.id===selectedTurn && turn.ownerId===selectedPlayer);

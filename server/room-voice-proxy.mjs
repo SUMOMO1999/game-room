@@ -10,7 +10,7 @@ import {voiceAuthority} from './room-voice-http.mjs';
 /** Only RTC handshake paths reach a fixed loopback SFU. Its Twirp admin API is
  * never public. A signed token alone is insufficient: the current room cookie,
  * fresh provider and live ephemeral terminal must all agree, on every reconnect. */
-export function createRoomVoiceProxy({sessions,rooms,voice,entries,origin,limit}={}) {
+export function createRoomVoiceProxy({sessions,rooms,voice,entries,origin,limit,noname}={}) {
  const target=new URL(origin);
  if(target.protocol!=='http:'||target.hostname!=='127.0.0.1'||target.pathname!=='/'||target.username||target.password||target.search||target.hash)throw TypeError('Expected fixed voice loopback.');
  const sockets=new Map();let closed=false;
@@ -32,6 +32,12 @@ export function createRoomVoiceProxy({sessions,rooms,voice,entries,origin,limit}
   try{
    const session=await sessions.authorize(request,{fresh:true,touch:false,...(sessions.usesBatchIdentity?{context}:{})});
    if(session.id!==permit.sessionId)fail(403,'VOICE_COOKIE');
+   if(permit.gameType==='noname') {
+     if(!noname)fail(403,'VOICE_SEAT');
+     await context.wait(()=>sessions.assertCurrent(session,{context}));context.assert();
+     const seat=noname.seatFor(session,permit.clientId);
+     return {id:voice.assertMedia(permit,seat),path:logicalPath.slice('/voice'.length)+externalUrl.search};
+   }
    const prepare=async()=>{const room=await context.wait(()=>rooms.getGameContext(permit.code,session.userKey,{includeView:false}));return {room,guards:[room.roomGuard,room.presenceGuard,...(room.invitationGuard?[room.invitationGuard]:[])]};};
    const output=await prepareCurrentRoomOutput({sessions,session,context,prepare});context.assert();
    const id=voice.assertMedia(permit,voiceAuthority(session,output.room,permit.code));
@@ -46,10 +52,40 @@ export function createRoomVoiceProxy({sessions,rooms,voice,entries,origin,limit}
     if(!req.url.split('?')[0].endsWith('/validate'))fail(426,'VOICE_UPGRADE_REQUIRED');
     const out=upstream(req,permit.path);const timer=setTimeout(()=>out.destroy(),3000);out.on('response',up=>{res.writeHead(up.statusCode,{'Cache-Control':'no-store','Content-Type':'text/plain; charset=utf-8'});let size=0;up.on('data',chunk=>{size+=chunk.length;if(size>8192){out.destroy();res.destroy();}else res.write(chunk);});up.on('end',()=>res.end());up.on('error',()=>res.destroy());});out.on('error',()=>{if(!res.headersSent)denied(Error(),res);else res.destroy();});out.on('close',()=>clearTimeout(timer));res.once('close',()=>out.destroy());out.end();
    }catch(error){if(!res.destroyed&&!res.writableEnded)denied(error,res);}finally{req.off('aborted',end);res.off('close',end);}},
-  async upgrade(req,socket,head){const cancel=new AbortController();let out,timer,switched=false;const abort=()=>{cancel.abort();if(!switched)out?.destroy();clearTimeout(timer);if(!switched)sockets.delete(socket);};socket.once('close',abort);socket.pause();
-   try{if(!Buffer.isBuffer(head)||head.length>65536)fail(400,'VOICE_HEAD');const permit=await authorize(req,cancel.signal);if(cancel.signal.aborted||socket.destroyed)return;if(req.url.split('?')[0].endsWith('/validate'))fail(400,'VOICE_UPGRADE');if(sockets.size>=256)fail(424,'VOICE_CAPACITY');
+  async upgrade(req,socket,head){
+   const cancel=new AbortController();
+   let out,timer;
+   function abortHandshake(){
+    cancel.abort();
+    clearTimeout(timer);
+    out?.destroy();
+    sockets.delete(socket);
+   }
+   function onHandshakeError(){
+    abortHandshake();
+    socket.destroy();
+   }
+   // The HTTP server hands off its socket before seat verification finishes.
+   socket.on('error',onHandshakeError);
+   socket.once('close',abortHandshake);
+   socket.pause();
+   try{if(!Buffer.isBuffer(head)||head.length>65536)fail(400,'VOICE_HEAD');const permit=await authorize(req,cancel.signal);if(cancel.signal.aborted||socket.destroyed)return;if(closed)fail(424,'VOICE_UNAVAILABLE');if(req.url.split('?')[0].endsWith('/validate'))fail(400,'VOICE_UPGRADE');if(sockets.size>=256)fail(424,'VOICE_CAPACITY');
     sockets.set(socket,permit.id);out=upstream(req,permit.path);timer=setTimeout(()=>{out.destroy();socket.destroy();},3000);
-    out.once('upgrade',(response,remote,remoteHead)=>{clearTimeout(timer);if(socket.destroyed||closed){remote.destroy();return;}let headers=`HTTP/1.1 ${response.statusCode} Switching Protocols\r\n`;for(let i=0;i<response.rawHeaders.length;i+=2)headers+=response.rawHeaders[i]+': '+response.rawHeaders[i+1]+'\r\n';socket.write(headers+'\r\n');switched=true;bridgeVoiceSockets(socket,remote,{head,remoteHead,onClose:()=>sockets.delete(socket)});});
+    out.once('upgrade',(response,remote,remoteHead)=>{
+     clearTimeout(timer);
+     if(socket.destroyed||closed){
+      remote.once('error',()=>remote.destroy());
+      remote.destroy();
+      socket.destroy();
+      return;
+     }
+     let headers=`HTTP/1.1 ${response.statusCode} Switching Protocols\r\n`;
+     for(let i=0;i<response.rawHeaders.length;i+=2)headers+=response.rawHeaders[i]+': '+response.rawHeaders[i+1]+'\r\n';
+     socket.write(headers+'\r\n');
+     bridgeVoiceSockets(socket,remote,{head,remoteHead,onClose:()=>sockets.delete(socket)});
+     socket.off('error',onHandshakeError);
+     socket.off('close',abortHandshake);
+    });
     out.once('response',()=>{clearTimeout(timer);socket.end('HTTP/1.1 424 Failed Dependency\r\nConnection: close\r\nContent-Length: 0\r\n\r\n');out.destroy();});out.once('error',()=>socket.destroy());out.end();
    }catch(error){if(!socket.destroyed){const status=error instanceof RoomError||error instanceof IdentityFailure?error.status:424;socket.end(`HTTP/1.1 ${status} Voice Unavailable\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`);}}
   },

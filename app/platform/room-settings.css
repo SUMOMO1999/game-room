@@ -4,8 +4,8 @@
   display:flex;
   flex-direction:column;
   gap:12px;
-  width:min(440px,calc(100vw - 24px));
-  max-width:calc(100vw - 24px);
+  width:min(440px,calc(calc(100 * var(--room-vw,1vw)) - 24px));
+  max-width:calc(calc(100 * var(--room-vw,1vw)) - 24px);
   max-height:calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   padding:16px;
   border:1px solid #ccbc8966;
@@ -67,6 +67,10 @@
 .game-settings-dialog[open] .practice-lessons a { display:inline-flex; align-items:center; padding:8px 14px; color:#f2ead3; text-decoration:none; }
 .game-settings-dialog[open] .practice-lessons [aria-current="page"] { color:#163b30; background:#efe1b7; }
 @media (max-height:340px) {
+  .game-settings-dialog[open]:where(:not(:root[data-room-viewport] *)) { padding:12px; border-radius:12px; }
+  .game-settings-dialog[open] .game-settings-body:where(:not(:root[data-room-viewport] *)) { gap:8px; }
+}
+@container room-viewport (max-height:340px) {
   .game-settings-dialog[open] { padding:12px; border-radius:12px; }
   .game-settings-dialog[open] .game-settings-body { gap:8px; }
 }

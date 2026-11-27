@@ -7,8 +7,7 @@ import { createGameAudio } from '../../game-audio.mjs';
 import { mountRoomAudioControls } from '../../platform/room-audio-controls.mjs';
 import { mountRoomSettings } from '../../platform/room-settings.mjs';
 import { mountGameAppearancePicker } from '../../platform/game-appearance.mjs';
-import { mountGameViewport } from '../../platform/room-viewport.mjs';
-import { gameViewport } from '../../game-viewport.mjs';
+import { mountGameViewport, roomViewportFrame } from '../../platform/room-viewport.mjs';
 import { roomChatMarkup } from '../../room-chat.mjs';
 
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
@@ -89,7 +88,7 @@ export function mountPoker414Page({ root, preview = false, practice = false, onA
     if (destroyed) return;
     const editing = !!document.activeElement?.matches('input,textarea')
       && !document.activeElement.matches('input[type="checkbox"],input[type="radio"],input[type="range"]');
-    const frame = gameViewport({ width: window.innerWidth, height: window.innerHeight, visual: window.visualViewport, editing });
+    const frame = roomViewportFrame(window,document);
     document.documentElement.style.setProperty('--p414-height', `${frame.height}px`);
     document.documentElement.style.setProperty('--p414-top', `${frame.top}px`);
     if (frame.resetScroll && (window.scrollX || window.scrollY)) window.scrollTo(0, 0);
@@ -116,7 +115,7 @@ export function mountPoker414Page({ root, preview = false, practice = false, onA
       publicNode.style.setProperty('--public-mark-size', `${Math.max(12, Math.min(60, publicNode.clientHeight * .6, publicNode.clientWidth * .1))}px`);
     }
   }
-  const viewport = mountGameViewport({ window, document, sync: resize, recoveryDelays: [80, 250] });
+  const viewport = mountGameViewport({ coherent:true, window, document, sync: resize, recoveryDelays: [80, 250] });
   const observer = new window.ResizeObserver(resize); observer.observe($('p414-hand')); observer.observe($('p414-public'));
 
   function selectedAnalysis() {

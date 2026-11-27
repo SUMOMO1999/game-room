@@ -1,5 +1,6 @@
-import {quoteGoodsTrade,newTradeUsage} from './trade-contract.mjs';
+import {quoteGoodsTrade,newTradeUsage,recipeMaterials} from './trade-contract.mjs';
 import {expansionProfile} from './content/expansion-one.mjs';
+import {EXPANSION_TWO_PACK_ID,composeTradeRoutes} from './content/expansion-two.mjs';
 /** UI input contracts consume only the current role projection. No hidden rules/state. */
 import { GOODS, getCard,goodsFor,isExpansion } from './presentation-content.mjs';
 import { profileForPlayerCount } from './content/player-count-profile.mjs';
@@ -9,10 +10,21 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const fail = message => { throw new RangeError(message); };
 const quantity = value => Number.isSafeInteger(value) && value >= 0;
 export const goodsTotal = goods => ids.reduce((n, id) => n + (goods?.[id] ?? 0), 0);
+export function stockQualityOptions(player,id){
+  const total=player?.goods?.[id]??0;
+  if(!player?.refined)return total>0?[{count:total}]:[];
+  const refined=player.refined[id]??0;
+  return [{count:total-refined,refined:false},{count:refined,refined:true}].filter(option=>option.count>0);
+}
 export const cardKey = card => card.cardId ?? card.ref ?? card.id;
 /** A setup display, not the authority that freezes materials when a match starts. */
 export function supplySetup(playerCount, configuration = {}) {
-  const profile = Number.isSafeInteger(playerCount) && playerCount >= 2 && playerCount <= 6 ? (configuration.packId==='six-trades-v1'?{...expansionProfile(playerCount,configuration.contentVersion),goodsPerTypeRecommended:3*playerCount}:profileForPlayerCount(playerCount)) : null;
+  let profile=null;
+  if(Number.isSafeInteger(playerCount)&&playerCount>=2&&playerCount<=6){
+    if(configuration.packId===EXPANSION_TWO_PACK_ID)profile=composeTradeRoutes(playerCount,configuration.modules);
+    else if(configuration.packId==='six-trades-v1')profile=expansionProfile(playerCount,configuration.contentVersion);
+    else profile=profileForPlayerCount(playerCount);
+  }
   const goodsSupplyMode = configuration.goodsSupplyMode === 'recommended' ? 'recommended' : 'custom';
   const saved = Number.isSafeInteger(configuration.goodsPerType) ? configuration.goodsPerType : 6;
   return { playerCount, deckSize: profile?.deckSize ?? null, stallBoards: profile?.stallBoards ?? null,
@@ -27,6 +39,20 @@ export function opponentForDraft(game, selfId, targetId) {
   const selected = others.length === 1 ? others[0] : others.find(player => player.id === targetId);
   if (!selected) return fail('请明确选择一名对手，再确认使用。');
   return selected;
+}
+
+export function canSellFromStock(game,selfId,card){
+  const face=getCard(card.definitionId);
+  if(face.category!=='goods'||game.remainingActions<1)return false;
+  if(!isExpansion(game)||!face.recipe||face.recipe.type==='fixed')return !!tradeAvailability(game,selfId,card)?.canSell;
+  const self=game.players.find(player=>player.id===selfId);
+  return !!self&&!!recipeMaterials(face,self.goods);
+}
+
+export function turnOrder(game){
+  const players=game?.players??[];
+  const first=players.findIndex(player=>player.id===(game?.firstPlayerId??game?.opening?.firstPlayerId));
+  return first<0?[]:[...players.slice(first),...players.slice(0,first)];
 }
 
 /** A price/availability hint from public stock and the viewer's own shop. Server still settles. */
@@ -81,7 +107,9 @@ export function buildChoiceSelection(pending, input) {
   }
   if (model.type === 'exchange') {
     if (!model.own.includes(input.ownGoodId) || !model.other.includes(input.otherGoodId)) return fail('请选择双方各一种现有货物。');
-    return { ownGoodId: input.ownGoodId, otherGoodId: input.otherGoodId };
+    return {ownGoodId:input.ownGoodId,otherGoodId:input.otherGoodId,
+      ...(typeof input.ownRefined==='boolean'?{ownRefined:input.ownRefined}:{}),
+      ...(typeof input.otherRefined==='boolean'?{otherRefined:input.otherRefined}:{})};
   }
   if (model.type === 'payment-good') {
     const payment = model.payments[input.paymentIndex];
@@ -90,7 +118,8 @@ export function buildChoiceSelection(pending, input) {
   }
   const option = model.options[input.optionIndex];
   if (!option) return fail('请先选择一项。');
-  return copy(option);
+  return pending.choice.kind==='tool-goods-draw'&&typeof input.refined==='boolean'
+    ?{...option,refined:input.refined}:copy(option);
 }
 export function defaultChoiceInput(pending) {
   const model = choiceModel(pending), selected = pending?.choice?.defaultSelection;
@@ -175,7 +204,9 @@ export function actionDraft(game, selfId, card, type, input = {}) {
     if (input.initialChoices !== undefined) params.initialChoices = structuredClone(input.initialChoices);
     if (face.sourceCode === 'M01') {
       if (!ids.includes(input.goodsId) || !peer.goods[input.goodsId]) return fail('请选择对手现有的一件货物。');
-      return { cardId: key, params: { ...params, goodsId: input.goodsId } };
+      if(input.refined!==undefined&&!stockQualityOptions(peer,input.goodsId).some(option=>option.refined===input.refined))
+        return fail('所选品质已经没有库存。');
+      return { cardId: key, params: { ...params, goodsId: input.goodsId,...(input.refined===undefined?{}:{refined:input.refined}) } };
     }
     if (face.sourceCode === 'M08') {
       if (!peer.tools.some(tool => cardKey(tool) === input.toolCardId)) return fail('请选择对手的道具。');
@@ -193,7 +224,7 @@ export function tableProjection(room) {
     goods: GOODS.map(good => ({id: good.id, count: player.goods?.[good.id] ?? 0})), tools: (player.tools ?? []).map(tool => ({...tool,id:cardKey(tool),tapped:tool.exhausted})) }));
   while (players.length < 2) players.push({ id: 'empty-seat', name: '等待伙伴', ready: false, silver: 0, handCount: 0, ordinaryCapacity: 5, goods: GOODS.map(good => ({id:good.id,count:0})),tools:[] });
   return {roomId:room.roomId ?? room.code,matchId:game?.matchId ?? room.matchId,selfId:room.selfId,selfRole:room.selfRole,roomCode:room.roomCode ?? room.code,
-    scene: 'active',phase:room.phase,players,currentPlayerId:game?.turnPlayerId ?? room.selfId,decision:null,decisionActorId:game?.pending?.actorId??null,bookLayers:game?.bookLayers??0,closing:game?.closing??null,
+    scene: 'active',phase:room.phase,players,turnOrder:turnOrder(game).map(player=>player.id),currentPlayerId:game?.turnPlayerId ?? room.selfId,decision:null,decisionActorId:game?.pending?.actorId??null,bookLayers:game?.bookLayers??0,closing:game?.closing??null,
     hand:(self?.hand??[]).map(card=>({...card,id:cardKey(card)})),actionLimit:game?.actionLimit??room.hyakkiConfig?.actionLimit??5,actionsUsed:game?.actionsUsed??0,goodsPerType:game?.goodsPerType??setup.goodsPerType,
     clock:'--:--',deckCount:game?.deckCount??0,discardCount:game?.discard?.length??0,discard:game?.discard?.at(-1)?{...game.discard.at(-1),id:cardKey(game.discard.at(-1))}:null,
     market:GOODS.map(good=>({...good,count:game?.bankGoods?.[good.id]??setup.goodsPerType})),spectatorCount:room.spectators?.length??0,

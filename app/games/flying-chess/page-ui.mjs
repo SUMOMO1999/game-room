@@ -6,10 +6,9 @@ import { createGameAudio } from '../../game-audio.mjs';
 import { mountRoomAudioControls } from '../../platform/room-audio-controls.mjs';
 import { mountRoomSettings } from '../../platform/room-settings.mjs';
 import { mountGameAppearancePicker } from '../../platform/game-appearance.mjs';
-import { mountGameViewport } from '../../platform/room-viewport.mjs';
+import { roomViewportFrame, mountGameViewport } from '../../platform/room-viewport.mjs';
 import { createRoomClock } from '../../platform/room-clock.mjs';
 import { orderedRoomPlayers, roomExitExplanation, gameErrorMessage } from '../../platform/room-presentation.mjs';
-import { gameViewport } from '../../game-viewport.mjs';
 import { roomChatMarkup } from '../../room-chat.mjs';
 import { replacePracticeWithLobby, mountPracticeExit } from '../../platform/practice-navigation.mjs';
 
@@ -199,7 +198,7 @@ export function mountFlyingPage({ mode = 'room', session = null, lessonOptions =
   const removeAppearance=mountGameAppearancePicker(document,$('flying-options-dialog'),{scope:'flying-chess'});
   listen('flying-options','click',()=>{if(practice&&view?.game&&$('flying-options-dialog').open){$('flying-practice-count').value=String(view.game.players.length);$('flying-practice-lesson').value=view.lessonId||'';}});
   const audioControls=mountRoomAudioControls({audio,document});
-  const viewport=mountGameViewport({window,document,recoveryDelays:[0,100,300],sync(){const editing=['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName);const frame=gameViewport({width:window.innerWidth,height:window.innerHeight,visual:window.visualViewport,editing});document.body.style.setProperty('--flying-height',`${frame.height}px`);document.body.style.setProperty('--flying-width',`${frame.width}px`);if(frame.resetScroll)window.scrollTo(0,0);}});
+  const viewport=mountGameViewport({coherent:true,window,document,recoveryDelays:[0,100,300],sync(){const editing=['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName);const frame=roomViewportFrame(window,document);document.body.style.setProperty('--flying-height',`${frame.height}px`);document.body.style.setProperty('--flying-width',`${frame.width}px`);if(frame.resetScroll)window.scrollTo(0,0);}});
   const unsubscribe=practice?session.subscribe(next=>applyView(next,{baseline:!view})):null;
   render();import('../../app-shell.mjs').catch(()=>{});
   return {audio,applyView,view:()=>view,setConnection(value){connection=value;if(value!=='online'){stopDiceAnimation();flight.cancel({notify:false});}render();},conceal,

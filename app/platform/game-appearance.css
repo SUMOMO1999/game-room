@@ -759,6 +759,41 @@
   }
 
   @media (orientation:landscape) and (max-height:540px) {
+  html[data-game-appearance] :where([id=p414-clear]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):where(:not(:root[data-room-viewport] *)) {
+    --game-clear-current-surface:var(--game-button-surface)!important;
+    background-color:var(--game-clear-current-surface)!important;
+    background-image:var(--game-button-image)!important;
+    color:var(--appearance-ink)!important;
+    border-color:var(--game-button-line)!important;
+    box-shadow:var(--game-button-shadow)!important;
+  }
+  @media (hover:hover) {
+  html[data-game-appearance] :where([id=p414-clear]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):hover:where(:not(:disabled)):where(:not(:root[data-room-viewport] *)) {
+    --game-clear-current-surface:var(--game-button-hover-surface)!important;
+    background-color:var(--game-clear-current-surface)!important;
+    color:var(--appearance-ink)!important;
+    border-color:var(--game-button-hover-line)!important;
+  }
+  }
+  html[data-game-appearance] :where([id=p414-clear]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):active:where(:not(:disabled)):where(:not(:root[data-room-viewport] *)) {
+    background-color:var(--game-clear-current-surface)!important;
+    color:var(--appearance-ink)!important;
+    box-shadow:var(--game-button-active-shadow)!important;
+  }
+  html[data-game-appearance=paper] :where([id=p414-clear]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):active:where(:not(:disabled)):where(:not(:root[data-room-viewport] *)) {
+    background-color:var(--game-button-active-surface)!important;
+    border-color:var(--game-button-active-line)!important;
+  }
+  html[data-game-appearance] :where([id=p414-clear]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):disabled:where(:not(:root[data-room-viewport] *)) {
+    background-color:var(--game-button-disabled-surface)!important;
+    background-image:none!important;
+    color:var(--game-button-disabled-ink)!important;
+    border-color:var(--game-button-disabled-line)!important;
+    box-shadow:var(--game-button-disabled-shadow)!important;
+  }
+  }
+
+  @container room-viewport (orientation:landscape) and (max-height:540px) {
   html[data-game-appearance] :where([id=p414-clear]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
     --game-clear-current-surface:var(--game-button-surface)!important;
     background-color:var(--game-clear-current-surface)!important;

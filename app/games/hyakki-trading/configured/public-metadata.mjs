@@ -1,6 +1,8 @@
 // Public projection adapted from the accepted legacy provenance algorithm.
 import {GOODS,definitionIdForCopy,materialProfileFor} from './material.mjs';
 import {expansionPublicMetadataProblem} from '../expansion-public-history.mjs';
+import {history5Material} from '../public-history-v5.mjs';
+import {EXPANSION_TWO_CONTENT_VERSION} from '../content/expansion-two.mjs';
 const face=(id,profile)=>definitionIdForCopy(id,profile);
 const paymentChoices=new Set(['tool-search-payment','tool-payment-good','tool-payment-silver','accountant-discard','role-reset-tool','tool-goods-card-swap']);
 function publicSource(before, after, profile) {
@@ -82,6 +84,9 @@ export function projectConfiguredPublicMetadata(before, after) {
       removed:removed.map(({index,cardId})=>({index,definitionId:cardId})),
       added:added.map(({index,cardId,actorSeatId,reason,sourceCardId:card})=>({index,definitionId:cardId,actorSeatId,reason,
         source:card?{kind:'card',definitionId:card}:source}))}};
-  const issue = expansionPublicMetadataProblem(value,{contentVersion:after.contentVersion,participantIds:after.players.map(p=>p.id)});
+  const context={contentVersion:after.contentVersion,participantIds:after.players.map(p=>p.id)};
+  const issue = after.contentVersion===EXPANSION_TWO_CONTENT_VERSION
+    ?expansionPublicMetadataProblem(value,{...context,modules:after.configuration.modules},history5Material)
+    :expansionPublicMetadataProblem(value,context);
   if (issue) throw TypeError(issue); return value;
 }

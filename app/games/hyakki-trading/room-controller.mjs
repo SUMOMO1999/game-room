@@ -4,8 +4,10 @@ import { materialProfile, PLAYER_COUNT_CONTENT_VERSION } from './content/definit
 import { publicBattleMetadataProblem } from './battle-public-metadata.mjs';
 import { publicEvent } from './validation.mjs';
 import {history4PacketProblem,CONFIGURABLE_RULE_VERSION} from './public-history-v4.mjs';
+import {EXPANSION_TWO_CONTENT_VERSION} from './content/expansion-two.mjs';
+import {history5PacketProblem} from './public-history-v5.mjs';
 
-const business = new Set(['confirm-role','cancel-opening','use-role','peek', 'keep-peek', 'discard-peek', 'finish-draw', 'end-turn', 'buy', 'sell', 'buy-stall', 'play-character', 'install-tool', 'activate-tool', 'respond', 'decline-response', 'choose-effect', 'bid', 'pass-bid']);
+const business = new Set(['confirm-role','cancel-opening','use-role','peek', 'keep-peek', 'discard-peek', 'finish-draw', 'end-turn', 'buy', 'sell', 'buy-stall', 'play-character', 'install-tool', 'activate-tool', 'respond', 'decline-response', 'choose-effect', 'bid', 'pass-bid','order-deliver','order-replace','refine-stock','offer-post','offer-edit','offer-withdraw','offer-accept']);
 const common = new Set(['ready', 'start', 'rematch', 'set-role', 'transferHost', 'configure', 'pause', 'resume']);
 const matchId = view => view?.matchId ?? view?.lastMatchResult?.matchId ?? null;
 const exact = (value, fields) => value && typeof value === 'object' && !Array.isArray(value)
@@ -15,6 +17,7 @@ const integer = value => Number.isSafeInteger(value) && value >= 0;
 /** The history page uses the captured match's public material context. A live
  * packet cannot select a larger deck or introduce private fields itself. */
 export function historyPacketProblem(packet, room, after = 0) {
+  if(room?.game?.contentVersion===EXPANSION_TWO_CONTENT_VERSION)return history5PacketProblem(packet,room,after);
   if(room?.game?.ruleVersion===CONFIGURABLE_RULE_VERSION)return history4PacketProblem(packet,room,after);
   try {
     const game = room.game, ids = game.players.map(player => player.id);
@@ -116,6 +119,7 @@ export function createHyakkiRoomController({ roomCode, document, window, ui, cha
         if (seatScope !== null && scope !== seatScope) exit.reset();
         seatScope = scope;
         const next = new RoomClient(roomCode, { roomCode, playerId: first.selfId, userKey: state.userKey }, {
+          keepBackgroundStream: true,
           onView(value) {
             if (!session.passive(fence)) return;
             if (value.gameType !== 'hyakki-trading') { window.location.replace(roomHref(roomCode, value.gameType)); return; }

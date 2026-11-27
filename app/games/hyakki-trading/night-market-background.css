@@ -9,7 +9,8 @@
 .hy-night .nm-background-option>span{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:5px;min-height:24px;font-size:12px;line-height:1.4;text-align:center}
 #hyakki-digital-root.hy-night .nm-background-option input[type=radio]{appearance:auto;min-width:18px;min-height:18px;width:18px;height:18px;margin:0;padding:0;accent-color:#d3a360;flex:none}
 .hy-night .nm-background-status{min-height:2.8em;margin:12px 0 0;color:#c3b08b;font-size:12px;line-height:1.4}
-@media(max-width:500px){.hy-night .nm-background-options{gap:6px}.hy-night .nm-background-option{padding:5px}.hy-night .nm-background-option>span{font-size:11px}}
+@media(max-width:500px){.hy-night .nm-background-options:where(:not(:root[data-room-viewport] *)){gap:6px}.hy-night .nm-background-option:where(:not(:root[data-room-viewport] *)){padding:5px}.hy-night .nm-background-option>span:where(:not(:root[data-room-viewport] *)){font-size:11px}}
+@container room-viewport (max-width:500px){.hy-night .nm-background-options{gap:6px}.hy-night .nm-background-option{padding:5px}.hy-night .nm-background-option>span{font-size:11px}}
 /* Only the two brighter scenes need a quiet reading mat. A background and
    paint-only spread keep the accepted object positions and font metrics exact. */
 #hyakki-digital-root.hy-night:is([data-night-market-background=lantern],[data-night-market-background=rain]) :is(.yg-scene-note,#yg-hand-title,.yg-public-heading,.yg-time,.nm-room-label,.hy-work-heading,.hy-work-effect,.hy-work-outcome,.hy-work-cost,.hy-decision-heading,.hy-decision-summary,.hy-action-note,.hy-trade-conditions,.hy-decision-preview,.hy-target-summary,.hy-work-preview,#yg-feedback),

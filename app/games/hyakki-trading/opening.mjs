@@ -1,5 +1,8 @@
-import {ROLES,GOODS,EXPANSION_PACK_ID,getRole,createExpansionDeck,expansionPartitionProblem} from './content/expansion-one.mjs';
-import {freezeMatchConfiguration,materialForConfiguration} from './opening-configuration.mjs';
+import {ROLES,GOODS,EXPANSION_PACK_ID,createExpansionDeck,expansionPartitionProblem} from './content/expansion-one.mjs';
+import {EXPANSION_TWO_PACK_ID} from './content/expansion-two.mjs';
+import {getRole} from './configured/material.mjs';
+import {createPublicOrderMarket,publicOrderMarketProblem} from './configured/public-order-market.mjs';
+import {freezeMatchConfiguration,materialForConfiguration,sameOpeningConfigurationValue} from './opening-configuration.mjs';
 import {shuffled} from './model.mjs';
 
 export const ROLE_SELECTION_MS=60_000;
@@ -12,13 +15,15 @@ class OpeningError extends Error {constructor(message,code){super(message);this.
 const requireValue=(condition,message,code='INVALID_OPENING')=>{if(!condition)throw new OpeningError(message,code);};
 const copy=value=>structuredClone(value);
 const candidateId=(state,id)=>`${state.openingId}.${id}`;
+const expansion=configuration=>[EXPANSION_PACK_ID,EXPANSION_TWO_PACK_ID].includes(configuration.packId);
 
 export function openingProblem(state){
   try{
     requireValue(sameKeys(state,fields)&&state.schema===1&&state.kind==='hyakki-opening','开局状态格式无效。');
     requireValue(typeof state.openingId==='string'&&/^[a-f0-9]{32}$/u.test(state.openingId),'开局标识无效。');
     const profile=materialForConfiguration(state.configuration),ids=state.configuration.participantIds;
-    requireValue(state.configuration.packId===EXPANSION_PACK_ID,'原版不进入扩展选角。');
+    requireValue(expansion(state.configuration),'原版不进入扩展选角。');
+    const roles=(profile.roles??ROLES).map(role=>role.id),hasOrders=state.configuration.modules?.orders===true;
     requireValue(ids.includes(state.hostId)&&ids.includes(state.firstPlayerId),'开局席位归属无效。');
     requireValue(['selecting','completed','cancelled'].includes(state.status)&&Number.isSafeInteger(state.revision)&&state.revision>=0,'开局阶段无效。');
     requireValue(stamp(state.createdAt)&&stamp(state.updatedAt)&&state.updatedAt>=state.createdAt,'开局时间无效。');
@@ -27,12 +32,12 @@ export function openingProblem(state){
     for(const id of ids){
       const candidates=state.candidates[id];
       requireValue(Array.isArray(candidates)&&candidates.length===3,'每位参赛者须有三个固定候选。');
-      for(const role of candidates){getRole(role);dealt.push(role);}
+      dealt.push(...candidates);
       requireValue(state.choices[id]===null||candidates.includes(state.choices[id]),'已选角色不在本人候选内。');
     }
     requireValue(Array.isArray(state.remainingRoles),'未分发角色池无效。');
     const all=[...dealt,...state.remainingRoles];
-    requireValue(all.length===24&&new Set(all).size===24&&all.every(id=>ROLES.some(role=>role.id===id)),'角色池重复或缺失。');
+    requireValue(all.length===roles.length&&new Set(all).size===roles.length&&all.every(id=>roles.includes(id)),'角色池重复或缺失。');
     const clock=state.clock;
     requireValue(sameKeys(clock,['paused','remainingMs','deadlineAt'])&&typeof clock.paused==='boolean'
       &&Number.isSafeInteger(clock.remainingMs)&&clock.remainingMs>=0&&clock.remainingMs<=ROLE_SELECTION_MS,'选角时钟无效。');
@@ -48,12 +53,10 @@ export function openingProblem(state){
       else{
         requireValue(ids.every(id=>state.choices[id]!==null)&&state.cancelledBy===null&&state.cancellationReason===null,'角色尚未全部确定。');
         const deal=state.deal;
-        requireValue(sameKeys(deal,['matchId','configuration','firstPlayerId','createdAt','deck','players','bankGoods','availableStalls','unusedRoles'])
+        requireValue(sameKeys(deal,['matchId','configuration','firstPlayerId','createdAt','deck','players','bankGoods','availableStalls','unusedRoles',...(hasOrders?['publicOrders']:[])])
           &&deal.matchId===state.openingId&&deal.createdAt===state.updatedAt&&deal.firstPlayerId===state.firstPlayerId
           &&sameKeys(deal.configuration,Object.keys(state.configuration))
-          &&Object.keys(state.configuration).every(key=>key==='participantIds'
-            ?Array.isArray(deal.configuration[key])&&deal.configuration[key].length===ids.length&&ids.every((id,index)=>id===deal.configuration[key][index])
-            :deal.configuration[key]===state.configuration[key]),'统一发牌数据无效。');
+          &&Object.keys(state.configuration).every(key=>sameOpeningConfigurationValue(key,state.configuration[key],deal.configuration[key])),'统一发牌数据无效。');
         requireValue(Array.isArray(deal.players)&&deal.players.length===ids.length&&Array.isArray(deal.deck),'发牌参赛人无效。');
         const allCards=[...deal.deck];
         for(let i=0;i<ids.length;i++){
@@ -64,11 +67,17 @@ export function openingProblem(state){
           requireValue(sameKeys(p.goods,GOODS.map(g=>g.id))&&Object.values(p.goods).every(n=>n===0),'初始库存无效。');
           allCards.push(...p.hand);
         }
-        requireValue(!expansionPartitionProblem(allCards,ids.length,state.configuration.contentVersion),'发牌后牌实体不守恒。');
+        const uniqueCards=new Set(allCards);
+        const validDeck=profile.deck
+          ?allCards.length===profile.deck.length&&uniqueCards.size===profile.deck.length&&profile.deck.every(card=>uniqueCards.has(card.id))
+          :!expansionPartitionProblem(allCards,ids.length,state.configuration.contentVersion);
+        requireValue(validDeck,'发牌后牌实体不守恒。');
+        if(hasOrders)requireValue(!publicOrderMarketProblem(deal.publicOrders)&&deal.publicOrders.pending===null
+          &&deal.publicOrders.discard.length===0&&deal.publicOrders.slots.every(slot=>slot.generation===1),'初始公单无效。');
         requireValue(sameKeys(deal.bankGoods,GOODS.map(g=>g.id))&&Object.values(deal.bankGoods).every(n=>n===state.configuration.goodsPerType)
           &&deal.availableStalls===profile.stallBoards,'初始公共材料无效。');
         const selected=Object.values(state.choices);
-        requireValue(Array.isArray(deal.unusedRoles)&&deal.unusedRoles.length===24-ids.length&&new Set([...selected,...deal.unusedRoles]).size===24
+        requireValue(Array.isArray(deal.unusedRoles)&&deal.unusedRoles.length===roles.length-ids.length&&new Set([...selected,...deal.unusedRoles]).size===roles.length
           &&deal.unusedRoles.every(id=>all.includes(id)&&!selected.includes(id)),'未选角色不能混入主牌。');
       }
     }
@@ -78,10 +87,11 @@ export function openingProblem(state){
 
 export function createOpening(participantIds,{openingId,hostId,now,randomInt,configuration}={}){
   const config=freezeMatchConfiguration(configuration,participantIds);
-  requireValue(config.packId===EXPANSION_PACK_ID,'原版不进入扩展选角。');
+  requireValue(expansion(config),'原版不进入扩展选角。');
   requireValue(typeof openingId==='string'&&/^[a-f0-9]{32}$/u.test(openingId)&&participantIds.includes(hostId)&&stamp(now),'开局输入无效。');
   requireValue(typeof randomInt==='function','缺少权威随机源。');
-  const order=shuffled(ROLES.map(role=>role.id),randomInt);
+  const profile=materialForConfiguration(config);
+  const order=shuffled((profile.roles??ROLES).map(role=>role.id),randomInt);
   const first=shuffled(participantIds,randomInt)[0],candidates={};
   participantIds.forEach(id=>{candidates[id]=order.splice(0,3);});
   const state={schema:1,kind:'hyakki-opening',openingId,configuration:config,hostId,firstPlayerId:first,status:'selecting',
@@ -91,14 +101,16 @@ export function createOpening(participantIds,{openingId,hostId,now,randomInt,con
 }
 function finish(state,{now,randomInt}){
   requireValue(typeof randomInt==='function','缺少权威随机源。');
-  const profile=materialForConfiguration(state.configuration),deck=shuffled(createExpansionDeck(profile.playerCount,profile.contentVersion).map(card=>card.id),randomInt);
+  const profile=materialForConfiguration(state.configuration);
+  const deck=shuffled((profile.deck??createExpansionDeck(profile.playerCount,profile.contentVersion)).map(card=>card.id),randomInt);
   const selected=Object.values(state.choices);
   const players=state.configuration.participantIds.map(id=>({id,roleId:state.choices[id],hand:deck.splice(0,5),tools:[],
     goods:Object.fromEntries(GOODS.map(g=>[g.id,0])),silver:getRole(state.choices[id],state.configuration).initialSilver,stallCount:0,temporaryOccupied:false}));
   state.status='completed';state.clock={paused:false,remainingMs:0,deadlineAt:null};
   state.deal={matchId:state.openingId,configuration:copy(state.configuration),firstPlayerId:state.firstPlayerId,createdAt:now,deck,players,
     bankGoods:Object.fromEntries(GOODS.map(g=>[g.id,state.configuration.goodsPerType])),availableStalls:profile.stallBoards,
-    unusedRoles:ROLES.map(role=>role.id).filter(id=>!selected.includes(id))};
+    unusedRoles:(profile.roles??ROLES).map(role=>role.id).filter(id=>!selected.includes(id)),
+    ...(state.configuration.modules?.orders?{publicOrders:createPublicOrderMarket(randomInt)}:{})};
 }
 function transition(original,now,mutate){
   const issue=openingProblem(original);if(issue)return {ok:false,code:'INVALID_OPENING',error:issue};

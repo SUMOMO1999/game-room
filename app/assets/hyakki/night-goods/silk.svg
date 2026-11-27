@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="锦缎">
+<defs><linearGradient id="paper" x2="0.8" y2="1"><stop stop-color="#fff7e4"/><stop offset="1" stop-color="#ead9b5"/></linearGradient><linearGradient id="metal" x2="1" y2="1"><stop stop-color="#e9d298"/><stop offset="1" stop-color="#b78b49"/></linearGradient></defs><rect x="4" y="4" width="120" height="120" rx="25" fill="url(#paper)"/><path d="M22 99 Q64 120 106 99" fill="none" stroke="#c1a676" stroke-width="2" opacity=".5"/>
+<g stroke="#293e43" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<path d="M29 45q0-10 11-12l46-8q11-1 15 13l3 38-61 11z" fill="#9a5358"/>
+<path d="m42 46 48-9 2 34-48 10z" fill="#ba7171"/>
+<path d="m44 56 46-9m-46 21 47-9" stroke="#edc988" fill="none"/>
+<path d="m47 60 6-5 7 3 7-6 8 3 8-6" stroke="#e5bd83" fill="none"/>
+<path d="m40 78 54-10q8 13-2 19l-49 12z" fill="#847a81"/>
+<ellipse cx="39" cy="79" rx="13" ry="20" fill="#dfbd93"/>
+<ellipse cx="39" cy="79" rx="6" ry="12" fill="#946459"/>
+<path d="m91 84 8 6 4-7" fill="#dfb66e"/>
+</g>
+</svg>

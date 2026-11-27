@@ -12,7 +12,7 @@ export function buildBattleReport(groups, { game = {}, players = [], coverage = 
   const issue = reason => { if (!issues.includes(reason)) issues.push(reason); };
   for (const raw of groups ?? []) {
     let group;try{group=readableBattleGroup(raw);}catch{issue('invalid-group');continue;}
-    if (!integer(group?.sequence) || group.sequence < 1 || ![1, 2, 3, 4].includes(group.schemaVersion)
+    if (!integer(group?.sequence) || group.sequence < 1 || ![1, 2, 3, 4, 5].includes(group.schemaVersion)
       || !Array.isArray(group.events)) { issue('invalid-group'); continue; }
     const previous = unique.get(group.sequence);
     if (previous && JSON.stringify(previous) !== JSON.stringify(group)) issue('conflicting-sequence');
@@ -41,7 +41,7 @@ export function buildBattleReport(groups, { game = {}, players = [], coverage = 
     if (group.sequence !== expectedSequence) { issue('missing-sequence'); anchored = false; }
     expectedSequence = group.sequence + 1;
     if(group.opening){opening.push(group);continue;}
-    const explicit = [2, 3, 4].includes(group.schemaVersion) && group.turn;
+    const explicit = [2, 3, 4, 5].includes(group.schemaVersion) && group.turn;
     if (explicit && ids.includes(explicit.ownerSeatId) && turnNumber(explicit.id) === explicit.number) {
       const matchesCursor = anchored && explicit.number === number && explicit.ownerSeatId === ownerId;
       number = explicit.number; ownerId = explicit.ownerSeatId; anchored = true;
@@ -94,7 +94,7 @@ export function discardProvenance(groups, currentDiscard) {
     let group;try{group=readableBattleGroup(raw);}catch{positions=null;continue;}
     if (previousSequence !== null && group.sequence !== previousSequence + 1) positions = null;
     previousSequence = group.sequence;
-    const delta = [2, 3, 4].includes(group.schemaVersion) ? group.discard : null;
+    const delta = [2, 3, 4, 5].includes(group.schemaVersion) ? group.discard : null;
     if (!delta) { positions = null; continue; }
     if (!positions || positions.length !== delta.beforeCount) positions = Array.from({ length: delta.beforeCount }, () => null);
     for (const item of [...delta.removed].sort((a, b) => b.index - a.index)) {

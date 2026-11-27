@@ -1,0 +1,254 @@
+.m-table-title {
+  display: grid;
+  gap: 2px;
+  border: 0;
+  padding-block: 0;
+  padding-left: 0;
+  background: none;
+  text-align: left;
+}
+.m-edition { font: 11px/1.2 system-ui, sans-serif; letter-spacing: .03em; color: #f3d89c; }
+.m-market-actions { display: flex; gap: 4px; margin-top: 6px; }
+.m-market-actions button, .m-order-slip {
+  border: 1px solid #b1976466;
+  border-radius: 3px;
+  color: #f5e4bb;
+  background: #334538;
+  font: 600 13px/1.3 system-ui, sans-serif;
+  padding: 3px 5px;
+  text-shadow: none;
+}
+.m-market-actions button { flex: 1; }
+.m-market-actions button:disabled, .m-order-slip:disabled { opacity: .72; cursor: default; }
+.m-public-orders { display: grid; gap: 3px; margin-top: 4px; }
+.m-order-slip { display: flex; align-items: baseline; justify-content: space-between; text-align: left; }
+.m-order-slip b { color: #f0cd85; }
+.m-order-slip.m-target-order { border-color: #e5c37a; color: #ffdf9c; }
+.m-order-slip.m-deliverable, .m-market-actions .m-deliverable,
+#window .m-choice.m-deliverable, #window .m-form .e2-orders .is-sellable {
+  color: #e1ffdb;
+  background: #344d36;
+  box-shadow: inset 0 0 0 1.5px #a9d792;
+}
+.m-order-slip.m-deliverable span::before, #window .m-choice.m-deliverable span::before { content: '✓ '; color: #bbe9a5; }
+#window .handcards .m-sale-badge { display: none; }
+#window .handcards .m-sellable .m-sale-badge {
+  display: block;
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  border: 2px solid #89bd75;
+  border-radius: inherit;
+  pointer-events: none;
+}
+#window .handcards .m-sale-badge > span {
+  position: absolute;
+  bottom: 17%;
+  left: 0;
+  padding: 2px 4px;
+  border-radius: 0 3px 3px 0;
+  background: #345337;
+  color: #efffe6;
+  font: 600 11px/1.05 system-ui, sans-serif;
+  text-shadow: none;
+}
+#window .handcards .selected .m-sale-badge { border-color: #ffda8c; }
+#window .m-pocket .m-bin.m-good-ready, #window .m-form .hy-material-quantity.m-good-ready {
+  border-color: #b2dc99;
+  background: #3c5239;
+  box-shadow: inset 0 0 0 1px #a0cc89;
+}
+#window .m-form .hy-material-quantity.m-good-ready button:last-of-type { background: #d0e4b0; color: #23351e; }
+#window .m-pocket .m-bin.m-good-picked {
+  border-color: #edc879;
+  outline: 1px solid #edc879;
+  background: #604d2d;
+}
+#window .m-pocket .m-bin.m-good-picked::after { content: '✓'; position: absolute; bottom: -3px; left: -2px; color: #fff4cd; background: #57422c; font: bold 9px/1 system-ui; }
+#window .m-pocket .m-bin:disabled { opacity: .55; }
+#window #arena[data-selling] .m-form .m-quality-ready { border-color: #a1d38f; }
+#window #arena[data-selling] .m-form .m-quality-ready::before { content: '● '; color: #b1de99; font-size: .75em; }
+#window #arena[data-selling] .merchant-dialog > .content-container { width: min(100%, 570px); }
+#window #arena[data-selling] .merchant-dialog .content { width: 100%; }
+#window #arena[data-selling] .m-form .hy-material-options--quantities {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 92px), 1fr));
+  gap: 4px;
+}
+#window #arena[data-selling] .m-form .hy-material-quantity {
+  display: grid;
+  grid-template-columns: 20px auto;
+  justify-content: center;
+  align-items: center;
+  gap: 1px 4px;
+  border: 1px solid #8c7959;
+  padding: 3px;
+  border-radius: 4px;
+  font: 12px/1.15 system-ui, sans-serif;
+}
+#window #arena[data-selling] .m-form .hy-material-quantity.m-good-ready { border-color: #b2dc99; }
+#window #arena[data-selling] .hy-material-quantity > .yousei-good-icon { grid-row: span 2; width: 20px; height: 20px; }
+#window #arena[data-selling] .hy-material-quantity > small { font: 10px/1.1 system-ui, sans-serif; }
+#window #arena[data-selling] .hy-material-quantity > div {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+}
+#window #arena[data-selling] .hy-material-quantity button { min-width: 28px; min-height: 26px; margin: 0; }
+@media (max-width: 650px), (max-height: 550px) {
+  #window #arena[data-selling] .merchant-dialog .content { padding: 5px 7px; }
+  #window #arena[data-selling] .merchant-dialog .m-heading { font-size: 18px; }
+  #window #arena[data-selling] .merchant-dialog .m-note { margin: 2px 0; }
+  #window #arena[data-selling] .merchant-dialog .m-body { margin-top: 3px; }
+  #window #arena[data-selling] .m-form .e2-quality button { padding: 2px 5px; margin: 0 2px 3px; min-height: 25px; font-size: 12px; }
+  #window #arena[data-selling] .m-form .hy-material-options--quantities { grid-template-columns: repeat(auto-fit, minmax(min(100%, 76px), 1fr)); }
+  #window #arena[data-selling] .m-pocket .m-bin { flex: 0 0 19px; width: 19px; height: 24px; }
+  #window #arena[data-selling] .m-pocket .m-good-icon { width: 16px; height: 17px; }
+}
+@media (max-height: 550px) and (orientation: landscape) {
+  #window #arena[data-selling] { --m-pocket: max(164px, var(--m-supply)); }
+  #window #arena[data-selling] .m-pocket .m-rack h3 { white-space: nowrap; }
+}
+@media (max-width: 650px) and (orientation: portrait) {
+  #window.merchant-window #arena[data-selling][data-supply] > #control { left: var(--m-gap); }
+  #window.merchant-window #arena[data-selling] #control > .m-actions { gap: 4px; }
+  #window.merchant-window #arena[data-selling] #control > .m-actions > div { padding: 4px 6px; font-size: 14px; min-height: 32px; }
+  #window #arena[data-selling] .m-pocket .m-bin { flex-basis: 23px; width: 23px; height: 27px; }
+  #window #arena[data-selling] .m-pocket .m-good-icon { width: 19px; height: 20px; }
+}
+#window .m-quote > .e2-offer-terms {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0 0 6px;
+  text-align: left;
+}
+#window .m-quote .e2-offer-row, #window .m-quote .e2-offer-terms > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+  padding: 5px 8px;
+}
+#window .m-quote .e2-offer-row[aria-pressed=true] { border-color: #f3ce83; color: #ffe4a5; }
+
+#hyakki-digital-root .m-book[open] {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  width: min(94vw, 920px);
+  max-width: min(94vw, 920px);
+  height: fit-content;
+  min-height: 0;
+  max-height: min(92dvh, 710px);
+  box-sizing: border-box;
+  margin: auto;
+  padding: clamp(8px, 1.8vw, 20px);
+  border: 1px solid #aa9060;
+  border-radius: 7px;
+  background: #25362d;
+  font: 15px/1.45 system-ui, sans-serif;
+  color: #f7e7c8;
+  text-shadow: none;
+  overflow: hidden;
+}
+.m-book-bar, .m-book-tabs { display: flex; align-items: center; gap: 6px; }
+.m-book-bar { padding-bottom: 7px; }
+.m-book-bar hgroup { margin-right: auto; }
+.m-book-bar h2 { margin: 0; font: clamp(17px, 3vw, 26px)/1.2 m-ink, serif; }
+.m-book-modules { margin: 3px 0 0; color: #dac299; font-size: 12px; }
+.m-book button, .m-book select {
+  appearance: auto;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border: 1px solid #ab9365;
+  border-radius: 4px;
+  background: #30483d;
+  text-shadow: none;
+}
+.m-book-bar button, .m-book-tabs > * { padding: 4px 8px; }
+.m-book-tabs { padding: 4px 0 10px; flex-wrap: wrap; }
+.m-book-tabs [aria-pressed=true] { color: #27271e; background: #e7cc92; }
+.m-book button:disabled { opacity: .5; cursor: default; }
+.m-book :focus-visible { outline: 2px solid #ffd987; outline-offset: 1px; }
+.m-book-shelf, .m-book-detail { min-height: 0; overflow: auto; overscroll-behavior: contain; touch-action: pan-y; }
+.m-book-shelf {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(128px, 27%), 1fr));
+  align-content: start;
+  gap: clamp(5px, 1.5vw, 12px);
+  padding: 3px 5px 6px 3px;
+}
+.m-book-shelf button[data-face], .m-book-detail .m-sample {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 68/100;
+  padding: 0;
+  border: 0;
+  background: #f4e4c4;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.m-book .m-print { display: block; position: absolute; inset: 0; }
+.m-book-shelf[data-kind=orders] { grid-template-columns: repeat(auto-fill, minmax(min(180px, 46%), 1fr)); }
+.m-book-shelf[data-kind=orders] button {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  padding: 9px;
+  text-align: left;
+}
+.m-book-shelf[data-kind=orders] b { color: #f3d79b; }
+.m-book-detail { grid-row: 2 / -1; display: flex; align-items: flex-start; gap: clamp(12px, 3vw, 28px); padding: 8px 2px; }
+.m-book-detail .m-sample { width: clamp(86px, 24vw, 210px); flex-shrink: 0; }
+.m-book-detail p { margin: 0 0 .8em; }
+.m-book [hidden] { display: none !important; }
+@media (max-height: 650px), (max-width: 650px) {
+  .m-public-orders { display: none; }
+  .m-market-actions { margin-top: 3px; gap: 3px; }
+  .m-market-actions button { padding: 2px; font-size: 12px; }
+  .m-book { font-size: 14px; }
+}
+@media (max-height: 430px) and (orientation: landscape) {
+  .m-table-title { gap: 0; }
+  .m-edition { font-size: 10px; }
+  #arena:has(> .merchant-dialog[data-kind='auction']) .m-market-actions { display: none; }
+}
+
+@media (max-width: 420px) and (orientation: portrait) {
+  #window.merchant-window:not(.merchant-friends) #system > div { gap: 3px; }
+  #window.merchant-window:not(.merchant-friends) #system > div > div { padding-inline: 4px; }
+  #window.merchant-window:not(.merchant-friends) .m-table-title { font-size: 16px; }
+  #window.merchant-window:not(.merchant-friends) .m-edition { font-size: 0; }
+  #window.merchant-window:not(.merchant-friends) .m-edition::after { content: '牌册'; font: 10px/1.2 system-ui, sans-serif; }
+}
+
+/* The practice toolbar owns all three groups. Let the left and right buttons
+   reserve their real width before placing the turn label and its clock. */
+@media (min-height: 551px) and (min-width: 651px), (min-height: 551px) and (orientation: landscape) {
+  #window.merchant-window:not(.merchant-friends) #system {
+    display: grid;
+    grid-template-columns: minmax(max-content, 1fr) minmax(0, max-content) minmax(max-content, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    padding-block: 0;
+    column-gap: 6px;
+  }
+  #window.merchant-window:not(.merchant-friends) .merchant-meta { justify-self: end; }
+  #window.merchant-window:not(.merchant-friends) .m-turn-bar {
+    position: static;
+    min-width: 0;
+    transform: none;
+    justify-content: center;
+  }
+  #window.merchant-window:not(.merchant-friends) .m-turn-info {
+    white-space: normal;
+    line-height: 1.15;
+  }
+  #window.merchant-window:not(.merchant-friends) .m-turn-clock { flex: none; }
+}

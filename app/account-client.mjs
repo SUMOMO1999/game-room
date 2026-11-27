@@ -1,7 +1,7 @@
 import { entryBase, gamePath, entryStorageKey } from './entry-path.mjs';
 import { normalizeRecentRoom } from './lobby-model.mjs';
 
-const EMPTY = { voiceEnabled:false, voiceKind:null, mode: 'legacy', loginReady: false, drawingEnabled: false, poker414Enabled: false, hyakkiEnabled: false, parksEnabled: false, authenticated: false, userKey: null,
+const EMPTY = { lastHandEnabled:false, nonameEnabled:false, voiceEnabled:false, voiceKind:null, mode: 'legacy', loginReady: false, drawingEnabled: false, poker414Enabled: false, hyakkiEnabled: false, parksEnabled: false, authenticated: false, userKey: null,
   csrf: null, profile: null, recentRooms: [], failureStatus: null, reauthReady: false, reauthHref: null };
 export const ACCOUNT_CHECK_INTERVAL_MS = 15000;
 export const ACCOUNT_CHECK_TIMEOUT_MS = 10000;
@@ -79,8 +79,8 @@ function normalize(value) {
   } : null;
   const recentRooms = authenticated && Array.isArray(value.recentRooms)
     ? value.recentRooms.map(normalizeRecentRoom).filter(Boolean).slice(0, 8) : [];
-  return { voiceEnabled:value.voiceEnabled===true, voiceKind:value.voiceKind==='sfu-v1'?'sfu-v1':null, mode: value.mode, loginReady: value.loginReady === true, drawingEnabled: value.drawingEnabled === true,
-    poker414Enabled: value.poker414Enabled === true, hyakkiEnabled: value.hyakkiEnabled === true, parksEnabled: value.parksEnabled === true, authenticated,
+  return { nonameEnabled:value.nonameEnabled===true, voiceEnabled:value.voiceEnabled===true, voiceKind:value.voiceKind==='sfu-v1'?'sfu-v1':null, mode: value.mode, loginReady: value.loginReady === true, drawingEnabled: value.drawingEnabled === true,
+    lastHandEnabled: value.lastHandEnabled === true, poker414Enabled: value.poker414Enabled === true, hyakkiEnabled: value.hyakkiEnabled === true, parksEnabled: value.parksEnabled === true, authenticated,
     userKey: authenticated ? value.userKey : null, csrf: authenticated ? value.csrf : null,
     profile, recentRooms, expiresAt: authenticated ? value.expiresAt : null,
     idleUntil: authenticated ? value.idleUntil : null, failureStatus: null,
@@ -235,6 +235,6 @@ export async function logoutAccount() {
   }
 }
 export function loginHref(returnTo = '/') {
-  if (typeof returnTo !== 'string' || !/^(?:\/|\/\?room=\d{6}|\/(?:room|army|flying|drawing|poker414|hyakki)\.html\?code=\d{6})$/.test(returnTo)) returnTo = '/';
+  if (typeof returnTo !== 'string' || !/^(?:\/|\/noname\.html|\/last-hand\.html(?:\?code=\d{6})?|\/\?room=\d{6}|\/(?:room|army|flying|drawing|poker414|hyakki)\.html\?code=\d{6})$/.test(returnTo)) returnTo = '/';
   return gamePath(`/auth/login?returnTo=${encodeURIComponent(returnTo)}`);
 }

@@ -13,36 +13,49 @@ const AUCTION_FOCUS_MAX_WIDTH=1150,AUCTION_FOCUS_MAX_HEIGHT=620;
 /** Keep the physical six-position home board separate from permanent +3 boards.
  * Goods still use the authority's ordinary-first allocation; no placement here
  * can buy capacity, occupy the temporary position or charge a player. */
-export function renderStallStock(player) {
-  const occupied = player.goods.flatMap(good => Array(good.count).fill(good.id));
+export function stallBoards(player) {
+  const occupied = player.goods.flatMap(good => Array.from({length:good.count},(_,index)=>({id:good.id,refined:index<(player.refined?.[good.id]??0)})));
   const warehouse = player.roleId === 'yousei.role.r10';
   const baseCapacity = warehouse ? 6 : 5;
   const stallCount = player.stallCount ?? Math.floor((player.ordinaryCapacity - baseCapacity) / 3);
-  const slot = (goodId, index, temporary = false) => {
+  const slots = (start, count) => Array.from({length: count}, (_, step) => ({
+    good: occupied[start + step], index: start + step, temporary: false
+  }));
+  const main = {name:'主摊', slots:[...slots(0, 5), {good:occupied[player.ordinaryCapacity], index:5, temporary:true}]};
+  const extra = warehouse ? {name:'仓栈', slots:slots(5, 1)} : null;
+  const expansions = Array.from({length:stallCount}, (_, index) => ({
+    name:'扩摊'+(index + 1), slots:slots(baseCapacity + index * 3, 3)
+  }));
+  return {main, extra, expansions};
+}
+
+export function renderStallStock(player) {
+  const layout = stallBoards(player);
+  const slot = (good, index, temporary = false) => {
+    const goodId=good?.id;
     const name = GOODS.find(good => good.id === goodId)?.name;
     const fee = temporary ? player.temporaryOccupied ? '已付2两' : '新占用2两' : '';
-    const label = `${temporary ? '第6格，临时格，' + fee : '普通格' + (index + 1)}：${name ?? '空'}`;
-    return `<span class="nm-stock-slot${goodId ? ' yg-owned-good' : ' is-empty'}${temporary ? ' is-temporary' : ''}" data-good-id="${goodId ?? ''}" data-stock-kind="${temporary ? 'temporary' : 'ordinary'}" ${name ? `title="${esc(name)}"` : ''} aria-label="${esc(label)}">${goodId ? renderGoodsIcon(goodId) : `<i aria-hidden="true">${temporary ? '空' : '＋'}</i>`}<small>${temporary ? '临时' : index + 1}</small></span>`;
+    const label = `${temporary ? '第6格，临时格，' + fee : '普通格' + (index + 1)}：${good?.refined?'精制':''}${name ?? '空'}`;
+    return `<span class="nm-stock-slot${goodId ? ' yg-owned-good' : ' is-empty'}${temporary ? ' is-temporary' : ''}" data-good-id="${goodId ?? ''}" data-stock-kind="${temporary ? 'temporary' : 'ordinary'}" ${name ? `title="${esc(name)}"` : ''} aria-label="${esc(label)}">${goodId ? renderGoodsIcon(goodId) : `<i aria-hidden="true">${temporary ? '空' : '＋'}</i>`}${good?.refined?'<b class="nm-refined-mark" aria-hidden="true">精</b>':''}<small>${temporary ? '临时' : index + 1}</small></span>`;
   };
   const board = (label, slots, kind) => `<span class="nm-stall-board ${kind}" aria-label="${label}"><span class="nm-stall-caption">${label}</span><span class="nm-stall-grid">${slots}</span></span>`;
-  const base = board('主摊', Array.from({length:5}, (_, i) => slot(occupied[i], i)).join('')
-    + slot(occupied[player.ordinaryCapacity], 5, true), 'nm-base-stall');
-  const expansions = Array.from({length:stallCount}, (_, boardIndex) => {
-    const offset = baseCapacity + boardIndex * 3;
-    return board(`扩摊${boardIndex + 1}${stallCount > 1 ? ' ↔' : ''}`, Array.from({length:3}, (_, i) => slot(occupied[offset + i], offset + i)).join(''), 'nm-expansion-stall');
-  }).join('');
+  const render = (part, kind, label = part.name) => board(label, part.slots.map(s => slot(s.good, s.index, s.temporary)).join(''), kind);
+  const base = render(layout.main, 'nm-base-stall');
+  const expansions = layout.expansions.map(part => render(part, 'nm-expansion-stall', part.name + (layout.expansions.length > 1 ? ' ↔' : ''))).join('');
   const locked = board('扩摊 · 未解锁', Array.from({length:3}, () => '<span class="nm-stock-slot is-locked" aria-label="未解锁扩摊位，使用摊位许可证解锁"><i aria-hidden="true">锁</i></span>').join(''), 'nm-expansion-stall is-locked');
-  const extra=warehouse?board('仓栈',slot(occupied[5],5),'nm-warehouse-stall'):'';
+  const extra=layout.extra?render(layout.extra,'nm-warehouse-stall'):'';
   const expansionStrip=`<span class="nm-stall-expansions" aria-label="永久扩摊">${expansions || locked}</span>`;
   // The role's one slot shares the existing lower row; it must not inherit a
   // horizontal page's 100% flex basis in the stock owner's vertical column.
-  return base + (warehouse?`<span class="nm-warehouse-row">${extra}${expansionStrip}</span>`:expansionStrip);
+  return base + (layout.extra?`<span class="nm-warehouse-row">${extra}${expansionStrip}</span>`:expansionStrip);
 }
 
 /** Presentation only: real role-filtered views and the existing UI's event IDs. */
 export function mountNightMarket({root}) {
   const document = root.ownerDocument, window = document.defaultView, $ = id => document.getElementById(id);
   let disposed = false;
+  let viewportFrame = null;
+  const frame = () => viewportFrame ?? {width:window.innerWidth,height:window.innerHeight};
   // Game gestures must not zoom the browser; local hand and dialog scrolling stay native.
   const gestureZoom = event => event.preventDefault();
   const wheelZoom = event => { if (event.ctrlKey) event.preventDefault(); };
@@ -61,7 +74,10 @@ export function mountNightMarket({root}) {
   const selfZone = document.createElement('section'); selfZone.className = 'nm-self-zone'; selfZone.setAttribute('aria-label','我的装备、手牌与摊位');
   selfZone.append($('yg-tool-zone'),$('yg-hand-section'),shop); table.after(selfZone);
   const ribbon=document.createElement('div'); ribbon.className='nm-action-ribbon';
-  ribbon.append(root.querySelector('.yg-stage'),$('yg-track'));
+  const orderButton=document.createElement('button');
+  orderButton.type='button';orderButton.className='nm-turn-order';
+  orderButton.dataset.hyAction='turn-order';orderButton.textContent='出手顺序';orderButton.hidden=true;
+  ribbon.append(root.querySelector('.yg-stage'),$('yg-track'),orderButton);
   root.querySelector('.yg-centre').insertBefore(ribbon,$('yg-scene-content'));
   const header=root.querySelector('.yg-header');
   const roomLabel=$('yg-room-code');roomLabel.classList.add('nm-room-label');
@@ -84,10 +100,11 @@ export function mountNightMarket({root}) {
   const members = document.createElement('button'); members.type = 'button'; members.dataset.hyAction = 'members'; members.className = 'nm-header-members'; members.setAttribute('aria-label','全部商铺');
   members.innerHTML = '<span class="nm-header-full">全部商铺</span><span class="nm-header-short" aria-hidden="true">商铺</span>';
   const history = document.createElement('button'); history.type = 'button'; history.dataset.hyAction = 'history'; history.className = 'nm-header-history'; history.textContent = '战况';
-  const phoneHeader=window.matchMedia('(max-width:1150px) and (max-height:500px) and (orientation:landscape)');
   function syncPhoneHeader(){
+    if (root.ownerDocument.body.classList.contains('merchant-table')) return;
     const peers=$('yg-peer');
-    if(phoneHeader.matches){if(peers.parentElement!==header)header.insertBefore(peers,root.querySelector('.room-toolbar'));}
+    const {width,height} = frame();
+    if(width<=1150&&height<=500&&width>height){if(peers.parentElement!==header)header.insertBefore(peers,root.querySelector('.room-toolbar'));}
     else if(peers.parentElement!==playfield)playfield.insertBefore(peers,playfield.firstElementChild);
   }
   function syncHeader() {
@@ -108,8 +125,8 @@ export function mountNightMarket({root}) {
   let browse = null;
   function syncAuction() {
     if(disposed)return;
-    const auction = root.querySelector('.hy-table-work[data-step-kind="auction"]');
-    const width=window.visualViewport?.width??window.innerWidth,height=window.visualViewport?.height??window.innerHeight;
+    const auction = root.querySelector('.nt-moment[data-step-kind="auction"]');
+    const {width,height} = frame();
     // Source + readable bid form + three physical lots need a dedicated task
     // envelope when the surrounding piles/public stock consume tablet width.
     const phoneTable=width<=1150&&height<=500&&width>height;
@@ -168,13 +185,15 @@ export function mountNightMarket({root}) {
     if(disposed)return;
     root.dataset.phase = view.phase;
     history.disabled = view.phase === 'waiting';
+    orderButton.hidden=!view.turnOrder?.length;
     const peers = view.selfRole === 'player' ? view.players.filter(p=>p.id!==view.selfId) : view.players;
     const peerNode = $('yg-peer'); peerNode.dataset.playerCount = peers.length;
     markup(peerNode, peers.map((player,peerIndex)=>{
       const index = view.players.indexOf(player), active = (view.decisionActorId ?? view.currentPlayerId) === player.id;
+      const position=(view.turnOrder?.indexOf(player.id)??-1)+1;
       return `<article class="nm-merchant${active?' is-current':''}${player.id==='empty-seat'?' is-empty':''}" data-public-player="${esc(player.id)}" style="--shop-color:${colours[index%6]}">
-        <button type="button" class="nm-merchant-overview" data-player="${esc(player.id)}" aria-label="查看第${index+1}席${esc(player.name)}的公开商铺，${player.silver}两，手牌${player.handCount}张">
-          <img class="nm-portrait" src="${assetPath(portraits[index%6])}" alt="" draggable="false"><span class="nm-peer-copy"><strong title="${esc(player.name)}">${esc(player.name)}</strong><b class="nm-money">${player.silver}<small>两</small></b><small>${index+1}席${active?view.decisionActorId?' · 决定中':' · 正在经营':''}${view.closing?.finalPlayerId===player.id?' · 末回合':''}</small><span class="nm-hand-count">▱ ${player.handCount}${player.goods.length===12?`<span class="ex-peer-index">${peerIndex+1}/${peers.length}</span>`:''}</span></span>
+        <button type="button" class="nm-merchant-overview" data-player="${esc(player.id)}" aria-label="查看${esc(player.name)}的公开商铺${position?`，第${position}手`:''}，${player.silver}两，手牌${player.handCount}张">
+          <img class="nm-portrait" src="${assetPath(portraits[index%6])}" alt="" draggable="false"><span class="nm-peer-copy"><strong title="${esc(player.name)}">${esc(player.name)}</strong><b class="nm-money">${player.silver}<small>两</small></b><small>${[position?`第${position}手`:'',active?(view.decisionActorId?'决定中':'正在经营'):'',view.closing?.finalPlayerId===player.id?'末回合':''].filter(Boolean).join(' · ')}</small><span class="nm-hand-count">▱ ${player.handCount}${player.goods.length===12?`<span class="ex-peer-index">${peerIndex+1}/${peers.length}</span>`:''}</span></span>
         </button>
         <div class="nm-peer-goods" data-goods-count="${player.goods.length}" role="group" aria-label="${player.goods.length}种货物，空间不足时左右滑动查看">${GOODS.filter(good=>player.goods.some(g=>g.id===good.id)).map(good=>{const count=player.goods.find(g=>g.id===good.id)?.count??0;return `<span class="nm-mini-good${count?'':' is-zero'}" data-good-id="${good.id}" title="${good.name}${count}件">${renderGoodsIcon(good.id)}<b>${count}</b></span>`;}).join('')}${player.goods.length===12&&player.goods.every(g=>!g.count)?'<small class="ex-peer-empty">暂无货物</small>':''}</div>
         <div class="nm-peer-tools" aria-label="${esc(player.name)}的已装道具">${player.tools.length?player.tools.map(tool=>`<button type="button" data-detail-id="${face(tool).id}" class="${tool.tapped?'is-tapped':''}" aria-label="${esc(face(tool).name)}，${tool.tapped?'已用':'可用'}，阅读牌文">${esc(face(tool).name)}${tool.tapped?' ↷':''}</button>${player.goods.length===12?`<span class="ex-peer-tool-label${tool.tapped?' is-tapped':''}" title="${esc(face(tool).name)}，${tool.tapped?'已用':'可用'}">${esc(face(tool).name)}${tool.tapped?' ↷':''}</span>`:''}`).join(''):'<small>尚未装备</small>'}${view.currentPlayerId===player.id&&view.bookLayers?`<small>书算${view.bookLayers}层</small>`:''}</div>
@@ -207,5 +226,5 @@ export function mountNightMarket({root}) {
     if (end) { destination.append(end); end.classList.add('nm-end-turn'); }
     root.classList.toggle('nm-has-end-turn',!!end);
   }
-  return {render,syncActions,capture:economy.capture,present:economy.present,cancel:economy.cancel,destroy(){if(disposed)return;disposed=true;economy.destroy();cache.clear();toolbarObserver.disconnect();headerObserver.disconnect();removers.forEach(remove=>remove());root.classList.remove('nm-auction-focus');root.style.removeProperty('--nm-header-bottom');root.removeEventListener('gesturestart',gestureZoom);root.removeEventListener('gesturechange',gestureZoom);root.removeEventListener('wheel',wheelZoom);document.body.classList.remove('night-market-body');}};
+  return {render,syncActions,setViewport(next){viewportFrame=next;syncHeader();syncAuction();},capture:economy.capture,present:economy.present,cancel:economy.cancel,destroy(){if(disposed)return;disposed=true;economy.destroy();cache.clear();toolbarObserver.disconnect();headerObserver.disconnect();removers.forEach(remove=>remove());root.classList.remove('nm-auction-focus');root.style.removeProperty('--nm-header-bottom');root.removeEventListener('gesturestart',gestureZoom);root.removeEventListener('gesturechange',gestureZoom);root.removeEventListener('wheel',wheelZoom);document.body.classList.remove('night-market-body');}};
 }

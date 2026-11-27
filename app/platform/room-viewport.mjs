@@ -1,3 +1,7 @@
+import {mountFixedGameDocument} from '../game-viewport.mjs';
+import {mountCoherentViewport} from './room-viewport-frame.mjs';
+export {roomViewportFrame} from './room-viewport-frame.mjs';
+
 export function mountCanvasPin({ containers, document, pinOnFocus = false } = {}) {
   const nodes = [...new Set(containers.filter(Boolean))];
   function pin() {
@@ -16,8 +20,15 @@ export function mountCanvasPin({ containers, document, pinOnFocus = false } = {}
 
 // Keep geometry and game interaction in callbacks. Only entries with keyboard
 // recovery opt into the delayed syncs and focus/navigation listeners.
-export function mountGameViewport({ window, document, sync, onRecover = () => {}, recoveryDelays = [],
-  setTimeout = globalThis.setTimeout, clearTimeout = globalThis.clearTimeout } = {}) {
+export function mountGameViewport(options = {}) {
+  const viewport = observeGameViewport(options);
+  const releaseDocument = mountFixedGameDocument(options.window);
+  return { ...viewport, destroy() { releaseDocument(); viewport.destroy(); } };
+}
+
+function observeGameViewport({ window, document, sync, onRecover = () => {}, recoveryDelays = [],
+  setTimeout = globalThis.setTimeout, clearTimeout = globalThis.clearTimeout, coherent = false, now, recoverKeyboardCompression = false } = {}) {
+  if(coherent&&window.CSS?.supports?.('container-type','size')!==false)return mountCoherentViewport({window,document,sync,onRecover,recoverKeyboardCompression,setTimeout:window.setTimeout??setTimeout,clearTimeout:window.clearTimeout??clearTimeout,...(now?{now}:{})});
   let timers = [], generation = 0, destroyed = false;
   const listeners = [];
   function listen(target, type, handler) {

@@ -1,0 +1,2 @@
+/*! Noname v1.11.6.1, GPL-3.0. See noname-license.html for license and source. */
+import{a,b,c,d,e,f,g,h,i,j,k,l}from"./3FK7PQOD.mjs";import"./PRDVFZGU.mjs";import"./EW653G7N.mjs";import"./4CZMQUGA.mjs";import"./WGEVGE7S.mjs";import"./36TINACD.mjs";import"./RTAPJ4OR.mjs";import"./PVLPO2V3.mjs";import"./SMJJDMMS.mjs";export{k as autoCloseTags,d as completionPath,l as esLint,j as javascript,f as javascriptLanguage,h as jsxLanguage,c as localCompletionSource,e as scopeCompletionSource,a as snippets,i as tsxLanguage,g as typescriptLanguage,b as typescriptSnippets};

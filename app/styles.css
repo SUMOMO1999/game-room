@@ -65,7 +65,7 @@ h2 { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: 1px; }
 .sort-button { font-size: 10px; border: 0; background: transparent; padding: 7px 10px; border-radius: 4px; }
 .sort-button.active { background: #faf9f3; box-shadow: 0 1px 3px #283c2014; }
 .rack { display: grid; grid-template-columns: repeat(14, minmax(0, 1fr)); gap: 7px; padding: 16px; border-radius: 11px; background: #e9e5d8; box-shadow: inset 0 1px 3px #4b403f0b; min-height: 115px; align-items: start; }
-.tile { --tile-color: #2e3633; aspect-ratio: .7; border: 1px solid #e5dfcf; border-bottom: 3px solid #d5cbb8; border-radius: 6px; background: linear-gradient(155deg, #fffef5, #f8f1e2); box-shadow: 0 2px 3px #243c331c; color: var(--tile-color); display: inline-flex; align-items: center; justify-content: center; position: relative; padding: 0; font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-variant-numeric:tabular-nums lining-nums; line-height:1; font-weight: 700; font-size: clamp(25px, 2.7vw, 34px); user-select: none; touch-action: none; -webkit-user-select: none; min-width: 0; }
+.tile { --tile-color: #2e3633; aspect-ratio: .7; border: 1px solid #e5dfcf; border-bottom: 3px solid #d5cbb8; border-radius: 6px; background: linear-gradient(155deg, #fffef5, #f8f1e2); box-shadow: 0 2px 3px #243c331c; color: var(--tile-color); display: inline-flex; align-items: center; justify-content: center; position: relative; padding: 0; font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-variant-numeric:tabular-nums lining-nums; line-height:1; font-weight: 700; font-size: clamp(25px, calc(2.7 * var(--room-vw,1vw)), 34px); user-select: none; touch-action: none; -webkit-user-select: none; min-width: 0; }
 .tile::before { content: ""; position: absolute; top: 6px; left: 6px; width: 4px; height: 9px; border-radius: 2px; background: var(--tile-color); }
 .tile::after { content: ""; position: absolute; bottom: 8px; width: 7px; height: 3px; border-radius: 2px; background: var(--tile-color); }
 .tile:not(.joker)::after { display:none; }
@@ -115,7 +115,7 @@ dialog::backdrop { background: #153b324d; backdrop-filter: blur(4px); }
 .confirm-dialog h2 { font-size: 20px; }
 .confirm-dialog p { margin: 17px 0 23px; color: #7a8274; font-size: 12px; line-height: 1.8; }
 .confirm-actions { display: flex; justify-content: flex-end; gap: 8px; }
-.toast { position: fixed; bottom: max(28px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 32px); background: #243e34; color: #fffbea; padding: 12px 20px; border-radius: 9px; box-shadow: 0 6px 20px #1c372e30; font-size: 12px; line-height: 1.7; z-index: 150; pointer-events: none; }
+.toast { position: fixed; bottom: max(28px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(calc(100 * var(--room-vw,1vw)) - 32px); background: #243e34; color: #fffbea; padding: 12px 20px; border-radius: 9px; box-shadow: 0 6px 20px #1c372e30; font-size: 12px; line-height: 1.7; z-index: 150; pointer-events: none; }
 .noscript { padding: 20px; text-align: center; }
 [hidden] { display: none !important; }
 .quiet-link { font-size: 11px; text-decoration: none; color: #73816d; }
@@ -165,9 +165,22 @@ input:focus-visible { outline: 2px solid #c5a567; outline-offset: 3px; }
 .room-result > p:not(.eyebrow) { color: #78866d; font-size: 12px; line-height: 1.8; }
 .result-row { padding: 12px 0; border-top: 1px solid #c7d1bd; display: flex; justify-content: space-between; font-size: 12px; }
 .room-result > .primary-button { margin-top: 20px; }
-@media(max-width:600px) { .lobby-hero { padding: 43px 0 40px; } .lobby-hero h1 { font-size: 32px; } .lobby-hero > p:last-of-type { font-size: 11px; max-width: 200px; margin-top: 16px; } .hero-tiles { right: 5px; top: 48px; gap: 4px; } .hero-tiles .tile { width: 33px; height: 47px; font-size: 24px; } .lobby-forms { grid-template-columns: 1fr; gap: 17px; } .room-card { padding: 25px; } .room-card h2 { font-size: 22px; } .lobby-bottom { flex-direction: column; margin-bottom: 20px; gap: 8px; font-size: 10px; } .room-topbar { font-size: 9px; gap: 8px; padding: 17px 0; } .room-topbar strong { font-size: 12px; } .room-players { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 7px; } .player-seat { padding: 12px; } .room-waiting { padding: 40px 0 30px; } .room-waiting h2 { font-size: 22px; } .waiting-actions { gap: 9px; flex-wrap: wrap; } .room-result { padding: 23px; } }
-@media (min-width: 850px) { .new-meld { grid-column: 1 / -1; min-height: 74px; flex-direction: row; gap: 13px; } }
+@media(max-width:600px) { .lobby-hero:where(:not(:root[data-room-viewport] *)) { padding: 43px 0 40px; } .lobby-hero h1:where(:not(:root[data-room-viewport] *)) { font-size: 32px; } .lobby-hero > p:last-of-type:where(:not(:root[data-room-viewport] *)) { font-size: 11px; max-width: 200px; margin-top: 16px; } .hero-tiles:where(:not(:root[data-room-viewport] *)) { right: 5px; top: 48px; gap: 4px; } .hero-tiles .tile:where(:not(:root[data-room-viewport] *)) { width: 33px; height: 47px; font-size: 24px; } .lobby-forms:where(:not(:root[data-room-viewport] *)) { grid-template-columns: 1fr; gap: 17px; } .room-card:where(:not(:root[data-room-viewport] *)) { padding: 25px; } .room-card h2:where(:not(:root[data-room-viewport] *)) { font-size: 22px; } .lobby-bottom:where(:not(:root[data-room-viewport] *)) { flex-direction: column; margin-bottom: 20px; gap: 8px; font-size: 10px; } .room-topbar:where(:not(:root[data-room-viewport] *)) { font-size: 9px; gap: 8px; padding: 17px 0; } .room-topbar strong:where(:not(:root[data-room-viewport] *)) { font-size: 12px; } .room-players:where(:not(:root[data-room-viewport] *)) { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 7px; } .player-seat:where(:not(:root[data-room-viewport] *)) { padding: 12px; } .room-waiting:where(:not(:root[data-room-viewport] *)) { padding: 40px 0 30px; } .room-waiting h2:where(:not(:root[data-room-viewport] *)) { font-size: 22px; } .waiting-actions:where(:not(:root[data-room-viewport] *)) { gap: 9px; flex-wrap: wrap; } .room-result:where(:not(:root[data-room-viewport] *)) { padding: 23px; } }
+@container room-viewport (max-width:600px) { .lobby-hero { padding: 43px 0 40px; } .lobby-hero h1 { font-size: 32px; } .lobby-hero > p:last-of-type { font-size: 11px; max-width: 200px; margin-top: 16px; } .hero-tiles { right: 5px; top: 48px; gap: 4px; } .hero-tiles .tile { width: 33px; height: 47px; font-size: 24px; } .lobby-forms { grid-template-columns: 1fr; gap: 17px; } .room-card { padding: 25px; } .room-card h2 { font-size: 22px; } .lobby-bottom { flex-direction: column; margin-bottom: 20px; gap: 8px; font-size: 10px; } .room-topbar { font-size: 9px; gap: 8px; padding: 17px 0; } .room-topbar strong { font-size: 12px; } .room-players { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 7px; } .player-seat { padding: 12px; } .room-waiting { padding: 40px 0 30px; } .room-waiting h2 { font-size: 22px; } .waiting-actions { gap: 9px; flex-wrap: wrap; } .room-result { padding: 23px; } }
+@media (min-width: 850px) { .new-meld:where(:not(:root[data-room-viewport] *)) { grid-column: 1 / -1; min-height: 74px; flex-direction: row; gap: 13px; } }
+@container room-viewport (min-width: 850px) { .new-meld { grid-column: 1 / -1; min-height: 74px; flex-direction: row; gap: 13px; } }
 @media (max-width: 849px) {
+  .shell:where(:not(:root[data-room-viewport] *)) { padding-inline: 25px; }
+  .rack:where(:not(:root[data-room-viewport] *)) { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 9px; }
+  .tile:where(:not(:root[data-room-viewport] *)) { font-size: 33px; max-height: 92px; }
+  .turn-bar:where(:not(:root[data-room-viewport] *)) { flex-direction: column; align-items: stretch; }
+  .feedback:where(:not(:root[data-room-viewport] *)) { max-width: 100%; min-height: 28px; }
+  .turn-actions:where(:not(:root[data-room-viewport] *)) { justify-content: flex-end; }
+  .game-table:where(:not(:root[data-room-viewport] *)) { padding-inline: 20px; }
+  .board:where(:not(:root[data-room-viewport] *)) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .new-meld:where(:not(:root[data-room-viewport] *)) { min-height: 85px; }
+}
+@container room-viewport (max-width: 849px) {
   .shell { padding-inline: 25px; }
   .rack { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 9px; }
   .tile { font-size: 33px; max-height: 92px; }
@@ -179,6 +192,56 @@ input:focus-visible { outline: 2px solid #c5a567; outline-offset: 3px; }
   .new-meld { min-height: 85px; }
 }
 @media (max-width: 500px) {
+  .shell:where(:not(:root[data-room-viewport] *)) { padding-inline: 16px; }
+  .site-header:where(:not(:root[data-room-viewport] *)) { min-height: 78px; gap: 10px; }
+  .brand:where(:not(:root[data-room-viewport] *)) { gap: 8px; }
+  .brand strong:where(:not(:root[data-room-viewport] *)) { font-size: 14px; letter-spacing: 1px; }
+  .brand small:where(:not(:root[data-room-viewport] *)) { font-size: 6px; letter-spacing: .7px; margin-top: 5px; }
+  .brand-mark:where(:not(:root[data-room-viewport] *)) { --brand-scale:.8; width:calc(46px * var(--brand-scale)); height:calc(42px * var(--brand-scale)); transform:none; margin-right:0; }
+  .header-actions:not(.room-toolbar):where(:not(:root[data-room-viewport] *)) { gap: 13px; }
+  .mode-badge:where(:not(:root[data-room-viewport] *)) { font-size: 9px; gap: 4px; letter-spacing: 0; }
+  .quiet-button:where(:not(:root[data-room-viewport] *)) { font-size: 10px; }
+  .quiet-button span:where(:not(:root[data-room-viewport] *)) { display: none; }
+  .game-heading:where(:not(:root[data-room-viewport] *)) { padding: 22px 0 20px; }
+  .eyebrow:where(:not(:root[data-room-viewport] *)) { font-size: 8px; letter-spacing: 1.6px; margin-bottom: 9px; }
+  h1:where(:not(:root[data-room-viewport] *)) { font-size: 28px; letter-spacing: 2px; }
+  h1 span:where(:not(:root[data-room-viewport] *)) { font-size: 10px; letter-spacing: 0; margin-left: 12px; }
+  .description:where(:not(:root[data-room-viewport] *)) { font-size: 9px; margin-top: 9px; max-width: 230px; }
+  .round-summary:where(:not(:root[data-room-viewport] *)) { font-size: 9px; gap: 6px; }
+  .round-summary strong:where(:not(:root[data-room-viewport] *)) { padding: 6px 8px; }
+  .game-table:where(:not(:root[data-room-viewport] *)) { padding: 15px 15px 12px; border-radius: 10px; }
+  .table-topline:where(:not(:root[data-room-viewport] *)) { font-size: 9px; }
+  .board:where(:not(:root[data-room-viewport] *)) { grid-template-columns: 1fr; gap: 12px; padding: 15px 0 12px; min-height: 0; max-height: 285px; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; padding-inline: 3px; scrollbar-width: thin; scrollbar-color: #9bafa270 transparent; }
+  .meld:where(:not(:root[data-room-viewport] *)) { display: flex; align-items: center; gap: 13px; }
+  .meld-header:where(:not(:root[data-room-viewport] *)) { width: 57px; flex-shrink: 0; flex-direction: column; align-items: start; gap: 5px; padding: 5px 0; font-size: 9px; }
+  .meld-header small:where(:not(:root[data-room-viewport] *)) { font-size: 8px; }
+  .meld-tiles:where(:not(:root[data-room-viewport] *)) { flex: 1; min-width: 0; min-height: 47px; gap: 5px; }
+  .meld .tile:where(:not(:root[data-room-viewport] *)) { width: 33px; height: 47px; font-size: 25px; border-radius: 4px; }
+  .tile:where(:not(:root[data-room-viewport] *))::after { bottom: 6px; height: 2px; width: 4px; }
+  .new-meld:where(:not(:root[data-room-viewport] *)) { min-height: 45px; flex-direction: row; gap: 10px; padding: 10px; }
+  .new-meld span:where(:not(:root[data-room-viewport] *)) { font-size: 10px; }
+  .table-note:where(:not(:root[data-room-viewport] *)) { font-size: 8px; padding-top: 8px; gap: 6px; }
+  .table-note > span:first-child:where(:not(:root[data-room-viewport] *)) { font-size: 12px; }
+  .rack-section:where(:not(:root[data-room-viewport] *)) { padding-top: 20px; }
+  .rack-heading:where(:not(:root[data-room-viewport] *)) { gap: 8px; padding: 0 2px 12px; }
+  h2:where(:not(:root[data-room-viewport] *)) { font-size: 12px; }
+  .rack-heading p:where(:not(:root[data-room-viewport] *)) { font-size: 8px; max-width: 210px; margin-top: 6px; }
+  .sort-controls:where(:not(:root[data-room-viewport] *)) { padding: 2px; }
+  .sort-button:where(:not(:root[data-room-viewport] *)) { font-size: 8px; padding: 7px 7px; }
+  .rack:where(:not(:root[data-room-viewport] *)) { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; padding: 11px; border-radius: 8px; }
+  .tile:where(:not(:root[data-room-viewport] *)) { font-size: 27px; border-radius: 5px; }
+  .rack-bottom:where(:not(:root[data-room-viewport] *)) { font-size: 8px; padding-top: 7px; }
+  .text-button:where(:not(:root[data-room-viewport] *)) { font-size: 9px; }
+  .turn-bar:where(:not(:root[data-room-viewport] *)) { padding-top: 13px; gap: 9px; }
+  .feedback:where(:not(:root[data-room-viewport] *)) { font-size: 9px; gap: 6px; min-height: 26px; }
+  .feedback-icon:where(:not(:root[data-room-viewport] *)) { font-size: 15px; }
+  .turn-actions:where(:not(:root[data-room-viewport] *)) { display: grid; grid-template-columns: 1fr 1fr 1fr 1.5fr; gap: 5px; }
+  .primary-button:where(:not(:root[data-room-viewport] *)), .secondary-button:where(:not(:root[data-room-viewport] *)) { padding: 9px 8px; min-height: 42px; font-size: 10px; }
+  .primary-button span:where(:not(:root[data-room-viewport] *)) { margin-left: 7px; }
+  .page-footer:where(:not(:root[data-room-viewport] *)) { padding: 16px 0 8px; margin-top: 18px; gap: 10px; font-size: 8px; }
+  dialog:where(:not(:root[data-room-viewport] *)) { padding: 23px; }
+}
+@container room-viewport (max-width: 500px) {
   .shell { padding-inline: 16px; }
   .site-header { min-height: 78px; gap: 10px; }
   .brand { gap: 8px; }
@@ -229,6 +292,10 @@ input:focus-visible { outline: 2px solid #c5a567; outline-offset: 3px; }
   dialog { padding: 23px; }
 }
 @media (max-width: 360px) {
+  .rack:where(:not(:root[data-room-viewport] *)) { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .shell:not(.lobby-shell) .brand small:where(:not(:root[data-room-viewport] *)) { display: none; }
+}
+@container room-viewport (max-width: 360px) {
   .rack { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   .shell:not(.lobby-shell) .brand small { display: none; }
 }
@@ -237,6 +304,19 @@ input:focus-visible { outline: 2px solid #c5a567; outline-offset: 3px; }
 /* Game pages use the short landscape viewport; the lobby keeps its own layout. */
 .orientation-hint { display: none; }
 @media (max-width: 600px) and (orientation: portrait) {
+  .shell:not(.lobby-shell) .orientation-hint:where(:not(:root[data-room-viewport] *)) {
+    display: block;
+    margin: 12px 0 0;
+    padding: 9px 12px;
+    border: 1px solid #dce0d2;
+    border-radius: 7px;
+    background: #eeeee4;
+    color: #526b5d;
+    font-size: 11px;
+    line-height: 1.5;
+  }
+}
+@container room-viewport (max-width: 600px) and (orientation: portrait) {
   .shell:not(.lobby-shell) .orientation-hint {
     display: block;
     margin: 12px 0 0;
@@ -251,10 +331,207 @@ input:focus-visible { outline: 2px solid #c5a567; outline-offset: 3px; }
 }
 
 @media (min-width: 640px) and (max-width: 1000px) and (max-height: 600px) and (orientation: landscape) {
+  .shell:not(.lobby-shell):where(:not(:root[data-room-viewport] *)) {
+    display: flex;
+    flex-direction: column;
+    height: calc(100 * var(--room-vh,1vh));
+    height: 100dvh;
+    min-height: 320px;
+    min-width: 0;
+    padding: max(3px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(5px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  }
+  .shell:not(.lobby-shell) > .site-header:where(:not(:root[data-room-viewport] *)) {
+    min-height: 28px;
+    flex-shrink: 0;
+    gap: 12px;
+  }
+  .shell:not(.lobby-shell) .brand:where(:not(:root[data-room-viewport] *)) { gap: 5px; min-width: 0; }
+  .shell:not(.lobby-shell) .brand-mark:where(:not(:root[data-room-viewport] *)) {
+    --brand-scale:.6;
+    width:calc(46px * var(--brand-scale));
+    height:calc(42px * var(--brand-scale));
+    margin-right:0;
+    transform:none;
+  }
+  .shell:not(.lobby-shell) .brand strong:where(:not(:root[data-room-viewport] *)) { font-size: 12px; letter-spacing: 1px; }
+  .shell:not(.lobby-shell) .brand small:where(:not(:root[data-room-viewport] *)) { display: none; }
+  .shell:not(.lobby-shell) .mode-badge:where(:not(:root[data-room-viewport] *)) { font-size: 9px; letter-spacing: 0; }
+  .shell:not(.lobby-shell) .quiet-button:where(:not(:root[data-room-viewport] *)) { padding: 7px 0; font-size: 10px; }
+  .shell:not(.lobby-shell) .quiet-button span:where(:not(:root[data-room-viewport] *)) { margin-left: 5px; }
+  .shell:not(.lobby-shell) > main:where(:not(:root[data-room-viewport] *)) {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  .shell:not(.lobby-shell) #room-play:where(:not(:root[data-room-viewport] *)) {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+  }
+  .shell:not(.lobby-shell) .room-topbar:where(:not(:root[data-room-viewport] *)) {
+    flex-shrink: 0;
+    min-height: 22px;
+    padding: 2px 0;
+    gap: 10px;
+    font-size: 9px;
+  }
+  .shell:not(.lobby-shell) .room-topbar strong:where(:not(:root[data-room-viewport] *)) { font-size: 12px; letter-spacing: 1px; }
+  .shell:not(.lobby-shell) .room-topbar .text-button:where(:not(:root[data-room-viewport] *)) { padding: 3px 0; font-size: 9px; }
+  .shell:not(.lobby-shell) .quiet-link:where(:not(:root[data-room-viewport] *)) { font-size: 10px; }
+  .shell:not(.lobby-shell) .room-players:where(:not(:root[data-room-viewport] *)) {
+    display: flex;
+    flex-shrink: 0;
+    gap: 6px;
+    min-width: 0;
+    margin-bottom: 3px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+  }
+  .shell:not(.lobby-shell) .player-seat:where(:not(:root[data-room-viewport] *)) {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 6px;
+    min-width: 120px;
+    max-width: 200px;
+    padding: 4px 8px;
+    border-radius: 6px;
+  }
+  .shell:not(.lobby-shell) .player-seat strong:where(:not(:root[data-room-viewport] *)) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 10px;
+    line-height: 12px;
+  }
+  .shell:not(.lobby-shell) .player-seat span:where(:not(:root[data-room-viewport] *)) {
+    flex-shrink: 0;
+    margin: 0;
+    white-space: nowrap;
+    font-size: 9px;
+    line-height: 12px;
+  }
+  .shell:not(.lobby-shell) .game-heading:where(:not(:root[data-room-viewport] *)) {
+    flex-shrink: 0;
+    min-height: 26px;
+    padding: 3px 0;
+    gap: 10px;
+  }
+  .shell:not(.lobby-shell) .game-heading h1:where(:not(:root[data-room-viewport] *)) { font-size: 18px; line-height: 1.1; letter-spacing: 2px; }
+  .shell:not(.lobby-shell) .game-heading .eyebrow:where(:not(:root[data-room-viewport] *)),
+  .shell:not(.lobby-shell) .game-heading h1 span:where(:not(:root[data-room-viewport] *)),
+  .shell:not(.lobby-shell) .game-heading .description:where(:not(:root[data-room-viewport] *)),
+  .shell:not(.lobby-shell) .table-note:where(:not(:root[data-room-viewport] *)),
+  .shell:not(.lobby-shell) .rack-heading p:where(:not(:root[data-room-viewport] *)),
+  .shell:not(.lobby-shell) .page-footer:where(:not(:root[data-room-viewport] *)) { display: none; }
+  .shell:not(.lobby-shell) .round-summary:where(:not(:root[data-room-viewport] *)) {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 9px;
+  }
+  .shell:not(.lobby-shell) .round-summary strong:where(:not(:root[data-room-viewport] *)) { padding: 3px 8px; }
+  .shell:not(.lobby-shell) .game-table:where(:not(:root[data-room-viewport] *)) {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 92px;
+    min-width: 0;
+    padding: 7px 10px;
+    border-radius: 9px;
+  }
+  .shell:not(.lobby-shell) .table-topline:where(:not(:root[data-room-viewport] *)) { flex-shrink: 0; font-size: 9px; line-height: 12px; }
+  .shell:not(.lobby-shell) .board:where(:not(:root[data-room-viewport] *)) {
+    flex: 1;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-content: start;
+    gap: 9px 12px;
+    min-height: 0;
+    min-width: 0;
+    max-height: none;
+    padding: 7px 3px 6px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #9bafa270 transparent;
+  }
+  .shell:not(.lobby-shell) .meld-header:where(:not(:root[data-room-viewport] *)) { gap: 5px; padding-bottom: 4px; font-size: 9px; line-height: 12px; }
+  .shell:not(.lobby-shell) .meld-header small:where(:not(:root[data-room-viewport] *)) { font-size: 8px; }
+  .shell:not(.lobby-shell) .meld-tiles:where(:not(:root[data-room-viewport] *)) { gap: 4px; min-height: 54px; }
+  .shell:not(.lobby-shell) .meld .tile:where(:not(:root[data-room-viewport] *)) { flex: 0 0 38px; width: 38px; height: 54px; font-size: 28px; border-radius: 5px; }
+  .shell:not(.lobby-shell) .new-meld:where(:not(:root[data-room-viewport] *)) {
+    grid-column: auto;
+    min-height: 54px;
+    flex-direction: row;
+    gap: 8px;
+    padding: 8px;
+  }
+  .shell:not(.lobby-shell) .new-meld span:where(:not(:root[data-room-viewport] *)) { font-size: 9px; }
+  .shell:not(.lobby-shell) .rack-section:where(:not(:root[data-room-viewport] *)) { flex-shrink: 0; min-width: 0; padding-top: 4px; }
+  .shell:not(.lobby-shell) .rack-heading:where(:not(:root[data-room-viewport] *)) { gap: 8px; padding: 0 2px 3px; }
+  .shell:not(.lobby-shell) .rack-heading h2:where(:not(:root[data-room-viewport] *)) { font-size: 10px; }
+  .shell:not(.lobby-shell) .rack-heading h2 span:where(:not(:root[data-room-viewport] *)) { font-size: 11px; }
+  .shell:not(.lobby-shell) .sort-controls:where(:not(:root[data-room-viewport] *)) { padding: 2px; }
+  .shell:not(.lobby-shell) .sort-button:where(:not(:root[data-room-viewport] *)) { padding: 3px 9px; font-size: 9px; }
+  .shell:not(.lobby-shell) .rack:where(:not(:root[data-room-viewport] *)) {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    gap: 6px;
+    min-height: 72px;
+    height: 72px;
+    min-width: 0;
+    padding: 6px 10px;
+    border-radius: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x;
+    scrollbar-width: thin;
+  }
+  .shell:not(.lobby-shell) .rack .tile:where(:not(:root[data-room-viewport] *)) {
+    flex: 0 0 40px;
+    width: 40px;
+    height: 54px;
+    max-height: none;
+    font-size: 29px;
+    touch-action: pan-x;
+  }
+  .shell:not(.lobby-shell) .rack .tile.selected:where(:not(:root[data-room-viewport] *)) { transform: translateY(-3px); }
+  .shell:not(.lobby-shell) .rack-bottom:where(:not(:root[data-room-viewport] *)) { padding: 2px 3px 0; font-size: 9px; line-height: 16px; }
+  .shell:not(.lobby-shell) .rack-bottom .text-button:where(:not(:root[data-room-viewport] *)) { padding: 0; font-size: 9px; line-height: 16px; }
+  .shell:not(.lobby-shell) .turn-bar:where(:not(:root[data-room-viewport] *)) {
+    flex-shrink: 0;
+    flex-direction: row;
+    align-items: center;
+    min-width: 0;
+    min-height: 44px;
+    padding-top: 5px;
+    gap: 10px;
+  }
+  .shell:not(.lobby-shell) .feedback:where(:not(:root[data-room-viewport] *)) { flex: 1; min-width: 0; min-height: 0; max-width: none; gap: 6px; font-size: 10px; line-height: 1.5; overflow-wrap: anywhere; }
+  .shell:not(.lobby-shell) .feedback-icon:where(:not(:root[data-room-viewport] *)) { font-size: 15px; }
+  .shell:not(.lobby-shell) .turn-actions:where(:not(:root[data-room-viewport] *)) { display: flex; gap: 5px; }
+  .shell:not(.lobby-shell) .turn-actions .primary-button:where(:not(:root[data-room-viewport] *)),
+  .shell:not(.lobby-shell) .turn-actions .secondary-button:where(:not(:root[data-room-viewport] *)) { min-height: 38px; padding: 8px 10px; font-size: 10px; }
+  .shell:not(.lobby-shell) .turn-actions .primary-button span:where(:not(:root[data-room-viewport] *)) { margin-left: 7px; }
+}
+
+@container room-viewport (min-width: 640px) and (max-width: 1000px) and (max-height: 600px) and (orientation: landscape) {
   .shell:not(.lobby-shell) {
     display: flex;
     flex-direction: column;
-    height: 100vh;
+    height: calc(100 * var(--room-vh,1vh));
     height: 100dvh;
     min-height: 320px;
     min-width: 0;
@@ -459,7 +736,7 @@ input:focus-visible { outline: 2px solid #c5a567; outline-offset: 3px; }
   --board-tile-gap: calc(4px * var(--board-scale));
   --board-header-height: calc(14px * var(--board-scale));
   display: block;
-  height: min(42vh, 360px);
+  height: min(calc(42 * var(--room-vh,1vh)), 360px);
   height: min(42dvh, 360px);
   min-height: 130px;
   min-width: 0;
@@ -556,7 +833,7 @@ input:focus-visible { outline: 2px solid #c5a567; outline-offset: 3px; }
 .chat-toggle { position: relative; min-height: 32px; border: 1px solid #ced8c7; border-radius: 7px; padding: 5px 10px; font-size: 11px; background: #edf0e5; color: var(--green); white-space: nowrap; }
 .chat-unread { display: inline-grid; place-items: center; min-width: 17px; height: 17px; margin-left: 5px; padding: 0 4px; border-radius: 10px; background: #315b50; color: #fffaf0; font-size: 9px; }
 .chat-legacy-note { font-size: 10px; color: var(--muted); margin: -8px 0 12px; }
-.room-chat { --chat-viewport-height: 100dvh; --chat-viewport-top: 0px; --chat-viewport-left: 0px; --chat-viewport-width: 100vw; display: flex; flex-direction: column; position: fixed; z-index: 125; top: calc(var(--chat-viewport-top) + max(10px, env(safe-area-inset-top))); right: calc(100vw - var(--chat-viewport-left) - var(--chat-viewport-width) + max(10px, env(safe-area-inset-right))); width: min(350px, calc(var(--chat-viewport-width) - 20px)); height: calc(var(--chat-viewport-height) - max(10px, env(safe-area-inset-top)) - max(10px, env(safe-area-inset-bottom))); max-height: 620px; min-height: 0; border: 1px solid #d4dacb; border-radius: 14px; box-shadow: 0 8px 35px #1e3c3133; background: #f8f7f0; padding: 17px 16px 11px; color: #26362f; }
+.room-chat { --chat-viewport-height: 100dvh; --chat-viewport-top: 0px; --chat-viewport-left: 0px; --chat-viewport-width: calc(100 * var(--room-vw,1vw)); display: flex; flex-direction: column; position: fixed; z-index: 125; top: calc(var(--chat-viewport-top) + max(10px, env(safe-area-inset-top))); right: calc(calc(100 * var(--room-vw,1vw)) - var(--chat-viewport-left) - var(--chat-viewport-width) + max(10px, env(safe-area-inset-right))); width: min(350px, calc(var(--chat-viewport-width) - 20px)); height: calc(var(--chat-viewport-height) - max(10px, env(safe-area-inset-top)) - max(10px, env(safe-area-inset-bottom))); max-height: 620px; min-height: 0; border: 1px solid #d4dacb; border-radius: 14px; box-shadow: 0 8px 35px #1e3c3133; background: #f8f7f0; padding: 17px 16px 11px; color: #26362f; }
 .chat-heading { display: flex; flex: 0 0 auto; align-items: flex-start; justify-content: space-between; gap: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
 .chat-heading h2 { font-size: 14px; font-weight: 600; letter-spacing: .5px; }
 .chat-heading p { font-size: 9px; color: var(--muted); margin: 7px 0 0; line-height: 1.7; }
@@ -588,11 +865,25 @@ input:focus-visible { outline: 2px solid #c5a567; outline-offset: 3px; }
 .chat-status-row { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 10px; min-height: 22px; font-size: 9px; color: #7b8973; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 @media (orientation: portrait) and (max-width: 700px) {
+  .room-chat:where(:not(:root[data-room-viewport] *)) { top: calc(var(--chat-viewport-top) + var(--chat-viewport-height) - min(560px, var(--chat-viewport-height))); left: var(--chat-viewport-left); right: auto; width: var(--chat-viewport-width); height: min(560px, var(--chat-viewport-height)); max-height: none; border-radius: 15px 15px 0 0; padding: 15px max(16px, env(safe-area-inset-right)) max(7px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+  .chat-toggle:where(:not(:root[data-room-viewport] *)) { min-height: 36px; padding-inline: 8px; font-size: 10px; }
+}
+@container room-viewport (orientation: portrait) and (max-width: 700px) {
   .room-chat { top: calc(var(--chat-viewport-top) + var(--chat-viewport-height) - min(560px, var(--chat-viewport-height))); left: var(--chat-viewport-left); right: auto; width: var(--chat-viewport-width); height: min(560px, var(--chat-viewport-height)); max-height: none; border-radius: 15px 15px 0 0; padding: 15px max(16px, env(safe-area-inset-right)) max(7px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
   .chat-toggle { min-height: 36px; padding-inline: 8px; font-size: 10px; }
 }
 @media (max-height: 450px) and (orientation: landscape) {
-  .room-chat { width: min(310px, 45vw, calc(var(--chat-viewport-width) - 20px)); padding: 10px 12px 6px; border-radius: 10px; }
+  .room-chat:where(:not(:root[data-room-viewport] *)) { width: min(310px, calc(45 * var(--room-vw,1vw)), calc(var(--chat-viewport-width) - 20px)); padding: 10px 12px 6px; border-radius: 10px; }
+  .chat-heading:where(:not(:root[data-room-viewport] *)) { padding-bottom: 5px; }
+  .chat-heading h2:where(:not(:root[data-room-viewport] *)) { font-size: 12px; }
+  .chat-heading p:where(:not(:root[data-room-viewport] *)) { font-size: 8px; margin-top: 4px; }
+  .chat-form:where(:not(:root[data-room-viewport] *)) { padding-top: 5px; }
+  .chat-form textarea:where(:not(:root[data-room-viewport] *)) { min-height: 34px; max-height: 65px; }
+  .chat-toggle:where(:not(:root[data-room-viewport] *)) { min-height: 25px; font-size: 9px; padding-block: 3px; }
+  .chat-composer-bottom .primary-button:where(:not(:root[data-room-viewport] *)) { min-height: 44px; padding-block: 5px; }
+}
+@container room-viewport (max-height: 450px) and (orientation: landscape) {
+  .room-chat { width: min(310px, calc(45 * var(--room-vw,1vw)), calc(var(--chat-viewport-width) - 20px)); padding: 10px 12px 6px; border-radius: 10px; }
   .chat-heading { padding-bottom: 5px; }
   .chat-heading h2 { font-size: 12px; }
   .chat-heading p { font-size: 8px; margin-top: 4px; }
@@ -650,10 +941,23 @@ input:focus-visible { outline: 2px solid #c5a567; outline-offset: 3px; }
 .splitting .tile { opacity: .7; }
 .splitting .meld-tiles { outline: 1px dashed #d9b263; outline-offset: 4px; }
 @media (max-width: 600px) {
+  .shell:not(.lobby-shell) .board.auto-fit:where(:not(:root[data-room-viewport] *)) { max-height: 285px; }
+  .table-view-actions:where(:not(:root[data-room-viewport] *)) { gap: 6px; }
+}
+@container room-viewport (max-width: 600px) {
   .shell:not(.lobby-shell) .board.auto-fit { max-height: 285px; }
   .table-view-actions { gap: 6px; }
 }
 @media (min-width: 640px) and (max-width: 1000px) and (max-height: 600px) and (orientation: landscape) {
+  .shell:not(.lobby-shell) .board.auto-fit:where(:not(:root[data-room-viewport] *)) {
+    flex: 1;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    padding: 7px 3px 6px;
+  }
+}
+@container room-viewport (min-width: 640px) and (max-width: 1000px) and (max-height: 600px) and (orientation: landscape) {
   .shell:not(.lobby-shell) .board.auto-fit {
     flex: 1;
     height: auto;
@@ -665,6 +969,23 @@ input:focus-visible { outline: 2px solid #c5a567; outline-offset: 3px; }
 
 /* Keep the table central while the single hand row and actions remain available. */
 @media (min-width: 640px) and (max-width: 1000px) and (max-height: 600px) and (orientation: landscape) {
+  .shell:not(.lobby-shell):where(:not(:root[data-room-viewport] *)) { position: relative; min-height: 280px; }
+  body.in-game .room-topbar:where(:not(:root[data-room-viewport] *)) { display: none; }
+  .shell:not(.lobby-shell) .game-heading:where(:not(:root[data-room-viewport] *)) { display: none; }
+  .shell:not(.lobby-shell) .room-players:where(:not(:root[data-room-viewport] *)) { margin-top: 3px; }
+  .shell:not(.lobby-shell) .game-table:where(:not(:root[data-room-viewport] *)) { margin-top: 3px; }
+  .shell:not(.lobby-shell) .rack-section:where(:not(:root[data-room-viewport] *)) { position: relative; padding-top: 4px; }
+  .shell:not(.lobby-shell) .rack-heading:where(:not(:root[data-room-viewport] *)) { min-height: 18px; padding-bottom: 0; }
+  .shell:not(.lobby-shell) .sort-controls:where(:not(:root[data-room-viewport] *)) { padding: 0; border: 0; }
+  .shell:not(.lobby-shell) .sort-button:where(:not(:root[data-room-viewport] *)) { padding: 2px 7px; line-height: 12px; }
+  .shell:not(.lobby-shell) .rack:where(:not(:root[data-room-viewport] *)) { height: 58px; min-height: 58px; padding: 3px 8px; }
+  .shell:not(.lobby-shell) .rack .tile:where(:not(:root[data-room-viewport] *)) { height: 52px; width: 38px; flex-basis: 38px; font-size: 27px; }
+  .shell:not(.lobby-shell) .rack-bottom:where(:not(:root[data-room-viewport] *)) { position: absolute; top: 5px; left: 100px; right: 130px; padding: 0; }
+  .shell:not(.lobby-shell) .turn-bar:where(:not(:root[data-room-viewport] *)) { min-height: 38px; padding-top: 4px; }
+  .shell:not(.lobby-shell) .turn-actions .primary-button:where(:not(:root[data-room-viewport] *)),
+  .shell:not(.lobby-shell) .turn-actions .secondary-button:where(:not(:root[data-room-viewport] *)) { min-height: 34px; padding: 6px 10px; }
+}
+@container room-viewport (min-width: 640px) and (max-width: 1000px) and (max-height: 600px) and (orientation: landscape) {
   .shell:not(.lobby-shell) { position: relative; min-height: 280px; }
   body.in-game .room-topbar { display: none; }
   .shell:not(.lobby-shell) .game-heading { display: none; }
@@ -690,7 +1011,8 @@ input:focus-visible { outline: 2px solid #c5a567; outline-offset: 3px; }
 .account-reauth-link {display:inline-flex;align-items:center;min-height:40px;padding:8px 4px;}
 .room-waiting .account-reauth-link {margin-left:12px;}
 .room-waiting .account-reauth-note {font-size:12px;line-height:1.6;max-width:430px;}
-@media(max-width:600px) {.account-panel {align-items:flex-start;flex-direction:column;padding:22px;gap:18px;}.account-panel h2 {font-size:20px;}.account-actions {flex-wrap:wrap;}}
+@media(max-width:600px) {.account-panel:where(:not(:root[data-room-viewport] *)) {align-items:flex-start;flex-direction:column;padding:22px;gap:18px;}.account-panel h2:where(:not(:root[data-room-viewport] *)) {font-size:20px;}.account-actions:where(:not(:root[data-room-viewport] *)) {flex-wrap:wrap;}}
+@container room-viewport (max-width:600px) {.account-panel {align-items:flex-start;flex-direction:column;padding:22px;gap:18px;}.account-panel h2 {font-size:20px;}.account-actions {flex-wrap:wrap;}}
 
 /* Play is a single viewport, on every device. Only dialogs/chat have document-like content. */
 html:has(body.game-screen) { height: 100%; overflow: hidden; overflow: clip; overscroll-behavior: none; }
@@ -711,7 +1033,7 @@ body.game-screen {
   position: fixed;
   top: var(--game-viewport-top, 0px);
   left: var(--game-viewport-left, 0px);
-  width: var(--game-viewport-width, 100vw);
+  width: var(--game-viewport-width, calc(100 * var(--room-vw,1vw)));
   height: var(--game-viewport-height, 100dvh);
   min-height: 0;
   max-width: none;
@@ -951,6 +1273,14 @@ body.game-screen {
 .sound-settings input { width: 120px; accent-color: #315b50; }
 .sound-settings span { color: #8a927e; font-size: 10px; }
 @media (max-width:440px) {
+  .sound-settings:has(#sound-preview):where(:not(:root[data-room-viewport] *)) { display:grid; grid-template-columns:max-content minmax(0,1fr) 48px; gap:4px 8px; }
+  .sound-settings:has(#sound-preview) > label:where(:not(:root[data-room-viewport] *)) { grid-column:1; grid-row:1; white-space:nowrap; }
+  .sound-settings:has(#sound-preview) #sound-volume:where(:not(:root[data-room-viewport] *)) { grid-column:2 / 4; grid-row:1; width:100%; height:26px; min-height:26px; padding:0; }
+  .sound-settings:has(#sound-preview) #sound-preview-kind:where(:not(:root[data-room-viewport] *)) { grid-column:1 / 3; grid-row:2; width:100%; max-width:none; height:26px; }
+  .sound-settings:has(#sound-preview) #sound-preview:where(:not(:root[data-room-viewport] *)) { grid-column:3; grid-row:2; min-height:26px; padding:4px 6px; font-size:10px; }
+  .sound-settings:has(#sound-preview) #sound-preview-status:where(:not(:root[data-room-viewport] *)) { grid-column:1 / -1; grid-row:3; white-space:nowrap; }
+}
+@container room-viewport (max-width:440px) {
   .sound-settings:has(#sound-preview) { display:grid; grid-template-columns:max-content minmax(0,1fr) 48px; gap:4px 8px; }
   .sound-settings:has(#sound-preview) > label { grid-column:1; grid-row:1; white-space:nowrap; }
   .sound-settings:has(#sound-preview) #sound-volume { grid-column:2 / 4; grid-row:1; width:100%; height:26px; min-height:26px; padding:0; }
@@ -980,6 +1310,34 @@ body.game-screen {
 .joker-load-failed .joker-art-fallback { display:block; }
 
 @media (max-height: 500px) {
+  body.game-screen:where(:not(:root[data-room-viewport] *)) { --play-sidebar: 92px; --play-gap: 9px; }
+  .game-screen .shell:where(:not(:root[data-room-viewport] *)) { padding-top: max(3px, env(safe-area-inset-top)); padding-bottom: max(5px, env(safe-area-inset-bottom)); }
+  .game-screen:not([data-mode="room"]) .shell > main:where(:not(:root[data-room-viewport] *)),
+  .game-screen .shell:not(.lobby-shell) #room-play:where(:not(:root[data-room-viewport] *)) { grid-template-rows: 21px minmax(0, 1fr) auto 37px; gap: 5px; }
+  .game-screen .shell:not(.lobby-shell) .game-table:where(:not(:root[data-room-viewport] *)) { padding: 6px 8px 5px; border-radius: 10px; }
+  .game-screen .shell:not(.lobby-shell) .table-topline:where(:not(:root[data-room-viewport] *)) { flex-basis: 23px; font-size: 9px; }
+  .game-screen .shell:not(.lobby-shell) .board-view-button:where(:not(:root[data-room-viewport] *)) { min-height: 23px; font-size: 9px; padding: 2px 6px; }
+  .game-screen .shell:not(.lobby-shell) .rack-heading:where(:not(:root[data-room-viewport] *)) { min-height: 22px; padding-bottom: 2px; }
+  .game-screen .shell:not(.lobby-shell) .rack:where(:not(:root[data-room-viewport] *)) { height: calc(var(--game-viewport-height, 100dvh) * .28 - 22px); padding: 2px 8px; }
+  .game-screen .shell:not(.lobby-shell) .turn-actions .primary-button:where(:not(:root[data-room-viewport] *)), .game-screen .shell:not(.lobby-shell) .turn-actions .secondary-button:where(:not(:root[data-room-viewport] *)) { min-height: 34px; padding: 7px 10px; font-size: 10px; }
+  .game-screen .shell:not(.lobby-shell) .feedback:where(:not(:root[data-room-viewport] *)) { font-size: 9px; max-height: 33px; }
+  .game-screen .shell:not(.lobby-shell) .game-heading h1:where(:not(:root[data-room-viewport] *)) { font-size: 13px; }
+  .game-screen .shell:not(.lobby-shell) .round-summary:where(:not(:root[data-room-viewport] *)) { font-size: 9px; }
+  .game-screen .shell:not(.lobby-shell) .player-avatar:where(:not(:root[data-room-viewport] *)) { width: 26px; height: 26px; font-size: 11px; margin-bottom: 0; }
+  .game-screen.in-game .room-players:where(:not(:root[data-room-viewport] *)) { padding-top: 21px; padding-bottom: 22px; gap: 5px; }
+  .game-screen.in-game .player-seat:where(:not(:root[data-room-viewport] *)) { grid-template-columns: 28px minmax(0, 1fr); column-gap: 4px; padding: 4px 1px; }
+  .game-screen.in-game .player-seat strong:where(:not(:root[data-room-viewport] *)) { font-size: 10px; line-height: 13px; }
+  .game-screen.in-game .player-seat > span:not(.player-avatar):where(:not(:root[data-room-viewport] *)) { font-size: 8px; margin-top: 2px; }
+  .game-screen .shell:not(.lobby-shell) .room-waiting h2:where(:not(:root[data-room-viewport] *)) { font-size: 20px; }
+  .game-screen .shell:not(.lobby-shell) .room-waiting .eyebrow:where(:not(:root[data-room-viewport] *)), .game-screen .shell:not(.lobby-shell) .room-rule-note:where(:not(:root[data-room-viewport] *)) { display: none; }
+  .game-screen .shell:not(.lobby-shell) .room-result:where(:not(:root[data-room-viewport] *)) { padding: 12px 20px; }
+  .game-screen .shell:not(.lobby-shell) .room-result h2:where(:not(:root[data-room-viewport] *)) { font-size: 18px; }
+  .game-screen .shell:not(.lobby-shell) .room-result .eyebrow:where(:not(:root[data-room-viewport] *)) { margin-bottom: 7px; font-size: 8px; }
+  .game-screen .shell:not(.lobby-shell) .room-result > p:not(.eyebrow):where(:not(:root[data-room-viewport] *)) { margin: 7px 0; font-size: 10px; }
+  .game-screen .shell:not(.lobby-shell) .room-result .result-row:where(:not(:root[data-room-viewport] *)) { padding: 4px 0; }
+}
+
+@container room-viewport (max-height: 500px) {
   body.game-screen { --play-sidebar: 92px; --play-gap: 9px; }
   .game-screen .shell { padding-top: max(3px, env(safe-area-inset-top)); padding-bottom: max(5px, env(safe-area-inset-bottom)); }
   .game-screen:not([data-mode="room"]) .shell > main,
@@ -1008,6 +1366,40 @@ body.game-screen {
 }
 
 @media (max-width: 700px) and (orientation: portrait) {
+  body.game-screen:where(:not(:root[data-room-viewport] *)) { --play-sidebar: 0px; --play-gap: 7px; }
+  .game-screen .shell:where(:not(:root[data-room-viewport] *)) { padding-left: max(7px, env(safe-area-inset-left)); padding-right: max(7px, env(safe-area-inset-right)); }
+  .game-screen .shell:not(.lobby-shell) .brand:where(:not(:root[data-room-viewport] *)) { display: none; }
+  .game-screen .room-header .room-toolbar:where(:not(:root[data-room-viewport] *)) { flex: 1 1 auto; }
+  .game-screen .shell:not(.lobby-shell) .mode-badge:where(:not(:root[data-room-viewport] *)) { font-size: 10px; gap: 4px; }
+  .game-screen .shell:not(.lobby-shell) #connection-label:where(:not(:root[data-room-viewport] *)) { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .game-screen .shell > #app-shell-tools:where(:not(:root[data-room-viewport] *)) { display: none; }
+  .game-screen.in-game .shell:not(.lobby-shell) > main:where(:not(:root[data-room-viewport] *)) { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .game-screen.in-game .shell:not(.lobby-shell) #room-play:where(:not(:root[data-room-viewport] *)) { grid-column: 1; grid-row: 2; }
+  .game-screen.in-game .shell:not(.lobby-shell) .room-players:where(:not(:root[data-room-viewport] *)) { grid-column: 1; grid-row: 1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: 34px; align-content: start; gap: 4px; margin: 0; height: auto; max-height: 72px; padding: 0; overflow: visible; }
+  .game-screen.in-game .shell:not(.lobby-shell) .player-seat:where(:not(:root[data-room-viewport] *)), .game-screen.in-game .shell:not(.lobby-shell) .player-seat.self:where(:not(:root[data-room-viewport] *)) { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: 12px 11px; order: initial; margin: 0; height: 34px; min-height: 34px; max-height: 34px; padding: 4px 6px 3px; }
+  .game-screen.in-game .shell:not(.lobby-shell) .player-avatar:where(:not(:root[data-room-viewport] *)) { display: none; }
+  .game-screen.in-game .shell:not(.lobby-shell) .player-seat strong:where(:not(:root[data-room-viewport] *)) { grid-column: 1; grid-row: 1; min-width: 0; font-size: 9px; line-height: 12px; white-space: nowrap; }
+  .game-screen.in-game .shell:not(.lobby-shell) .player-seat > span:not(.player-avatar):where(:not(:root[data-room-viewport] *)) { grid-column: 1; grid-row: 2; min-width: 0; font-size: 8px; line-height: 11px; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .game-screen .shell:not(.lobby-shell) .game-table:where(:not(:root[data-room-viewport] *)) { padding: 8px 8px 6px; }
+  .game-screen .shell:not(.lobby-shell) .table-topline:where(:not(:root[data-room-viewport] *)) { font-size: 9px; }
+  .game-screen .shell:not(.lobby-shell) .table-view-actions:where(:not(:root[data-room-viewport] *)) { gap: 5px; }
+  .game-screen .shell:not(.lobby-shell) .board-view-button:where(:not(:root[data-room-viewport] *)) { padding: 3px 6px; font-size: 9px; }
+  .game-screen .shell:not(.lobby-shell) .rack-bottom:where(:not(:root[data-room-viewport] *)) { left: 92px; right: 175px; font-size: 8px; }
+  .game-screen .shell:not(.lobby-shell) .rack-bottom .text-button:where(:not(:root[data-room-viewport] *)) { font-size: 8px; padding-inline: 0; }
+  .game-screen .shell:not(.lobby-shell) .sort-button:where(:not(:root[data-room-viewport] *)) { padding: 3px 6px; font-size: 9px; }
+  .game-screen .shell:not(.lobby-shell) .turn-bar:where(:not(:root[data-room-viewport] *)) { flex-direction: column; align-items: stretch; gap: 3px; }
+  .game-screen .shell:not(.lobby-shell) #room-play:where(:not(:root[data-room-viewport] *)), .game-screen:not([data-mode="room"]) .shell > main:where(:not(:root[data-room-viewport] *)) { grid-template-rows: 23px minmax(0, 1fr) auto 65px; }
+  .game-screen .shell:not(.lobby-shell) .feedback:where(:not(:root[data-room-viewport] *)) { font-size: 9px; max-height: 28px; flex: 1; }
+  .game-screen .shell:not(.lobby-shell) .turn-actions:where(:not(:root[data-room-viewport] *)) { justify-content: flex-end; gap: 5px; }
+  .game-screen .shell:not(.lobby-shell) .turn-actions .primary-button:where(:not(:root[data-room-viewport] *)), .game-screen .shell:not(.lobby-shell) .turn-actions .secondary-button:where(:not(:root[data-room-viewport] *)) { min-height: 34px; padding: 7px 13px; font-size: 10px; }
+  .game-screen .shell:not(.lobby-shell) .room-waiting h2:where(:not(:root[data-room-viewport] *)) { font-size: 20px; }
+  .game-screen .shell:not(.lobby-shell) .room-rule-note:where(:not(:root[data-room-viewport] *)) { font-size: 9px !important; }
+  .game-screen:not(.in-game) .room-players:where(:not(:root[data-room-viewport] *)) { grid-template-columns: repeat(4, minmax(0, 1fr)); gap:4px; }
+  .game-screen:not(.in-game) .player-seat:where(:not(:root[data-room-viewport] *)) { padding:5px; font-size:9px; }
+  .game-screen .shell:not(.lobby-shell) .room-result:where(:not(:root[data-room-viewport] *)) { left: 50%; width: calc(100% - 24px); }
+}
+
+@container room-viewport (max-width: 700px) and (orientation: portrait) {
   body.game-screen { --play-sidebar: 0px; --play-gap: 7px; }
   .game-screen .shell { padding-left: max(7px, env(safe-area-inset-left)); padding-right: max(7px, env(safe-area-inset-right)); }
   .game-screen .shell:not(.lobby-shell) .brand { display: none; }
@@ -1042,6 +1434,14 @@ body.game-screen {
 }
 
 @media (max-width: 640px) and (orientation: landscape) {
+  .game-screen .shell:not(.lobby-shell) .brand strong:where(:not(:root[data-room-viewport] *)) { display: none; }
+  .game-screen .shell > #app-shell-tools:where(:not(:root[data-room-viewport] *)) { display: none; }
+  .game-screen .shell:not(.lobby-shell) .rack-bottom:where(:not(:root[data-room-viewport] *)) { left: 90px; right: 130px; font-size: 8px; }
+  .game-screen .shell:not(.lobby-shell) .rack-bottom .text-button:where(:not(:root[data-room-viewport] *)) { font-size: 8px; }
+  .game-screen .shell:not(.lobby-shell) .turn-actions .primary-button:where(:not(:root[data-room-viewport] *)), .game-screen .shell:not(.lobby-shell) .turn-actions .secondary-button:where(:not(:root[data-room-viewport] *)) { padding: 7px 7px; }
+}
+
+@container room-viewport (max-width: 640px) and (orientation: landscape) {
   .game-screen .shell:not(.lobby-shell) .brand strong { display: none; }
   .game-screen .shell > #app-shell-tools { display: none; }
   .game-screen .shell:not(.lobby-shell) .rack-bottom { left: 90px; right: 130px; font-size: 8px; }
@@ -1052,17 +1452,25 @@ body.game-screen {
 /* Rummikub turn controls retain a full touch target when the table is compact. */
 .game-screen:not(.army-screen) .shell:not(.lobby-shell) .turn-actions > button { min-width: 44px; min-height: 44px; }
 @media (max-height: 500px) and (orientation: landscape) {
+  .game-screen:not([data-mode="room"]):not(.army-screen) .shell > main:where(:not(:root[data-room-viewport] *)),
+  .game-screen:not(.army-screen):not(.rummi-spectator) .shell:not(.lobby-shell) #room-play:where(:not(:root[data-room-viewport] *)) { grid-template-rows: 21px minmax(0, 1fr) auto 44px; }
+}
+@container room-viewport (max-height: 500px) and (orientation: landscape) {
   .game-screen:not([data-mode="room"]):not(.army-screen) .shell > main,
   .game-screen:not(.army-screen):not(.rummi-spectator) .shell:not(.lobby-shell) #room-play { grid-template-rows: 21px minmax(0, 1fr) auto 44px; }
 }
 @media (max-width: 700px) and (orientation: portrait) {
+  .game-screen:not([data-mode="room"]):not(.army-screen) .shell > main:where(:not(:root[data-room-viewport] *)),
+  .game-screen:not(.army-screen):not(.rummi-spectator) .shell:not(.lobby-shell) #room-play:where(:not(:root[data-room-viewport] *)) { grid-template-rows: 23px minmax(0, 1fr) auto 73px; }
+}
+@container room-viewport (max-width: 700px) and (orientation: portrait) {
   .game-screen:not([data-mode="room"]):not(.army-screen) .shell > main,
   .game-screen:not(.army-screen):not(.rummi-spectator) .shell:not(.lobby-shell) #room-play { grid-template-rows: 23px minmax(0, 1fr) auto 73px; }
 }
 
 /* The inspector shows a page of large tiles; pagination never scrolls the game. */
 dialog.tile-inspector {
-  width: min(740px, calc(var(--game-viewport-width, 100vw) - 24px));
+  width: min(740px, calc(var(--game-viewport-width, calc(100 * var(--room-vw,1vw))) - 24px));
   height: min(380px, calc(var(--game-viewport-height, 100dvh) - 24px));
   max-width: none;
   max-height: calc(var(--game-viewport-height, 100dvh) - 24px);
@@ -1076,13 +1484,13 @@ dialog.tile-inspector {
 }
 dialog#tile-inspector, dialog#room-options-dialog, dialog#leave-room-dialog, dialog#room-activity-dialog, dialog#joker-settings-dialog {
   top: calc(var(--game-viewport-top, 0px) + var(--game-viewport-height, 100dvh) / 2);
-  left: calc(var(--game-viewport-left, 0px) + var(--game-viewport-width, 100vw) / 2);
+  left: calc(var(--game-viewport-left, 0px) + var(--game-viewport-width, calc(100 * var(--room-vw,1vw))) / 2);
   right: auto;
   bottom: auto;
   margin: 0;
   transform: translate(-50%, -50%);
 }
-.joker-settings-dialog { width:min(510px,calc(var(--game-viewport-width,100vw) - 24px)); max-height:calc(var(--game-viewport-height,100dvh) - 24px); padding:16px; overflow:hidden; color:#284b3b; background:#f5f0df; }
+.joker-settings-dialog { width:min(510px,calc(var(--game-viewport-width,calc(100 * var(--room-vw,1vw))) - 24px)); max-height:calc(var(--game-viewport-height,100dvh) - 24px); padding:16px; overflow:hidden; color:#284b3b; background:#f5f0df; }
 .joker-settings-dialog h2 { font-size:17px; }
 .joker-settings-dialog .dialog-heading { margin-bottom:7px; }
 dialog.tile-inspector[open] {
@@ -1112,7 +1520,7 @@ dialog.tile-inspector[open] {
   height: min(100%, 92px);
   aspect-ratio: auto;
   min-height: 0;
-  font-size: clamp(25px, 4vw, 43px);
+  font-size: clamp(25px, calc(4 * var(--room-vw,1vw)), 43px);
   border-radius: 6px;
 }
 .tile-inspector .inspector-tiles .tile.selected { transform: translateY(-2px); }
@@ -1122,15 +1530,36 @@ dialog.tile-inspector[open] {
 .tile-inspector #inspector-page { min-width: 47px; text-align: center; color: #788171; font-size: 11px; font-variant-numeric: tabular-nums; }
 
 @media (max-height: 400px) {
+  dialog.tile-inspector:where(:not(:root[data-room-viewport] *)) { padding: 10px 16px; }
+  dialog.tile-inspector[open]:where(:not(:root[data-room-viewport] *)) { grid-template-rows: 27px 25px minmax(0, 1fr) 34px; gap: 5px; }
+  .tile-inspector .dialog-heading h2:where(:not(:root[data-room-viewport] *)) { font-size: 15px; }
+  .tile-inspector #inspector-note:where(:not(:root[data-room-viewport] *)) { font-size: 10px; line-height: 13px; }
+  .tile-inspector .inspector-tiles:where(:not(:root[data-room-viewport] *)) { gap: 6px; padding: 5px; }
+  .tile-inspector .inspector-tiles .tile:where(:not(:root[data-room-viewport] *)) { font-size: clamp(23px, calc(4 * var(--room-vw,1vw)), 39px); }
+}
+
+@container room-viewport (max-height: 400px) {
   dialog.tile-inspector { padding: 10px 16px; }
   dialog.tile-inspector[open] { grid-template-rows: 27px 25px minmax(0, 1fr) 34px; gap: 5px; }
   .tile-inspector .dialog-heading h2 { font-size: 15px; }
   .tile-inspector #inspector-note { font-size: 10px; line-height: 13px; }
   .tile-inspector .inspector-tiles { gap: 6px; padding: 5px; }
-  .tile-inspector .inspector-tiles .tile { font-size: clamp(23px, 4vw, 39px); }
+  .tile-inspector .inspector-tiles .tile { font-size: clamp(23px, calc(4 * var(--room-vw,1vw)), 39px); }
 }
 
 @media (max-width: 450px) {
+  dialog.tile-inspector:where(:not(:root[data-room-viewport] *)) { padding: 13px 10px; }
+  .tile-inspector .inspector-tiles:where(:not(:root[data-room-viewport] *)) { gap: 4px; padding: 7px 3px; }
+  .tile-inspector .inspector-tiles .tile:where(:not(:root[data-room-viewport] *)) { font-size: 27px; }
+  .tile-inspector .inspector-tiles .tile:where(:not(:root[data-room-viewport] *))::before { top: 4px; left: 4px; height: 7px; width: 3px; }
+  .tile-inspector .inspector-tiles .tile:where(:not(:root[data-room-viewport] *))::after { bottom: 6px; }
+  .tile-inspector .inspector-actions:where(:not(:root[data-room-viewport] *)) { gap: 5px; }
+  .tile-inspector .inspector-actions .primary-button:where(:not(:root[data-room-viewport] *)),
+  .tile-inspector .inspector-actions .secondary-button:where(:not(:root[data-room-viewport] *)) { padding: 7px 9px; font-size: 10px; }
+  .tile-inspector #inspector-page:where(:not(:root[data-room-viewport] *)) { min-width: 35px; font-size: 10px; }
+}
+
+@container room-viewport (max-width: 450px) {
   dialog.tile-inspector { padding: 13px 10px; }
   .tile-inspector .inspector-tiles { gap: 4px; padding: 7px 3px; }
   .tile-inspector .inspector-tiles .tile { font-size: 27px; }
@@ -1151,8 +1580,9 @@ dialog.tile-inspector[open] {
 .game-screen .shell:not(.lobby-shell) .practice-exit { gap: 5px; border: 1px solid #d0b98865; background: #183a30; color: #f0e5c7; }
 .practice-exit > span:first-child { font-size: 23px; }
 .practice-exit:focus-visible { outline: 2px solid #f7dfaa; outline-offset: 2px; }
-@media (max-width: 360px) { .practice-exit-label { display: none; } }
-.room-options-dialog { width: min(430px, calc(var(--game-viewport-width, 100vw) - 24px)); max-height: calc(var(--game-viewport-height, 100dvh) - 24px); padding: 18px 20px; overflow: hidden; }
+@media (max-width: 360px) { .practice-exit-label:where(:not(:root[data-room-viewport] *)) { display: none; } }
+@container room-viewport (max-width: 360px) { .practice-exit-label { display: none; } }
+.room-options-dialog { width: min(430px, calc(var(--game-viewport-width, calc(100 * var(--room-vw,1vw))) - 24px)); max-height: calc(var(--game-viewport-height, 100dvh) - 24px); padding: 18px 20px; overflow: hidden; }
 .room-options-dialog[open] { display: flex; flex-direction: column; gap: 12px; }
 .room-options-dialog h2 { font-size: 18px; font-weight: 600; letter-spacing: 1px; }
 .room-options-dialog .close-button { padding: 0 0 0 12px; }
@@ -1167,7 +1597,7 @@ dialog.tile-inspector[open] {
 .room-menu-separation > button { min-height: 34px; padding: 7px 11px; }
 .room-menu-separation .text-button { font-size: 11px; }
 #room-menu-status { margin: 0; color: #6d7e65; font-size: 11px; line-height: 1.5; min-height: 16px; }
-#leave-room-dialog { width: min(430px, calc(var(--game-viewport-width, 100vw) - 24px)); max-height: calc(var(--game-viewport-height, 100dvh) - 24px); padding: 22px 24px; overflow: hidden; }
+#leave-room-dialog { width: min(430px, calc(var(--game-viewport-width, calc(100 * var(--room-vw,1vw))) - 24px)); max-height: calc(var(--game-viewport-height, 100dvh) - 24px); padding: 22px 24px; overflow: hidden; }
 #leave-room-dialog .close-button { padding-bottom: 0; }
 #leave-room-dialog h2 { font-size: 19px; }
 #leave-room-explanation { font-size: 12px; margin: 17px 0 12px; }
@@ -1191,7 +1621,8 @@ dialog.tile-inspector[open] {
 .game-screen:not(.army-screen).in-game .shell:not(.lobby-shell) .player-seat strong { padding-right:17px; }
 .game-screen.in-game .shell:not(.lobby-shell) .player-seat.next > .player-turn-order { background:#d2dfbb;color:#254438; }
 .game-screen.in-game .shell:not(.lobby-shell) .player-seat.next { box-shadow:inset 2px 0 #b9d896; }
-@media(max-width:620px) { .turn-clock { font-size:9px;gap:2px; }.turn-clock-action { display:none; }.game-screen .round-summary { gap:5px!important; }.game-screen #round-label { display:none; } }
+@media(max-width:620px) { .turn-clock:where(:not(:root[data-room-viewport] *)) { font-size:9px;gap:2px; }.turn-clock-action:where(:not(:root[data-room-viewport] *)) { display:none; }.game-screen .round-summary:where(:not(:root[data-room-viewport] *)) { gap:5px!important; }.game-screen #round-label:where(:not(:root[data-room-viewport] *)) { display:none; } }
+@container room-viewport (max-width:620px) { .turn-clock { font-size:9px;gap:2px; }.turn-clock-action { display:none; }.game-screen .round-summary { gap:5px!important; }.game-screen #round-label { display:none; } }
 .game-screen.rummi-own-turn .game-table { border-color:#ffda86;box-shadow:inset 0 0 0 2px #f3d27966; }
 .game-screen { --rummi-rack-active:var(--theme-base,#173a31); }
 html[data-theme-tone=light] .game-screen { --rummi-rack-active:var(--theme-accent,#715b3d); }
@@ -1213,9 +1644,18 @@ html[data-theme-tone=light] .game-screen { --rummi-rack-active:var(--theme-accen
 .game-screen[data-mode=room].in-game .shell:not(.lobby-shell) .player-seat.current :is(.player-avatar,.player-turn-order) { background:var(--theme-base,#173a31)!important;color:var(--theme-accent,#e4ce9b)!important; }
 .game-screen[data-mode=room].in-game .shell:not(.lobby-shell) .player-seat.current::after { background:var(--theme-base,#173a31)!important; }
 .game-screen.rummi-own-turn #commit:not(:disabled) { background:#ffda86;box-shadow:0 0 0 2px #ffe5a55e; }
-@media(max-height:420px) { .game-screen #turn-banner { min-height:21px;font-size:10px;padding:2px 8px; } }
+@media(max-height:420px) { .game-screen #turn-banner:where(:not(:root[data-room-viewport] *)) { min-height:21px;font-size:10px;padding:2px 8px; } }
+@container room-viewport (max-height:420px) { .game-screen #turn-banner { min-height:21px;font-size:10px;padding:2px 8px; } }
 .player-seat.turn-notice .player-avatar { animation: turn-arrival .6s ease-out; }
 @media (max-height: 420px) {
+  .room-options-dialog:where(:not(:root[data-room-viewport] *)) { padding: 12px 16px; }
+  .room-options-dialog[open]:where(:not(:root[data-room-viewport] *)) { gap: 8px; }
+  .room-options-dialog h2:where(:not(:root[data-room-viewport] *)) { font-size: 16px; }
+  .room-options-dialog #room-options-note:where(:not(:root[data-room-viewport] *)) { font-size: 10px; }
+  .room-menu-separation:where(:not(:root[data-room-viewport] *)) { padding-top: 8px; }
+  #leave-room-dialog:where(:not(:root[data-room-viewport] *)) { padding: 17px 20px; }
+}
+@container room-viewport (max-height: 420px) {
   .room-options-dialog { padding: 12px 16px; }
   .room-options-dialog[open] { gap: 8px; }
   .room-options-dialog h2 { font-size: 16px; }
@@ -1238,7 +1678,7 @@ html[data-theme-tone=light] .game-screen { --rummi-rack-active:var(--theme-accen
 .game-screen .shell:not(.lobby-shell) #rack-inspect.attention { color: #eed9a3; box-shadow: inset 0 0 0 1px #d0b06a75; }
 .game-screen .shell:not(.lobby-shell) .board.auto-fit.group-drag-ghost { position: fixed; z-index: 110; min-height: 0; height: 0; width: 0; padding: 0; border: 0; background: transparent; box-shadow: none; overflow: visible; pointer-events: none; }
 .tile.drag-ghost { transform: translate(-50%, -65%) rotate(-4deg); }
-dialog.room-activity-dialog { width: min(510px, calc(var(--game-viewport-width, 100vw) - 24px)); height: min(500px, calc(var(--game-viewport-height, 100dvh) - 24px)); max-height: calc(var(--game-viewport-height, 100dvh) - 24px); padding: 18px 20px; overflow: hidden; }
+dialog.room-activity-dialog { width: min(510px, calc(var(--game-viewport-width, calc(100 * var(--room-vw,1vw))) - 24px)); height: min(500px, calc(var(--game-viewport-height, 100dvh) - 24px)); max-height: calc(var(--game-viewport-height, 100dvh) - 24px); padding: 18px 20px; overflow: hidden; }
 dialog.room-activity-dialog[open] { display: grid; grid-template-rows: 27px 23px minmax(0, 1fr) 36px; gap: 8px; }
 .room-activity-dialog h2 { font-size: 18px; }
 .room-activity-dialog .close-button { padding: 0 0 0 12px; }
@@ -1252,14 +1692,19 @@ dialog.room-activity-dialog[open] { display: grid; grid-template-rows: 27px 23px
 .activity-pages button { min-height: 34px; padding: 7px 12px; font-size: 11px; }
 .activity-pages span { min-width: 55px; text-align: center; font-size: 11px; color: #7b8374; }
 @media (max-height: 420px) {
+  dialog.room-activity-dialog:where(:not(:root[data-room-viewport] *)) { padding: 12px 16px; }
+  dialog.room-activity-dialog[open]:where(:not(:root[data-room-viewport] *)) { grid-template-rows: 26px 20px minmax(0, 1fr) 34px; gap: 6px; }
+  .room-activity-list li:where(:not(:root[data-room-viewport] *)) { padding-block: 7px; }
+}
+@container room-viewport (max-height: 420px) {
   dialog.room-activity-dialog { padding: 12px 16px; }
   dialog.room-activity-dialog[open] { grid-template-rows: 26px 20px minmax(0, 1fr) 34px; gap: 6px; }
   .room-activity-list li { padding-block: 7px; }
 }
 
 /* New live table messages stay above the playing surface, never over a drop target. */
-.room-chat-notice { position:fixed; z-index:130; top:max(var(--chat-notice-top,0px),calc(var(--chat-viewport-top,0px) + max(4px,env(safe-area-inset-top)))); left:calc(var(--chat-viewport-left,0px) + max(9px,env(safe-area-inset-left))); width:min(280px,calc(var(--chat-viewport-width,100vw) * .4)); max-height:60px; display:flex; align-items:stretch; gap:4px; padding:4px 5px 4px 8px; border:1px solid #ebd69b; border-radius:8px; background:#fff5d8; color:#234735; box-shadow:0 3px 12px #10291e4d; }
-.room-chat-own-notice { left:auto; right:calc(100vw - var(--chat-viewport-left,0px) - var(--chat-viewport-width,100vw) + max(9px,env(safe-area-inset-right))); border-color:#bcd0b4; background:#e6efdc; }
+.room-chat-notice { position:fixed; z-index:130; top:max(var(--chat-notice-top,0px),calc(var(--chat-viewport-top,0px) + max(4px,env(safe-area-inset-top)))); left:calc(var(--chat-viewport-left,0px) + max(9px,env(safe-area-inset-left))); width:min(280px,calc(var(--chat-viewport-width,calc(100 * var(--room-vw,1vw))) * .4)); max-height:60px; display:flex; align-items:stretch; gap:4px; padding:4px 5px 4px 8px; border:1px solid #ebd69b; border-radius:8px; background:#fff5d8; color:#234735; box-shadow:0 3px 12px #10291e4d; }
+.room-chat-own-notice { left:auto; right:calc(calc(100 * var(--room-vw,1vw)) - var(--chat-viewport-left,0px) - var(--chat-viewport-width,calc(100 * var(--room-vw,1vw))) + max(9px,env(safe-area-inset-right))); border-color:#bcd0b4; background:#e6efdc; }
 .room-chat-own-notice .chat-notice-close { background:#d4e3c9; }
 .room-chat-notice[hidden] { display:none!important; }
 .chat-notice-open { flex:1; min-width:0; border:0; padding:0; background:transparent; color:inherit; text-align:left; display:flex; flex-direction:column; gap:2px; }
@@ -1271,7 +1716,8 @@ dialog.room-activity-dialog[open] { display: grid; grid-template-rows: 27px 23px
 .chat-alerts-bar { display:flex; align-items:center; justify-content:space-between; gap:8px; flex:none; padding:6px 0; }
 .chat-alerts-toggle { min-height:27px; padding:4px 7px; border:1px solid #c5ccb8; border-radius:6px; background:#eef0e5; color:#315b50; font-size:9px; white-space:nowrap; }
 .chat-alerts-bar > span { color:#7b8278; font-size:8px; line-height:1.35; }
-@media (max-height:420px) { .room-chat-notice { max-height:52px; padding-block:3px; }.chat-notice-text { max-height:24px; font-size:9px; line-height:12px; }.chat-notice-name { font-size:9px; line-height:11px; }.chat-alerts-bar { padding:3px 0; }.chat-alerts-toggle { min-height:24px; font-size:8px; padding:3px 5px; } }
+@media (max-height:420px) { .room-chat-notice:where(:not(:root[data-room-viewport] *)) { max-height:52px; padding-block:3px; }.chat-notice-text:where(:not(:root[data-room-viewport] *)) { max-height:24px; font-size:9px; line-height:12px; }.chat-notice-name:where(:not(:root[data-room-viewport] *)) { font-size:9px; line-height:11px; }.chat-alerts-bar:where(:not(:root[data-room-viewport] *)) { padding:3px 0; }.chat-alerts-toggle:where(:not(:root[data-room-viewport] *)) { min-height:24px; font-size:8px; padding:3px 5px; } }
+@container room-viewport (max-height:420px) { .room-chat-notice { max-height:52px; padding-block:3px; }.chat-notice-text { max-height:24px; font-size:9px; line-height:12px; }.chat-notice-name { font-size:9px; line-height:11px; }.chat-alerts-bar { padding:3px 0; }.chat-alerts-toggle { min-height:24px; font-size:8px; padding:3px 5px; } }
 
 /* END SUMOMO-APPEARANCE baseline-37493 */
 /* BEGIN SUMOMO-APPEARANCE shared-menu-v2 */
@@ -1293,7 +1739,7 @@ dialog.appearance-dialog,html[data-appearance] dialog.appearance-dialog{
   --ui-accent:var(--plum);--ui-on-accent:var(--appearance-on-accent);
   --ui-input-bg:var(--appearance-control-surface);--ui-radius:var(--appearance-control-radius);
   --ui-control-shadow:var(--appearance-control-shadow);--ui-inset:var(--appearance-control-inset);
-  width:min(640px,calc(100vw - 32px));max-width:none;
+  width:min(640px,calc(calc(100 * var(--room-vw,1vw)) - 32px));max-width:none;
   max-height:calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   margin:auto;padding:0;overflow:hidden;box-sizing:border-box;
   border:1px solid var(--line);border-radius:14px;
@@ -1401,10 +1847,22 @@ html[data-appearance=soft] .appearance-dialog .appearance-done:active{box-shadow
   html[data-appearance=glass] .appearance-dialog::backdrop{-webkit-backdrop-filter:none;backdrop-filter:none}
 }
 @media(max-width:520px){
+  .appearance-dialog .appearance-palettes:where(:not(:root[data-room-viewport] *)){grid-template-columns:repeat(3,minmax(0,1fr))}
+  .appearance-dialog .appearance-palette:where(:not(:root[data-room-viewport] *)){min-height:68px}
+}
+@container room-viewport (max-width:520px){
   .appearance-dialog .appearance-palettes{grid-template-columns:repeat(3,minmax(0,1fr))}
   .appearance-dialog .appearance-palette{min-height:68px}
 }
 @media(max-width:400px){
+  .appearance-dialog .appearance-header:where(:not(:root[data-room-viewport] *)),.appearance-dialog .appearance-body:where(:not(:root[data-room-viewport] *)),.appearance-dialog .appearance-actions:where(:not(:root[data-room-viewport] *)){padding-left:16px;padding-right:16px}
+  .appearance-dialog .appearance-backgrounds:where(:not(:root[data-room-viewport] *)){grid-template-columns:repeat(2,minmax(0,1fr))}
+  .appearance-dialog .appearance-colors:where(:not(:root[data-room-viewport] *)){grid-template-columns:minmax(0,1fr)}
+  .appearance-dialog .appearance-choice:where(:not(:root[data-room-viewport] *)){gap:6px;font-size:13px}
+  .appearance-dialog .appearance-style-swatch:where(:not(:root[data-room-viewport] *)){flex-basis:20px;width:20px;height:24px}
+  .appearance-dialog .appearance-actions button:where(:not(:root[data-room-viewport] *)){padding-left:10px;padding-right:10px}
+}
+@container room-viewport (max-width:400px){
   .appearance-dialog .appearance-header,.appearance-dialog .appearance-body,.appearance-dialog .appearance-actions{padding-left:16px;padding-right:16px}
   .appearance-dialog .appearance-backgrounds{grid-template-columns:repeat(2,minmax(0,1fr))}
   .appearance-dialog .appearance-colors{grid-template-columns:minmax(0,1fr)}
@@ -1413,6 +1871,11 @@ html[data-appearance=soft] .appearance-dialog .appearance-done:active{box-shadow
   .appearance-dialog .appearance-actions button{padding-left:10px;padding-right:10px}
 }
 @media(max-height:560px){
+  .appearance-dialog .appearance-header:where(:not(:root[data-room-viewport] *)){padding-top:10px;padding-bottom:10px}
+  .appearance-dialog .appearance-body:where(:not(:root[data-room-viewport] *)){padding-top:14px;padding-bottom:14px}
+  .appearance-dialog .appearance-actions:where(:not(:root[data-room-viewport] *)){padding-top:10px;padding-bottom:10px}
+}
+@container room-viewport (max-height:560px){
   .appearance-dialog .appearance-header{padding-top:10px;padding-bottom:10px}
   .appearance-dialog .appearance-body{padding-top:14px;padding-bottom:14px}
   .appearance-dialog .appearance-actions{padding-top:10px;padding-bottom:10px}
@@ -2181,6 +2644,41 @@ html[data-appearance=soft] .appearance-dialog .appearance-done:active{box-shadow
   }
 
   @media (orientation:landscape) and (max-height:540px) {
+  html[data-game-appearance] :where([id=p414-clear]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):where(:not(:root[data-room-viewport] *)) {
+    --game-clear-current-surface:var(--game-button-surface)!important;
+    background-color:var(--game-clear-current-surface)!important;
+    background-image:var(--game-button-image)!important;
+    color:var(--appearance-ink)!important;
+    border-color:var(--game-button-line)!important;
+    box-shadow:var(--game-button-shadow)!important;
+  }
+  @media (hover:hover) {
+  html[data-game-appearance] :where([id=p414-clear]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):hover:where(:not(:disabled)):where(:not(:root[data-room-viewport] *)) {
+    --game-clear-current-surface:var(--game-button-hover-surface)!important;
+    background-color:var(--game-clear-current-surface)!important;
+    color:var(--appearance-ink)!important;
+    border-color:var(--game-button-hover-line)!important;
+  }
+  }
+  html[data-game-appearance] :where([id=p414-clear]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):active:where(:not(:disabled)):where(:not(:root[data-room-viewport] *)) {
+    background-color:var(--game-clear-current-surface)!important;
+    color:var(--appearance-ink)!important;
+    box-shadow:var(--game-button-active-shadow)!important;
+  }
+  html[data-game-appearance=paper] :where([id=p414-clear]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):active:where(:not(:disabled)):where(:not(:root[data-room-viewport] *)) {
+    background-color:var(--game-button-active-surface)!important;
+    border-color:var(--game-button-active-line)!important;
+  }
+  html[data-game-appearance] :where([id=p414-clear]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)):disabled:where(:not(:root[data-room-viewport] *)) {
+    background-color:var(--game-button-disabled-surface)!important;
+    background-image:none!important;
+    color:var(--game-button-disabled-ink)!important;
+    border-color:var(--game-button-disabled-line)!important;
+    box-shadow:var(--game-button-disabled-shadow)!important;
+  }
+  }
+
+  @container room-viewport (orientation:landscape) and (max-height:540px) {
   html[data-game-appearance] :where([id=p414-clear]):not(:where(.appearance-dialog,.appearance-dialog *,.theme-choice,.theme-choice *,[data-open-appearance],[data-open-appearance] *)) {
     --game-clear-current-surface:var(--game-button-surface)!important;
     background-color:var(--game-clear-current-surface)!important;

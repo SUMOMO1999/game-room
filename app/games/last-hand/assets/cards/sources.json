@@ -1,0 +1,324 @@
+{
+  "repository": "AustinGabriel/Public-Domain-and-CC0-Playing-Cards",
+  "commit": "3765067c32fcef42a30e87022332db729658e7cd",
+  "cards": [
+    {
+      "card": "back",
+      "upstream": "svg cards/card backs/card back red.svg",
+      "gitBlob": "2b2b01cdc2e13144415147a7ddb4c866bd176466",
+      "sha256": "301c552b09464e2ca2a5b42b609426c320c127258a1a3d569b31f10c76b3473f"
+    },
+    {
+      "card": "c10",
+      "upstream": "svg cards/card fronts/clubs/10 of clubs.svg",
+      "gitBlob": "153710f37cf675e33cbd4c33237afd909709b50b",
+      "sha256": "78032dbe258cb950f721dda567ff49a679f52eac8c3fb30964c1b43bbf2fd3d8"
+    },
+    {
+      "card": "c2",
+      "upstream": "svg cards/card fronts/clubs/2 of clubs.svg",
+      "gitBlob": "12906f476c87b4e735e1f07dedebc3861d316f2f",
+      "sha256": "9ccc07722411ecab5865cfd09113f1508f9d87cb188d4ca4cb8a91b2e3092f8a"
+    },
+    {
+      "card": "c3",
+      "upstream": "svg cards/card fronts/clubs/3 of clubs.svg",
+      "gitBlob": "4b8e678fc3f1f8eda20ceec1f957a8d3993c5042",
+      "sha256": "0e5e3085642a3e192a2c43aecd725cbcfb663e2b0708200d3ba45a71f9a1996a"
+    },
+    {
+      "card": "c4",
+      "upstream": "svg cards/card fronts/clubs/4 of clubs.svg",
+      "gitBlob": "6a7136391160aaa61f9018a025cbeffdc5fe8c32",
+      "sha256": "6f75469343cccb725a84343e96fefa8be33ad0f4c2008f4ddce8bb9f374c4f1e"
+    },
+    {
+      "card": "c5",
+      "upstream": "svg cards/card fronts/clubs/5 of clubs.svg",
+      "gitBlob": "6b2d4846d6c21fb94df88bc97a195b126638ef8e",
+      "sha256": "3958cbadd45437221e8e5e2c4444a004d41cd4042ff17ac2be8b0a4938b55170"
+    },
+    {
+      "card": "c6",
+      "upstream": "svg cards/card fronts/clubs/6 of clubs.svg",
+      "gitBlob": "82d7434c44eb4190b3899340ef047e4592772ecf",
+      "sha256": "197f3d115c209e0fc47b897c2d6561b7c6b3f4ec6f95807aa3a59912a109a1d5"
+    },
+    {
+      "card": "c7",
+      "upstream": "svg cards/card fronts/clubs/7 of clubs.svg",
+      "gitBlob": "7646083f4af15440983961485776ab7ae27cd7ee",
+      "sha256": "a52db8df581b391305b1270f7995538618cd2961ff14a1001931915cf900b225"
+    },
+    {
+      "card": "c8",
+      "upstream": "svg cards/card fronts/clubs/8 of clubs.svg",
+      "gitBlob": "d672bf74352e9613de02ae89a2c05c74fe372b00",
+      "sha256": "c5d02d6ce453cde8cdd673578511443ca070fcc1f5819d82604bb56b6fb37c3f"
+    },
+    {
+      "card": "c9",
+      "upstream": "svg cards/card fronts/clubs/9 of clubs.svg",
+      "gitBlob": "3c2354a0968e8d13d8cf4c8cd9bd81076d0fd341",
+      "sha256": "a6ce2a8e69d131522272534847c416334d7c77da1f96c9e34ad55c7e525e1efd"
+    },
+    {
+      "card": "c14",
+      "upstream": "svg cards/card fronts/clubs/ace of clubs.svg",
+      "gitBlob": "16f6f6abf7e5cc3463dda80d37a35ea94afcaaa6",
+      "sha256": "b51b9512e119619f4a3e62d516f3db54111d00d477e45db2893a85106b40a0fc"
+    },
+    {
+      "card": "c11",
+      "upstream": "svg cards/card fronts/clubs/jack of clubs.svg",
+      "gitBlob": "daf0d3f34af099e44116fa15944d0bfbb4753d12",
+      "sha256": "9597a693569b670d775bb745beb5208f10d4d3c4c13a5c274c8d65bd07c92297"
+    },
+    {
+      "card": "c13",
+      "upstream": "svg cards/card fronts/clubs/king of clubs.svg",
+      "gitBlob": "512304efa5291cb87c24c1f829e1cac35951165b",
+      "sha256": "e5e318198f8ca67ee5bf1bb67f2621f075d0208e30f6d4214aa986ae2bee4ae0"
+    },
+    {
+      "card": "c12",
+      "upstream": "svg cards/card fronts/clubs/queen of clubs.svg",
+      "gitBlob": "3a4fd28137f7deed1d1278954a4d3370acf52076",
+      "sha256": "1a915e1b65827bede97a60924ee39c55653a9775e2032511eda8b4d604781415"
+    },
+    {
+      "card": "d10",
+      "upstream": "svg cards/card fronts/diamonds/10 of diamonds.svg",
+      "gitBlob": "bb13862ac870167fe86afea9a54ba6d58fdddad7",
+      "sha256": "9896e478059390fdb443a63662553c1544bc19c2c7a43aebfd8ac27ffd5e2fa0"
+    },
+    {
+      "card": "d2",
+      "upstream": "svg cards/card fronts/diamonds/2 of diamonds.svg",
+      "gitBlob": "47f5c30f89e12349d384fe859cfc63f873f278c4",
+      "sha256": "00939348e9f9fd033ab81530595286404f060dfd6af27039974756c8f1dc16a2"
+    },
+    {
+      "card": "d3",
+      "upstream": "svg cards/card fronts/diamonds/3 of diamonds.svg",
+      "gitBlob": "c975223ad9866fcce188e66f55cc7f2f6bb2f9fd",
+      "sha256": "b4049812bfa847430e46d71df665f84e2af7b3f5da1fd0b4a45a963c751dca00"
+    },
+    {
+      "card": "d4",
+      "upstream": "svg cards/card fronts/diamonds/4 of diamonds.svg",
+      "gitBlob": "dfd63ed556278f48936bbea67f1c0c9bf53433e4",
+      "sha256": "859e1800f7941794a3a7257fda42a239be0ee9760481a69903cce28ebf451ce7"
+    },
+    {
+      "card": "d5",
+      "upstream": "svg cards/card fronts/diamonds/5 of diamonds.svg",
+      "gitBlob": "ff108798a290c5a5fb59b50b529172af355b57b0",
+      "sha256": "d5afe0fe643e5ac7c36368ea0fc003c68d3965575416be93124909dfdd0e0972"
+    },
+    {
+      "card": "d6",
+      "upstream": "svg cards/card fronts/diamonds/6 of diamonds.svg",
+      "gitBlob": "f80af93bbb4ff0cf758d607ab43f7799b0f5508c",
+      "sha256": "c7ba44868710f4b0e1ac91d3e42d8e63adf9eea7dd397b158bc6c469c06cd6a9"
+    },
+    {
+      "card": "d7",
+      "upstream": "svg cards/card fronts/diamonds/7 of diamonds.svg",
+      "gitBlob": "14015d93d1753e0165d63dd7a59c05bfc6d27926",
+      "sha256": "3bfe948ccdbc86103073baecda0e7359cb75b06a0bc327d6aa30b3cbf3c44797"
+    },
+    {
+      "card": "d8",
+      "upstream": "svg cards/card fronts/diamonds/8 of diamonds.svg",
+      "gitBlob": "b91391f3229f45b7822b12ceb18e6fc692ccf3e3",
+      "sha256": "2d4588ce687d07e981b6954308b2a54e589774ae174198c60bb39197384d2d79"
+    },
+    {
+      "card": "d9",
+      "upstream": "svg cards/card fronts/diamonds/9 of diamonds.svg",
+      "gitBlob": "f1a1ecd937edb226d8276a42e940f65aafdb9551",
+      "sha256": "109be67acf058c3bc0675eb38aaf205cbd197968bf62dd758c9cbb2d4a134729"
+    },
+    {
+      "card": "d14",
+      "upstream": "svg cards/card fronts/diamonds/ace of diamonds.svg",
+      "gitBlob": "4a45a253f051b23be6efbe155c44e9f6fc1c83c0",
+      "sha256": "9c564b70585de3070dce02d1dc7579fddf5dfcfb611f6716479b715ffff34fa3"
+    },
+    {
+      "card": "d11",
+      "upstream": "svg cards/card fronts/diamonds/jack of diamonds.svg",
+      "gitBlob": "b4a113bb0747fdf81c673697104145ff81fbf87e",
+      "sha256": "31220f7936153504e5d29c5b303f9e5d4593d018c74f38b0453cafd5d4de36f4"
+    },
+    {
+      "card": "d13",
+      "upstream": "svg cards/card fronts/diamonds/king of diamonds.svg",
+      "gitBlob": "88b090d8fbc8e5399fe29ea87bc316ab0d0ed74a",
+      "sha256": "34a56d226698a3cb8796eb0f6f0e1642edef31d2f437826b54916789a3abc825"
+    },
+    {
+      "card": "d12",
+      "upstream": "svg cards/card fronts/diamonds/queen of diamonds.svg",
+      "gitBlob": "81db7bdbf1cea6efe12ead822130af83ecc1d728",
+      "sha256": "5bf5f39bfe82bbf84ca717ab9f75e04fefa61d327ac0bcc0cb7459f62b8d8e0d"
+    },
+    {
+      "card": "h10",
+      "upstream": "svg cards/card fronts/hearts/10 of hearts.svg",
+      "gitBlob": "a9c488d39f38d9d99617eaf7fb3f8844b7f5d1da",
+      "sha256": "8f214bcf37aa3447e5a2794132cc51aa4854ca3df7ee90213d0fba79c3094354"
+    },
+    {
+      "card": "h2",
+      "upstream": "svg cards/card fronts/hearts/2 of hearts.svg",
+      "gitBlob": "f69f23645c3a2712ae3ab4f8a5291df80b9a13d2",
+      "sha256": "d3e3a3424a329870a16cf6e98daf28ca99efb8dc72856a543a108552e08f47e2"
+    },
+    {
+      "card": "h3",
+      "upstream": "svg cards/card fronts/hearts/3 of hearts.svg",
+      "gitBlob": "5bc116014b255a09ce2b8612dcfbe7d371261f34",
+      "sha256": "1a4b1062d49a61bc691493a23e10669fe6c03a816af01f471d71ef11bf7e6b91"
+    },
+    {
+      "card": "h4",
+      "upstream": "svg cards/card fronts/hearts/4 of hearts.svg",
+      "gitBlob": "4fecc4afdd8367908270fa0c1e105385de6b0a6c",
+      "sha256": "a0d8a2f64228efe7c17bd4b0463309ace7a6f3650350bea8ef8bae613d7e5635"
+    },
+    {
+      "card": "h5",
+      "upstream": "svg cards/card fronts/hearts/5 of hearts.svg",
+      "gitBlob": "ab9cf1acca283e2dc8a64becbc95c7f83d0e4104",
+      "sha256": "2e22575624afa987d8efde1f4afbbf1b975cf1ab18307ca7a7d46c74f2976a2c"
+    },
+    {
+      "card": "h6",
+      "upstream": "svg cards/card fronts/hearts/6 of hearts.svg",
+      "gitBlob": "b4cf5a712327a91bd5573bbd4beed19fc25511fb",
+      "sha256": "962dbf3d6b50639d2b8d370aea7eb8c8807c591e6d0f890efec984df49fbc379"
+    },
+    {
+      "card": "h7",
+      "upstream": "svg cards/card fronts/hearts/7 of hearts.svg",
+      "gitBlob": "c01b92c183c0b3cf4120e523508c449b341cc353",
+      "sha256": "108a293b55462abd278c151d5de41f19d3345c6f0b74aa1a8c3e2089122cb3d9"
+    },
+    {
+      "card": "h8",
+      "upstream": "svg cards/card fronts/hearts/8 of hearts.svg",
+      "gitBlob": "909b4ad5af2c3c955749192e04e71c8485aa3fa0",
+      "sha256": "228ce1b284af7098e4fd8fad3a126321cceb40022f22240248acaa8022aab6cf"
+    },
+    {
+      "card": "h9",
+      "upstream": "svg cards/card fronts/hearts/9 of hearts.svg",
+      "gitBlob": "4d65ef2caa62fb868e5063bb635b2dbb614035bd",
+      "sha256": "88bb32f91b9a12ba315d1efe8e2033e1fe435dbaaa4a0cb0fb79496708aa5a4d"
+    },
+    {
+      "card": "h14",
+      "upstream": "svg cards/card fronts/hearts/ace of hearts.svg",
+      "gitBlob": "12670f56f529d052a71182925c2fc41120181290",
+      "sha256": "0459f6f06624c041807db85faad907c6adb06ad07dcce48e340dc30b1a319280"
+    },
+    {
+      "card": "h11",
+      "upstream": "svg cards/card fronts/hearts/jack of hearts.svg",
+      "gitBlob": "ef01faf19f3fd8185937cc58e3dbf2a9e49c6915",
+      "sha256": "1e333529092c7837d02cb0ba53fc86d50ce66ff7e016da692818fb8cb6a8ead2"
+    },
+    {
+      "card": "h13",
+      "upstream": "svg cards/card fronts/hearts/king of hearts.svg",
+      "gitBlob": "c942e00509eebf27cb534207d4fd97ced90e413c",
+      "sha256": "16ff7ba0785510ca9aeccef73b46d561152a2460b393d6f1efd6c7e9df5db699"
+    },
+    {
+      "card": "h12",
+      "upstream": "svg cards/card fronts/hearts/queen of hearts.svg",
+      "gitBlob": "6a0e8c27d233dd961b4df055f67b1465f052fb0f",
+      "sha256": "aa77ab1f8ee5165ba16fac49970b8397c066fa65eb2a544ae00f175e912799cd"
+    },
+    {
+      "card": "s10",
+      "upstream": "svg cards/card fronts/spades/10 of spades.svg",
+      "gitBlob": "193ca93ade163b083b69d5e085224f5fb32ba08a",
+      "sha256": "3e7d309e0b8f887c2923d66b2ba2802709d6a7702c06a763c773c19cd7039275"
+    },
+    {
+      "card": "s2",
+      "upstream": "svg cards/card fronts/spades/2 of spades.svg",
+      "gitBlob": "f32a9dc22c05390987a3c72c9d04b6dd114813e2",
+      "sha256": "86e47074ca1d086f432833126436d815d695cba97267cfe78064433257a8fcdb"
+    },
+    {
+      "card": "s3",
+      "upstream": "svg cards/card fronts/spades/3 of spades.svg",
+      "gitBlob": "3827215e0229fdcb34f3de6b32f4015a0502aff6",
+      "sha256": "4e5483755a407971b1e9e1397356d692ad1258eeeeb4743338bb4db1bbaf3bc2"
+    },
+    {
+      "card": "s4",
+      "upstream": "svg cards/card fronts/spades/4 of spades.svg",
+      "gitBlob": "316be2e2627cf302019a1bf79855b4481dedcf41",
+      "sha256": "60d799899390e85fac99aae2e2f74f0349fead200b65c6c8a5e424406bf131ca"
+    },
+    {
+      "card": "s5",
+      "upstream": "svg cards/card fronts/spades/5 of spades.svg",
+      "gitBlob": "94b48a28fe08565687713f8effa89e53814a75d2",
+      "sha256": "bcfe2052e0f93fd23ccb3151a3740dabd5cd369ea7919d9a1dc77208bab40aa4"
+    },
+    {
+      "card": "s6",
+      "upstream": "svg cards/card fronts/spades/6 of spades.svg",
+      "gitBlob": "d598d84eb87470df24c4bd0ba6f3284784d02030",
+      "sha256": "fa08cc12814b1eab287c07783370a8c59caf599c4cc9804af10bc4d1f18a2593"
+    },
+    {
+      "card": "s7",
+      "upstream": "svg cards/card fronts/spades/7 of spades.svg",
+      "gitBlob": "8dbd8f83acb015056de46ca41b399e4e1e0bb924",
+      "sha256": "5dfc103c967ba0be10af1225752b2c7593d70854b4933321cffc01ab951aab6f"
+    },
+    {
+      "card": "s8",
+      "upstream": "svg cards/card fronts/spades/8 of spades.svg",
+      "gitBlob": "985be31c33332e44638ceca0c3b5dfc6eb2c8ad1",
+      "sha256": "28a3e937de918c4e90c68553176629a99bf8e8f9ed2be45a2237ec9fab2a2241"
+    },
+    {
+      "card": "s9",
+      "upstream": "svg cards/card fronts/spades/9 of spades.svg",
+      "gitBlob": "bea119bd81a8369e77e005b890c7fb60916b4b09",
+      "sha256": "75ae346df2908b066fb32cbf9cd9d8fd295e10d1ff8cb47d827287608451f2bd"
+    },
+    {
+      "card": "s14",
+      "upstream": "svg cards/card fronts/spades/ace of spades.svg",
+      "gitBlob": "b6973e99c7b79509f5dd922ed20f534d1605750b",
+      "sha256": "489004e02f5caddd56182688e6478d2624d66cd2aa725a152d3653ecfeee7171"
+    },
+    {
+      "card": "s11",
+      "upstream": "svg cards/card fronts/spades/jack of spades.svg",
+      "gitBlob": "ee36e89888e3b92cda6e6e7a8eea826083b9cdd0",
+      "sha256": "b8f844de228970312905bd59a9c54e87783dadc3fdcf34b9f3541787b562987b"
+    },
+    {
+      "card": "s13",
+      "upstream": "svg cards/card fronts/spades/king of spades.svg",
+      "gitBlob": "7241fd331ebbdfaae65bbaa2c076f87c71f09a35",
+      "sha256": "325c3c9f3c978e7f2f74e26ed261363ae20e2260accf7862992c19603c732b17"
+    },
+    {
+      "card": "s12",
+      "upstream": "svg cards/card fronts/spades/queen of spades.svg",
+      "gitBlob": "5a2f073495cb826a2af464c2b8199a89c0eb3d35",
+      "sha256": "716d4e467cf2e6b9bb5cff1f9564eb1d2f43a1f7fcad6e885c0c7084a01758ab"
+    }
+  ]
+}

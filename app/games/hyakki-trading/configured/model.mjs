@@ -1,7 +1,8 @@
 // Versioned v3 expansion engine derived from the accepted 1f51a0 rules.
 // Existing v1/v2 saves keep their original rules and material boundaries.
 /** Game-specific material operations. Call only on a candidate clone. */
-import { definitionIdForCopy, materialProfileFor, getCard, GOODS, MULTIPLAYER_RULE_VERSION } from './material.mjs';
+import { configuredDefinitionId, materialProfileFor, getCard, GOODS, MULTIPLAYER_RULE_VERSION } from './material.mjs';
+import {refinedWithdrawal} from '../trade-contract.mjs';
 export const DEFAULT_ACTION_LIMIT = 5;
 export const DEFAULT_GOODS_PER_TYPE = 8;
 export const LEGACY_GOODS_PER_TYPE = 6;
@@ -20,7 +21,7 @@ export class RuleError extends Error {
 }
 export function requireRule(condition, message, code) { if (!condition) throw new RuleError(message, code); }
 export function definition(copyId) {
-  const id = definitionIdForCopy(copyId);
+  const id = configuredDefinitionId(copyId);
   requireRule(id !== null, '这张牌不存在。'); return getCard(id);
 }
 export const emptyGoods = () => Object.fromEntries(GOODS.map(good => [good.id, 0]));
@@ -96,9 +97,20 @@ export function addSilver(owner, delta) {
   requireRule(Number.isSafeInteger(delta) && Number.isSafeInteger(owner.silver + delta) && owner.silver + delta >= 0, '银两不足或超出可保存范围。');
   owner.silver += delta;
 }
-export function moveGoods(from, to, vector) {
-  requireRule(validGoods(vector) && GOODS.every(good => from[good.id] >= vector[good.id] && to[good.id] + vector[good.id] <= MAX_GOODS_PER_TYPE), '货物不足或数量无效。');
-  for (const good of GOODS) { from[good.id] -= vector[good.id]; to[good.id] += vector[good.id]; }
+export const bankStock = state => ({goods:state.bankGoods});
+export function checkedRefinedWithdrawal(stock,goods,refined){
+  try{return refinedWithdrawal(stock,goods,refined);}
+  catch(error){if(error instanceof RangeError)throw new RuleError(error.message);throw error;}
+}
+export function moveGoods(from, to, vector, refined) {
+  requireRule(validGoods(vector) && GOODS.every(({id}) => from.goods[id] >= vector[id]
+    && to.goods[id] + vector[id] <= MAX_GOODS_PER_TYPE), '货物不足或数量无效。');
+  const movedRefined=from.refined!==undefined||refined!==undefined?checkedRefinedWithdrawal(from,vector,refined):null;
+  for (const {id} of GOODS) {
+    from.goods[id] -= vector[id]; to.goods[id] += vector[id];
+    if(from.refined!==undefined)from.refined[id] -= movedRefined[id];
+    if(to.refined!==undefined&&movedRefined)to.refined[id] += movedRefined[id];
+  }
 }
 export function removeCard(array, id) {
   const index = array.indexOf(id); requireRule(index >= 0, '这张牌已不在原来的位置。', 'CARD_MOVED');
@@ -155,7 +167,9 @@ export function payCard(state, id, payment) {
 export function createPending(state, { kind, ownerId, code, sourceCards = [], data = {} }) {
   requireRule(!state.pending, '请先完成当前步骤。');
   state.pending = { id: `${state.matchId}:${state.turnNumber}:${state.revision + 1}`, kind, ownerId, code, stage: 'start',
-    sourceCards: [...sourceCards], poolCards: [], goods: emptyGoods(), data: structuredClone(data), choice: null, response: null, receipt: null };
+    sourceCards: [...sourceCards], poolCards: [], goods: emptyGoods(), data: structuredClone(data), choice: null, response: null, receipt: null,
+    ...(state.configuration?.modules?.refining?{refined:emptyGoods()}:{}),
+  };
   return state.pending;
 }
 export function setChoice(state, { kind, actorId, visibility = 'private', options = [], defaultSelection }) {
@@ -168,7 +182,8 @@ export function setChoice(state, { kind, actorId, visibility = 'private', option
 export function clearChoice(state) { requireRule(state.pending, '没有当前步骤。'); state.pending.choice = null; }
 export function completePending(state) {
   const pending = state.pending;
-  requireRule(pending && !pending.poolCards.length && goodsCount(pending.goods) === 0 && !pending.receipt, '效果尚有未处理材料。');
+  requireRule(pending && !pending.poolCards.length && goodsCount(pending.goods) === 0
+    && (!pending.refined||goodsCount(pending.refined)===0) && !pending.receipt, '效果尚有未处理材料。');
   discardCards(state, pending.sourceCards); state.pending = null;
 }
 export function emit(state, event) { state.lastPublicEvents.push(structuredClone(event)); }
@@ -179,29 +194,48 @@ export function receiveGoods(state, actorId, vector) {
   requireRule(pending && !pending.receipt && validGoods(vector) && GOODS.every(good => pending.goods[good.id] >= vector[good.id]), '待领取货物无效。');
   if (canReceive(owner, goodsCount(vector))) {
     const fee = goodsCount(owner.goods) + goodsCount(vector) > ordinaryCapacity(owner) && !owner.temporaryOccupied ? 2 : 0;
-    addSilver(owner, -fee); moveGoods(pending.goods, owner.goods, vector); refreshTemporary(owner); return true;
+    addSilver(owner, -fee); moveGoods(pending, owner, vector); refreshTemporary(owner); return true;
   }
   pending.receipt = { actorId, goods: { ...vector }, previousTemporary: owner.temporaryOccupied };
   const keep = emptyGoods(); let left = receiptCapacity(owner);
+  const incomingRefined=owner.refined?checkedRefinedWithdrawal(pending,vector):null;
+  const keepRefined=owner.refined?emptyGoods():null;
   // Stable default: original material first, then incoming, in fixed content order.
-  for (const source of [owner.goods, vector]) for (const good of GOODS) {
+  for (const [source,quality] of [[owner.goods,owner.refined],[vector,incomingRefined]]) for (const good of GOODS) {
     const count = Math.min(left, source[good.id]); keep[good.id] += count; left -= count;
+    if(quality)keepRefined[good.id]+=Math.max(0,count-(source[good.id]-quality[good.id]));
   }
   const combined = Object.fromEntries(GOODS.map(good => [good.id, owner.goods[good.id] + vector[good.id]]));
+  const refined=owner.refined?combinedRefinedStock(owner,incomingRefined):null;
+  const option={combined,ordinaryCapacity:ordinaryCapacity(owner),capacity:receiptCapacity(owner),temporaryFee:owner.temporaryOccupied?0:2};
   setChoice(state, { kind: 'retain-goods', actorId, visibility: 'private',
-    options: [{ combined, ordinaryCapacity: ordinaryCapacity(owner), capacity: receiptCapacity(owner), temporaryFee: owner.temporaryOccupied ? 0 : 2 }], defaultSelection: keep });
+    options:[{...option,...(refined?{refined}:{})}],
+    defaultSelection:refined?{goods:keep,refined:keepRefined}:keep });
   return false;
 }
-export function resolveReceipt(state, keep) {
+export function combinedRefinedStock(owner,incomingRefined){
+  return Object.fromEntries(GOODS.map(({id})=>[id,owner.refined[id]+incomingRefined[id]]));
+}
+export function resolveReceipt(state, keep, keepRefined) {
   const pending = state.pending, receipt = pending?.receipt;
   requireRule(receipt && validGoods(keep), '请选择要保留的货物。');
   const owner = player(state, receipt.actorId), combined = Object.fromEntries(GOODS.map(good => [good.id, owner.goods[good.id] + receipt.goods[good.id]]));
   requireRule(GOODS.every(good => keep[good.id] <= combined[good.id]) && goodsCount(keep) <= receiptCapacity(owner), '保留数量超出货物或位置。');
+  let retainedRefined, incomingRefined;
+  if(owner.refined!==undefined){
+    incomingRefined=checkedRefinedWithdrawal(pending,receipt.goods);
+    const combinedRefined=combinedRefinedStock(owner,incomingRefined);
+    retainedRefined=checkedRefinedWithdrawal({goods:combined,refined:combinedRefined},keep,keepRefined);
+  }
   const fee = goodsCount(keep) > ordinaryCapacity(owner) && !receipt.previousTemporary ? 2 : 0;
   addSilver(owner, -fee);
   for (const good of GOODS) {
     pending.goods[good.id] -= receipt.goods[good.id];
     state.bankGoods[good.id] += combined[good.id] - keep[good.id]; owner.goods[good.id] = keep[good.id];
+    if(retainedRefined){
+      pending.refined[good.id] -= incomingRefined[good.id];
+      owner.refined[good.id] = retainedRefined[good.id];
+    }
   }
   refreshTemporary(owner); pending.receipt = null; pending.choice = null;
 }

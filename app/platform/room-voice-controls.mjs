@@ -2,7 +2,7 @@ import {createRoomVoice} from './room-voice.mjs';
 
 /** The own-seat control is mounted once. Score and roster refreshes must not
  * replace the button under a held finger. Remote badges belong to each game. */
-export function mountRoomVoiceControls({root,transport,document:doc=globalThis.document,window:win=globalThis.window,onState=()=>{},createVoice=createRoomVoice,compact=null,...options}={}) {
+export function mountRoomVoiceControls({root,transport,document:doc=globalThis.document,window:win=globalThis.window,onState=()=>{},createVoice=createRoomVoice,compact=null,listeningHint=null,...options}={}) {
   if(!root)throw new TypeError('Room voice needs a stable seat control.');
   if(compact&&(!compact.joinRoot||!compact.microphoneRoot||!compact.statusRoot))throw new TypeError('Compact voice needs stable join, microphone and status slots.');
   const make=(tag,className,text)=>{const n=doc.createElement(tag);n.className=className;if(text)n.textContent=text;return n;};
@@ -29,7 +29,9 @@ export function mountRoomVoiceControls({root,transport,document:doc=globalThis.d
     const speaking=s.peers.filter(p=>p.speaking&&!p.muted),people=speaking.slice(0,2).map(p=>names.get(p.playerId)??'朋友').join('、');
     const text=!available?'语音已断开，恢复房间后可重新加入。':!s.supported?'此浏览器暂不支持语音。':s.joining?'正在加入语音…':s.audioRecovering?'正在恢复语音…':s.systemInterrupted?'系统正在占用音频，请先结束听写。':s.captureInterrupted?'麦克风已中断，结束听写后点恢复语音。':s.mode!=='off'&&s.mic==='requesting'?'请允许麦克风，可随时停止。':s.mode==='open'?'麦克风已开启，再点“一直说”停止。':s.speaking?'正在发言，松开停止。':speaking.length?`${people}${speaking.length>2?'等'+speaking.length+'人':''}正在说话`:s.message||(s.joined?'按住发言，或点一直说。':'纯语音聊天，不录音。');
     const message=compact?text.replace('再点“一直说”停止','再点麦克风停止').replace('按住发言，或点一直说','点底部麦克风发言'):text;
-    if(status.textContent!==message)status.textContent=message;
+    const generalListeningText = text === '已加入，可按住发言或开启一直说。' || text === '按住发言，或点一直说。';
+    const visibleMessage = compact && listeningHint && generalListeningText ? listeningHint : message;
+    if(status.textContent!==visibleMessage)status.textContent=visibleMessage;
     onState(s);
   }
   voice=createVoice({...options,transport,document:doc,window:win,onChange:render});

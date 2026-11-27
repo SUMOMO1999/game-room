@@ -8,6 +8,9 @@ import {openingProblem} from '../../../app/games/hyakki-trading/opening.mjs';
 import {isExpansionContentVersion,CONFIGURABLE_RULE_VERSION} from '../../../app/games/hyakki-trading/content/expansion-one.mjs';
 import {materialForConfiguration} from '../../../app/games/hyakki-trading/opening-configuration.mjs';
 import {history4Material,history4EventProblem,history4GroupProblem,history4RoleProblem,encodeHistory4Metadata,decodeHistory4Metadata} from '../../../app/games/hyakki-trading/public-history-v4.mjs';
+import {EXPANSION_TWO_CONTENT_VERSION} from '../../../app/games/hyakki-trading/content/expansion-two.mjs';
+import {PUBLIC_ORDER_HISTORY_VERSION,history5GroupProblem,history5RoleProblem,history5ContinuityProblem,encodeHistory5Metadata,decodeHistory5Metadata} from '../../../app/games/hyakki-trading/public-history-v5.mjs';
+import {exchangePublicHistoryAfter,exchangePublicOffers} from '../../../app/games/hyakki-trading/configured/exchange-market.mjs';
 
 export const HYAKKI_EVENT_SCOPES = Object.freeze({ events: 'hyakki-events', meta: 'hyakki-event-meta' });
 export const HYAKKI_EVENT_FOREVER = Number.MAX_SAFE_INTEGER;
@@ -41,8 +44,13 @@ const fail = (code, message = '本局历史暂时无法确认，请稍后重试�
 const demand = condition => { if (!condition) fail('GAME_HISTORY_INVALID', '局内历史参数无效。', 400); };
 const isConfiguredMatch=match=>match?.ruleVersion===CONFIGURABLE_RULE_VERSION;
 const context4=value=>({contentVersion:value.contentVersion,participantIds:value.participantIds??value.participants.map(p=>p.seatId)});
+const context5=value=>({...context4(value),modules:value.modules??value.configuration.modules});
+const isOrderHistory=value=>value?.schemaVersion===PUBLIC_ORDER_HISTORY_VERSION;
+const hasRoleHistory=match=>isConfiguredMatch(match)&&(isExpansionContentVersion(match.contentVersion)||match.contentVersion===EXPANSION_TWO_CONTENT_VERSION);
+const roleProblem=(group,roster,match)=>isOrderHistory(group)
+  ?history5RoleProblem(group,roster,context5(match)):history4RoleProblem(group,roster,context4(match));
 const roleRoster=(group,match)=>{
-  try{return decodeHistory4Metadata(group?.metadata,context4(match)).rolesRevealed;}
+  try{return (isOrderHistory(group)?decodeHistory5Metadata(group.metadata,context5(match)):decodeHistory4Metadata(group?.metadata,context4(match))).rolesRevealed;}
   catch{fail('GAME_HISTORY_CORRUPT');}
 };
 const profileForMatch = match => isConfiguredMatch(match)?materialForConfiguration(match.configuration):materialProfile(match.contentVersion, match.participants.length);
@@ -52,8 +60,10 @@ function profileForGroup(group) {
   if (group.contentVersion !== PLAYER_COUNT_CONTENT_VERSION) throw new RangeError('Unsupported public history content.');
   return materialProfile(group.contentVersion, group.playerCount);
 }
-const groupMatches = (group, match) => group.schemaVersion===4
-  ?isConfiguredMatch(match)&&group.contentVersion===match.contentVersion&&same(group.participantIds,match.participants.map(p=>p.seatId))
+const groupMatches = (group, match) => group.schemaVersion===4||isOrderHistory(group)
+  ?isConfiguredMatch(match)&&isOrderHistory(group)===(match.contentVersion===EXPANSION_TWO_CONTENT_VERSION)
+    &&group.contentVersion===match.contentVersion&&same(group.participantIds,match.participants.map(p=>p.seatId))
+    &&(!isOrderHistory(group)||same(group.modules,match.configuration.modules))
   :isConfiguredMatch(match)?false:group.schemaVersion === 3
   ? group.contentVersion === match.contentVersion && group.playerCount === match.participants.length
   : match.contentVersion === CONTENT_VERSION;
@@ -66,7 +76,7 @@ function unpublishedOpening(room){
   const game=room.game,opening=game?.opening;
   return room.schemaVersion===22&&['playing','paused'].includes(room.phase)
     &&game?.kind==='hyakki-opening-game'&&game.version===3&&game.stage==='role-selection'&&game.status==='playing'&&game.result===null
-    &&game.ruleVersion===CONFIGURABLE_RULE_VERSION&&isExpansionContentVersion(game.contentVersion)
+    &&game.ruleVersion===CONFIGURABLE_RULE_VERSION&&(isExpansionContentVersion(game.contentVersion)||game.contentVersion===EXPANSION_TWO_CONTENT_VERSION)
     &&opening?.status==='selecting'&&opening.deal===null&&openingProblem(opening)===null
     &&room.matchId===opening.openingId&&game.matchId===opening.openingId&&room.matchStartedAt===opening.createdAt
     &&Array.isArray(room.matchParticipants)&&Array.isArray(game.players)
@@ -139,9 +149,9 @@ function validMatch(value) {
     && value.participants.every(player => exact(player, ['seatId', 'userKey']) && HEX32.test(player.seatId ?? '') && HEX64.test(player.userKey ?? ''));
 }
 function validGroup(value) {
-  if(value?.schemaVersion===4){
+  if(value?.schemaVersion===4||isOrderHistory(value)){
     try{
-      if(history4GroupProblem(value,context4(value)))return false;
+      if(isOrderHistory(value)?history5GroupProblem(value,context5(value)):history4GroupProblem(value,context4(value)))return false;
       const {fingerprint,...body}=value;
       return validModes(value)&&fingerprint===digest(body);
     }catch{return false;}
@@ -167,9 +177,12 @@ function validModes(value){
   if (value.sequence === 1 && !(value.mode === 'normal' && value.events.length === 1 && value.events[0].type === 'match-started')) return false;
   if (value.mode === 'capacity' && !(value.events.length === 1 && value.events[0].type === 'suspended' && value.events[0].reason === 'capacity')) return false;
   if (value.mode === 'resume' && !(value.events.length === 1 && value.events[0].type === 'resumed')) return false;
-  if (value.mode === 'terminal' && !(value.events.at(-1).type === 'match-ended'
-      && value.events.filter(event => event.type === 'match-ended').length === 1
-      && (value.events.at(-1).reason === 'normal-close' || value.events.every(event => ['pending-closed', 'match-ended'].includes(event.type))))) return false;
+  if (value.mode === 'terminal') {
+    const ended=value.events.at(-1),exchange=isOrderHistory(value)&&value.modules.exchange;
+    if(ended.type!=='match-ended'||value.events.filter(event=>event.type==='match-ended').length!==1)return false;
+    if(ended.reason!=='normal-close'&&!value.events.slice(0,-1).every(event=>
+      event.type==='pending-closed'||exchange&&event.type==='offer-closed'&&event.reason==='ended'))return false;
+  }
   if (value.mode !== 'capacity' && value.events.some(event => event.type === 'suspended' && event.reason === 'capacity')) return false;
   if (value.mode !== 'terminal' && value.events.some(event => event.type === 'match-ended')) return false;
   return true;
@@ -219,9 +232,12 @@ export function validateHyakkiEventState(rows, { rooms = null, summaries = [], n
   }
   if (rows.length && (!quota || quota.usedBytes !== usedBytes || quota.reservedBytes !== reservedBytes)) fail('GAME_HISTORY_CORRUPT');
   let consumed = 0;
+  const exchangeByMatch=new Map();
   for (const head of heads.values()) {
     let measured = 0, lastAt = head.match.startedAt;
-    const roster=isConfiguredMatch(head.match)&&isExpansionContentVersion(head.match.contentVersion)&&head.prunedThrough===0
+    const exchangeProfile=head.prunedThrough===0&&head.match.configuration?.modules?.exchange?profileForMatch(head.match):null;
+    let publicOffers=[];
+    const roster=hasRoleHistory(head.match)&&head.prunedThrough===0
       ?roleRoster(groups.get(groupId(head.match.matchId,1))?.value,head.match):null;
     if (head.phase === 'active' && head.reservedBytes !== HYAKKI_EVENT_FINISH_RESERVE_BYTES) fail('GAME_HISTORY_CORRUPT');
     for (let sequence = head.prunedThrough + 1; sequence <= head.sequence; sequence++) {
@@ -233,7 +249,13 @@ export function validateHyakkiEventState(rows, { rooms = null, summaries = [], n
         changes: value.changes, discard: value.discard }, [...seats], profileForMatch(head.match))
         || value.turn.round !== Math.ceil(value.turn.number / seats.size))) fail('GAME_HISTORY_CORRUPT');
       if(value.schemaVersion===4&&history4GroupProblem(value,context4(head.match)))fail('GAME_HISTORY_CORRUPT');
-      if(roster&&history4RoleProblem(value,roster,context4(head.match)))fail('GAME_HISTORY_CORRUPT');
+      if(isOrderHistory(value)&&sequence>head.prunedThrough+1
+        &&history5ContinuityProblem(groups.get(groupId(head.match.matchId,sequence-1))?.value,value))fail('GAME_HISTORY_CORRUPT');
+      if(roster&&roleProblem(value,roster,head.match))fail('GAME_HISTORY_CORRUPT');
+      if(exchangeProfile){
+        publicOffers=exchangePublicHistoryAfter(publicOffers,value.events,exchangeProfile);
+        if(!publicOffers)fail('GAME_HISTORY_CORRUPT');
+      }
       measured += row.payloadBytes; lastAt = value.committedAt; consumed++;
     }
     if (measured !== head.eventBytes || lastAt !== head.lastCommittedAt) fail('GAME_HISTORY_CORRUPT');
@@ -241,6 +263,10 @@ export function validateHyakkiEventState(rows, { rooms = null, summaries = [], n
     if (!latest || (head.phase === 'capacity-suspended') !== (latest.mode === 'capacity')
         || (['terminal', 'pruning'].includes(head.phase)) !== (latest.mode === 'terminal')
         || head.endedAt !== null && head.endedAt !== lastAt) fail('GAME_HISTORY_CORRUPT');
+    if(exchangeProfile){
+      if(latest.mode==='terminal'&&publicOffers.length)fail('GAME_HISTORY_CORRUPT');
+      exchangeByMatch.set(head.match.matchId,publicOffers);
+    }
   }
   if (consumed !== groups.size) fail('GAME_HISTORY_CORRUPT');
   if (rooms !== null) {
@@ -272,7 +298,11 @@ export function validateHyakkiEventState(rows, { rooms = null, summaries = [], n
       if(room&&isConfiguredMatch(head.match)){
         const configuration=room.game?.configuration??room.game?.opening?.configuration;
         if(!same(configuration,head.match.configuration))fail('GAME_HISTORY_REFERENCE');
-        if(isExpansionContentVersion(head.match.contentVersion)&&head.prunedThrough===0){
+        if(isOrderHistory(groups.get(groupId(head.match.matchId,head.sequence))?.value)
+          &&!same(groups.get(groupId(head.match.matchId,head.sequence)).value.orders,room.game.publicOrders?.slots??[]))fail('GAME_HISTORY_REFERENCE');
+        const offers=exchangeByMatch.get(head.match.matchId);
+        if(offers&&!same(offers,exchangePublicOffers(room.game.exchangeMarket)))fail('GAME_HISTORY_REFERENCE');
+        if(hasRoleHistory(head.match)&&head.prunedThrough===0){
           const first=groups.get(groupId(head.match.matchId,1))?.value;
           const roles=roleRoster(first,head.match);
           const players=room.game?.opening?.deal?.players??room.game.players;
@@ -340,7 +370,8 @@ export function createHyakkiEventStore({ storage, now = Date.now, capacityBytes 
     return { changes: [...entries.map(change), change({ scope: HYAKKI_EVENT_SCOPES.meta, id: QUOTA_ID, old: quota, value })], guards: [] };
   }
   async function prepareAppend(input) {
-    const metadataFields = input?.schemaVersion===4?['schemaVersion','contentVersion','participantIds','metadata']
+    const metadataFields = isOrderHistory(input)?['schemaVersion','contentVersion','participantIds','metadata','orders','modules']
+      :input?.schemaVersion===4?['schemaVersion','contentVersion','participantIds','metadata']
       :[2, 3].includes(input?.schemaVersion) ? ['schemaVersion', 'turn', 'sourceCardId', 'changes', 'discard',
       ...(input.schemaVersion === 3 ? ['contentVersion', 'playerCount'] : [])] : [];
     demand(exact(input, ['match', 'sequence', 'commitId', 'committedAt', 'mode', 'events', ...metadataFields]) && validMatch(input.match));
@@ -350,17 +381,17 @@ export function createHyakkiEventStore({ storage, now = Date.now, capacityBytes 
     demand(integer(sequence) && sequence > 0 && typeof commitId === 'string' && /^[A-Za-z0-9_-]{1,128}$/u.test(commitId)
       && integer(committedAt) && ['normal', 'capacity', 'resume', 'terminal'].includes(mode)
       && Array.isArray(events) && events.length >= 1 && events.length <= HYAKKI_EVENT_GROUP_MAX_EVENTS);
-    events.forEach(event => fixed.schemaVersion===4?demand(!history4EventProblem(event,context4(fixed))):validateHyakkiPublicEvent(event, profile));
+    if(!isOrderHistory(fixed))events.forEach(event => fixed.schemaVersion===4?demand(!history4EventProblem(event,context4(fixed))):validateHyakkiPublicEvent(event, profile));
     let metadata4;
-    if(fixed.schemaVersion===4){
-      try{metadata4=encodeHistory4Metadata(fixed.metadata,context4(fixed));}
+    if(fixed.schemaVersion===4||isOrderHistory(fixed)){
+      try{metadata4=isOrderHistory(fixed)?encodeHistory5Metadata(fixed.metadata,context5(fixed)):encodeHistory4Metadata(fixed.metadata,context4(fixed));}
       catch(error){if(error instanceof RangeError)demand(false);throw error;}
     }
     const base = { schemaVersion: fixed.schemaVersion ?? 1, kind: 'group', roomId: match.roomId, matchId: match.matchId, sequence, commitId, committedAt, mode, events,
       ...([2, 3].includes(fixed.schemaVersion) ? { turn: fixed.turn, sourceCardId: fixed.sourceCardId, changes: fixed.changes, discard: fixed.discard } : {}),
       ...(fixed.schemaVersion === 3 ? { contentVersion: fixed.contentVersion, playerCount: fixed.playerCount } : {}),
-      ...(fixed.schemaVersion===4?{contentVersion:fixed.contentVersion,participantIds:fixed.participantIds,
-        metadata:metadata4}:{}) };
+      ...(fixed.schemaVersion===4||isOrderHistory(fixed)?{contentVersion:fixed.contentVersion,participantIds:fixed.participantIds,metadata:metadata4}:{}),
+      ...(isOrderHistory(fixed)?{orders:fixed.orders,modules:fixed.modules}:{}) };
     const value = { ...base, fingerprint: digest(base) };
     demand(validGroup(value) && committedAt >= match.startedAt && committedAt <= now());
     const seats = new Set(match.participants.map(player => player.seatId));
@@ -368,9 +399,9 @@ export function createHyakkiEventStore({ storage, now = Date.now, capacityBytes 
     if ([2, 3].includes(fixed.schemaVersion)) demand(!publicBattleMetadataProblem({ turn: fixed.turn, sourceCardId: fixed.sourceCardId,
       changes: fixed.changes, discard: fixed.discard }, [...seats], profile) && fixed.turn.round === Math.ceil(fixed.turn.number / seats.size));
     const [head, quota, existing] = await Promise.all([read(HYAKKI_EVENT_SCOPES.meta, headId(match.matchId)), readQuota(), read(HYAKKI_EVENT_SCOPES.events, groupId(match.matchId, sequence))]);
-    if(fixed.schemaVersion===4&&isExpansionContentVersion(match.contentVersion)){
+    if(hasRoleHistory(match)){
       const first=sequence===1?value:(await read(HYAKKI_EVENT_SCOPES.events,groupId(match.matchId,1)))?.value;
-      demand(first&&!history4RoleProblem(value,decodeHistory4Metadata(first.metadata,context4(match)).rolesRevealed,context4(match)));
+      demand(first&&!roleProblem(value,roleRoster(first,match),match));
     }
     if (head && !same(head.value.match, match)) fail('GAME_HISTORY_CONFLICT', '比赛历史归属或版本不一致。', 409);
     if (existing) {
@@ -378,15 +409,16 @@ export function createHyakkiEventStore({ storage, now = Date.now, capacityBytes 
       return { changes: [], guards: [guard(HYAKKI_EVENT_SCOPES.events, groupId(match.matchId, sequence), existing), guard(HYAKKI_EVENT_SCOPES.meta, headId(match.matchId), head)] };
     }
     if (sequence !== (head?.value.sequence ?? 0) + 1 || head && ['terminal', 'pruning'].includes(head.value.phase)) fail('GAME_HISTORY_CONFLICT', '历史步骤已经变化，请确认原操作结果。', 409);
+    if(isOrderHistory(value)){
+      const previous=sequence>1?(await read(HYAKKI_EVENT_SCOPES.events,groupId(match.matchId,sequence-1)))?.value:null;
+      demand(!history5ContinuityProblem(previous,value));
+    }
     if (head && committedAt < head.value.lastCommittedAt) demand(false);
     if (!head) demand(mode === 'normal' && events.length === 1 && events[0].type === 'match-started');
     if (mode === 'capacity') demand(head?.value.phase === 'active' && events.length === 1 && events[0].type === 'suspended' && events[0].reason === 'capacity');
     if (mode === 'resume') demand(head?.value.phase === 'capacity-suspended' && events.length === 1 && events[0].type === 'resumed');
     if (mode === 'normal' && head?.value.phase === 'capacity-suspended') fail('GAME_HISTORY_CAPACITY', '历史容量挂起期间不能提交新的经营操作。');
-    if (mode === 'terminal') demand(head && events.at(-1).type === 'match-ended'
-      && events.filter(event => event.type === 'match-ended').length === 1
-      && (events.at(-1).reason === 'normal-close' || events.every(event => ['pending-closed', 'match-ended'].includes(event.type)))
-      && committedAt <= Number.MAX_SAFE_INTEGER - HYAKKI_EVENT_RETENTION_MS);
+    if (mode === 'terminal') demand(head && committedAt <= Number.MAX_SAFE_INTEGER - HYAKKI_EVENT_RETENTION_MS);
     if (mode !== 'capacity') demand(!events.some(event => event.type === 'suspended' && event.reason === 'capacity'));
     if (mode !== 'terminal') demand(!events.some(event => event.type === 'match-ended'));
     const group = { scope: HYAKKI_EVENT_SCOPES.events, id: groupId(match.matchId, sequence), old: null, value };
@@ -419,10 +451,10 @@ export function createHyakkiEventStore({ storage, now = Date.now, capacityBytes 
     // Cover the fixed envelope, commas and cursor digit growth as well as rows.
     const groups = [], guards = [{ ...guard(HYAKKI_EVENT_SCOPES.meta, headId(matchId), head),
       ...(head.value.retainUntil === null ? {} : { validUntil: head.value.retainUntil }) }]; let pageBytes = 1024;
-    const first=isConfiguredMatch(head.value.match)&&isExpansionContentVersion(head.value.match.contentVersion)
+    const first=hasRoleHistory(head.value.match)
       ?await read(HYAKKI_EVENT_SCOPES.events,groupId(matchId,1)):null;
     let roster=null;
-    if(isConfiguredMatch(head.value.match)&&isExpansionContentVersion(head.value.match.contentVersion)){
+    if(hasRoleHistory(head.value.match)){
       if(!first||!groupMatches(first.value,head.value.match))fail('GAME_HISTORY_CORRUPT');
       roster=roleRoster(first.value,head.value.match);
       if(after>0)guards.push(guard(HYAKKI_EVENT_SCOPES.events,groupId(matchId,1),first));
@@ -430,13 +462,14 @@ export function createHyakkiEventStore({ storage, now = Date.now, capacityBytes 
     for (let sequence = after + 1; sequence <= Math.min(after + limit, head.value.sequence); sequence++) {
       const row = await read(HYAKKI_EVENT_SCOPES.events, groupId(matchId, sequence));
       if (!row || !groupMatches(row.value, head.value.match)) fail('GAME_HISTORY_CORRUPT');
-      if(roster&&history4RoleProblem(row.value,roster,context4(head.value.match)))fail('GAME_HISTORY_CORRUPT');
+      if(roster&&roleProblem(row.value,roster,head.value.match))fail('GAME_HISTORY_CORRUPT');
       const { schemaVersion, roomId, matchId: id, sequence: seq, committedAt, events } = row.value;
       const item = { schemaVersion, roomId, matchId: id, sequence: seq, committedAt, events };
       if ([2, 3].includes(schemaVersion)) Object.assign(item, { turn: row.value.turn, sourceCardId: row.value.sourceCardId,
         changes: row.value.changes, discard: row.value.discard });
       if (schemaVersion === 3) Object.assign(item, { contentVersion: row.value.contentVersion, playerCount: row.value.playerCount });
-      if(schemaVersion===4)Object.assign(item,{contentVersion:row.value.contentVersion,participantIds:row.value.participantIds,metadata:row.value.metadata});
+      if(schemaVersion===4||isOrderHistory(row.value))Object.assign(item,{contentVersion:row.value.contentVersion,participantIds:row.value.participantIds,metadata:row.value.metadata});
+      if(isOrderHistory(row.value))Object.assign(item,{orders:row.value.orders,modules:row.value.modules});
       const size = Buffer.byteLength(JSON.stringify(item));
       if (pageBytes + size > HYAKKI_EVENT_PAGE_MAX_BYTES) break;
       groups.push(item); pageBytes += size; guards.push(guard(HYAKKI_EVENT_SCOPES.events, groupId(matchId, sequence), row));

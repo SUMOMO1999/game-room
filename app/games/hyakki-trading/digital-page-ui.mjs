@@ -82,12 +82,17 @@ const RULES = [
 export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onPeerMessage, onLayout, externalDecisions = false } = {}) {
   if (!root) throw new TypeError('新版样板缺少挂载点。');
   const document = root.ownerDocument, window = document.defaultView;
+  let viewport = null;
   root.innerHTML = `<div class="yg-shell">
     <header class="yg-header room-header"><div class="yg-brand"><strong>幽街商人</strong><span>本地合成样板 · 未联网／未保存</span></div>
       <div class="room-toolbar" data-chat-notice-anchor><div class="room-toolbar-actions">
         ${button('chat-toggle', '聊天 <span id="chat-unread" class="chat-unread" hidden></span>', 'class="chat-toggle room-toolbar-action" aria-controls="room-chat" aria-expanded="false" hidden')}
         ${button('yg-settings', '设置', 'class="room-toolbar-action"')}${button('yg-exit', '×', 'class="room-toolbar-action room-toolbar-exit room-exit" aria-label="退出本地样板"')}
       </div></div></header>
+    <aside id="yg-small-table-hint" class="yg-small-table-hint" hidden>
+      <p role="status">牌桌空间较小。折叠屏请打开内屏。</p>
+      ${button('yg-small-table-continue', '继续使用')}
+    </aside>
     <div id="yg-playfield-host" class="yg-playfield-host"><div id="yg-playfield" class="yg-playfield">
     <section class="yg-table" aria-label="公共桌面" data-chat-dismiss-notices>
       <aside class="yg-piles" aria-label="抽牌与弃牌"><button type="button" id="yg-draw-pile" class="yg-pile"><span class="yg-pile-art">${renderCardBack()}</span><span>抽牌堆 <b id="yg-deck-count"></b></span></button>
@@ -120,6 +125,9 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
     <div id="yg-chat-decision" class="yg-chat-decision" hidden><strong id="yg-chat-decision-label"></strong>${button('yg-chat-decision-open', '查看当前选择')}</div>`;
   const $ = id => document.getElementById(id), removers = [];
   const night = externalDecisions ? mountNightMarket({root}) : null;
+  const smallTableHint = $('yg-small-table-hint');
+  const touchPointer = night && window.matchMedia('(pointer: coarse)');
+  let smallTableHintDismissed = false;
   let view = null, selectedHand = null, selectedChoices = [], destroyed = false;
   let returnToDecision = false, pendingDraft = null, appliedScope = null, appliedDecisionId = null, bidDraft = null, feedbackTimer;
   let renderedHand = null, focusedPublicPlayer = null;
@@ -185,7 +193,7 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
   function renderTable() {
     const player = view.players.find(entry => entry.id === view.currentPlayerId);
     const title = view.layoutOnly ? '桌面布局演示' : view.phase === 'waiting' ? '两个人坐好，就开张。' : view.phase === 'finished' ? '夜市收市 · 我方68两获胜'
-      : view.scene === 'paused' ? '共同暂停 · 余时冻结' : view.scene === 'suspended' ? '伙伴离线 · 当前步骤已挂起'
+      : view.scene === 'paused' ? '共同暂停 · 余时冻结' : view.scene === 'suspended' ? '全部离线 · 牌局已保留'
       : isOwnDecision(view) ? view.decision.title : view.selfRole === 'spectator' ? '观战 · 只读公开牌面'
       : canOperate(view) ? '轮到你经营' : '灯笼铺老板正在经营';
     $('yg-title').textContent = title; $('yg-title').title = title;
@@ -207,7 +215,7 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
     else if (view.phase === 'waiting') note = `${view.players.map(entry => `${entry.name}：${entry.ready ? '已准备' : '未准备'}`).join(' · ')}。邀请与观战仅作页面演示。`;
     else if (view.phase === 'finished') note = `${view.resultReason} 伙伴64两；本局财富不累计到账号。`;
     else if (view.scene === 'paused') note = '双方已同意暂停，原选择和余时保留。7天截止不因自然离线而改成30分钟。';
-    else if (view.scene === 'suspended') note = '意外断线保席30分钟；两人都离线不会自动交易或攒钱。恢复后继续原步骤。';
+    else if (view.scene === 'suspended') note = '全部伙伴离线时保席30分钟，不会自动交易或攒钱；有人返回后继续。个别伙伴离线不暂停全桌。';
     else if (view.scene === 'dense') note = '手牌连续横滑浏览；分类与横竖切换不改牌序。';
     else if (view.scene === 'full') note = '五个普通格已满，临时格占用且已付2两；腾空不退款，再占用才收费。';
     else if (view.selfRole === 'spectator') note = '双方私牌、私看候选和未来牌序都不显示。';
@@ -291,26 +299,35 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
   }
   function resize() {
     if (destroyed) return;
+    if (night) { viewport?.sync(); return; }
     const frame = gameViewport({ width: window.innerWidth, height: window.innerHeight, visual: window.visualViewport,
       editing: document.activeElement?.matches('input,textarea') });
-    root.style.setProperty('--yg-height', `${frame.height}px`); root.style.setProperty('--yg-top', `${frame.top}px`);
-    if (night) {
-      const portrait = window.innerWidth < window.innerHeight;
-      const profile = window.innerHeight < 570 && !portrait ? 'mobile' : window.innerHeight < 720 ? 'compact' : 'desktop';
-      const profileChanged = $('yg-playfield').dataset.stageProfile !== profile;
-      $('yg-playfield').dataset.stageProfile = profile;
-      root.classList.toggle('yg-portrait',portrait); root.classList.remove('yg-window-small');
-      $('yg-playfield').inert = portrait; $('yg-rotation').hidden = !portrait; $('yg-window-hint').hidden = true;
-      document.body.classList.toggle('yg-keyboard',frame.height < window.innerHeight - 80);
-      if (profileChanged) onLayout?.({profile,portrait});
-      return;
-    }
+    root.style.setProperty('--yg-height',frame.height+'px');
+    root.style.setProperty('--yg-top',frame.top+'px');
     const portrait = window.innerWidth < window.innerHeight;
     root.classList.toggle('yg-portrait', portrait); $('yg-rotation').hidden = !portrait;
     const fit = stageFit.update();
     $('yg-playfield').inert = portrait || !!fit?.unsupported;
     $('yg-window-hint').hidden = portrait || !fit?.unsupported;
     document.body.classList.toggle('yg-keyboard', frame.height < window.innerHeight - 80);
+    if (frame.resetScroll && (window.scrollX || window.scrollY)) window.scrollTo(0, 0);
+  }
+  function applyNightFrame(frame) {
+    root.style.setProperty('--yg-height',frame.height+'px');
+    root.style.setProperty('--yg-top',frame.top+'px');
+    const portrait = frame.width < frame.height;
+    const profile = frame.height < 570 && !portrait ? 'mobile' : frame.height < 720 ? 'compact' : 'desktop';
+    const profileChanged = $('yg-playfield').dataset.stageProfile !== profile;
+    $('yg-playfield').dataset.stageProfile = profile;
+    root.classList.toggle('yg-portrait',portrait); root.classList.remove('yg-window-small');
+    $('yg-playfield').inert = portrait; $('yg-rotation').hidden = !portrait; $('yg-window-hint').hidden = true;
+    // Covers the measured 610 × 308 outer Safari view and the documented
+    // 594 × 368–406 range without trying to infer the device model.
+    smallTableHint.hidden = smallTableHintDismissed || !touchPointer.matches || !frame.resetScroll
+      || portrait || frame.width > 620 || frame.height > 410;
+    document.body.classList.toggle('yg-keyboard',frame.keyboard);
+    night.setViewport(frame);
+    if (profileChanged) onLayout?.({profile,portrait});
     if (frame.resetScroll && (window.scrollX || window.scrollY)) window.scrollTo(0, 0);
   }
   function applyView(next) {
@@ -334,6 +351,10 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
     try { await window.navigator.clipboard.writeText(`幽街商人本机合成样板（不是正式房间邀请）：${url}`); feedback('已复制本机样板地址；不连接正式房间。'); }
     catch { if (!destroyed) inspect('样板邀请', `<p>仅当前本机预览可打开，不是正式邀请。</p><input aria-label="样板邀请地址" value="${escape(url)}" readonly>`); }
   }
+  listen($('yg-small-table-continue'), 'click', () => {
+    smallTableHintDismissed = true;
+    smallTableHint.hidden = true;
+  });
   listen(root, 'click', event => {
     const node = event.target.closest('button'); if (!node || node.disabled || destroyed) return;
     if (node.dataset.focusPlayer) {
@@ -416,8 +437,18 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
       onLayout?.(fit);
     },
   });
-  const viewport = mountGameViewport({ window, document, sync: resize, recoveryDelays: [80, 250] });
-  const observer = new window.ResizeObserver(resize); observer.observe($('yg-hand'));
+  viewport = night ? mountGameViewport({coherent:true,window,document,sync:applyNightFrame})
+    : mountGameViewport({ window, document, sync: resize, recoveryDelays: [80, 250] });
+  // The hand can change size during a viewport update. Measure it after layout settles.
+  let handResizeFrame;
+  const observer = new window.ResizeObserver(() => {
+    if (handResizeFrame !== undefined) return;
+    handResizeFrame = window.requestAnimationFrame(() => {
+      handResizeFrame = undefined;
+      resize();
+    });
+  });
+  observer.observe($('yg-hand'));
   const chatObserver = new window.MutationObserver(syncChatDecision); chatObserver.observe($('room-chat'), { attributes: true, attributeFilter: ['hidden'] });
   $('chat-title').textContent = '样板双成员聊天'; root.querySelector('.chat-heading p').textContent = '仅当前标签页内 · 未连接真实伙伴 · 退出即清空';
   return { applyView, openDecision, audio, feedback, settings, syncActions:()=>night?.syncActions(), captureTable:()=>night?.capture(), animateTable:(snapshot,before,next)=>night?.present(snapshot,before,next), cancelTable:()=>night?.cancel(),
@@ -426,6 +457,7 @@ export function mountDigitalPage({ root, scenes, onScene, onAction, onLeave, onP
       focusedPublicPlayer=id;renderTable();return true;
     }, destroy() {
     if (destroyed) return; destroyed = true; clearPrivatePanels(); removers.forEach(remove => remove());
+    if (handResizeFrame !== undefined) window.cancelAnimationFrame(handResizeFrame);
     viewport.destroy(); stageFit.destroy(); backgroundPicker?.destroy(); night?.destroy(); observer.disconnect(); chatObserver.disconnect(); removeAppearance(); settings.destroy(); audioControls.destroy(); void audio.close();
     unmountArt(); window.clearTimeout(feedbackTimer); document.body.classList.remove('yg-keyboard', 'yg-has-chat-decision');
     view = null; selectedChoices = []; selectedHand = null; bidDraft = null; root.replaceChildren();

@@ -1,10 +1,10 @@
 // Versioned v3 expansion engine derived from the accepted 1f51a0 rules.
 // Existing v1/v2 saves keep their original rules and material boundaries.
 /** Authoritative pure rules. One accepted command creates one validated revision. */
-import { createDeck, GOODS, CONTENT_VERSION, PLAYER_COUNT_CONTENT_VERSION, materialProfile, DIGITAL_RULE_VERSION, MULTIPLAYER_RULE_VERSION, RULE_VERSIONS } from './material.mjs';
+import { createDeck, GOODS, CONTENT_VERSION, PLAYER_COUNT_CONTENT_VERSION, materialProfile, materialProfileFor, DIGITAL_RULE_VERSION, MULTIPLAYER_RULE_VERSION, RULE_VERSIONS } from './material.mjs';
 import { recommendedGoodsPerType } from '../content/player-count-profile.mjs';
 import { RuleError, requireRule, definition, player, opponent, emptyGoods, goodsCount, goodsEntries, addSilver,
-  moveGoods, removeCard, discardCards, drawCards, availableCards, shuffled, canReceive, ordinaryCapacity,
+  removeCard, discardCards, drawCards, availableCards, shuffled, canReceive, ordinaryCapacity,
   refreshTemporary, createPending, completePending, resolveReceipt, resolveActionReferences, emit,setChoice,
   DEFAULT_ACTION_LIMIT, DEFAULT_GOODS_PER_TYPE, validActionLimit, validGoodsPerType, isMultiplayer, beginMerchantResponse,
   legalResponseCards, skipUnavailableMerchantResponses, closeWinnerId, qualifiesForIdleReward } from './model.mjs';
@@ -16,9 +16,13 @@ import { gameProblem } from './validation.mjs';
 import { currentDecision } from '../decision.mjs';
 import {openingProblem} from '../opening.mjs';
 import {getRole,inspectionCardCount} from '../content/expansion-one.mjs';
-import {settleGoodsTrade} from '../trade-contract.mjs';
+import {applyGoodsReceipt,settleGoodsTrade} from '../trade-contract.mjs';
 import {newTurnUsage,newRoleState,economicUsage} from './role-state.mjs';
 import {beginRole,roleProblem,continueRole,chooseRole,beginAfterActions,roleActionCost} from './role-effects.mjs';
+import {deliverOrder,newOrderUsage,ORDER_BROKER,replaceOrder} from './order-actions.mjs';
+import {refineStock,REFINING_ARTISAN,scheduleAppraisal,refinedSaleFacts} from './refining.mjs';
+import {createExchangeMarket,beginExchangeTurn,pruneExchangeOffers,closeExchangeOffers,postExchangeOffer,
+  editExchangeOffer,withdrawExchangeOffer,acceptExchangeOffer,EXCHANGE_BROKER,EXCHANGE_SEAL} from './exchange-market.mjs';
 export { gameProblem, currentDecision };
 
 const held = state => state.lifecycle.manual || state.lifecycle.absence || state.lifecycle.capacity;
@@ -31,14 +35,19 @@ export function fromOpening(opening,{presence}={}){
   requireRule(openingProblem(opening)===null&&opening.status==='completed','只有完整确认的选角才能进入牌局。');
   const deal=structuredClone(opening.deal),configuration=structuredClone(opening.configuration),{actionLimit,goodsPerType,ruleVersion,contentVersion}=configuration;
   const {matchId,firstPlayerId,createdAt:now}=deal,playerIds=configuration.participantIds;
-  const players=deal.players.map(p=>({...p,roleState:newRoleState(p.roleId)}));
+  const refining=configuration.modules?.refining===true;
+  const players=deal.players.map(p=>({...p,roleState:newRoleState(p.roleId),...(refining?{refined:emptyGoods()}:{})}));
   const state = { version:3, gameType:'hyakki-trading', ruleVersion, contentVersion, matchId,configuration,
     players, deck:deal.deck, discard:[],bankGoods:deal.bankGoods,goodsPerType,
     availableStalls:deal.availableStalls,purchasedStalls:0,status:'playing',result:null,
     firstPlayerId, turnPlayerId: firstPlayerId, turnIndex: playerIds.indexOf(firstPlayerId), turnNumber: 1, turnId: 'turn-1', round: 1,
     stage: 'draw', actionsUsed: 0, actionLimit, drawStarted: false, bookLayers: 0, closing: null,
     revision: 0, publicEventSequence: 1, lastPublicEvents: [{ type: 'match-started' }], committedAt: now,
-    ...createHyakkiTiming(playerIds, firstPlayerId, now, presence),pending:null,turnUsage:newTurnUsage(),afterActions:[] };
+    ...createHyakkiTiming(playerIds, firstPlayerId, now, presence),pending:null,turnUsage:newTurnUsage(),afterActions:[],
+    ...(deal.publicOrders?{publicOrders:deal.publicOrders,orderUsage:newOrderUsage()}:{}),
+    ...(refining?{refiningUsed:false,appraisalUsed:false}:{}),
+    ...(configuration.modules?.exchange?{exchangeMarket:createExchangeMarket(players)}:{}),
+  };
   state.lifecycle.startedAt=opening.createdAt;
   check(state); return state;
 }
@@ -63,6 +72,7 @@ function continuePending(state, ctx) {
 }
 
 function finishGame(state, lastPlayerId, now) {
+  closeExchangeOffers(state,'ended');
   const winnerId = closeWinnerId(state);
   state.status = 'finished';
   state.result = { reason: 'normal-close', winnerIds: [winnerId], aborted: false, settledAt: now,
@@ -87,6 +97,9 @@ function endTurn(state, now, { voluntary = false } = {}) {
   state.turnNumber++; state.turnId = `turn-${state.turnNumber}`; state.round = Math.ceil(state.turnNumber / state.players.length);
   state.stage = 'draw'; state.actionsUsed = 0; state.drawStarted = false;
   state.turnUsage=newTurnUsage(state.turnId);
+  if(state.publicOrders)state.orderUsage=newOrderUsage();
+  beginExchangeTurn(state);
+  if(state.configuration.modules?.refining){state.refiningUsed=false;state.appraisalUsed=false;}
   const next=player(state,state.turnPlayerId);if(next.roleId==='yousei.role.r21')next.roleState.compensationAvailable=true;
   state.timing = { active: { id: state.turnId, actorId: state.turnPlayerId, remainingMs: TURN_MS, deadlineAt: now + TURN_MS }, decision: null };
 }
@@ -119,7 +132,7 @@ function fence(state, action, actorId) {
     requireRule(actorId === decision.actorId, '请等待当前玩家完成选择。', 'WRONG_ACTOR');
   } else {
     requireRule(action.effectId === undefined && action.decisionId === undefined, '该效果已经结算。', 'STALE_ACTION');
-    requireRule(actorId === state.turnPlayerId, '还没轮到你。', 'WRONG_ACTOR');
+    requireRule(actorId === state.turnPlayerId || ['offer-accept','offer-withdraw'].includes(action.type), '还没轮到你。', 'WRONG_ACTOR');
   }
 }
 function consumeAction(state) {
@@ -136,19 +149,22 @@ function ownedCard(state, actorId, cardId, category) {
   const owner = player(state, actorId), card = definition(cardId);
   requireRule(owner.hand.includes(cardId) && (!category || card.category === category), '请选择自己的对应手牌。'); return card;
 }
-function trade(state, actorId, cardId, buying,materials) {
+function trade(state, actorId, cardId, buying,materials,refinedMaterials) {
   requireUse(state);
+  requireRule(refinedMaterials===undefined||(!buying&&state.configuration.modules?.refining),'当前不能指定精制货物。');
   const owner = player(state, actorId), card = ownedCard(state, actorId, cardId, 'goods');
   let result;try{result=settleGoodsTrade({owner,bankGoods:state.bankGoods,usage:economicUsage(state.turnUsage),bookLayers:state.bookLayers,
-    definitionId:card.id,direction:buying?'buy':'sell',materials});}catch(error){if(error instanceof RangeError)throw new RuleError(error.message);throw error;}
+    definitionId:card.id,direction:buying?'buy':'sell',materials,refinedMaterials});}catch(error){if(error instanceof RangeError)throw new RuleError(error.message);throw error;}
   consumeAction(state); removeCard(owner.hand, cardId);
   createPending(state, { kind: 'trade', ownerId: actorId, code: buying ? 'buy' : 'sell', sourceCards: [cardId] });
-  for(const key of ['silver','goods','temporaryOccupied'])owner[key]=result.owner[key];
+  applyGoodsReceipt(owner,result.owner);owner.silver=result.owner.silver;
   state.bankGoods=result.bankGoods;Object.assign(state.turnUsage,result.usage);
   if(result.afterSourceSettled)state.afterActions.push(result.afterSourceSettled);
+  scheduleAppraisal(state,owner,result.quote.refined);
   state.pending.stage = 'merchant'; beginMerchantResponse(state, cardId);
   emit(state, { type: buying ? 'trade-bought' : 'trade-sold', actorSeatId: actorId, cardId: card.id,
     goods:goodsEntries(result.quote.goods).map(([id,count])=>({id,count})),silver:buying?result.quote.totalPayment:result.quote.saleProceeds,
+    ...refinedSaleFacts(result.quote.refined),
     price:{printed:result.quote.printedPrice,bookLayers:result.quote.bookLayers,roleAdjustment:result.quote.roleAdjustment,
       goodsPrice:result.quote.goodsPrice,buyTax:result.quote.buyTax,temporaryFee:result.quote.temporaryFee}});
 }
@@ -180,7 +196,12 @@ function response(state, actorId, cardId, now) {
 }
 function chooseEffect(state, actorId, selection, ctx) {
   requireRule(state.pending?.choice?.actorId === actorId, '当前没有你的选择。');
-  if (state.pending.receipt) resolveReceipt(state, selection);
+  if (state.pending.receipt) {
+    if(state.configuration.modules?.refining){
+      requireRule(selection&&Object.keys(selection).length===2&&Object.hasOwn(selection,'goods')&&Object.hasOwn(selection,'refined'),'请选择保留货物的数量和品质。');
+      resolveReceipt(state,selection.goods,selection.refined);
+    }else resolveReceipt(state, selection);
+  }
   else if(state.pending.kind==='peek'&&state.pending.choice?.kind==='peek-select'){
     const p=state.pending;requireRule(selection&&Object.keys(selection).length===1&&p.poolCards.includes(selection.cardId),'请选择本次候选之一。');
     removeCard(p.poolCards,selection.cardId);
@@ -236,7 +257,16 @@ function dispatch(state, actorId, action, ctx) {
       requireRule(state.stage === 'draw', '已进入用牌阶段。'); requireFirstPeek(state); state.stage = 'use';
       emit(state, { type: 'draw-finished', actorSeatId: actorId }); break;
     case 'end-turn': requireFirstPeek(state); endTurn(state, ctx.now, { voluntary: true }); break;
-    case 'buy': case 'sell': trade(state, actorId, action.cardId, action.type === 'buy',action.materials); break;
+    case 'buy': case 'sell': trade(state, actorId, action.cardId, action.type === 'buy',action.materials,action.refinedMaterials); break;
+    case 'refine-stock':
+      requireUse(state);consumeAction(state);refineStock(state,owner,action.ordinary);break;
+    case 'order-deliver': deliverOrder(state,owner,{position:action.position,generation:action.generation,selection:action.selection},ctx);break;
+    case 'order-replace': replaceOrder(state,owner,{position:action.position,generation:action.generation},ctx);break;
+    case 'offer-post':
+      postExchangeOffer(state,owner,{provide:action.provide,receive:action.receive},materialProfileFor(state));break;
+    case 'offer-edit': editExchangeOffer(state,owner,action,materialProfileFor(state));break;
+    case 'offer-withdraw': withdrawExchangeOffer(state,owner,action);break;
+    case 'offer-accept': acceptExchangeOffer(state,owner,action);break;
     case 'use-role':{
       requireUse(state);const issue=roleProblem(state,actorId,action.params);requireRule(!issue,issue);
       if(roleActionCost(state))consumeAction(state);beginRole(state,actorId,action.params,ctx);break;
@@ -251,6 +281,16 @@ function dispatch(state, actorId, action, ctx) {
     }
     case 'play-character': {
       requireUse(state); const card = ownedCard(state, actorId, action.cardId);
+      if(card.sourceCode===EXCHANGE_BROKER){
+        postExchangeOffer(state,owner,action.params,materialProfileFor(state),{source:'broker',sourceCardId:action.cardId});break;
+      }
+      if(card.sourceCode===ORDER_BROKER){deliverOrder(state,owner,action.params,ctx,action.cardId);break;}
+      if(card.sourceCode===REFINING_ARTISAN){
+        requireRule(action.params&&Object.keys(action.params).length===1&&Object.hasOwn(action.params,'ordinary'),'请选择要精制的货物。');
+        consumeAction(state);refineStock(state,owner,action.params.ordinary,REFINING_ARTISAN);
+        removeCard(owner.hand,action.cardId);discardCards(state,[action.cardId]);
+        emit(state,{type:'character-played',actorSeatId:actorId,cardId:card.id});break;
+      }
       const issue = characterProblem(state, actorId, action.cardId, action.params); requireRule(!issue, issue);
       if(card.category==='monitored_character')requireRule(!state.turnUsage.monitorUsed,'本回合已使用过【监】。');
       consumeAction(state); removeCard(owner.hand, action.cardId);
@@ -271,6 +311,9 @@ function dispatch(state, actorId, action, ctx) {
       const tool = owner.tools.find(item => item.cardId === action.cardId);
       requireRule(tool && !tool.exhausted, '请选择尚未使用的自己的道具。');
       const card = definition(action.cardId); if (card.sourceCode !== 'T07') requireUse(state);
+      if(card.sourceCode===EXCHANGE_SEAL){
+        postExchangeOffer(state,owner,action.params,materialProfileFor(state),{source:'seal',sourceCardId:action.cardId});break;
+      }
       const issue = toolProblem(state, actorId, action.cardId, action.params); requireRule(!issue, issue);
       if (card.sourceCode === 'T07' && needsFirstPeek(state)) requireRule(state.actionLimit - state.actionsUsed >= 2,
         '纸上仙之后仍须看第一张牌，请保留1行动。', 'FIRST_PEEK_REQUIRED');
@@ -284,6 +327,7 @@ function dispatch(state, actorId, action, ctx) {
 
 function commit(state, ctx, initialTurn) {
   continuePending(state, ctx);
+  pruneExchangeOffers(state);
   // The last action cannot bypass a response, payment or material selection.
   if (!state.pending && state.status === 'playing' && state.turnId === initialTurn && state.actionsUsed >= state.actionLimit) endTurn(state, ctx.now);
   state.revision++; state.publicEventSequence++; state.committedAt = ctx.now;
@@ -323,4 +367,31 @@ export function applyTimeout(game, actorId, ctx = {}) {
     if (!state.pending && state.status === 'playing' && (activeExpired || state.timing.active.remainingMs === 0)) endTurn(state, ctx.now);
     return commit(state, ctx, game.turnId);
   } catch (error) { if (error instanceof RuleError||error instanceof RangeError) return failure(error); throw error; }
+}
+
+/** Trusted presence may use the same conservative defaults as a timeout.
+ * Complete bounded chunks in one authoritative commit; never play cards or
+ * award idle silver on behalf of an absent player. */
+export function applyOfflineDefaults(game, offlineIds, ctx = {}) {
+  try {
+    const firstActor = currentDecision(game)?.actorId ?? game.turnPlayerId;
+    ensureActive(game, firstActor, ctx.now);
+    requireRule(Array.isArray(offlineIds) && offlineIds.includes(firstActor)
+      && game.players.some(player => !offlineIds.includes(player.id)), '没有需要处理的离线玩家。');
+    const state = structuredClone(game); state.lastPublicEvents = [];
+    for (let step = 0; step < 24 && state.status === 'playing'; step++) {
+      const actor = currentDecision(state)?.actorId ?? state.turnPlayerId;
+      if (!offlineIds.includes(actor)) break;
+      if (state.pending) defaultPending(state, ctx);
+      else endTurn(state, ctx.now);
+      synchronizeClock(state, ctx.now);
+      // A public history group owns at most one turn boundary. Remaining
+      // absent seats advance on the next authoritative lifecycle sweep.
+      if (state.turnId !== game.turnId) break;
+      // Keep each persisted public event group below its existing size bound.
+      // Further pending defaults are continued by the next lifecycle sweep.
+      if (state.lastPublicEvents.length >= 40) break;
+    }
+    return commit(state, ctx, game.turnId);
+  } catch (error) { if (error instanceof RuleError || error instanceof RangeError) return failure(error); throw error; }
 }

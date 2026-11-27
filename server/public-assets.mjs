@@ -1,14 +1,15 @@
 import { gamePresentations } from '../app/games/catalog.mjs';
 
 const platformAssets = Object.freeze(['index.html', 'lobby.mjs', 'lobby-model.mjs', 'lobby.css',
+  'noname.html', 'noname-launch.mjs', 'noname.css', 'noname-options-store.mjs',
   'practice-hub.html', 'practice-hub.mjs', 'practice-hub.css',
   'account-client.mjs', 'room-client.mjs', 'room-chat.mjs', 'entry-path.mjs', 'game-routing.mjs',
   'game-viewport.mjs', 'game-audio.mjs', 'game-presentation.mjs', 'board-layout.mjs', 'styles.css',
   'favicon.svg', 'app-shell.mjs', 'app-shell.css', 'practice-entry.css', 'manifest.webmanifest',
   'sw.js', 'offline.html', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',
-  'games/catalog.mjs', 'games/types.mjs', 'platform/room-presentation.mjs', 'platform/room-clock.mjs',
+  'games/catalog.mjs', 'games/types.mjs', 'games/last-hand-assets.mjs', 'games/last-hand-availability.mjs', 'platform/room-presentation.mjs', 'platform/room-clock.mjs',
   'vendor/livekit-client-2.22.4.esm.mjs', 'vendor/livekit-license.html', 'platform/room-voice.mjs', 'platform/room-voice-controls.mjs', 'platform/room-voice-policy.mjs', 'platform/room-voice-session.mjs', 'platform/room-voice-host.mjs', 'platform/room-voice-host.css', 'platform/room-voice.css',
-  'platform/room-session.mjs', 'platform/room-audio-controls.mjs', 'platform/room-viewport.mjs', 'platform/game-stage-fit.mjs', 'platform/object-motion.mjs',
+  'platform/room-session.mjs', 'platform/room-audio-controls.mjs', 'platform/room-viewport.mjs', 'platform/room-viewport-frame.mjs', 'platform/game-stage-fit.mjs', 'platform/object-motion.mjs',
   'platform/room-action-intent.mjs', 'platform/card-room-controller.mjs', 'platform/room-settings.mjs', 'platform/room-settings.css', 'platform/control-geometry.css', 'platform/game-theme.mjs', 'platform/game-theme.css', 'platform/practice-navigation.mjs',
   'platform/game-appearance.mjs', 'platform/game-appearance.css', 'platform/appearance-bootstrap.mjs', 'platform/appearance-data.mjs',
   'platform/appearance-menu.css', 'platform/appearance-menu-template.mjs']);
@@ -20,7 +21,8 @@ export function publicAssetPaths(games = gamePresentations(), shared = platformA
   for (const file of paths) {
     if (typeof file !== 'string' || !/^[a-zA-Z0-9_./-]+$/.test(file)
       || file.startsWith('/') || file.split('/').some(part => !part || part === '.' || part === '..')
-      || !/\.(?:html|css|mjs|js|svg|png|webp|webmanifest)$/.test(file) || forbidden.test(file)) {
+      || (!/\.(?:html|css|mjs|js|svg|png|jpg|webp|woff2|webmanifest)$/.test(file)
+          && !/^games\/last-hand\/(?:offline-list\.json|assets\/actors\/(?:[A-Za-z0-9_-]+\.glb|adventurers-license\.txt|skeletons-license\.txt|sources\.json)|assets\/cards\/(?:SOURCES\.md|sources\.json)|assets\/emblems\/LICENSE\.txt|assets\/licenses\/[A-Za-z0-9_.-]+\.(?:txt|md))$/.test(file)) || forbidden.test(file)) {
       throw new TypeError('静态公开资源包含不安全路径。');
     }
   }

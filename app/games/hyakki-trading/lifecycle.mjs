@@ -31,6 +31,17 @@ function allOnline(game, presence, now) {
   const seats = evidence(presence, game.players.map(player => player.id), now);
   return seats.length === game.players.length && seats.every(seat => seat.connected);
 }
+export const OFFLINE_DEFAULT_GRACE_MS = 5000;
+export function offlineHyakkiPlayers(game, presence, now, graceMs = 0) {
+  const seats = evidence(presence, game.players.map(player => player.id), now);
+  return game.players.filter(player => {
+    const seat = seats.find(value => value.playerId === player.id);
+    if (seat?.connected) return false;
+    const checkpoint = game.lifecycle.checkpoints.find(value => value.playerId === player.id);
+    const since = seat?.absenceSinceAt ?? seat?.leaseExpiresAt ?? checkpoint.leaseExpiresAt;
+    return now - since >= graceMs;
+  }).map(player => player.id);
+}
 function freeze(game, at) {
   for (const clock of [game.timing.active, game.timing.decision]) {
     if (clock?.deadlineAt !== null && clock?.deadlineAt !== undefined) {
@@ -116,9 +127,11 @@ export function transitionHyakkiLifecycle(game, { reason, playerId, now, presenc
     }
   }
   if (!state.lifecycle.manual) {
-    if (allOnline(state, presence, now)) state.lifecycle.absence = null;
+    // A single absent seat must not hold everyone else's game. With nobody
+    // present retain the match instead of letting an unattended table run.
+    if (seats.some(seat => seat.connected)) state.lifecycle.absence = null;
     else if (!state.lifecycle.absence) {
-      const absentAt = Math.min(...state.lifecycle.checkpoints.filter(checkpoint =>
+      const absentAt = Math.max(...state.lifecycle.checkpoints.filter(checkpoint =>
         !seats.find(seat => seat.playerId === checkpoint.playerId)?.connected).map(checkpoint => {
         const seat = seats.find(entry => entry.playerId === checkpoint.playerId);
         return Math.min(now, seat?.absenceSinceAt ?? checkpoint.leaseExpiresAt);

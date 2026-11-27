@@ -1,0 +1,65 @@
+[
+  {
+    "name": "Barbarian",
+    "sourceCommit": "672074b73ba276876a19e8816ecdc5241817ab47",
+    "inputSha256": "cefc311a0e10c7858b6141f5ada7e33268727564fb8ac1347aab97d000669cc6",
+    "outputSha256": "c85c8e17946c16abe86b651246bfa935c9b8cda248906823060aed25995a9f8b",
+    "bytes": 658116
+  },
+  {
+    "name": "Knight",
+    "sourceCommit": "672074b73ba276876a19e8816ecdc5241817ab47",
+    "inputSha256": "60428e3abc09ba83e595d256e3af8c5c976b46cdae599f0802fc82b4a3445168",
+    "outputSha256": "bb70808db29193a06c405396996dbb28baa4bb6a8749982532a407112b610ea8",
+    "bytes": 703436
+  },
+  {
+    "name": "Mage",
+    "sourceCommit": "672074b73ba276876a19e8816ecdc5241817ab47",
+    "inputSha256": "cf898585da33fab50c724d31605fb931eb2912e6d2280092141e98ca81ad507d",
+    "outputSha256": "21d15bef82fb4ddb4231ad8b1b9dbf34d2d0b4707da07867891aebf1cf0f9201",
+    "bytes": 645408
+  },
+  {
+    "name": "Rogue",
+    "sourceCommit": "672074b73ba276876a19e8816ecdc5241817ab47",
+    "inputSha256": "e825437cd4d2ee9c1960b517a74a69101e33eb409ae7fa8cedc7134a998fbb7d",
+    "outputSha256": "55390b12de892db1f1c704d63a277401ef45244ae6aeb3722b9728e841f2fb37",
+    "bytes": 665324
+  },
+  {
+    "name": "Rogue_Hooded",
+    "sourceCommit": "672074b73ba276876a19e8816ecdc5241817ab47",
+    "inputSha256": "93e6e25213009952276d9cf34f5d96a243767334c66f280db0433ddfabb91545",
+    "outputSha256": "49b1b870d25c632bb31e544dc157ad0a9bace67199d657427124b5a10beb3999",
+    "bytes": 646900
+  },
+  {
+    "name": "Skeleton_Mage",
+    "sourceCommit": "15b62b9bad122f72926c10fb14d622c73819fa54",
+    "inputSha256": "e05b0f5cfa395271c9f75fd07c0a0613c56f401ece4ab644e080001a79971075",
+    "outputSha256": "a7ff627d0c0a93826a053fda499901db9b8749a528b3f62249c3617698c92f8d",
+    "bytes": 613068
+  },
+  {
+    "name": "Skeleton_Minion",
+    "sourceCommit": "15b62b9bad122f72926c10fb14d622c73819fa54",
+    "inputSha256": "6ffc003f895bed0b074791e0e490846210a2e2f8fc7da300aba53cc185f95968",
+    "outputSha256": "ece958783f78e7207e6b34a517ef7af1ca4e74fec7b5a475e9dcb0a723d0ced4",
+    "bytes": 665920
+  },
+  {
+    "name": "Skeleton_Rogue",
+    "sourceCommit": "15b62b9bad122f72926c10fb14d622c73819fa54",
+    "inputSha256": "4003f2b77891bb56f7e0de7d555abcb497aebbcaee35b614211f16275f9ccae3",
+    "outputSha256": "1e994c1a01baf2b89e30e0b3b742016176c754dd01adc3a3fca5b1f98a5afaac",
+    "bytes": 678588
+  },
+  {
+    "name": "Skeleton_Warrior",
+    "sourceCommit": "15b62b9bad122f72926c10fb14d622c73819fa54",
+    "inputSha256": "178b6fda810b814c250d8a2010c24dfd9b458b9006dd323353e620b7ff118bbe",
+    "outputSha256": "1026713052ea1c222e250ef65ad9025e545ab42fa9e8a15f867eb348f73c1661",
+    "bytes": 714900
+  }
+]

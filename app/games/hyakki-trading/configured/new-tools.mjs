@@ -1,8 +1,9 @@
 import {GOODS,CATEGORIES} from '../content/expansion-one.mjs';
-import {receiptPlan} from '../trade-contract.mjs';
+import {receiptPlan,applyGoodsReceipt} from '../trade-contract.mjs';
 import {RuleError,requireRule,definition,player,emptyGoods,canReceive,goodsCount,addSilver,moveGoods,removeCard,discardCards,
   createPending,setChoice,completePending,refreshTemporary} from './model.mjs';
 import {toolCost,payToolCost} from './tool-cost.mjs';
+import {checkedUnitQuality,qualityFields} from './refining.mjs';
 const exact=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).every(k=>keys.includes(k));
 const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 const good=id=>GOODS.find(g=>g.id===id);
@@ -16,16 +17,20 @@ const targets=state=>state.discard.filter(id=>definition(id).category==='goods')
 const exchangeChoices=(state,owner)=>GOODS.filter(g=>owner.goods[g.id]>0).flatMap(from=>GOODS.filter(to=>state.bankGoods[to.id]>0&&to.category!==from.category)
   .map(to=>({ownGoodId:from.id,goodId:to.id})));
 const keys=code=>number(code)<=6?[]:number(code)<=12?['goodId']:code==='XT13'?['ownGoodId','goodId']:['payCardId','takeCardId'];
+const allowedKeys=(code,owner)=>code==='XT13'?qualityFields(owner,keys(code)):keys(code);
 function checkedSelection(state,owner,code,params){
-  requireRule(exact(params,keys(code))&&Object.keys(params).length===keys(code).length,'请选齐本次道具所需材料。');
+  requireRule(exact(params,allowedKeys(code,owner))&&keys(code).every(key=>Object.hasOwn(params,key)),'请选齐本次道具所需材料。');
   if(number(code)<=12)requireRule(choicesFor(state,code).includes(params.goodId),'请选择该类尚有库存的货物。');
-  else if(code==='XT13')requireRule(exchangeChoices(state,owner).some(x=>same(x,params)),'须用自己的1件货换另一类的1件货。');
+  else if(code==='XT13'){
+    requireRule(exchangeChoices(state,owner).some(x=>x.ownGoodId===params.ownGoodId&&x.goodId===params.goodId),'须用自己的1件货换另一类的1件货。');
+    checkedUnitQuality(owner,params.ownGoodId,params.refined);
+  }
   else requireRule(payments(owner).includes(params.payCardId)&&targets(state).includes(params.takeCardId)&&params.payCardId!==params.takeCardId,'请选择手中货物牌及弃牌区另一张货物牌。');
 }
 export function newToolProblem(state,ownerId,copyId,params={},options={}){
   try{
     const card=definition(copyId),code=card.sourceCode,owner=player(state,ownerId),borrowed=options.borrowed===true;
-    requireRule(card.category==='tool'&&isNewTool(code)&&exact(params,keys(code)),'道具参数无效。');
+    requireRule(card.category==='tool'&&isNewTool(code)&&exact(params,allowedKeys(code,owner)),'道具参数无效。');
     if(!borrowed&&options.checkOrientation!==false)requireRule(owner.tools.some(t=>t.cardId===copyId&&!t.exhausted),'请选择自己竖直的道具。');
     if(!borrowed)requireRule(state.stage==='use','请先结束摸牌阶段。');
     const fee=toolCost(state,owner,number(code)<=6?0:1,{borrowed}).silver;
@@ -55,7 +60,7 @@ export function continueNewTool(state,ctx){
     const available=choicesFor(state,code),at=available.length===1?0:ctx.randomInt(available.length);
     requireRule(Number.isSafeInteger(at)&&at>=0&&at<available.length,'道具随机结果无效。');
     const id=available[at],plan=receiptPlan(owner,state.bankGoods,{receive:one(id)});addSilver(owner,-plan.temporaryFee);
-    owner.goods=plan.goods;owner.temporaryOccupied=plan.temporaryOccupied;state.bankGoods=plan.bankGoods;finish(state);return;
+    applyGoodsReceipt(owner,plan);state.bankGoods=plan.bankGoods;finish(state);return;
   }
   p.stage='choosing';
   if(number(code)<=12){const options=choicesFor(state,code).map(goodId=>({goodId}));setChoice(state,{kind:'tool-class-good',actorId:owner.id,visibility:'public',options,defaultSelection:options[0]});}
@@ -70,8 +75,9 @@ export function chooseNewTool(state,selection){
   const cost=toolCost(state,owner,1,{borrowed:p.data.borrowed}).silver;
   if(number(code)<=12||code==='XT13'){
     const give=code==='XT13'?one(selection.ownGoodId):{},receive=one(selection.goodId);
-    const plan=receiptPlan(owner,state.bankGoods,{give,receive,cost});payToolCost(state,owner,1,{borrowed:p.data.borrowed});addSilver(owner,-plan.temporaryFee);
-    owner.goods=plan.goods;owner.temporaryOccupied=plan.temporaryOccupied;state.bankGoods=plan.bankGoods;
+    const giveRefined=code==='XT13'?checkedUnitQuality(owner,selection.ownGoodId,selection.refined):undefined;
+    const plan=receiptPlan(owner,state.bankGoods,{give,receive,cost,giveRefined});payToolCost(state,owner,1,{borrowed:p.data.borrowed});addSilver(owner,-plan.temporaryFee);
+    applyGoodsReceipt(owner,plan);state.bankGoods=plan.bankGoods;
   }else{
     payToolCost(state,owner,1,{borrowed:p.data.borrowed});removeCard(state.discard,selection.takeCardId);
     removeCard(owner.hand,selection.payCardId);discardCards(state,[selection.payCardId]);owner.hand.push(selection.takeCardId);

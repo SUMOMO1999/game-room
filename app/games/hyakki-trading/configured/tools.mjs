@@ -3,10 +3,13 @@
 import { GOODS } from './material.mjs';
 import {isNewTool,newToolProblem,startNewTool,continueNewTool,chooseNewTool} from './new-tools.mjs';
 import {toolCost,payToolCost} from './tool-cost.mjs';
+import {ORDER_COMPASS,compassProblem,startCompass,chooseCompass} from './order-actions.mjs';
 import { RuleError, requireRule, definition, player, opponent, isMultiplayer, emptyGoods, goodsCount,
   addSilver, moveGoods, removeCard, discardCards, drawCards, availableCards, canReceive,
   refreshTemporary, payCard, paymentOptions, createPending, setChoice, clearChoice,
-  completePending, receiveGoods, emit } from './model.mjs';
+  bankStock, checkedRefinedWithdrawal, completePending, receiveGoods, emit } from './model.mjs';
+import {checkedUnitQuality,chooseHammer,hammerProblem,hasStockQuality,REFINING_HAMMER,startHammer,unitQuality} from './refining.mjs';
+import {EXCHANGE_SEAL,exchangeSealBorrowable,startBorrowedExchangeSeal,chooseBorrowedExchangeSeal} from './exchange-market.mjs';
 
 export const implementedToolCodes = Object.freeze(Array.from({ length: 10 }, (_, i) => `T${String(i + 1).padStart(2, '0')}`));
 const choiceKinds = ['tool-search-payment', 'tool-exchange', 'tool-discard-draw', 'tool-two-cards', null,
@@ -68,7 +71,8 @@ function effectProblem(state, ownerId, copyId, { borrowed = false, checkOrientat
 function legacyToolProblem(state, ownerId, copyId, params = {}, options = {}) {
   try {
     const code = definition(copyId).sourceCode;
-    const allowed = [...(selectionKeys[code] ?? []), ...(isMultiplayer(state) && pairedTool(code) ? ['targetId'] : [])];
+    const qualityKeys=toolQualityKeys(state,code);
+    const allowed = [...(selectionKeys[code] ?? []), ...qualityKeys,...(isMultiplayer(state) && pairedTool(code) ? ['targetId'] : [])];
     if (!plain(params) || Object.keys(params).some(key => !allowed.includes(key))) return '道具选择参数无效。';
     if (code === 'T01' && Object.keys(params).length) {
       const owner = player(state, ownerId);
@@ -82,7 +86,7 @@ function legacyToolProblem(state, ownerId, copyId, params = {}, options = {}) {
       const selections = Object.fromEntries(Object.entries(params).filter(([key]) => key !== 'targetId'));
       const keys = code === 'T01' ? selections.kind === 'card' ? ['kind', 'cardId'] : ['kind']
         : code === 'T04' ? [] : selectionKeys[code];
-      if (!keys || !exact(selections, keys)) return '请先选齐本次道具所需材料。';
+      if (!keys || !exact(selections,[...keys,...qualityKeys.filter(key=>Object.hasOwn(selections,key))])) return '请先选齐本次道具所需材料。';
     }
     return effectProblem(state, ownerId, copyId, { ...options, targetId: params.targetId });
   } catch (error) {
@@ -90,13 +94,16 @@ function legacyToolProblem(state, ownerId, copyId, params = {}, options = {}) {
     throw error;
   }
 }
+const toolQualityKeys=(state,code)=>!state.configuration?.modules?.refining?[]
+  :code==='T02'?['ownRefined','otherRefined']:code==='T06'?['refined']:[];
 
 /** Root has already charged the action and exhausted a normally installed tool. */
 function startLegacyTool(state, copyId, params = {}, ctx, { borrowed = false } = {}) {
   const ownerId = borrowed ? state.pending?.ownerId : state.turnPlayerId;
   requireRule(ownerId && !effectProblem(state, ownerId, copyId, { borrowed, checkOrientation: false, targetId: params.targetId }), '道具当前不能发动。');
   const code = definition(copyId).sourceCode;
-  const allowed = [...selectionKeys[code], ...(isMultiplayer(state) && pairedTool(code) ? ['targetId'] : [])];
+  const allowed = [...selectionKeys[code],...toolQualityKeys(state,code),
+    ...(isMultiplayer(state) && pairedTool(code) ? ['targetId'] : [])];
   requireRule(plain(params) && Object.keys(params).every(key => allowed.includes(key)), '道具选择参数无效。');
   const selections = Object.fromEntries(Object.entries(params).filter(([key]) => key !== 'targetId'));
   const targetId = pairedTool(code) && isMultiplayer(state) ? opponent(state, ownerId, params.targetId).id : null;
@@ -210,11 +217,16 @@ function chooseLegacyTool(state, selection, ctx) {
     owner.hand.push(target); discardCards(state, pending.poolCards.splice(0));
   } else if (code === 'T02') {
     const other = toolPeer(state);
-    requireRule(exact(selection, ['ownGoodId', 'otherGoodId']) && goodIds.includes(selection.ownGoodId)
-      && goodIds.includes(selection.otherGoodId) && owner.goods[selection.ownGoodId] > 0 && other.goods[selection.otherGoodId] > 0, '请选择双方现有的各1件货物。');
+    const qualities=owner.refined?['ownRefined','otherRefined'].filter(key=>Object.hasOwn(selection??{},key)):[];
+    requireRule(exact(selection, ['ownGoodId', 'otherGoodId',...qualities]) && goodIds.includes(selection.ownGoodId)
+      && goodIds.includes(selection.otherGoodId) && owner.goods[selection.ownGoodId] > 0 && other.goods[selection.otherGoodId] > 0
+      && (!qualities.includes('ownRefined')||hasStockQuality(owner,selection.ownGoodId,selection.ownRefined))
+      && (!qualities.includes('otherRefined')||hasStockQuality(other,selection.otherGoodId,selection.otherRefined)), '请选择双方现有的各1件货物。');
     const own = singleGood(selection.ownGoodId), theirs = singleGood(selection.otherGoodId);
-    moveGoods(owner.goods, pending.goods, own); moveGoods(other.goods, pending.goods, theirs);
-    moveGoods(pending.goods, owner.goods, theirs); moveGoods(pending.goods, other.goods, own);
+    // Freeze the second withdrawal before the exchange, even for two units of the same kind.
+    const otherRefined=other.refined===undefined?undefined:checkedRefinedWithdrawal(other,theirs,unitQuality(selection.otherGoodId,selection.otherRefined));
+    moveGoods(owner,other,own,unitQuality(selection.ownGoodId,selection.ownRefined));
+    moveGoods(other,owner,theirs,otherRefined);
     // An equal exchange retains the original final occupancy, without charging
     // either player's already occupied temporary space a second time.
     refreshTemporary(owner); refreshTemporary(other);
@@ -230,8 +242,9 @@ function chooseLegacyTool(state, selection, ctx) {
     removeCard(pending.poolCards, selection.cardId); owner.hand.push(selection.cardId);
     toolPeer(state).hand.push(...pending.poolCards.splice(0));
   } else if (code === 'T06') {
-    requireRule(exact(selection, ['goodId']) && goodIds.includes(selection.goodId) && owner.goods[selection.goodId] > 0, '请选择自己的1件库存。');
-    moveGoods(owner.goods, state.bankGoods, singleGood(selection.goodId)); refreshTemporary(owner);
+    const fields=owner.refined&&Object.hasOwn(selection??{},'refined')?['goodId','refined']:['goodId'];
+    requireRule(exact(selection, fields) && goodIds.includes(selection.goodId) && owner.goods[selection.goodId] > 0, '请选择自己的1件库存。');
+    moveGoods(owner,bankStock(state),singleGood(selection.goodId),checkedUnitQuality(owner,selection.goodId,selection.refined));refreshTemporary(owner);
     owner.hand.push(...drawCards(state, 1, ctx));
   } else if (code === 'T07') {
     requireRule(exact(selection, ['cardId']) && owner.hand.includes(selection.cardId)
@@ -247,7 +260,7 @@ function chooseLegacyTool(state, selection, ctx) {
       requireRule(paymentOptions(state, owner.id).some(option => samePayment(option, selection.payment)), '请选择自己可牺牲的牌。');
       payCard(state, owner.id, selection.payment);
     } else { pending.data.paidSilver = payToolCost(state,owner,2,{borrowed:pending.data.borrowed}); }
-    moveGoods(state.bankGoods, pending.goods, singleGood(selection.goodId));
+    moveGoods(bankStock(state), pending, singleGood(selection.goodId));
     clearChoice(state); pending.stage = 'delivering';
     requireRule(receiveGoods(state, owner.id, { ...pending.goods }), '道具不能丢弃原库存腾位置。');
     continueTool(state, ctx); return;
@@ -255,10 +268,24 @@ function chooseLegacyTool(state, selection, ctx) {
   clearChoice(state); finish(state);
 }
 export function toolProblem(state,ownerId,copyId,params={},options={}){
-  return isNewTool(definition(copyId).sourceCode)?newToolProblem(state,ownerId,copyId,params,options):legacyToolProblem(state,ownerId,copyId,params,options);
+  const code=definition(copyId).sourceCode;
+  if(code===ORDER_COMPASS)return compassProblem(state,copyId,params,options);
+  if(code===REFINING_HAMMER)return hammerProblem(state,player(state,ownerId),params,copyId,options.borrowed===true);
+  if(code===EXCHANGE_SEAL)return options.borrowed&&state.pending&&state.discard.includes(copyId)
+    ?exchangeSealBorrowable(state,player(state,ownerId)):'请从商会挂牌时使用合契印。';
+  return isNewTool(code)?newToolProblem(state,ownerId,copyId,params,options):legacyToolProblem(state,ownerId,copyId,params,options);
 }
 export function startTool(state,copyId,params={},ctx,options={}){
-  return isNewTool(definition(copyId).sourceCode)?startNewTool(state,copyId,params,ctx,options):startLegacyTool(state,copyId,params,ctx,options);
+  const code=definition(copyId).sourceCode;
+  if(code===ORDER_COMPASS)return startCompass(state,copyId,params,ctx,options);
+  if(code===REFINING_HAMMER)return startHammer(state,copyId,params,ctx,options);
+  if(code===EXCHANGE_SEAL)return startBorrowedExchangeSeal(state,copyId,params);
+  return isNewTool(code)?startNewTool(state,copyId,params,ctx,options):startLegacyTool(state,copyId,params,ctx,options);
 }
 export function continueTool(state,ctx){return isNewTool(state.pending.code)?continueNewTool(state,ctx):continueLegacyTool(state,ctx);}
-export function chooseTool(state,selection,ctx){return isNewTool(state.pending.code)?chooseNewTool(state,selection,ctx):chooseLegacyTool(state,selection,ctx);}
+export function chooseTool(state,selection,ctx){
+  if(state.pending.code===ORDER_COMPASS)return chooseCompass(state,selection,ctx);
+  if(state.pending.code===REFINING_HAMMER)return chooseHammer(state,selection,ctx);
+  if(state.pending.code===EXCHANGE_SEAL)return chooseBorrowedExchangeSeal(state,selection);
+  return isNewTool(state.pending.code)?chooseNewTool(state,selection,ctx):chooseLegacyTool(state,selection,ctx);
+}

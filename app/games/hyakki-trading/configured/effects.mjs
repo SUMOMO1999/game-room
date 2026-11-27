@@ -3,11 +3,12 @@
 import { GOODS } from './material.mjs';
 import { RuleError, requireRule, definition, player, opponent, pairIds, isMultiplayer, beginMerchantResponse, legalResponseCards, emptyGoods, goodsCount, addSilver,
   moveGoods, removeCard, discardCards, drawCards, availableCards, ordinaryCapacity,
-  refreshTemporary, createPending, setChoice, clearChoice, completePending, receiveGoods, emit } from './model.mjs';
+  bankStock, refreshTemporary, createPending, setChoice, clearChoice, completePending, receiveGoods, emit } from './model.mjs';
 import { beginAuction } from './auction.mjs';
 import { toolProblem, startTool } from './tools.mjs';
 import {compensateMonitorLoss} from './role-effects.mjs';
-import {settleGoodsTrade} from '../trade-contract.mjs';
+import {applyGoodsReceipt,settleGoodsTrade} from '../trade-contract.mjs';
+import {hasStockQuality,unitQuality,scheduleAppraisal,refinedSaleFacts} from './refining.mjs';
 import {economicUsage} from './role-state.mjs';
 import {isNewCharacter,newCharacterProblem,startNewCharacter,continueNewCharacter,chooseNewCharacter} from './new-characters.mjs';
 
@@ -32,7 +33,7 @@ export const CHARACTER_PENDING_CONTRACTS = Object.freeze(Object.fromEntries(Obje
   C11: { stages: ['start'], data: [], choices: ['recover-tool'] },
   C12: { stages: ['start'], data: [], choices: [] },
   C13: { stages: ['start'], data: [], choices: ['sell-stock'] },
-  M01: { stages: ['start', 'done'], data: ['goodsId'], choices: [] },
+  M01: { stages: ['start', 'done'], data: ['goodsId','refined'], choices: [] },
   M02: { stages: ['start', 'draft'], data: ['nextActorId'], choices: ['draft-card'], poolVisibility: 'public' },
   M03: { stages: ['start', 'keep'], data: ['playerIndex'], choices: ['keep-tool'] },
   M04: { stages: ['start'], data: [], choices: ['tribute-branch'] },
@@ -82,8 +83,10 @@ function initialChoicesProblem(state, code, steps) {
   if (!kinds || !Array.isArray(steps) || !steps.length || steps.length > kinds.length) return '人物预选步骤无效。';
   for (let index = 0; index < steps.length; index++) {
     const step = steps[index], keys = initialSelectionKeys[kinds[index]];
+    const extra=state.configuration?.modules?.refining&&['sell-goods','sell-stock'].includes(kinds[index])
+      &&Object.hasOwn(step?.selection??{},'refined')?['refined']:[];
     if (!fields(step, ['kind', 'selection']) || Object.keys(step).length !== 2 || step.kind !== kinds[index]
-      || !fields(step.selection, keys) || Object.keys(step.selection).length !== keys.length) return '人物预选材料无效。';
+      || !fields(step.selection, [...keys,...extra]) || Object.keys(step.selection).length !== keys.length+extra.length) return '人物预选材料无效。';
   }
   const count = code === 'C01' ? steps[0].selection.branch === 'goods' && goodsCount(state.bankGoods) ? 2 : 1 : kinds.length;
   return steps.length === count ? null : '请先选齐本次人物所需材料。';
@@ -97,8 +100,8 @@ function goodsChoice(state, kind, actorId, source, minimum, maximum) {
   for (const id of goodsIds) { selected[id] = Math.min(source[id], remaining); remaining -= selected[id]; }
   choose(state, kind, actorId, [{ goods: { ...source }, minimum, maximum }], { defaultSelection: { goods: selected } });
 }
-function checkedGoods(selection, source, minimum, maximum) {
-  requireRule(fields(selection, ['goods']) && fields(selection.goods, goodsIds)
+function checkedGoods(selection, source, minimum, maximum, {quality=false}={}) {
+  requireRule(fields(selection, quality?['goods','refined']:['goods']) && fields(selection.goods, goodsIds)
     && goodsIds.every(id => Number.isSafeInteger(selection.goods[id]) && selection.goods[id] >= 0
       && selection.goods[id] <= source[id]), '请选择当前可用的货物。');
   const count = goodsCount(selection.goods);
@@ -122,9 +125,9 @@ function giveCards(state, actorId, count, ctx) {
   player(state, actorId).hand.push(...cards);
   emit(state, { type: 'choice-resolved', actorSeatId: actorId, count: cards.length });
 }
-function receiving(state, actorId, goods, source) {
-  moveGoods(source, state.pending.goods, goods);
-  if (state.players.some(owner => owner.goods === source)) refreshTemporary(state.players.find(owner => owner.goods === source));
+function receiving(state, actorId, goods, source, refined) {
+  moveGoods(source, state.pending, goods,refined);
+  if (source.id) refreshTemporary(source);
   return receiveGoods(state, actorId, goods);
 }
 
@@ -135,7 +138,7 @@ function legacyCharacterProblem(state, ownerId, copyId, params = {}) {
   const card = definition(copyId), code = card.sourceCode;
   if (!implementedCharacterCodes.includes(code)) return '这张牌不是人物牌。';
   if (code === 'C04' || code === 'C07') return '这张人物只能在对应回应窗口使用。';
-  const allowed = [...(code === 'M01' ? ['goodsId'] : code === 'M08' ? ['toolCardId'] : []),
+  const allowed = [...(code === 'M01' ? ['goodsId',...(owner.refined?['refined']:[])] : code === 'M08' ? ['toolCardId'] : []),
     ...(isMultiplayer(state) && pairedCharacter(code) ? ['targetId'] : []), ...(initialKinds[code] ? ['initialChoices'] : [])];
   if (!fields(params, allowed)) return '人物参数无效。';
   if (Object.hasOwn(params, 'initialChoices')) {
@@ -160,7 +163,8 @@ function legacyCharacterProblem(state, ownerId, copyId, params = {}) {
     case 'C11': return publicTools(state).length ? null : '弃牌中没有道具。';
     case 'C12': return draws >= 3 && hasMoney(state) ? null : '拍卖需要三张可抽牌且至少一人有一两。';
     case 'C13': return sellableCount(owner) ? null : '没有可出售的库存或银两已达上限。';
-    case 'M01': return goodsIds.includes(params.goodsId) && peer.goods[params.goodsId] >= 1 ? null : '请选择对手现有的一件货物。';
+    case 'M01': return goodsIds.includes(params.goodsId) && peer.goods[params.goodsId] >= 1
+      &&(params.refined===undefined||hasStockQuality(peer,params.goodsId,params.refined)) ? null : '请选择对手现有的一件货物。';
     case 'M02': return handWithout(owner, copyId).length + peer.hand.length ? null : '双方没有可分配的手牌。';
     case 'M03': return owner.tools.length > 1 || peer.tools.length > 1 ? null : '双方均没有多余道具。';
     case 'M04': return canPayTribute(owner, peer) || draws ? null : '当前无法支付两两，也没有可抽牌。';
@@ -177,7 +181,7 @@ function startLegacyCharacter(state, copyId, params = {}, ctx) {
   requireRule(implementedCharacterCodes.includes(code) && !['C04', 'C07'].includes(code), '这张牌不能主动发动。');
   const peer = pairedCharacter(code) ? opponent(state, ownerId, params.targetId) : null;
   createPending(state, { kind: 'character', ownerId, code, sourceCards: [copyId],
-    data: { ...(code === 'M01' ? { goodsId: params.goodsId } : code === 'M08' ? { toolCardId: params.toolCardId } : {}),
+    data: { ...(code === 'M01' ? {goodsId:params.goodsId,...(params.refined===undefined?{}:{refined:params.refined})} : code === 'M08' ? { toolCardId: params.toolCardId } : {}),
       ...(isMultiplayer(state) && peer ? { targetId: peer.id } : {}) } });
   if (code.startsWith('M')) {
     state.pending.response = { kind: 'counter', actorId: peer.id, tradeCardId: null };
@@ -233,15 +237,20 @@ function continueDraft(state, kind) {
   let actorId = pending.data.nextActorId;
   if (!eligible(actorId)) actorId = nextPairActor(state, actorId);
   if (!eligible(actorId)) {
-    if (kind === 'goods') moveGoods(pending.goods, state.bankGoods, { ...pending.goods });
+    if (kind === 'goods') moveGoods(pending, bankStock(state), { ...pending.goods });
     else { discardCards(state, pending.poolCards, { sort: true }); pending.poolCards = []; }
     for (const actor of pairedActors(state)) refreshTemporary(actor);
     completePending(state); return;
   }
   pending.data.nextActorId = actorId;
-  if (kind === 'goods') choose(state, 'draft-good', actorId, stockTypes(pending.goods).map(goodsId => ({ goodsId })), { visibility: 'public' });
+  if (kind === 'goods') choose(state, 'draft-good', actorId, draftGoodsOptions(pending), { visibility: 'public' });
   else choose(state, kind === 'tools' ? 'draft-tool' : 'draft-card', actorId,
     sorted(pending.poolCards).map(cardId => ({ cardId })), { visibility: 'public' });
+}
+export function draftGoodsOptions(stock){
+  return stockTypes(stock.goods).flatMap(goodsId=>stock.refined
+    ?[false,true].filter(refined=>hasStockQuality(stock,goodsId,refined)).map(refined=>({goodsId,refined}))
+    :[{goodsId}]);
 }
 
 /** Resume persisted steps without repeating draws, fees, pool construction or disposal. */
@@ -288,7 +297,7 @@ function continueCharacterStep(state, ctx) {
     case 'C13': goodsChoice(state, 'sell-stock', owner.id, owner.goods, 1, sellableCount(owner)); return;
     case 'M01':
       pending.stage = 'done';
-      receiving(state, owner.id, vector(pending.data.goodsId), peer.goods);
+      receiving(state, owner.id, vector(pending.data.goodsId), peer,unitQuality(pending.data.goodsId,pending.data.refined));
       if (!pending.receipt) completePending(state);
       return;
     case 'M02':
@@ -310,7 +319,7 @@ function continueCharacterStep(state, ctx) {
     case 'M05':
       if (pending.stage === 'start') {
         pending.data.tempPaid = Object.fromEntries(pairedActors(state).map(actor => [actor.id, actor.temporaryOccupied]));
-        for (const actor of pairedActors(state)) { moveGoods(actor.goods, pending.goods, { ...actor.goods }); refreshTemporary(actor); }
+        for (const actor of pairedActors(state)) { moveGoods(actor, pending, { ...actor.goods }); refreshTemporary(actor); }
         pending.stage = 'draft'; pending.data.nextActorId = owner.id;
       }
       continueDraft(state, 'goods'); return;
@@ -359,7 +368,7 @@ function chooseCharacterStep(state, selection, ctx) {
     case 'benefit-good': {
       const id = checkedGood(selection, stockTypes(state.bankGoods));
       const goods = vector(id, Math.min(2, state.bankGoods[id]));
-      pending.data.benefitIndex++; clearChoice(state); receiving(state, actor.id, goods, state.bankGoods); return;
+      pending.data.benefitIndex++; clearChoice(state); receiving(state, actor.id, goods, bankStock(state)); return;
     }
     case 'take-card': {
       const id = checkedCard(selection, pending.poolCards);
@@ -371,17 +380,18 @@ function chooseCharacterStep(state, selection, ctx) {
       removeCard(owner.hand, id); pending.sourceCards.unshift(id); pending.data.tradeCardId = id; pending.stage = 'sell'; break;
     }
     case 'sell-goods': {
-      const goods = checkedGoods(selection, owner.goods, 3, 3), tradeCardId = pending.data.tradeCardId;
+      const goods = checkedGoods(selection, owner.goods, 3, 3,{quality:owner.refined!==undefined}), tradeCardId = pending.data.tradeCardId;
       requireRule(pending.sourceCards.includes(tradeCardId) && definition(tradeCardId).recipe.count === 3, '买办货物牌无效。');
       let result;try{result=settleGoodsTrade({owner,bankGoods:state.bankGoods,usage:economicUsage(state.turnUsage),bookLayers:state.bookLayers,
-        definitionId:definition(tradeCardId).id,direction:'sell',materials:goods,broker:true});}
+        definitionId:definition(tradeCardId).id,direction:'sell',materials:goods,broker:true,refinedMaterials:selection.refined});}
       catch(error){if(error instanceof RangeError)throw new RuleError(error.message);throw error;}
-      for(const key of ['silver','goods','temporaryOccupied'])owner[key]=result.owner[key];
+      applyGoodsReceipt(owner,result.owner);owner.silver=result.owner.silver;
       state.bankGoods=result.bankGoods;Object.assign(state.turnUsage,result.usage);
       if(result.afterSourceSettled)state.afterActions.push(result.afterSourceSettled);
+      scheduleAppraisal(state,owner,result.quote.refined);
       pending.stage = 'merchant'; beginMerchantResponse(state, tradeCardId);
       emit(state, { type: 'trade-sold', actorSeatId: owner.id, cardId: definition(tradeCardId).id,
-        goods: goodsIds.filter(id => goods[id]).map(id => ({ id, count: goods[id] })),
+        goods: goodsIds.filter(id => goods[id]).map(id => ({ id, count: goods[id] })), ...refinedSaleFacts(result.quote.refined),
         silver:result.quote.saleProceeds,price:{printed:result.quote.printedPrice,bookLayers:result.quote.bookLayers,
           roleAdjustment:result.quote.roleAdjustment,goodsPrice:result.quote.goodsPrice,buyTax:0,temporaryFee:0}}); break;
     }
@@ -389,8 +399,8 @@ function chooseCharacterStep(state, selection, ctx) {
       requireRule(fields(selection, ['fromGoodsId', 'toGoodsId']) && exchangeOptions(state, owner)
         .some(option => option.fromGoodsId === selection.fromGoodsId && option.toGoodsId === selection.toGoodsId), '必须完整交换为足额异种货物。');
       const count = owner.goods[selection.fromGoodsId];
-      moveGoods(owner.goods, state.bankGoods, vector(selection.fromGoodsId, count));
-      moveGoods(state.bankGoods, owner.goods, vector(selection.toGoodsId, count));
+      moveGoods(owner, bankStock(state), vector(selection.fromGoodsId, count));
+      moveGoods(bankStock(state), owner, vector(selection.toGoodsId, count));
       refreshTemporary(owner); clearChoice(state); completePending(state); return;
     }
     case 'hand-branch': {
@@ -410,12 +420,12 @@ function chooseCharacterStep(state, selection, ctx) {
     }
     case 'auction-goods': {
       const goods = checkedGoods(selection, state.bankGoods, 2, 2);
-      moveGoods(state.bankGoods, pending.goods, goods); clearChoice(state);
+      moveGoods(bankStock(state), pending, goods); clearChoice(state);
       beginAuction(state, { ownerId: owner.id, kind: 'goods' }, ctx); return;
     }
     case 'artisan-good': {
       const id = checkedGood(selection, goodsIds.filter(id => state.bankGoods[id] >= 2));
-      pending.stage = 'done'; clearChoice(state); receiving(state, owner.id, vector(id, 2), state.bankGoods);
+      pending.stage = 'done'; clearChoice(state); receiving(state, owner.id, vector(id, 2), bankStock(state));
       if (!pending.receipt) completePending(state);
       return;
     }
@@ -424,8 +434,8 @@ function chooseCharacterStep(state, selection, ctx) {
       clearChoice(state); completePending(state); return;
     }
     case 'sell-stock': {
-      const goods = checkedGoods(selection, owner.goods, 1, sellableCount(owner)), count = goodsCount(goods);
-      moveGoods(owner.goods, state.bankGoods, goods); refreshTemporary(owner); addSilver(owner, 2 * count);
+      const goods = checkedGoods(selection, owner.goods, 1, sellableCount(owner),{quality:!!owner.refined}), count = goodsCount(goods);
+      moveGoods(owner, bankStock(state), goods,selection.refined); refreshTemporary(owner); addSilver(owner, 2 * count);
       clearChoice(state); completePending(state); return;
     }
     case 'draft-card': {
@@ -447,9 +457,11 @@ function chooseCharacterStep(state, selection, ctx) {
       clearChoice(state); completePending(state); return;
     }
     case 'draft-good': {
-      const id = checkedGood(selection, stockTypes(pending.goods));
+      requireRule(fields(selection,pending.refined?['goodsId','refined']:['goodsId'])
+        &&draftGoodsOptions(pending).some(option=>option.goodsId===selection.goodsId&&option.refined===selection.refined),'请选择归集池中仍有的货物和品质。');
+      const id=selection.goodsId;
       requireRule(canDraftGood(state, actor.id), '当前没有可负担的货位。');
-      moveGoods(pending.goods, actor.goods, vector(id));
+      moveGoods(pending, actor, vector(id),unitQuality(id,selection.refined));
       if (goodsCount(actor.goods) > ordinaryCapacity(actor)) {
         if (!pending.data.tempPaid[actor.id]) { addSilver(actor, -2); pending.data.tempPaid[actor.id] = true; }
         actor.temporaryOccupied = true;

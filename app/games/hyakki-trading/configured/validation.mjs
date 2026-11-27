@@ -1,23 +1,28 @@
 // Versioned v3 expansion engine derived from the accepted 1f51a0 rules.
 // Existing v1/v2 saves keep their original rules and material boundaries.
 /** Persisted game validation. This module is pure and never repairs untrusted saves. */
-import { CARDS, GOODS, definitionIdForCopy, materialProfile, materialProfileFor, CONTENT_VERSION,
+import { GOODS, configuredDefinitionId, getCard, definitionIdForCopy, materialProfile, materialProfileFor, CONTENT_VERSION,
   PLAYER_COUNT_CONTENT_VERSION, DIGITAL_RULE_VERSION, MULTIPLAYER_RULE_VERSION,isExpansionContentVersion } from './material.mjs';
 import {inspectionCardCount} from '../content/expansion-one.mjs';
 import { hyakkiTimingProblem } from '../lifecycle.mjs';
-import { CHARACTER_PENDING_CONTRACTS } from './effects.mjs';
+import { CHARACTER_PENDING_CONTRACTS,draftGoodsOptions } from './effects.mjs';
 import { TOOL_PENDING_CONTRACTS, toolProblem } from './tools.mjs';
 import { AUCTION_PENDING_CONTRACT } from './auction.mjs';
 import { currentDecision } from '../decision.mjs';
-import { MAX_GOODS_PER_TYPE, goodsPerTypeOf, validGoodsPerType, isMultiplayer, closeWinnerId, clockwiseIds,ordinaryCapacity } from './model.mjs';
+import { MAX_GOODS_PER_TYPE, goodsPerTypeOf, validGoodsPerType, isMultiplayer, closeWinnerId, clockwiseIds,ordinaryCapacity,
+  checkedRefinedWithdrawal,combinedRefinedStock } from './model.mjs';
 import {materialForConfiguration} from '../opening-configuration.mjs';
 import {ROLES} from './material.mjs';
-import {history4EventProblem} from '../public-history-v4.mjs';
+import {configuredEventProblem,history4EventProblem} from '../public-history-v4.mjs';
+import {EXPANSION_TWO_CONTENT_VERSION} from '../content/expansion-two.mjs';
+import {ORDER_COMPASS,compassPendingProblem,orderEventProblem,orderStateProblem} from './order-actions.mjs';
 import {turnUsageProblem,roleStateProblem} from './role-state.mjs';
 import {isNewCharacter,newCharacterPendingProblem} from './new-characters.mjs';
 import {isNewTool,newToolPendingProblem} from './new-tools.mjs';
 import {toolCost} from './tool-cost.mjs';
 import {activeRolePendingProblem} from './role-effects.mjs';
+import {APPRAISAL_JOB,APPRAISER,REFINING_HAMMER,hammerPendingProblem,hasStockQuality} from './refining.mjs';
+import {exchangeStateProblem,exchangeEventProblem,isExchangeEvent,borrowedSealPendingProblem,EXCHANGE_SEAL} from './exchange-market.mjs';
 
 export const plainObject = value => value !== null && typeof value === 'object' && !Array.isArray(value)
   && [Object.prototype, null].includes(Object.getPrototypeOf(value));
@@ -26,11 +31,14 @@ export const exactFields = (value, fields) => plainObject(value) && Reflect.ownK
 export const integer = (value, min = 0, max = Number.MAX_SAFE_INTEGER) => Number.isSafeInteger(value) && value >= min && value <= max;
 export const seatId = value => typeof value === 'string' && /^[a-f0-9]{32}$/u.test(value);
 const identifier = value => typeof value === 'string' && value.length > 0 && value.length <= 180 && !/\p{Cc}/u.test(value);
-const definitions = new Map(CARDS.map(card => [card.id, card]));
 const goodsIds = GOODS.map(good => good.id);
-export const validCopy = (value, profile) => definitionIdForCopy(value, profile) !== null;
-export const cardDefinition = copyId => definitions.get(definitionIdForCopy(copyId));
+export const validCopy = (value, profile) => (profile?definitionIdForCopy(value,profile):configuredDefinitionId(value)) !== null;
+export function cardDefinition(copyId){
+  const id=configuredDefinitionId(copyId);
+  return id===null?undefined:getCard(id);
+}
 export const goodsVector = value => exactFields(value, goodsIds) && goodsIds.every(id => integer(value[id], 0, MAX_GOODS_PER_TYPE));
+const refinedStock = ({goods,refined}) => goodsVector(refined) && goodsIds.every(id=>refined[id]<=goods[id]);
 const countGoods = vector => goodsIds.reduce((total, id) => total + vector[id], 0);
 const uniqueCopies = (value, profile) => Array.isArray(value) && value.length <= profile.deckSize
   && value.every(id => validCopy(id, profile)) && new Set(value).size === value.length;
@@ -41,7 +49,12 @@ const boundedJson = (value, profile, depth = 0) => depth <= 8 && (value === null
     /^[A-Za-z0-9][A-Za-z0-9-]{0,63}$/u.test(key) && boundedJson(item, profile, depth + 1)));
 
 const endReasons = ['voluntary-leave','normal-close','absence-expired','room-expired','cancelled'];
-export const publicEvent=(value,ids,goodsPerType,profile=materialProfile())=>!history4EventProblem(value,{contentVersion:profile.contentVersion,participantIds:ids});
+export function publicEvent(value,ids,goodsPerType,profile=materialProfile()){
+  if(profile.contentVersion!==EXPANSION_TWO_CONTENT_VERSION)return !history4EventProblem(value,{contentVersion:profile.contentVersion,participantIds:ids});
+  if(isExchangeEvent(value?.type))return !exchangeEventProblem(value,ids,profile);
+  if(['order-delivered','order-replaced','order-compass-opened'].includes(value?.type))return profile.modules.orders&&!orderEventProblem(value,ids,profile.modules);
+  return !configuredEventProblem(value,{cards:profile.cards,goods:GOODS,ids,profile,roles:profile.roles,expansion:true});
+}
 
 const stateFields = ['version', 'gameType', 'ruleVersion', 'contentVersion', 'matchId', 'players', 'deck', 'discard', 'bankGoods',
   'availableStalls', 'purchasedStalls', 'status', 'result', 'firstPlayerId', 'turnPlayerId', 'turnIndex', 'turnNumber', 'turnId', 'round',
@@ -85,7 +98,8 @@ function choiceProblem(state, pending) {
       && (value.branch === 'pay' ? peer.silver >= 2 && Number.isSafeInteger(owner.silver + 2) : state.deck.length + state.discard.length > 0)); break;
     case 'benefit-good': case 'artisan-good': valid = everyOption(value => goodSelection(value, 'goodsId', state.bankGoods)
       && (choice.kind !== 'artisan-good' || state.bankGoods[value.goodsId] >= 2)); break;
-    case 'draft-good': valid = everyOption(value => goodSelection(value, 'goodsId', pending.goods)); break;
+    case 'draft-good': valid = pending.refined?same(options,draftGoodsOptions(pending))&&oneOf(selected,options)
+      :everyOption(value => goodSelection(value, 'goodsId', pending.goods)); break;
     case 'tool-goods-draw': valid = everyOption(value => goodSelection(value, 'goodId', owner.goods)); break;
     case 'tool-buy-good': valid = everyOption(value => goodSelection(value, 'goodId', state.bankGoods)); break;
     case 'take-card': case 'draft-card': case 'draft-tool': case 'tool-two-cards':
@@ -126,10 +140,14 @@ function choiceProblem(state, pending) {
       const receipt = pending.receipt, option = options[0], ordinary = ordinaryCapacity(actor);
       const capacity = ordinary + (actor.temporaryOccupied || actor.silver >= 2 ? 1 : 0);
       const combined = Object.fromEntries(goodsIds.map(id => [id, actor.goods[id] + (receipt?.goods[id] ?? 0)]));
-      valid = receipt !== null && options.length === 1 && exactFields(option, ['combined', 'ordinaryCapacity', 'capacity', 'temporaryFee'])
+      const refined=actor.refined&&receipt?combinedRefinedStock(actor,checkedRefinedWithdrawal(pending,receipt.goods)):null;
+      const kept=refined?selected?.goods:selected;
+      valid = receipt !== null && options.length === 1 && exactFields(option, ['combined', 'ordinaryCapacity', 'capacity', 'temporaryFee',...(refined?['refined']:[])])
         && same(option.combined, combined) && option.ordinaryCapacity === ordinary && option.capacity === capacity
-        && option.temporaryFee === (actor.temporaryOccupied ? 0 : 2) && goodsVector(selected)
-        && goodsIds.every(id => selected[id] <= combined[id]) && countGoods(selected) <= capacity; break;
+        && option.temporaryFee === (actor.temporaryOccupied ? 0 : 2) && goodsVector(kept)
+        && goodsIds.every(id => kept[id] <= combined[id]) && countGoods(kept) <= capacity
+        && (!refined||same(option.refined,refined)&&exactFields(selected,['goods','refined'])&&refinedStock(selected)
+          &&goodsIds.every(id=>selected.refined[id]<=refined[id]&&kept[id]-selected.refined[id]<=combined[id]-refined[id])); break;
     }
     case 'tool-search-payment': valid = everyOption(value => exactFields(value, ['kind']) && value.kind === 'silver' && owner.silver >= toolCost(state,owner,1,{borrowed:pending.data.borrowed}).silver
       || exactFields(value, ['kind', 'cardId']) && value.kind === 'card' && owner.hand.includes(value.cardId)); break;
@@ -180,7 +198,7 @@ function branchProblem(state, pending) {
     if (pending.code === 'M06' && pending.poolCards.some(card => cardDefinition(card).category !== 'tool')) return '道具分配池含非道具。';
     const requiredData = {
       C01: pending.stage === 'benefits' ? ['branch', 'benefitIndex'] : [],
-      C05: pending.stage === 'start' ? [] : ['tradeCardId'], M01: ['goodsId'],
+      C05: pending.stage === 'start' ? [] : ['tradeCardId'], M01: ['goodsId',...(pending.refined&&Object.hasOwn(data,'refined')?['refined']:[])],
       M02: pending.stage === 'draft' ? ['nextActorId'] : [], M03: pending.stage === 'keep' ? ['playerIndex'] : [],
       M05: pending.stage === 'draft' ? ['nextActorId', 'tempPaid'] : [], M06: pending.stage === 'draft' ? ['nextActorId'] : [],
       M08: ['toolCardId'],
@@ -188,6 +206,9 @@ function branchProblem(state, pending) {
     const targetFields = isMultiplayer(state) && pairedCharacter ? ['targetId'] : [];
     const borrowedFields = pending.code === 'M08' && data.borrowedTargetId !== undefined ? ['borrowedTargetId'] : [];
     if (!exactFields(data, [...requiredData, ...targetFields, ...borrowedFields])) return '人物步骤缺少固定参数。';
+    if(pending.code==='M01'&&Object.hasOwn(data,'refined')&&(typeof data.refined!=='boolean'
+      ||(pending.receipt?pending.refined[data.goodsId]!==Number(data.refined)
+        :!hasStockQuality(state.players.find(p=>p.id===peerId),data.goodsId,data.refined))))return '梁上君子待取货物的品质无效。';
     if (pending.choice && !pending.receipt) {
       const choiceStages = { 'benefit-branch': 'start', 'benefit-good': 'benefits', 'take-card': 'select',
         'trade-card': 'start', 'sell-goods': 'sell', exchange: 'start', 'hand-branch': 'start', 'discard-hand': 'discard',
@@ -213,8 +234,8 @@ function branchProblem(state, pending) {
     if (!contract || !contract.stages.includes(pending.stage) || !subsetFields(data, contract.dataKeys)
         || !validCopy(data.toolId) || cardDefinition(data.toolId).sourceCode !== pending.code || typeof data.borrowed !== 'boolean'
         || !plainObject(data.params) || pending.choice && pending.choice.kind !== contract.choiceKind) return '道具步骤或字段无效。';
-    const toolKeys = { T01: ['kind', 'cardId'], T02: ['ownGoodId', 'otherGoodId'], T03: ['cardIds'], T04: ['cardId'],
-      T05: [], T06: ['goodId'], T07: ['cardId'], T08: ['payment'], T09: ['goodId'], T10: ['goodId', 'payment'] };
+    const toolKeys = { T01: ['kind', 'cardId'], T02: ['ownGoodId', 'otherGoodId',...(pending.refined?['ownRefined','otherRefined']:[])], T03: ['cardIds'], T04: ['cardId'],
+      T05: [], T06: ['goodId',...(pending.refined?['refined']:[])], T07: ['cardId'], T08: ['payment'], T09: ['goodId'], T10: ['goodId', 'payment'] };
     if (!subsetFields(data.params, toolKeys[pending.code]) || data.discardTopId !== undefined && state.discard.at(-1) !== data.discardTopId
         || data.paidSilver !== undefined && !integer(data.paidSilver, 0, 2)
         || (data.borrowed ? pending.code === 'T07' || pending.sourceCards.length !== 1
@@ -264,10 +285,11 @@ function branchProblem(state, pending) {
 export function pendingProblem(state, pending) {
   const ids = state.players.map(player => player.id);
   const profile = materialProfileFor(state);
-  if (!exactFields(pending, pendingFields) || !identifier(pending.id) || !['peek', 'trade', 'character', 'tool', 'auction','role'].includes(pending.kind)
+  const refining=state.configuration.modules?.refining===true;
+  if (!exactFields(pending, [...pendingFields,...(refining?['refined']:[])]) || !identifier(pending.id) || !['peek', 'trade', 'character', 'tool', 'auction','role'].includes(pending.kind)
       || pending.ownerId !== state.turnPlayerId || !identifier(pending.stage) || !identifier(pending.code)
       || !uniqueCopies(pending.sourceCards, profile) || !uniqueCopies(pending.poolCards, profile) || !goodsVector(pending.goods)
-      || !plainObject(pending.data) || !boundedJson(pending.data, profile)) return '保存的待结算区无效。';
+      || refining&&!refinedStock(pending) || !plainObject(pending.data) || !boundedJson(pending.data, profile)) return '保存的待结算区无效。';
   const choice = pending.choice, response = pending.response, receipt = pending.receipt;
   if (choice !== null && (!exactFields(choice, ['id', 'kind', 'actorId', 'visibility', 'options', 'defaultSelection'])
       || !identifier(choice.id) || !identifier(choice.kind) || !ids.includes(choice.actorId) || !['private', 'public'].includes(choice.visibility)
@@ -289,12 +311,16 @@ export function pendingProblem(state, pending) {
       || !same(receipt.goods, pending.goods) || countGoods(receipt.goods) === 0
       || choice?.kind !== 'retain-goods' || choice.actorId !== receipt.actorId)) return '保存的收货选择无效。';
   if (response && (choice || receipt) || receipt && goodsIds.some(id => receipt.goods[id] > pending.goods[id])) return '待结算分支相互冲突。';
+  if(pending.kind==='tool'&&pending.code===ORDER_COMPASS)return compassPendingProblem(state,pending);
+  if(pending.kind==='tool'&&pending.code===REFINING_HAMMER)return hammerPendingProblem(state,pending);
+  if(pending.kind==='tool'&&pending.code===EXCHANGE_SEAL)return borrowedSealPendingProblem(state,pending);
   if(pending.kind==='character'&&isNewCharacter(pending.code))return newCharacterPendingProblem(state,pending)||(pending.receipt?choiceProblem(state,pending):null);
   if(pending.kind==='tool'&&isNewTool(pending.code))return newToolPendingProblem(state,pending);
   if(pending.kind==='role'){
     const owner=state.players.find(p=>p.id===pending.ownerId);
     if(pending.sourceCards.length||pending.poolCards.length||countGoods(pending.goods)||pending.receipt||owner.roleId!==`yousei.role.${pending.code.toLowerCase()}`)return '角色效果不能占用主牌实体。';
-    if(pending.code==='R11')return pending.stage==='discard'&&exactFields(pending.data,[])&&pending.response===null
+    if(['R11','E2R04'].includes(pending.code))return pending.stage==='discard'&&exactFields(pending.data,[])&&pending.response===null
+      &&(pending.code==='R11'?state.turnUsage.accountant:state.appraisalUsed)
       &&pending.choice?.kind==='accountant-discard'&&pending.choice.actorId===owner.id&&pending.choice.visibility==='private'
       &&same(pending.choice.options,owner.hand.map(cardId=>({cardId})))&&pending.choice.options.some(x=>same(x,pending.choice.defaultSelection))?null:'账房弃牌义务无效。';
     if(!['R23','R24'].includes(pending.code))return activeRolePendingProblem(state,pending);
@@ -307,28 +333,39 @@ export function pendingProblem(state, pending) {
 
 export function gameProblem(state) {
   try {
-    const fields = plainObject(state) && (isMultiplayer(state) || Object.hasOwn(state, 'goodsPerType')) ? [...stateFields, 'goodsPerType'] : stateFields;
+    const tradeRoutes=state?.contentVersion===EXPANSION_TWO_CONTENT_VERSION;
+    const modules=tradeRoutes?state.configuration?.modules:null;
+    const orders=modules?.orders===true,refining=modules?.refining===true;
+    const fields=[...stateFields,'goodsPerType',...(orders?['publicOrders','orderUsage']:[]),
+      ...(refining?['refiningUsed','appraisalUsed']:[]),...(modules?.exchange?['exchangeMarket']:[])];
     const supported=state?.version===3&&state.ruleVersion===MULTIPLAYER_RULE_VERSION;
     if (!exactFields(state, fields) || !supported || state.gameType !== 'hyakki-trading'
-        || !isExpansionContentVersion(state.contentVersion) || !seatId(state.matchId)) return '不支持的幽街存档格式。';
+        || (!tradeRoutes&&!isExpansionContentVersion(state.contentVersion)) || !seatId(state.matchId)) return '不支持的幽街存档格式。';
     const profile = materialProfileFor(state);
     const frozen=materialForConfiguration(state.configuration);
     if(frozen.contentVersion!==state.contentVersion||state.configuration.participantIds.some((id,i)=>id!==state.players[i]?.id)
       ||state.configuration.playerCount!==state.players.length||state.configuration.actionLimit!==state.actionLimit
       ||state.configuration.goodsPerType!==state.goodsPerType||turnUsageProblem(state.turnUsage,state.turnId))return '冻结开局或本回合额度不符。';
+    if(orders){
+      const issue=orderStateProblem(state);if(issue)return issue;
+    }
+    if(refining&&(typeof state.refiningUsed!=='boolean'||typeof state.appraisalUsed!=='boolean'
+      ||state.stage!=='use'&&(state.refiningUsed||state.appraisalUsed)
+      ||state.appraisalUsed&&state.players.find(p=>p.id===state.turnPlayerId)?.roleId!==APPRAISER))return '精制回合次数无效。';
     if(state.turnUsage.firstPeekOffered!==state.drawStarted)return '首次摸看记录与阶段不一致。';
     if(!Array.isArray(state.afterActions)||state.afterActions.length>1||state.afterActions.some(job=>!exactFields(job,['kind','playerId'])
-      ||job.kind!=='accountant-draw-discard'||job.playerId!==state.turnPlayerId
-      ||state.players.find(p=>p.id===job.playerId)?.roleId!=='yousei.role.r11'||!state.turnUsage.accountant)||state.afterActions.length&&!state.pending)return '交易后义务无效。';
+      ||job.playerId!==state.turnPlayerId||!(job.kind===APPRAISAL_JOB?refining&&state.appraisalUsed
+        :job.kind==='accountant-draw-discard'&&state.players.find(p=>p.id===job.playerId)?.roleId==='yousei.role.r11'&&state.turnUsage.accountant))
+      ||state.afterActions.length&&!state.pending)return '交易后义务无效。';
     const goodsPerType = goodsPerTypeOf(state);
     if (!validGoodsPerType(goodsPerType)) return '每类货物数量须为4～20件。';
     if (!Array.isArray(state.players) || state.players.length < 2 || state.players.length > (isMultiplayer(state) ? 6 : 2)
         || new Set(state.players.map(player => player?.id)).size !== state.players.length
-        || state.players.some(player => !exactFields(player, playerFields) || !seatId(player.id) || !uniqueCopies(player.hand, profile)
+        || state.players.some(player => !exactFields(player, [...playerFields,...(refining?['refined']:[])]) || !seatId(player.id) || !uniqueCopies(player.hand, profile)
           || !Array.isArray(player.tools) || player.tools.length > 3 || player.tools.some(tool => !exactFields(tool, ['cardId', 'exhausted'])
             || !validCopy(tool.cardId, profile) || cardDefinition(tool.cardId).category !== 'tool' || typeof tool.exhausted !== 'boolean')
-          || !goodsVector(player.goods) || !integer(player.silver) || !integer(player.stallCount, 0, 5) || typeof player.temporaryOccupied !== 'boolean'
-          || !ROLES.some(role=>role.id===player.roleId)||roleStateProblem(player.roleState,player.roleId)
+          || !goodsVector(player.goods) || refining&&!refinedStock(player) || !integer(player.silver) || !integer(player.stallCount, 0, 5) || typeof player.temporaryOccupied !== 'boolean'
+          || !(profile.roles??ROLES).some(role=>role.id===player.roleId)||roleStateProblem(player.roleState,player.roleId)
           || countGoods(player.goods) > ordinaryCapacity(player)+1
           || player.temporaryOccupied !== (countGoods(player.goods) > ordinaryCapacity(player)))
         ||new Set(state.players.map(p=>p.roleId)).size!==state.players.length) return '保存的玩家材料无效。';
@@ -348,6 +385,7 @@ export function gameProblem(state) {
         || state.closing.finalPlayerId === state.closing.triggerPlayerId
         || state.closing.finalPlayerId !== ids[(ids.indexOf(state.firstPlayerId) + ids.length - 1) % ids.length])) return '保存的收市状态无效。';
     if (state.pending !== null) { const issue = pendingProblem(state, state.pending); if (issue) return issue; }
+    if(modules?.exchange){const issue=exchangeStateProblem(state,profile);if(issue)return issue;}
     const material = [...state.deck, ...state.discard, ...state.players.flatMap(player => [...player.hand, ...player.tools.map(tool => tool.cardId)]),
       ...(state.pending ? [...state.pending.sourceCards, ...state.pending.poolCards] : [])];
     if (material.length !== profile.deckSize || new Set(material).size !== profile.deckSize || material.some(card => !validCopy(card, profile))) return `${profile.deckSize}张实体牌必须各处于一个材料区。`;

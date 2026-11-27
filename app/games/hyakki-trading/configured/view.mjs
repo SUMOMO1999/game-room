@@ -5,6 +5,8 @@ import { gameProblem, cardDefinition, validCopy } from './validation.mjs';
 import { hyakkiGameClock } from '../lifecycle.mjs';
 import { currentDecision } from '../decision.mjs';
 import { goodsPerTypeOf, legalResponseCards,ordinaryCapacity } from './model.mjs';
+import {projectPublicOrders} from './public-order-market.mjs';
+import {projectExchangeMarket} from './exchange-market.mjs';
 const clone = value => structuredClone(value);
 const publicCard = (state, copyId, zone, index) => ({ ref: `${zone}:${state.revision}:${index}`, definitionId: cardDefinition(copyId).id });
 const privateCard = copyId => ({ cardId: copyId, definitionId: cardDefinition(copyId).id });
@@ -59,6 +61,7 @@ function pendingView(state, viewerId) {
     actorId, readOnly: terminal(state), sourceCards: pending.sourceCards.map((card, index) => publicCard(state, card, 'source', index)),
     ...(pending.kind==='role'||pending.kind==='peek'&&pending.data.inspection?{sourceRole:{roleId:state.players.find(p=>p.id===pending.ownerId).roleId,actorId:pending.ownerId}}:{}),
     poolCount: pending.poolCards.length, goods: clone(pending.goods),
+    ...(pending.refined?{refined:clone(pending.refined)}:{}),
     ...(publicPool ? { pool: pending.poolCards.map((card, index) => publicCard(state, card, 'pool', index)) } : {}),
     ...(privatePool && viewerId === pending.ownerId ? { privatePool: pending.poolCards.map(privateCard) } : {}),
     decision: decision ? { ...decision } : null,
@@ -88,7 +91,8 @@ function pendingView(state, viewerId) {
   }
   // Initial public targets are already announced before counter-response; private
   // draw/order/payment bookkeeping remains inside pending.data on the server.
-  if (pending.code === 'M01' && pending.data.goodsId) view.target = { goodsId: pending.data.goodsId };
+  if (pending.code === 'M01' && pending.data.goodsId) view.target = { goodsId: pending.data.goodsId,
+    ...(Object.hasOwn(pending.data,'refined')?{refined:pending.data.refined}:{}) };
   if (pending.code === 'M08' && pending.data.toolCardId) {
     const target = state.players.flatMap((player, playerIndex) => player.tools.map((tool, index) => ({ tool, index, playerIndex })))
       .find(entry => entry.tool.cardId === pending.data.toolCardId);
@@ -113,7 +117,7 @@ function project(state, viewerId) {
     discard: state.discard.map((card, index) => publicCard(state, card, 'discard', index)), bankGoods: clone(state.bankGoods),
     availableStalls: state.availableStalls, purchasedStalls: state.purchasedStalls,
     players: state.players.map((player, playerIndex) => ({ id: player.id, silver: player.silver, handCount: player.hand.length,roleId:player.roleId,roleState:clone(player.roleState),
-      goods: clone(player.goods), stallCount: player.stallCount, ordinaryCapacity: ordinaryCapacity(player),
+      goods: clone(player.goods), ...(player.refined?{refined:clone(player.refined)}:{}), stallCount: player.stallCount, ordinaryCapacity: ordinaryCapacity(player),
       temporaryOccupied: player.temporaryOccupied,
       tools: player.tools.map((tool, index) => ({ ...publicCard(state, tool.cardId, `tool-${playerIndex}`, index), exhausted: tool.exhausted,
         ...(player.id === viewerId ? { cardId: tool.cardId } : {}) })),
@@ -121,6 +125,9 @@ function project(state, viewerId) {
     pending: pendingView(state, viewerId), clock: clone(hyakkiGameClock(state)),
     holds: { manual: clone(state.lifecycle.manual), absence: clone(state.lifecycle.absence), capacity: state.lifecycle.capacity },
     publicEventSequence: state.publicEventSequence, lastPublicEvents: clone(state.lastPublicEvents),
+    ...(state.publicOrders?{publicOrders:projectPublicOrders(state.publicOrders,state.status==='playing'?viewerId:null),orderUsage:clone(state.orderUsage)}:{}),
+    ...(state.configuration.modules?.refining?{refiningUsed:state.refiningUsed,appraisalUsed:state.appraisalUsed}:{}),
+    ...(state.exchangeMarket?{exchangeMarket:projectExchangeMarket(state,terminal(state)?null:viewerId)}:{}),
     ...(viewerId !== null ? { viewerId } : {}) };
 }
 export const privateView = (state, playerId) => project(state, playerId);

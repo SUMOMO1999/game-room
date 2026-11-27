@@ -1,10 +1,11 @@
 import { lstatSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { NONAME_RECOVERY_SCOPES } from '../server/noname/retained-rooms.mjs';
 
 const LEGACY_SCOPES = ['game-profiles', 'room-invites', 'rooms', 'room-memberships', 'room-registry', 'room-requests'];
 const CURRENT_SCOPES = [...LEGACY_SCOPES, 'room-chat', 'game-history', 'history-index', 'wordbank-packs', 'wordbank-releases', 'wordbank-index', 'draw-canvases',
-  'game-score-ledger', 'game-score-balances', 'game-score-meta', 'hyakki-events', 'hyakki-event-meta'];
+  'game-score-ledger', 'game-score-balances', 'game-score-meta', 'hyakki-events', 'hyakki-event-meta', ...NONAME_RECOVERY_SCOPES];
 const LEGACY = { format: 1, roomSnapshots: { read: [1], write: [1] },
   backupScopes: { read: LEGACY_SCOPES, write: LEGACY_SCOPES } };
 
@@ -15,7 +16,7 @@ const LEGACY = { format: 1, roomSnapshots: { read: [1], write: [1] },
 // Schema20 pins Rummikub friends-v5; older binaries cannot read its snapshots.
 // Schema21 pins Hyakki's player-count content; legacy snapshots stay readable.
 export const CURRENT_DATA_COMPATIBILITY = Object.freeze({ format: 1,
-  roomSnapshots: Object.freeze({ read: Object.freeze([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 18, 19, 20, 21, 22]), write: Object.freeze([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 15, 17, 18, 19, 20, 21, 22]) }),
+  roomSnapshots: Object.freeze({ read: Object.freeze([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 18, 19, 20, 21, 22, 23, 24, 25]), write: Object.freeze([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 15, 17, 18, 19, 20, 21, 22, 23, 24, 25]) }),
   backupScopes: Object.freeze({ read: Object.freeze([...CURRENT_SCOPES]), write: Object.freeze([...CURRENT_SCOPES]) }),
   // Snapshot schema1 is unchanged, but a 5000-word reader rejects a valid new
   // shared pack. Capacity is therefore part of binary activation compatibility.
@@ -27,10 +28,13 @@ export const CURRENT_DATA_COMPATIBILITY = Object.freeze({ format: 1,
   // Snapshot/backup scope names do not change when public event groups gain
   // trusted turn/delta metadata. Group3 additionally pins content/count;
   // every group retains the measured 32 KiB ceiling and original reserve.
+  // Material v5 changes R09 exchange rules within snapshot22/group4.
   // Material v4 adds physical cards and new role semantics within snapshot22/group4.
   // A prior binary without this capability must not be selected after v4 writes.
-  hyakkiMaterials: Object.freeze({ read: Object.freeze([1, 2, 3, 4]), write: Object.freeze([1, 2, 3, 4]) }),
-  hyakkiEvents: Object.freeze({ read: Object.freeze([1, 2, 3, 4]), write: Object.freeze([2, 3, 4]) }),
+  // 商路风云 uses a new material contract and public event group 5 even
+  // though the surrounding room and practice envelope versions are unchanged.
+  hyakkiMaterials: Object.freeze({ read: Object.freeze([1, 2, 3, 4, 5, 6]), write: Object.freeze([1, 2, 3, 4, 5, 6]) }),
+  hyakkiEvents: Object.freeze({ read: Object.freeze([1, 2, 3, 4, 5]), write: Object.freeze([2, 3, 4, 5]) }),
   // Zero means the historical practice envelope without a public journal.
   // Pausing an untouched old save can still write that exact legacy shape.
   hyakkiPracticeJournal: Object.freeze({ read: Object.freeze([0, 1, 2]), write: Object.freeze([0, 1, 2]) }),
@@ -76,11 +80,11 @@ export function validateDataCompatibility(value) {
   if (canvasStrokePoints.read < canvasStrokePoints.write) invalid('release cannot read its own canvas stroke writes');
   const hyakkiMaterials = Object.hasOwn(value, 'hyakkiMaterials') ? value.hyakkiMaterials : { read: [1, 2, 3], write: [1, 2, 3] };
   keys(hyakkiMaterials, ['read', 'write']);
-  for (const direction of ['read', 'write']) list(hyakkiMaterials[direction], entry => Number.isSafeInteger(entry) && entry >= 1 && entry <= 4);
+  for (const direction of ['read', 'write']) list(hyakkiMaterials[direction], entry => Number.isSafeInteger(entry) && entry >= 1 && entry <= 6);
   if (!includes(hyakkiMaterials.read, hyakkiMaterials.write)) invalid('release cannot read its own hyakki material writes');
   const hyakkiEvents = Object.hasOwn(value, 'hyakkiEvents') ? value.hyakkiEvents : { read: [1], write: [1] };
   const hyakkiPracticeJournal = Object.hasOwn(value, 'hyakkiPracticeJournal') ? value.hyakkiPracticeJournal : { read: [0], write: [0] };
-  for (const [capability, minimum, maximum] of [[hyakkiEvents, 1, 4], [hyakkiPracticeJournal, 0, 2]]) {
+  for (const [capability, minimum, maximum] of [[hyakkiEvents, 1, 5], [hyakkiPracticeJournal, 0, 2]]) {
     keys(capability, ['read', 'write']);
     for (const direction of ['read', 'write']) list(capability[direction], entry => Number.isSafeInteger(entry) && entry >= minimum && entry <= maximum);
     if (!includes(capability.read, capability.write)) invalid('release cannot read its own hyakki writes');

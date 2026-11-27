@@ -3,9 +3,11 @@ import {EXPANSION_DATA} from './expansion-one-data.mjs';
 
 export const EXPANSION_PACK_ID='six-trades-v1';
 export const LEGACY_EXPANSION_CONTENT_VERSION='yousei-content-v3';
-export const EXPANSION_CONTENT_VERSION='yousei-content-v4';
+export const PREVIOUS_EXPANSION_CONTENT_VERSION='yousei-content-v4';
+export const EXPANSION_CONTENT_VERSION='yousei-content-v5';
+export const EXPANSION_CONTENT_VERSIONS=Object.freeze([LEGACY_EXPANSION_CONTENT_VERSION,PREVIOUS_EXPANSION_CONTENT_VERSION,EXPANSION_CONTENT_VERSION]);
 export const CONFIGURABLE_RULE_VERSION='yousei-digital-v3';
-export const isExpansionContentVersion=value=>[LEGACY_EXPANSION_CONTENT_VERSION,EXPANSION_CONTENT_VERSION].includes(value);
+export const isExpansionContentVersion=value=>EXPANSION_CONTENT_VERSIONS.includes(value);
 export const inspectionCardCount=configuration=>configuration?.contentVersion===LEGACY_EXPANSION_CONTENT_VERSION?2:3;
 export const BASE_PACK_ID='base';
 const freeze=value=>{
@@ -16,10 +18,14 @@ const baseByCode=new Map(baseCards.map(card=>[card.sourceCode,card]));
 export const GOODS=freeze(EXPANSION_DATA.goods);
 export const CATEGORIES=freeze(EXPANSION_DATA.categories);
 const legacyRoles=freeze(EXPANSION_DATA.roles);
-export const ROLES=freeze(legacyRoles.map(role=>role.sourceCode==='R15'?{...role,
+const previousRoles=freeze(legacyRoles.map(role=>role.sourceCode==='R15'?{...role,
   summary:'每回合第一次摸牌前，可付1两看牌堆顶3张：选1张决定留或弃，未选的两张弃掉。',compactText:'首次摸牌3选1',
   details:['仍只花原本摸牌的1行动。牌不够3张时，只能正常摸牌。','未选的两张进入公开弃牌区；所选牌仍由自己决定留或弃。','本回合只用1次；选弃后继续摸牌，照常再花行动。']}
   :role.sourceCode==='R12'?{...role,details:['普通开局20两，额外银两为本局收市金额减20后乘15%，四舍五入；60两收市时开局26两。','只在开局获得，不是每回合收入。']}:role));
+export const ROLES=freeze(previousRoles.map(role=>role.sourceCode==='R09'?{...role,
+  summary:'每回合1次，花1行动，与公共货栈等量交换1～2件任意货物。',compactText:'任意换货1～2件',
+  details:['交出和换入的货物都可任意搭配，无需同类。','须等量交换1～2件，并改变至少一种货物的数量。','每回合限1次，花1行动；按公共货栈的实际库存交换。']}:role));
+export const unrestrictedRoleExchange=configuration=>configuration?.contentVersion===EXPANSION_CONTENT_VERSION;
 const newOrder={sourceCode:'XG21',name:'新六货大单',category:'goods',original:false,
   copiesByPlayerCount:{2:3,3:3,4:3,5:3,6:3},recipe:{type:'fixed',goods:{mechanism:1,silk:1,pearl:1,herb:1,painting:1,timber:1},count:6},
   buySilver:10,sellSilver:18,summary:'花1行动，机关、锦缎、灵珠、灵植、书画、木材各1件，整组买入或卖出。',compactText:'新六货各1',
@@ -60,9 +66,9 @@ export function getExpansionCard(id){
 export function getRole(id,configuration=null){
   const version=configuration?.contentVersion??EXPANSION_CONTENT_VERSION;
   if(!isExpansionContentVersion(version))throw new RangeError('扩展角色版本不符。');
-  const role=version===LEGACY_EXPANSION_CONTENT_VERSION?legacyRoles.find(r=>r.id===id):rolesById.get(id);
+  const role=version===LEGACY_EXPANSION_CONTENT_VERSION?legacyRoles.find(r=>r.id===id):version===PREVIOUS_EXPANSION_CONTENT_VERSION?previousRoles.find(r=>r.id===id):rolesById.get(id);
   if(!role)throw new RangeError('未知的六行百业角色。');
-  if(role.sourceCode==='R12'&&version===EXPANSION_CONTENT_VERSION){
+  if(role.sourceCode==='R12'&&version!==LEGACY_EXPANSION_CONTENT_VERSION){
     const target=configuration?.closingTarget??60;
     if(!Number.isSafeInteger(target)||target<30||target>200||target%10)throw new RangeError('收市金额无效。');
     const initialSilver=20+Math.round((target-20)*.15);

@@ -263,15 +263,19 @@ export function createDurableRoomStore({ storage, now = Date.now, ttlMs = 8 * 60
     await rememberRoom(record.value.snapshot, userKey);
     return membership(record.value.snapshot, userKey);
   }
-  async function joinRoom(code, userKey, name, id, role) {
+  async function joinRoom(code, userKey, name, id, role, expectedGameType) {
     identity(userKey); requestId(id); name = nickname(name);
     if(role!==undefined && !['player','spectator'].includes(role)) fail(400,'INVALID_ROLE','请选择玩家或观众。');
     await ensureProfile(userKey);
-    const fingerprint = hash(canonical(role===undefined?{name}:{name,role}));
+    if(expectedGameType!==undefined && expectedGameType!=='last-hand') fail(400,'INVALID_GAME','游戏类型无效。');
+    const fields = role===undefined ? {name} : {name,role};
+    const fingerprint = hash(canonical(expectedGameType===undefined ? fields : {...fields,expectedGameType}));
     const joinKey = hash(`${userKey}\0${id}`);
     for (let attempt = 0; attempt < maxCasAttempts; attempt += 1) {
       const { roomId, record } = await resolvedRoom(code);
       const room = record.value;
+      if (expectedGameType && expectedGameType !== room.snapshot.gameType)
+        fail(409,'WRONG_GAME','桌号属于另一款游戏，请从棋牌室大厅进入。');
       if (room.joins[joinKey]) {
         if (room.joins[joinKey].fingerprint !== fingerprint) fail(409, 'REQUEST_ID_REUSED', '同一请求编号不能执行不同操作。');
         if (room.joins[joinKey].error) throw new RoomError(...room.joins[joinKey].error);

@@ -1,5 +1,5 @@
 import { accountGeneration } from './account-client.mjs';
-import { gameViewport } from './game-viewport.mjs';
+import { roomViewportFrame } from './platform/room-viewport.mjs';
 
 const MAX_MESSAGES = 500;
 const MAX_OUTBOX = 10;
@@ -391,7 +391,7 @@ export function mountRoomChat({ documentRef = document, windowRef = window, onUn
   const updateViewport = () => {
     const active=documentRef.activeElement;
     const editing=Boolean(active && (['INPUT','TEXTAREA','SELECT'].includes(active.tagName) || active.isContentEditable));
-    const frame=gameViewport({width:windowRef.innerWidth,height:windowRef.innerHeight,visual:viewport,editing});
+    const frame=roomViewportFrame(windowRef,documentRef);
     panel.style.setProperty('--chat-viewport-height', `${frame.height}px`);
     panel.style.setProperty('--chat-viewport-top', `${frame.top}px`);
     panel.style.setProperty('--chat-viewport-left', `${frame.left}px`);
@@ -419,7 +419,7 @@ export function mountRoomChat({ documentRef = document, windowRef = window, onUn
   viewport?.addEventListener('resize', updateViewport); viewport?.addEventListener('scroll', updateViewport);
   documentRef.addEventListener('focusin',updateViewport);
   documentRef.addEventListener('focusout',()=>queueMicrotask(updateViewport));
-  for(const type of ['resize','pageshow','focus'])windowRef.addEventListener(type,updateViewport);
+  for(const type of ['resize','pageshow','focus','roomviewportchange'])windowRef.addEventListener(type,updateViewport);
   updateViewport(); model.changed();
   windowRef.setInterval(() => {
     if (!model.identity) return;

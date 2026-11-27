@@ -10,7 +10,7 @@ import { currentDecision } from '../../../app/games/hyakki-trading/decision.mjs'
 import { DEFAULT_ACTION_LIMIT, DEFAULT_GOODS_PER_TYPE, goodsPerTypeOf,
   validActionLimit, validGoodsPerType } from '../../../app/games/hyakki-trading/model.mjs';
 import { transitionHyakkiLifecycle, hyakkiCommonActionProblem, changeHyakkiPause,
-  hyakkiGameClock, hyakkiRetentionDeadline } from '../../../app/games/hyakki-trading/lifecycle.mjs';
+  hyakkiGameClock, hyakkiRetentionDeadline, offlineHyakkiPlayers, OFFLINE_DEFAULT_GRACE_MS } from '../../../app/games/hyakki-trading/lifecycle.mjs';
 import { problem } from '../adapter-contract.mjs';
 import { createHyakkiEventStore } from './event-store.mjs';
 import { projectPublicBattleMetadata } from '../../../app/games/hyakki-trading/battle-public-metadata.mjs';
@@ -76,7 +76,17 @@ function record(state, events, now) {
 function wealth(state) { return state.players.map(player => ({ playerId: player.id, silver: player.silver })); }
 function lifecycle(game, context) {
   const change = transitionHyakkiLifecycle(game, context);
-  if (!change.ok || !change.changed || change.checkpointOnly) return change;
+  if (!change.ok) return change;
+  const offline = offlineHyakkiPlayers(change.state, context.presence, context.now, OFFLINE_DEFAULT_GRACE_MS);
+  const actor = currentDecision(change.state)?.actorId ?? change.state.turnPlayerId;
+  if (['presence', 'disconnected'].includes(context.reason) && change.roomPhase === 'playing' && offline.includes(actor)) {
+    const settled = core.applyOfflineDefaults(change.state, offline, { now: context.now, randomInt: context.serverRandomInt ?? randomInt, closingTarget: context.closingTarget ?? 60 });
+    if (!settled.ok) return settled;
+    return { ...change, ...settled, changed: true, checkpointOnly: false,
+      roomPhase: settled.state.status, terminal: settled.state.status !== 'playing',
+      ...(settled.state.status !== 'playing' ? { status: settled.state.status === 'finished' ? 'completed' : 'aborted' } : {}) };
+  }
+  if (!change.changed || change.checkpointOnly) return change;
   if (change.terminal) {
     change.state.result.wealth = wealth(change.state);
     if (change.state.pending?.data.auction) change.state.pending.data.auction.released = true;
@@ -118,7 +128,7 @@ function roomStateProblem(room, hasRoles) {
 export function createHyakkiAdapter({ maxSnapshotBytes = 256 * 1024 } = {}) {
   return Object.freeze({ gameType, minPlayers: 2, maxPlayers: 6, ruleVersions: Object.freeze([DIGITAL_RULE_VERSION, MULTIPLAYER_RULE_VERSION]),
     actionTypes: Object.freeze(Object.keys(actionExtras)), configurationFields: Object.freeze(['hyakkiConfig']),
-    usesActionIntents: true, usesPresenceLifecycle: true, maxSnapshotBytes, historyPlayerFields: Object.freeze(['wealth']),
+    usesActionIntents: true, usesPresenceLifecycle: true, presenceBlocksActions: () => false, maxSnapshotBytes, historyPlayerFields: Object.freeze(['wealth']),
     actionFields: type => Object.hasOwn(actionExtras, type) ? [...fences, ...actionExtras[type]] : null,
     validateAction: action => Object.hasOwn(actionExtras, action?.type) ? actionProblem(action) : null,
     createGame: (players, options) => core.createGame(players.map(player => player.id), options),

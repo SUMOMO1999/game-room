@@ -2,7 +2,10 @@ import { presentationCatalog } from './games/catalog.mjs';
 
 // Decorative, locally drawn game objects. Navigation comes from the public
 // presentation catalog; these pictures never decide which games are available.
+import { lastHandEnabled } from './games/last-hand-availability.mjs';
 const illustrations = Object.freeze({
+  'last-hand':'<image href="./games/last-hand/assets/mark-192.png" x="48" y="8" width="104" height="104"/>',
+  noname: '<g transform="rotate(-12 87 70)"><rect x="52" y="24" width="58" height="88" rx="5" fill="#f1e6ce" stroke="#ac9672" stroke-width="2"/><text x="80" y="83" text-anchor="middle" fill="#446251" font-family="serif" font-size="37">闪</text></g><g transform="rotate(7 130 68)"><rect x="101" y="18" width="62" height="92" rx="5" fill="#faf2df" stroke="#ab936c" stroke-width="2"/><rect x="108" y="25" width="48" height="78" rx="2" fill="none" stroke="#d4c3a4"/><text x="132" y="83" text-anchor="middle" fill="#9c4637" font-family="serif" font-size="42" font-weight="700">杀</text></g>',
   rummikub: '<g transform="translate(43 29) rotate(-10 25 43)"><rect width="48" height="82" rx="7" fill="#fffaf0" stroke="#cabda2" stroke-width="2"/><text x="24" y="51" text-anchor="middle" fill="#b7483b" font-size="36" font-weight="700">10</text></g><g transform="translate(90 22)"><rect width="48" height="82" rx="7" fill="#fffaf0" stroke="#cabda2" stroke-width="2"/><text x="24" y="51" text-anchor="middle" fill="#42688a" font-size="36" font-weight="700">10</text></g><g transform="translate(139 31) rotate(10 25 43)"><rect width="48" height="82" rx="7" fill="#fffaf0" stroke="#cabda2" stroke-width="2"/><text x="24" y="51" text-anchor="middle" fill="#344d43" font-size="36" font-weight="700">10</text></g>',
   'army-flip': '<path d="M28 49H195M28 89H195M70 18V119M150 18V119" stroke="#c7b897" stroke-width="2"/><g fill="#f9f0dc" stroke="#aa9063" stroke-width="3"><circle cx="70" cy="49" r="26"/><circle cx="150" cy="89" r="26"/></g><g text-anchor="middle" font-size="30" font-weight="650"><text x="70" y="60" fill="#405a47">军</text><text x="150" y="100" fill="#a9473d">旗</text></g>',
   'flying-chess': '<path d="M34 107Q85 137 139 79T198 31" fill="none" stroke="#8aa798" stroke-width="2" stroke-dasharray="5 7"/><g transform="translate(74 50) rotate(-23 36 24)"><path d="M0 27L26 20L35 0H43L45 19L68 27V33L45 32L42 49H36L31 33L0 35Z" fill="#43695b" stroke="#304d43" stroke-width="2"/></g><rect x="144" y="18" width="41" height="41" rx="9" fill="#fffaf0" stroke="#b4c8bd" stroke-width="2"/><g fill="#426759"><circle cx="155" cy="29" r="3"/><circle cx="174" cy="29" r="3"/><circle cx="155" cy="48" r="3"/><circle cx="174" cy="48" r="3"/></g>',
@@ -65,7 +68,7 @@ export function mountPracticeHub({ document, catalog = presentationCatalog } = {
   const search = document.getElementById('hub-search');
   const count = document.getElementById('hub-count');
   const empty = document.getElementById('hub-empty');
-  const games = catalog.list().filter(game => game.practicePage !== null);
+  const games = catalog.list().filter(game => game.practicePage !== null && (game.gameType !== 'last-hand' || lastHandEnabled));
   const records = games.map(game => ({
     searchText: `${game.name} ${game.gameType}`.normalize('NFKC').toLocaleLowerCase('zh-CN'),
     card: gameCard(document, game),

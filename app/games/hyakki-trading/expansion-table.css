@@ -17,18 +17,18 @@
 #hyakki-digital-root.ex-preview .ex-market-board{width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;min-height:44px;border:0;padding:0;background:none;box-shadow:none;text-align:center}
 .ex-market-pair{display:flex;flex-direction:column;gap:3px;padding:4px;border:1px solid #b7a16e40;background:#18352bc9;border-radius:4px;min-width:0}.ex-market-pair>small{font-size:11px;color:#dbc49b;letter-spacing:.12em}.ex-market-pair>span{display:flex;gap:4px;justify-content:space-around}.ex-market-good{min-width:0;flex:1;display:grid;grid-template-columns:1fr auto;gap:2px;justify-items:center;align-items:center}.ex-market-good img{grid-column:1/3;width:34px;height:34px;background:#e9d7b0;border-radius:50%;border:1px solid #c7ae78}.ex-market-good>span{font-size:10px}.ex-market-good>b{font:13px Georgia;color:#f4cf83}
 /* Role selection occupies a single bounded table, not the page. */
-#hyakki-digital-root.ex-preview .ex-role-stage{position:absolute;inset:calc(var(--nm-header-bottom,66px) + 4px) 0 0;z-index:7;display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:12px;padding:16px clamp(16px,5vw,90px) max(12px,env(safe-area-inset-bottom));background:linear-gradient(#152e27ee,#10261bf7);box-sizing:border-box;overflow:hidden}
+#hyakki-digital-root.ex-preview .ex-role-stage{position:absolute;inset:calc(var(--nm-header-bottom,66px) + 4px) 0 0;z-index:7;display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:12px;padding:16px clamp(16px,calc(5 * var(--room-vw,1vw)),90px) max(12px,env(safe-area-inset-bottom));background:linear-gradient(#152e27ee,#10261bf7);box-sizing:border-box;overflow:hidden}
 .ex-role-stage[hidden]{display:none!important}.ex-choice-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:0}.ex-choice-heading small,.ex-local-label{font-size:12px;color:#c8b38b}.ex-choice-heading h1{font:500 25px/1.3 'Songti SC',serif;margin:5px 0}.ex-set-picker{display:flex;align-items:center;gap:8px;flex:none}.ex-set-picker>span{font-size:12px;color:#d4c29a}.ex-set-picker>button{width:44px;height:44px;padding:0!important;font-size:24px!important}
 .ex-preview:is([data-ex-scene=prepare],[data-ex-scene=select-role]) :is(.yg-playfield,#yg-peer){visibility:hidden}
 .ex-candidates{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;min-height:0;align-items:stretch;max-width:1100px;width:100%;justify-self:center}.ex-candidate{position:relative;min-width:0;min-height:0;border-radius:7px}.ex-candidate.is-selected{outline:3px solid #e5ba70;outline-offset:4px}
-#hyakki-digital-root.ex-preview .ex-candidate>button:first-child{width:100%;height:100%;padding:0;border:1px solid #bba475;min-height:44px;background:none;box-shadow:0 9px 20px #0006}.ex-candidate .ex-face{padding:14px;gap:8px}.ex-candidate .ex-art{height:clamp(90px,27vh,270px);flex:1;min-height:45px}.ex-candidate .ex-face p{font-size:14px;line-height:1.55;text-align:left}.ex-candidate .ex-face h3{font-size:24px;padding:0 26px}.ex-candidate .ex-face footer{font-size:11px}
+#hyakki-digital-root.ex-preview .ex-candidate>button:first-child{width:100%;height:100%;padding:0;border:1px solid #bba475;min-height:44px;background:none;box-shadow:0 9px 20px #0006}.ex-candidate .ex-face{padding:14px;gap:8px}.ex-candidate .ex-art{height:clamp(90px,calc(27 * var(--room-vh,1vh)),270px);flex:1;min-height:45px}.ex-candidate .ex-face p{font-size:14px;line-height:1.55;text-align:left}.ex-candidate .ex-face h3{font-size:24px;padding:0 26px}.ex-candidate .ex-face footer{font-size:11px}
 #hyakki-digital-root.ex-preview .ex-read-role{position:absolute;top:3px;right:3px;width:44px;height:44px;min-width:44px;min-height:44px;padding:0;background:#eadab7;border:0;color:#4c6256;box-shadow:none;font:24px Georgia}
 .ex-role-confirm{display:flex;justify-content:space-between;align-items:center;gap:12px;max-width:1100px;width:100%;justify-self:center}.ex-role-confirm>span{font-size:12px;line-height:1.5;color:#cbb995}.ex-role-confirm>div{display:flex;gap:8px;flex:none}.ex-role-confirm button{padding:8px 14px!important}
 .ex-prep-main{display:grid;grid-template-columns:minmax(140px,26%) minmax(0,1fr);align-items:center;gap:32px;max-width:1000px;width:100%;justify-self:center;min-height:0;overflow:auto}.ex-prep-illustration{height:100%;min-height:0;max-height:420px;background:radial-gradient(#ead7a747,transparent 70%)}.ex-prep-illustration .ex-art{height:100%;mix-blend-mode:normal;filter:drop-shadow(0 8px 10px #0008)}.ex-prep-main h2{font:22px 'Songti SC',serif}.ex-prep-main p{font-size:14px;line-height:1.6}.ex-prep-fields{display:flex;align-items:end;flex-wrap:wrap;gap:10px}.ex-prep-fields label{display:flex;flex-direction:column;gap:6px;font-size:12px;min-width:130px}.ex-prep-fields select{min-height:44px!important;max-width:220px}.ex-prep-total strong{font:25px Georgia;color:#f2cf88}.ex-muted{font-size:12px;color:#c1b18c;line-height:1.65}.ex-sample-note{font-size:13px;line-height:1.7;border-left:2px solid #d0b17c;padding-left:12px}
 /* The selected card stays next to its meaning; choices open an adequately sized work surface. */
 #hyakki-digital-root.ex-preview #yg-scene-content{overflow:hidden;justify-content:center;padding:5px;min-height:0}.ex-idle{text-align:center;max-width:32em;display:flex;flex-direction:column;gap:8px;align-items:center}.ex-idle>span{font:12px 'Songti SC',serif;letter-spacing:.3em;color:#d3b578}.ex-idle h1{font:500 24px/1.5 'Songti SC',serif;margin:0}.ex-idle p{font-size:14px;margin:0}.ex-idle small{font-size:10px;color:#bdad87}.ex-idle button{min-height:44px}
 /* Dialog sizing is explicit: header/footer cannot shrink; body alone may scroll. */
-#hyakki-digital-root.ex-preview .ex-reader{box-sizing:border-box;width:min(1080px,calc(100vw - 32px));max-width:calc(100vw - 32px);height:min(760px,calc(100dvh - 28px));max-height:calc(100dvh - 28px);min-height:0;margin:auto;padding:16px;border:1px solid #ccb57b;border-radius:8px;color:#ead8b4;background:linear-gradient(130deg,#294233,#152e25);overflow:hidden;box-shadow:0 15px 65px #0009;transform:none}
+#hyakki-digital-root.ex-preview .ex-reader{box-sizing:border-box;width:min(1080px,calc(calc(100 * var(--room-vw,1vw)) - 32px));max-width:calc(calc(100 * var(--room-vw,1vw)) - 32px);height:min(760px,calc(100dvh - 28px));max-height:calc(100dvh - 28px);min-height:0;margin:auto;padding:16px;border:1px solid #ccb57b;border-radius:8px;color:#ead8b4;background:linear-gradient(130deg,#294233,#152e25);overflow:hidden;box-shadow:0 15px 65px #0009;transform:none}
 #hyakki-digital-root.ex-preview .ex-reader[open]{display:flex;flex-direction:column;gap:10px}
 .ex-reader::backdrop,.ex-workbench::backdrop{background:#06140eb0;backdrop-filter:blur(5px)}
 .ex-dialog-heading{display:flex;align-items:center;gap:12px;flex:none;min-height:44px}.ex-dialog-heading>div{flex:1;min-width:0}.ex-dialog-heading h2{font:600 22px/1.3 'Songti SC',serif;flex:1;margin:0;min-width:0}.ex-dialog-heading small{font-size:10px;color:#c5b48e}.ex-dialog-heading button{flex:none;min-width:44px;min-height:44px;width:44px;height:44px;padding:0!important;font-size:24px!important}
@@ -40,30 +40,48 @@
 .ex-receipt{max-width:44em;margin:auto;display:flex;flex-direction:column;gap:12px;text-align:center;align-items:center}.ex-receipt>span{font-size:42px;color:#d2dda2}.ex-receipt h3{font:600 24px 'Songti SC',serif;margin:0}.ex-receipt p{font-size:15px;line-height:1.7;margin:0}.ex-receipt .ex-price-lines{justify-content:center}.ex-receipt .ex-price-lines>strong{margin-left:0}.ex-flow-context{padding:10px 12px;background:#142d2388;font-size:14px;line-height:1.6;border-left:2px solid #bda371}.ex-flow-context p{margin:5px 0 0}.ex-targets{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.ex-targets button{display:flex;flex-direction:column;gap:10px;text-align:left;min-height:100px;padding:14px!important}.ex-targets small{font-size:12px;color:#c9b48a}.ex-response{display:flex;flex-direction:column;gap:10px;position:relative;padding-right:140px;font-size:14px;line-height:1.6}.ex-response h3{font:22px 'Songti SC',serif;margin:0}.ex-response p{margin:0}.ex-response>small{color:#d7bd8c}.ex-counter-card{position:absolute;right:0;top:0;width:115px;height:175px}.ex-private-cards{display:flex;gap:18px;justify-content:center;flex:1;min-height:180px;max-height:300px}.ex-private-cards>button{width:160px;padding:0!important;background:none!important;position:relative;min-width:0}.ex-private-cards>button>small{position:absolute;z-index:1;top:28px;left:0;padding:3px;background:#725a35;color:#ffebc4;font-size:10px}.ex-private-cards>button.is-selected{outline:3px solid #edcf87;outline-offset:3px}
 .ex-market-detail{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.ex-market-detail>div{display:grid;grid-template-columns:50px minmax(0,1fr);gap:6px;padding:12px;background:#193127;border:1px solid #ad966559;border-radius:5px}.ex-market-detail .ex-good-icon{grid-row:1/3;width:46px;height:46px}.ex-market-detail span{font-size:12px;color:#d5c196}.ex-role-menu{display:flex;gap:20px;align-items:center}.ex-role-menu .ex-art{width:120px;height:180px;background:#e7d7b4;flex:none}.ex-role-menu p{font-size:16px;line-height:1.7}.ex-role-menu button{min-height:44px}.ex-role-examples{display:flex;gap:10px;flex-wrap:wrap}.ex-role-examples button{min-height:44px}
 /* Tablet: retain readable objects and finger-size targets, not desktop miniatures. */
-@media(max-width:1200px){.ex-preview{--ex-card-w:96px;--ex-card-h:142px}.ex-candidates{gap:12px}.ex-candidate .ex-face p{font-size:13px}.ex-candidate .ex-face h3{font-size:22px}.ex-choice-heading h1{font-size:22px}.ex-market-pair{padding:2px}.ex-market-good img{width:28px;height:28px}.ex-idle h1{font-size:20px}.ex-material-source{grid-template-columns:repeat(4,minmax(0,1fr))}.ex-prep-main{gap:20px}.ex-role-dock strong{font-size:13px}}
+@media(max-width:1200px){.ex-preview:where(:not(:root[data-room-viewport] *)){--ex-card-w:96px;--ex-card-h:142px}.ex-candidates:where(:not(:root[data-room-viewport] *)){gap:12px}.ex-candidate .ex-face p:where(:not(:root[data-room-viewport] *)){font-size:13px}.ex-candidate .ex-face h3:where(:not(:root[data-room-viewport] *)){font-size:22px}.ex-choice-heading h1:where(:not(:root[data-room-viewport] *)){font-size:22px}.ex-market-pair:where(:not(:root[data-room-viewport] *)){padding:2px}.ex-market-good img:where(:not(:root[data-room-viewport] *)){width:28px;height:28px}.ex-idle h1:where(:not(:root[data-room-viewport] *)){font-size:20px}.ex-material-source:where(:not(:root[data-room-viewport] *)){grid-template-columns:repeat(4,minmax(0,1fr))}.ex-prep-main:where(:not(:root[data-room-viewport] *)){gap:20px}.ex-role-dock strong:where(:not(:root[data-room-viewport] *)){font-size:13px}}
+@container room-viewport (max-width:1200px){.ex-preview{--ex-card-w:96px;--ex-card-h:142px}.ex-candidates{gap:12px}.ex-candidate .ex-face p{font-size:13px}.ex-candidate .ex-face h3{font-size:22px}.ex-choice-heading h1{font-size:22px}.ex-market-pair{padding:2px}.ex-market-good img{width:28px;height:28px}.ex-idle h1{font-size:20px}.ex-material-source{grid-template-columns:repeat(4,minmax(0,1fr))}.ex-prep-main{gap:20px}.ex-role-dock strong{font-size:13px}}
 /* Short landscape: two rows of real 44px selection targets; safe dialog gutters, no table scroll. */
 @media(max-height:620px) and (orientation:landscape){
+.ex-preview:where(:not(:root[data-room-viewport] *)){--ex-card-w:80px;--ex-card-h:116px}.ex-face.is-small h3:where(:not(:root[data-room-viewport] *)){font-size:12px}.ex-face.is-small p:where(:not(:root[data-room-viewport] *)){font-size:9px;-webkit-line-clamp:2}.ex-face.is-small .ex-art:where(:not(:root[data-room-viewport] *)){height:35px}.ex-face.is-small footer:where(:not(:root[data-room-viewport] *)){font-size:10px}.ex-face.is-small .ex-recipe-art:where(:not(:root[data-room-viewport] *)){min-height:26px}.ex-face.is-small .ex-good-icon:where(:not(:root[data-room-viewport] *)){width:25px;height:25px}.ex-face.is-small .ex-art-category:where(:not(:root[data-room-viewport] *)){font-size:9px}
+#hyakki-digital-root.ex-preview .ex-role-dock:where(:not(:root[data-room-viewport] *)){min-height:44px;height:44px;padding:2px 3px;gap:4px}.ex-role-dock .ex-dock-art:where(:not(:root[data-room-viewport] *)){width:24px;height:32px}.ex-role-dock strong:where(:not(:root[data-room-viewport] *)){font-size:11px}.ex-role-dock small:where(:not(:root[data-room-viewport] *)){font-size:8px}
+#hyakki-digital-root.ex-preview .ex-market-board:where(:not(:root[data-room-viewport] *)){gap:3px}.ex-market-pair:where(:not(:root[data-room-viewport] *)){gap:0;padding:2px}.ex-market-pair>small:where(:not(:root[data-room-viewport] *)){font-size:9px}.ex-market-good img:where(:not(:root[data-room-viewport] *)){width:20px;height:20px}.ex-market-good>span:where(:not(:root[data-room-viewport] *)){font-size:8px}.ex-market-good>b:where(:not(:root[data-room-viewport] *)){font-size:10px}.ex-market-good:where(:not(:root[data-room-viewport] *)){gap:1px}.ex-market-pair>span:where(:not(:root[data-room-viewport] *)){gap:1px}
+#hyakki-digital-root.ex-preview .ex-role-stage:where(:not(:root[data-room-viewport] *)){gap:7px;padding:5px 14px max(5px,env(safe-area-inset-bottom))}.ex-choice-heading h1:where(:not(:root[data-room-viewport] *)){font-size:18px;margin:2px 0}.ex-choice-heading small:where(:not(:root[data-room-viewport] *)),.ex-set-picker>span:where(:not(:root[data-room-viewport] *)),.ex-role-confirm>span:where(:not(:root[data-room-viewport] *)){font-size:10px}.ex-candidate .ex-face:where(:not(:root[data-room-viewport] *)){padding:7px;gap:4px}.ex-candidate .ex-art:where(:not(:root[data-room-viewport] *)){height:55px;min-height:20px}.ex-candidate .ex-face h3:where(:not(:root[data-room-viewport] *)){font-size:17px}.ex-candidate .ex-face p:where(:not(:root[data-room-viewport] *)){font-size:11px;line-height:1.4}.ex-candidate .ex-face footer:where(:not(:root[data-room-viewport] *)){font-size:9px}.ex-role-confirm:where(:not(:root[data-room-viewport] *)){gap:6px}.ex-role-confirm>div:where(:not(:root[data-room-viewport] *)){gap:5px}.ex-role-confirm button:where(:not(:root[data-room-viewport] *)){padding:5px 9px!important;font-size:12px!important}.ex-set-picker:where(:not(:root[data-room-viewport] *)){gap:4px}
+.ex-prep-main:where(:not(:root[data-room-viewport] *)){grid-template-columns:minmax(80px,18%) minmax(0,1fr);gap:14px}.ex-prep-main h2:where(:not(:root[data-room-viewport] *)){font-size:17px;margin:4px 0}.ex-prep-main p:where(:not(:root[data-room-viewport] *)){font-size:11px;margin:6px 0}.ex-prep-main p.ex-muted:where(:not(:root[data-room-viewport] *)){display:none}.ex-prep-fields:where(:not(:root[data-room-viewport] *)){gap:7px}.ex-prep-fields label:where(:not(:root[data-room-viewport] *)){min-width:110px;font-size:10px;gap:3px}.ex-prep-fields select:where(:not(:root[data-room-viewport] *)){padding:4px 7px!important}.ex-prep-total strong:where(:not(:root[data-room-viewport] *)){font-size:20px}
+.ex-idle:where(:not(:root[data-room-viewport] *)){gap:5px}.ex-idle h1:where(:not(:root[data-room-viewport] *)){font-size:16px}.ex-idle p:where(:not(:root[data-room-viewport] *)){font-size:11px}.ex-idle small:where(:not(:root[data-room-viewport] *)){font-size:9px}
+#hyakki-digital-root.ex-preview .ex-reader:where(:not(:root[data-room-viewport] *)){width:calc(calc(100 * var(--room-vw,1vw)) - 24px);max-width:calc(calc(100 * var(--room-vw,1vw)) - 24px);height:calc(100dvh - 16px);max-height:calc(100dvh - 16px);padding:7px 10px;gap:4px}
+.ex-dialog-heading:where(:not(:root[data-room-viewport] *)){gap:8px}.ex-dialog-heading h2:where(:not(:root[data-room-viewport] *)){font-size:17px}.ex-dialog-heading small:where(:not(:root[data-room-viewport] *)){font-size:9px}.ex-work-footer:where(:not(:root[data-room-viewport] *)){gap:6px;padding-top:5px}.ex-work-footer>span:where(:not(:root[data-room-viewport] *)){font-size:10px}.ex-work-footer button:where(:not(:root[data-room-viewport] *)){padding:5px 9px!important;font-size:12px!important}.ex-work-body:where(:not(:root[data-room-viewport] *)){gap:5px;padding:2px}.ex-work-body>p:where(:not(:root[data-room-viewport] *)){font-size:12px}.ex-trade-intro:where(:not(:root[data-room-viewport] *)){gap:5px}.ex-trade-intro p:where(:not(:root[data-room-viewport] *)){font-size:13px}.ex-trade-intro button:where(:not(:root[data-room-viewport] *)){font-size:11px!important}.ex-material-line:where(:not(:root[data-room-viewport] *)){gap:7px}.ex-material-line>span:where(:not(:root[data-room-viewport] *)){font-size:10px}.ex-material-slots:where(:not(:root[data-room-viewport] *)){gap:5px}.ex-material-slots>button:where(:not(:root[data-room-viewport] *)),.ex-material-slots>.ex-empty-slot:where(:not(:root[data-room-viewport] *)){min-width:70px;min-height:44px;font-size:11px;padding:2px 5px!important}.ex-material-slots .ex-good-icon:where(:not(:root[data-room-viewport] *)){width:26px;height:26px}
+.ex-material-source:where(:not(:root[data-room-viewport] *)){grid-template-columns:repeat(6,minmax(0,1fr));gap:5px}.ex-material-source>button:where(:not(:root[data-room-viewport] *)){min-height:44px;padding:3px 5px!important;gap:4px}.ex-material-source>button>.ex-good-icon:where(:not(:root[data-room-viewport] *)){width:25px;height:25px}.ex-material-source>button>span:where(:not(:root[data-room-viewport] *)){font-size:11px;gap:2px}.ex-material-source small:where(:not(:root[data-room-viewport] *)){font-size:8px}.ex-material-source>button>b:where(:not(:root[data-room-viewport] *)){display:none}.ex-quote:where(:not(:root[data-room-viewport] *)){padding:6px 8px}.ex-price-lines:where(:not(:root[data-room-viewport] *)){font-size:11px;gap:7px}.ex-price-lines>strong:where(:not(:root[data-room-viewport] *)){font-size:15px}.ex-quote>p:where(:not(:root[data-room-viewport] *)){font-size:10px;margin-top:4px}.ex-environment:where(:not(:root[data-room-viewport] *)){font-size:10px}.ex-environment summary:where(:not(:root[data-room-viewport] *)){min-height:44px}.ex-environment-fields:where(:not(:root[data-room-viewport] *)){gap:8px}.ex-environment-fields select:where(:not(:root[data-room-viewport] *)){max-width:160px}.ex-flow-context:where(:not(:root[data-room-viewport] *)){font-size:12px;padding:7px 9px}.ex-targets button:where(:not(:root[data-room-viewport] *)){min-height:80px;gap:6px;padding:10px!important}.ex-targets small:where(:not(:root[data-room-viewport] *)){font-size:10px}.ex-receipt:where(:not(:root[data-room-viewport] *)){gap:8px}.ex-receipt h3:where(:not(:root[data-room-viewport] *)){font-size:19px}.ex-receipt p:where(:not(:root[data-room-viewport] *)){font-size:12px}.ex-receipt>span:where(:not(:root[data-room-viewport] *)){font-size:28px}.ex-response:where(:not(:root[data-room-viewport] *)){font-size:12px;padding-right:100px;gap:6px}.ex-response h3:where(:not(:root[data-room-viewport] *)){font-size:17px}.ex-counter-card:where(:not(:root[data-room-viewport] *)){width:85px;height:128px}.ex-private-cards:where(:not(:root[data-room-viewport] *)){min-height:145px;max-height:180px;gap:12px}.ex-private-cards>button:where(:not(:root[data-room-viewport] *)){width:115px}.ex-private-cards>button>small:where(:not(:root[data-room-viewport] *)){font-size:8px;top:22px}
+.ex-detail-layout:where(:not(:root[data-room-viewport] *)){grid-template-columns:160px minmax(0,1fr);gap:16px}.ex-detail-layout>.ex-face:where(:not(:root[data-room-viewport] *)){min-height:300px}.ex-detail-layout .ex-art:where(:not(:root[data-room-viewport] *)){height:150px}.ex-rule-text:where(:not(:root[data-room-viewport] *)){font-size:13px}.ex-catalog:where(:not(:root[data-room-viewport] *)){grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px}.ex-catalog>button:where(:not(:root[data-room-viewport] *)){height:190px}.ex-catalog-controls:where(:not(:root[data-room-viewport] *)){gap:10px;padding:4px 0 8px}.ex-catalog-controls label:where(:not(:root[data-room-viewport] *)){font-size:10px}.ex-market-detail:where(:not(:root[data-room-viewport] *)){grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.ex-market-detail>div:where(:not(:root[data-room-viewport] *)){grid-template-columns:32px minmax(0,1fr);padding:8px;gap:4px}.ex-market-detail .ex-good-icon:where(:not(:root[data-room-viewport] *)){width:30px;height:30px}.ex-market-detail strong:where(:not(:root[data-room-viewport] *)){font-size:13px}.ex-market-detail span:where(:not(:root[data-room-viewport] *)){font-size:10px}
+}
+@container room-viewport (max-height:620px) and (orientation:landscape){
 .ex-preview{--ex-card-w:80px;--ex-card-h:116px}.ex-face.is-small h3{font-size:12px}.ex-face.is-small p{font-size:9px;-webkit-line-clamp:2}.ex-face.is-small .ex-art{height:35px}.ex-face.is-small footer{font-size:10px}.ex-face.is-small .ex-recipe-art{min-height:26px}.ex-face.is-small .ex-good-icon{width:25px;height:25px}.ex-face.is-small .ex-art-category{font-size:9px}
 #hyakki-digital-root.ex-preview .ex-role-dock{min-height:44px;height:44px;padding:2px 3px;gap:4px}.ex-role-dock .ex-dock-art{width:24px;height:32px}.ex-role-dock strong{font-size:11px}.ex-role-dock small{font-size:8px}
 #hyakki-digital-root.ex-preview .ex-market-board{gap:3px}.ex-market-pair{gap:0;padding:2px}.ex-market-pair>small{font-size:9px}.ex-market-good img{width:20px;height:20px}.ex-market-good>span{font-size:8px}.ex-market-good>b{font-size:10px}.ex-market-good{gap:1px}.ex-market-pair>span{gap:1px}
 #hyakki-digital-root.ex-preview .ex-role-stage{gap:7px;padding:5px 14px max(5px,env(safe-area-inset-bottom))}.ex-choice-heading h1{font-size:18px;margin:2px 0}.ex-choice-heading small,.ex-set-picker>span,.ex-role-confirm>span{font-size:10px}.ex-candidate .ex-face{padding:7px;gap:4px}.ex-candidate .ex-art{height:55px;min-height:20px}.ex-candidate .ex-face h3{font-size:17px}.ex-candidate .ex-face p{font-size:11px;line-height:1.4}.ex-candidate .ex-face footer{font-size:9px}.ex-role-confirm{gap:6px}.ex-role-confirm>div{gap:5px}.ex-role-confirm button{padding:5px 9px!important;font-size:12px!important}.ex-set-picker{gap:4px}
 .ex-prep-main{grid-template-columns:minmax(80px,18%) minmax(0,1fr);gap:14px}.ex-prep-main h2{font-size:17px;margin:4px 0}.ex-prep-main p{font-size:11px;margin:6px 0}.ex-prep-main p.ex-muted{display:none}.ex-prep-fields{gap:7px}.ex-prep-fields label{min-width:110px;font-size:10px;gap:3px}.ex-prep-fields select{padding:4px 7px!important}.ex-prep-total strong{font-size:20px}
 .ex-idle{gap:5px}.ex-idle h1{font-size:16px}.ex-idle p{font-size:11px}.ex-idle small{font-size:9px}
-#hyakki-digital-root.ex-preview .ex-reader{width:calc(100vw - 24px);max-width:calc(100vw - 24px);height:calc(100dvh - 16px);max-height:calc(100dvh - 16px);padding:7px 10px;gap:4px}
+#hyakki-digital-root.ex-preview .ex-reader{width:calc(calc(100 * var(--room-vw,1vw)) - 24px);max-width:calc(calc(100 * var(--room-vw,1vw)) - 24px);height:calc(100dvh - 16px);max-height:calc(100dvh - 16px);padding:7px 10px;gap:4px}
 .ex-dialog-heading{gap:8px}.ex-dialog-heading h2{font-size:17px}.ex-dialog-heading small{font-size:9px}.ex-work-footer{gap:6px;padding-top:5px}.ex-work-footer>span{font-size:10px}.ex-work-footer button{padding:5px 9px!important;font-size:12px!important}.ex-work-body{gap:5px;padding:2px}.ex-work-body>p{font-size:12px}.ex-trade-intro{gap:5px}.ex-trade-intro p{font-size:13px}.ex-trade-intro button{font-size:11px!important}.ex-material-line{gap:7px}.ex-material-line>span{font-size:10px}.ex-material-slots{gap:5px}.ex-material-slots>button,.ex-material-slots>.ex-empty-slot{min-width:70px;min-height:44px;font-size:11px;padding:2px 5px!important}.ex-material-slots .ex-good-icon{width:26px;height:26px}
 .ex-material-source{grid-template-columns:repeat(6,minmax(0,1fr));gap:5px}.ex-material-source>button{min-height:44px;padding:3px 5px!important;gap:4px}.ex-material-source>button>.ex-good-icon{width:25px;height:25px}.ex-material-source>button>span{font-size:11px;gap:2px}.ex-material-source small{font-size:8px}.ex-material-source>button>b{display:none}.ex-quote{padding:6px 8px}.ex-price-lines{font-size:11px;gap:7px}.ex-price-lines>strong{font-size:15px}.ex-quote>p{font-size:10px;margin-top:4px}.ex-environment{font-size:10px}.ex-environment summary{min-height:44px}.ex-environment-fields{gap:8px}.ex-environment-fields select{max-width:160px}.ex-flow-context{font-size:12px;padding:7px 9px}.ex-targets button{min-height:80px;gap:6px;padding:10px!important}.ex-targets small{font-size:10px}.ex-receipt{gap:8px}.ex-receipt h3{font-size:19px}.ex-receipt p{font-size:12px}.ex-receipt>span{font-size:28px}.ex-response{font-size:12px;padding-right:100px;gap:6px}.ex-response h3{font-size:17px}.ex-counter-card{width:85px;height:128px}.ex-private-cards{min-height:145px;max-height:180px;gap:12px}.ex-private-cards>button{width:115px}.ex-private-cards>button>small{font-size:8px;top:22px}
 .ex-detail-layout{grid-template-columns:160px minmax(0,1fr);gap:16px}.ex-detail-layout>.ex-face{min-height:300px}.ex-detail-layout .ex-art{height:150px}.ex-rule-text{font-size:13px}.ex-catalog{grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px}.ex-catalog>button{height:190px}.ex-catalog-controls{gap:10px;padding:4px 0 8px}.ex-catalog-controls label{font-size:10px}.ex-market-detail{grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.ex-market-detail>div{grid-template-columns:32px minmax(0,1fr);padding:8px;gap:4px}.ex-market-detail .ex-good-icon{width:30px;height:30px}.ex-market-detail strong{font-size:13px}.ex-market-detail span{font-size:10px}
 }
 /* Narrow landscape candidates become three paged objects, not unreadable shrunken cards. */
 @media(max-width:740px),(max-height:350px){
-.ex-candidates{display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;gap:14px;scrollbar-width:none;align-items:stretch;padding:4px;box-sizing:border-box}.ex-candidate{flex:0 0 min(84vw,440px);scroll-snap-align:center}.ex-candidate .ex-face{display:grid;grid-template-columns:72px minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr) auto;gap:3px 8px;text-align:left}.ex-candidate .ex-face>.ex-art,.ex-candidate .ex-face>.ex-art-fallback{grid-column:1;grid-row:1/5;width:72px;height:100%;min-height:0;max-height:190px}.ex-candidate .ex-face-band,.ex-candidate .ex-face h3,.ex-candidate .ex-face p,.ex-candidate .ex-face footer{grid-column:2;margin:0}.ex-candidate .ex-face h3{padding:0 34px 0 0;font-size:17px}.ex-candidate .ex-face p{font-size:11px;line-height:1.4}.ex-role-confirm>span{font-size:9px}.ex-choice-heading h1{font-size:15px}.ex-choice-heading small{font-size:9px}.ex-set-picker>span{font-size:9px}.ex-prep-main{grid-template-columns:1fr}.ex-prep-illustration{display:none}.ex-prep-fields{gap:5px}.ex-prep-fields label{min-width:100px}.ex-prep-fields button{font-size:11px!important;padding:3px 7px!important}.ex-role-confirm>div{gap:4px}.ex-role-confirm button{font-size:11px!important;padding:4px 6px!important}.ex-material-source>button>.ex-good-icon{width:22px;height:22px}.ex-material-source>button>span{font-size:10px}.ex-material-source>button{padding:3px!important;gap:3px}.ex-material-source small{font-size:8px}.ex-work-footer>span{display:none}.ex-market-detail{grid-template-columns:repeat(3,minmax(0,1fr))}.ex-catalog-controls select,.ex-catalog-controls input{max-width:170px}.ex-detail-layout{grid-template-columns:140px minmax(0,1fr);gap:12px}
+.ex-candidates:where(:not(:root[data-room-viewport] *)){display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;gap:14px;scrollbar-width:none;align-items:stretch;padding:4px;box-sizing:border-box}.ex-candidate:where(:not(:root[data-room-viewport] *)){flex:0 0 min(calc(84 * var(--room-vw,1vw)),440px);scroll-snap-align:center}.ex-candidate .ex-face:where(:not(:root[data-room-viewport] *)){display:grid;grid-template-columns:72px minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr) auto;gap:3px 8px;text-align:left}.ex-candidate .ex-face>.ex-art:where(:not(:root[data-room-viewport] *)),.ex-candidate .ex-face>.ex-art-fallback:where(:not(:root[data-room-viewport] *)){grid-column:1;grid-row:1/5;width:72px;height:100%;min-height:0;max-height:190px}.ex-candidate .ex-face-band:where(:not(:root[data-room-viewport] *)),.ex-candidate .ex-face h3:where(:not(:root[data-room-viewport] *)),.ex-candidate .ex-face p:where(:not(:root[data-room-viewport] *)),.ex-candidate .ex-face footer:where(:not(:root[data-room-viewport] *)){grid-column:2;margin:0}.ex-candidate .ex-face h3:where(:not(:root[data-room-viewport] *)){padding:0 34px 0 0;font-size:17px}.ex-candidate .ex-face p:where(:not(:root[data-room-viewport] *)){font-size:11px;line-height:1.4}.ex-role-confirm>span:where(:not(:root[data-room-viewport] *)){font-size:9px}.ex-choice-heading h1:where(:not(:root[data-room-viewport] *)){font-size:15px}.ex-choice-heading small:where(:not(:root[data-room-viewport] *)){font-size:9px}.ex-set-picker>span:where(:not(:root[data-room-viewport] *)){font-size:9px}.ex-prep-main:where(:not(:root[data-room-viewport] *)){grid-template-columns:1fr}.ex-prep-illustration:where(:not(:root[data-room-viewport] *)){display:none}.ex-prep-fields:where(:not(:root[data-room-viewport] *)){gap:5px}.ex-prep-fields label:where(:not(:root[data-room-viewport] *)){min-width:100px}.ex-prep-fields button:where(:not(:root[data-room-viewport] *)){font-size:11px!important;padding:3px 7px!important}.ex-role-confirm>div:where(:not(:root[data-room-viewport] *)){gap:4px}.ex-role-confirm button:where(:not(:root[data-room-viewport] *)){font-size:11px!important;padding:4px 6px!important}.ex-material-source>button>.ex-good-icon:where(:not(:root[data-room-viewport] *)){width:22px;height:22px}.ex-material-source>button>span:where(:not(:root[data-room-viewport] *)){font-size:10px}.ex-material-source>button:where(:not(:root[data-room-viewport] *)){padding:3px!important;gap:3px}.ex-material-source small:where(:not(:root[data-room-viewport] *)){font-size:8px}.ex-work-footer>span:where(:not(:root[data-room-viewport] *)){display:none}.ex-market-detail:where(:not(:root[data-room-viewport] *)){grid-template-columns:repeat(3,minmax(0,1fr))}.ex-catalog-controls select:where(:not(:root[data-room-viewport] *)),.ex-catalog-controls input:where(:not(:root[data-room-viewport] *)){max-width:170px}.ex-detail-layout:where(:not(:root[data-room-viewport] *)){grid-template-columns:140px minmax(0,1fr);gap:12px}
 }
-@media(orientation:portrait){#hyakki-digital-root.ex-preview .ex-role-stage{display:none!important}.ex-preview .yg-playfield{visibility:hidden}.ex-preview #yg-rotation{padding:20px}.ex-detail-layout{grid-template-columns:1fr}.ex-detail-layout>.ex-face{width:230px;justify-self:center;position:static}.ex-material-source{grid-template-columns:repeat(3,minmax(0,1fr))}.ex-market-detail{grid-template-columns:repeat(2,minmax(0,1fr))}.ex-work-footer{flex-wrap:wrap}.ex-role-menu{align-items:start}.ex-role-menu .ex-art{width:85px;height:130px}}
+@container room-viewport ((max-width:740px)) or ((max-height:350px)){
+.ex-candidates{display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;gap:14px;scrollbar-width:none;align-items:stretch;padding:4px;box-sizing:border-box}.ex-candidate{flex:0 0 min(calc(84 * var(--room-vw,1vw)),440px);scroll-snap-align:center}.ex-candidate .ex-face{display:grid;grid-template-columns:72px minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr) auto;gap:3px 8px;text-align:left}.ex-candidate .ex-face>.ex-art,.ex-candidate .ex-face>.ex-art-fallback{grid-column:1;grid-row:1/5;width:72px;height:100%;min-height:0;max-height:190px}.ex-candidate .ex-face-band,.ex-candidate .ex-face h3,.ex-candidate .ex-face p,.ex-candidate .ex-face footer{grid-column:2;margin:0}.ex-candidate .ex-face h3{padding:0 34px 0 0;font-size:17px}.ex-candidate .ex-face p{font-size:11px;line-height:1.4}.ex-role-confirm>span{font-size:9px}.ex-choice-heading h1{font-size:15px}.ex-choice-heading small{font-size:9px}.ex-set-picker>span{font-size:9px}.ex-prep-main{grid-template-columns:1fr}.ex-prep-illustration{display:none}.ex-prep-fields{gap:5px}.ex-prep-fields label{min-width:100px}.ex-prep-fields button{font-size:11px!important;padding:3px 7px!important}.ex-role-confirm>div{gap:4px}.ex-role-confirm button{font-size:11px!important;padding:4px 6px!important}.ex-material-source>button>.ex-good-icon{width:22px;height:22px}.ex-material-source>button>span{font-size:10px}.ex-material-source>button{padding:3px!important;gap:3px}.ex-material-source small{font-size:8px}.ex-work-footer>span{display:none}.ex-market-detail{grid-template-columns:repeat(3,minmax(0,1fr))}.ex-catalog-controls select,.ex-catalog-controls input{max-width:170px}.ex-detail-layout{grid-template-columns:140px minmax(0,1fr);gap:12px}
+}
+@media(orientation:portrait){#hyakki-digital-root.ex-preview .ex-role-stage:where(:not(:root[data-room-viewport] *)){display:none!important}.ex-preview .yg-playfield:where(:not(:root[data-room-viewport] *)){visibility:hidden}.ex-preview #yg-rotation:where(:not(:root[data-room-viewport] *)){padding:20px}.ex-detail-layout:where(:not(:root[data-room-viewport] *)){grid-template-columns:1fr}.ex-detail-layout>.ex-face:where(:not(:root[data-room-viewport] *)){width:230px;justify-self:center;position:static}.ex-material-source:where(:not(:root[data-room-viewport] *)){grid-template-columns:repeat(3,minmax(0,1fr))}.ex-market-detail:where(:not(:root[data-room-viewport] *)){grid-template-columns:repeat(2,minmax(0,1fr))}.ex-work-footer:where(:not(:root[data-room-viewport] *)){flex-wrap:wrap}.ex-role-menu:where(:not(:root[data-room-viewport] *)){align-items:start}.ex-role-menu .ex-art:where(:not(:root[data-room-viewport] *)){width:85px;height:130px}}
+@container room-viewport (orientation:portrait){#hyakki-digital-root.ex-preview .ex-role-stage{display:none!important}.ex-preview .yg-playfield{visibility:hidden}.ex-preview #yg-rotation{padding:20px}.ex-detail-layout{grid-template-columns:1fr}.ex-detail-layout>.ex-face{width:230px;justify-self:center;position:static}.ex-material-source{grid-template-columns:repeat(3,minmax(0,1fr))}.ex-market-detail{grid-template-columns:repeat(2,minmax(0,1fr))}.ex-work-footer{flex-wrap:wrap}.ex-role-menu{align-items:start}.ex-role-menu .ex-art{width:85px;height:130px}}
 @media(prefers-reduced-motion:reduce){.ex-preview *{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
 .ex-preview .nm-stock-slot .ex-good-icon{width:calc(var(--nm-stock-size) - 7px);height:calc(var(--nm-stock-size) - 7px)}
 .ex-role-dock small{line-height:1.2;overflow-wrap:anywhere}.ex-rule-text ul{margin:0 0 16px;padding-left:1.25em}.ex-rule-text li+li{margin-top:6px}
 .ex-tool-install{display:grid;grid-template-columns:150px minmax(0,1fr);gap:24px;align-items:center;margin:auto;max-width:700px}.ex-tool-install>.ex-face{height:225px}.ex-tool-install h3{font:22px 'Songti SC',serif}.ex-tool-install p{font-size:14px;line-height:1.7}
-@media(max-height:620px) and (orientation:landscape){.ex-tool-install{grid-template-columns:95px minmax(0,1fr);gap:16px}.ex-tool-install>.ex-face{height:145px}.ex-tool-install h3{font-size:17px}.ex-tool-install p{font-size:12px}}
+@media(max-height:620px) and (orientation:landscape){.ex-tool-install:where(:not(:root[data-room-viewport] *)){grid-template-columns:95px minmax(0,1fr);gap:16px}.ex-tool-install>.ex-face:where(:not(:root[data-room-viewport] *)){height:145px}.ex-tool-install h3:where(:not(:root[data-room-viewport] *)){font-size:17px}.ex-tool-install p:where(:not(:root[data-room-viewport] *)){font-size:12px}}
+@container room-viewport (max-height:620px) and (orientation:landscape){.ex-tool-install{grid-template-columns:95px minmax(0,1fr);gap:16px}.ex-tool-install>.ex-face{height:145px}.ex-tool-install h3{font-size:17px}.ex-tool-install p{font-size:12px}}
 
 /* Step 0 r2 uses the released card budgets and the accepted table composition. */
 .ex-preview .ex-new-card{--hyakki-card-width:var(--nm-hand-width,126px);--hyakki-card-height:var(--nm-hand-height,187px)}
@@ -76,7 +94,7 @@
 .ex-recipe-symbols{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
 .ex-category-pair{display:flex;justify-content:center;min-height:0;width:100%}
 .ex-category-pair img{width:40%;max-width:42px;min-height:0;aspect-ratio:1;object-fit:contain}
-.ex-recipe-symbols>b{font:600 clamp(10px,1.1vw,15px)/1.3 'Songti SC',serif;flex:none;white-space:nowrap}
+.ex-recipe-symbols>b{font:600 clamp(10px,calc(1.1 * var(--room-vw,1vw)),15px)/1.3 'Songti SC',serif;flex:none;white-space:nowrap}
 .ex-recipe-symbols>small{font-size:9px;line-height:12px;flex:none;white-space:nowrap}
 .ex-recipe-symbols.is-fixed>img{width:60%;min-height:0;max-height:65%;object-fit:contain}
 .ex-category-seals{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;min-height:0}
@@ -149,6 +167,102 @@
 .ex-workbench .ex-work-footer>.ex-quote p{font-size:10px;line-height:12px;margin:2px 0 0}
 
 @media(max-width:1150px) and (max-height:500px) and (orientation:landscape){
+ /* The released table owns admission and seat/pile placement. Keep the
+    preview's extra shared voice controls inside that same compact header. */
+ #hyakki-digital-root.ex-preview .yg-header:where(:not(:root[data-room-viewport] *)){--room-header-control-size:31px;--room-header-control-height:31px;--room-header-control-font-size:11px;--room-header-join-width:54px;height:46px;min-height:46px;max-height:46px;flex:0 0 46px}
+ #hyakki-digital-root.ex-preview .yg-header :is(.room-toolbar,.room-toolbar-actions,.room-voice-toolbar):where(:not(:root[data-room-viewport] *)){align-items:center;gap:4px;min-height:0}
+ #hyakki-digital-root.ex-preview .yg-header :is(.room-toolbar-actions>button,.room-voice-toolbar button):where(:not(:root[data-room-viewport] *)){height:31px;min-height:31px;max-height:31px;min-width:31px;padding:4px 5px;font-size:11px;line-height:1.2;box-sizing:border-box}
+ #hyakki-digital-root.ex-preview .yg-header .room-voice-compact-join:where(:not(:root[data-room-viewport] *)){width:54px;min-width:54px;max-width:54px}
+ #hyakki-digital-root.ex-preview .yg-header :is(#yg-exit,.room-voice-compact-microphone):where(:not(:root[data-room-viewport] *)){width:31px;min-width:31px;max-width:31px;flex:0 0 31px;padding:0;font-size:0}
+ #hyakki-digital-root.ex-preview #yg-scene-content:where(:not(:root[data-room-viewport] *)){padding-top:24px}
+ #hyakki-digital-root.ex-preview.ex-working .ex-workbench:where(:not(:root[data-room-viewport] *)){grid-column:1;grid-row:1;grid-template-columns:64px minmax(0,1fr);gap:6px;padding-top:23px}
+ #hyakki-digital-root.ex-preview .ex-task-source:where(:not(:root[data-room-viewport] *)){width:64px;height:104px}
+ .ex-task-source>.yousei-card:where(:not(:root[data-room-viewport] *)){--hyakki-card-width:64px;--hyakki-card-height:104px}
+ .ex-task-source .ex-face:where(:not(:root[data-room-viewport] *)){font-size:9px}
+ .ex-task-source>.ex-face h3:where(:not(:root[data-room-viewport] *)){font-size:11px;line-height:13px}
+ .ex-task-source>.ex-face .ex-art:where(:not(:root[data-room-viewport] *)){height:25px}
+ .ex-task-source>.ex-face p:where(:not(:root[data-room-viewport] *)){font-size:8px;line-height:10px}
+ .ex-task-source>.ex-face footer:where(:not(:root[data-room-viewport] *)){font-size:7px;line-height:9px}
+ .ex-task-copy:where(:not(:root[data-room-viewport] *)){padding:3px;gap:2px;grid-template-rows:18px minmax(44px,1fr) 44px}
+ .ex-task-heading:where(:not(:root[data-room-viewport] *)){min-height:0;height:18px}
+ .ex-task-heading h2:where(:not(:root[data-room-viewport] *)){font-size:12px;line-height:15px}
+ #hyakki-digital-root.ex-preview .ex-task-heading>button:where(:not(:root[data-room-viewport] *)){min-width:44px;min-height:26px;height:26px;font-size:19px}
+ .ex-workbench .ex-work-footer:where(:not(:root[data-room-viewport] *)){padding-top:0;flex-wrap:nowrap;border:0;gap:4px}
+ .ex-workbench .ex-work-footer>button:where(:not(:root[data-room-viewport] *)){flex:none;font-size:11px;line-height:14px;padding:3px 6px!important}
+ .ex-workbench .ex-work-footer>.ex-quote:where(:not(:root[data-room-viewport] *)){max-height:44px;overflow:auto;padding:2px 4px;background:#10281f99}
+ .ex-workbench .ex-work-footer>.ex-quote .ex-price-lines:where(:not(:root[data-room-viewport] *)){font-size:9px;line-height:11px;gap:1px 4px}
+ .ex-workbench .ex-work-footer>.ex-quote .ex-price-lines>strong:where(:not(:root[data-room-viewport] *)){font-size:12px;line-height:14px;margin-left:0}
+ .ex-workbench .ex-work-footer>.ex-quote p:where(:not(:root[data-room-viewport] *)){font-size:8px;line-height:10px;margin:0}
+ .ex-workbench .ex-work-body:where(:not(:root[data-room-viewport] *)){gap:5px}
+ .ex-workbench .ex-material-source:where(:not(:root[data-room-viewport] *)){grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+ .ex-workbench .ex-material-source>button:where(:not(:root[data-room-viewport] *)){padding:3px!important;min-height:44px}
+ .ex-workbench .ex-material-source>button>.ex-good-icon:where(:not(:root[data-room-viewport] *)){width:24px;height:24px}
+ .ex-workbench .ex-material-source>button>span:where(:not(:root[data-room-viewport] *)){font-size:10px}
+ .ex-workbench .ex-trade-intro p:where(:not(:root[data-room-viewport] *)){font-size:11px}
+ .ex-workbench .ex-trade-intro button:where(:not(:root[data-room-viewport] *)){padding:3px 6px!important;font-size:10px;min-height:44px}
+ .ex-workbench .ex-price-lines:where(:not(:root[data-room-viewport] *)){font-size:10px;gap:4px}
+ .ex-workbench .ex-price-lines>strong:where(:not(:root[data-room-viewport] *)){font-size:13px}
+ .ex-workbench .ex-targets button:where(:not(:root[data-room-viewport] *)){min-height:64px;padding:5px!important;font-size:11px;gap:3px}
+ .ex-workbench .ex-targets:where(:not(:root[data-room-viewport] *)){gap:5px}
+ .ex-workbench .ex-targets button:where(:not(:root[data-room-viewport] *)){min-height:44px;height:44px;padding:2px!important;font-size:10px;gap:1px}
+ .ex-workbench .ex-targets small:where(:not(:root[data-room-viewport] *)){display:none}
+ .ex-private-choices strong:where(:not(:root[data-room-viewport] *)){font-size:10px;line-height:12px}
+ .ex-private-choices small:where(:not(:root[data-room-viewport] *)){font-size:8px;line-height:10px}
+ .ex-workbench .ex-response:where(:not(:root[data-room-viewport] *)){padding-right:78px;font-size:11px}
+ .ex-workbench .ex-counter-card:where(:not(:root[data-room-viewport] *)){width:64px;height:104px}
+ #hyakki-digital-root.ex-preview .ex-market-board:where(:not(:root[data-room-viewport] *)){gap:2px;grid-template-columns:repeat(2,minmax(0,1fr))}
+ .ex-preview .ex-market-pair:where(:not(:root[data-room-viewport] *)){padding:2px 0;gap:0;border-radius:4px}
+ .ex-preview .ex-market-pair>small:where(:not(:root[data-room-viewport] *)){font-size:8px;line-height:9px}
+ .ex-preview .ex-market-good:where(:not(:root[data-room-viewport] *)){display:grid;grid-template-columns:1fr;gap:0;min-width:0}
+ .ex-preview .ex-market-good>img:where(:not(:root[data-room-viewport] *)){grid-column:1;width:17px;height:17px}
+ .ex-preview .ex-market-good>span:where(:not(:root[data-room-viewport] *)){display:none}
+ .ex-preview .ex-market-good>b:where(:not(:root[data-room-viewport] *)){font-size:10px;line-height:10px}
+ #hyakki-digital-root.ex-preview #yg-tool-zone:where(:not(:root[data-room-viewport] *)){grid-template-rows:44px minmax(0,1fr);gap:1px}
+ #hyakki-digital-root.ex-preview .ex-role-dock:where(:not(:root[data-room-viewport] *)){min-height:44px;height:44px;padding:2px;gap:3px}
+ .ex-preview .ex-role-dock .ex-dock-art:where(:not(:root[data-room-viewport] *)){height:28px;width:20px}
+ .ex-preview .ex-role-dock strong:where(:not(:root[data-room-viewport] *)){font-size:10px}
+ .ex-preview .ex-role-dock small:where(:not(:root[data-room-viewport] *)){font-size:8px}
+ .ex-preview .ex-idle:where(:not(:root[data-room-viewport] *)){gap:3px;padding:6px}
+ .ex-preview .ex-idle h1:where(:not(:root[data-room-viewport] *)){font-size:16px}
+ .ex-preview .ex-idle p:where(:not(:root[data-room-viewport] *)){font-size:10px}
+ .ex-preview .ex-idle small:where(:not(:root[data-room-viewport] *)){display:none}
+ .ex-preview .ex-new-card .ex-recipe-symbols>small:where(:not(:root[data-room-viewport] *)){font-size:7px;line-height:9px}
+ .ex-preview .ex-new-card .ex-category-seals i:where(:not(:root[data-room-viewport] *)){width:11px;height:11px;font-size:8px}
+ .ex-preview .ex-new-card .yousei-card__effect:where(:not(:root[data-room-viewport] *)){font-size:8px;line-height:10px}
+ .ex-preview .ex-market-board:where(:not(:root[data-room-viewport] *)){max-height:none}
+ .ex-workbench .ex-material-line:where(:not(:root[data-room-viewport] *)){flex-wrap:wrap;gap:2px}
+ .ex-workbench .ex-material-line>span:where(:not(:root[data-room-viewport] *)){font-size:10px;line-height:13px}
+ .ex-workbench .ex-material-slots>button:where(:not(:root[data-room-viewport] *)){min-width:44px;min-height:44px}
+ .ex-workbench .ex-material-source:where(:not(:root[data-room-viewport] *)){grid-template-columns:repeat(4,minmax(0,1fr))}
+ .ex-workbench .ex-work-body>.ex-trade-intro:where(:not(:root[data-room-viewport] *)){display:none}
+ .ex-workbench .ex-work-body>.ex-environment:where(:not(:root[data-room-viewport] *)){margin-top:8px}
+ .ex-workbench .ex-material-browser .ex-material-source>button:where(:not(:root[data-room-viewport] *)){display:grid;grid-template-columns:24px minmax(0,1fr);gap:2px;padding:2px!important}
+ .ex-workbench .ex-material-browser .ex-material-source>button>span:where(:not(:root[data-room-viewport] *)){font-size:10px;min-width:0;white-space:normal;line-height:12px}
+ .ex-workbench .ex-material-browser .ex-material-source>button small:where(:not(:root[data-room-viewport] *)){font-size:8px;line-height:10px}
+ .ex-workbench .ex-material-browser .ex-material-source>button .ex-good-icon:where(:not(:root[data-room-viewport] *)){width:23px;height:23px}
+ .ex-preview .ex-task-heading>button:where(:not(:root[data-room-viewport] *)){display:none}
+ #hyakki-digital-root.ex-preview .ex-workbench[data-flow=auction]:where(:not(:root[data-room-viewport] *)){grid-template-columns:64px minmax(0,1fr) 64px!important}
+ #hyakki-digital-root.ex-preview .ex-auction-lot:where(:not(:root[data-room-viewport] *)){width:64px;height:104px}
+ .ex-auction-lot>.yousei-card:where(:not(:root[data-room-viewport] *)){--hyakki-card-width:64px;--hyakki-card-height:104px}
+ .ex-workbench[data-flow=auction] .ex-work-footer>button:where(:not(:root[data-room-viewport] *)){font-size:10px}
+ .ex-workbench .ex-receipt>span:where(:not(:root[data-room-viewport] *)){display:none}
+ .ex-workbench .ex-receipt:where(:not(:root[data-room-viewport] *)){gap:4px;margin:0;text-align:left;align-items:flex-start}
+ .ex-workbench .ex-receipt h3:where(:not(:root[data-room-viewport] *)){font-size:12px;line-height:16px}
+ .ex-workbench .ex-receipt p:where(:not(:root[data-room-viewport] *)){font-size:11px;line-height:15px}
+ #hyakki-digital-root.ex-preview #yg-public-stock:where(:not(:root[data-room-viewport] *)){height:auto;min-height:0;max-height:none}
+ #hyakki-digital-root.ex-preview #yg-market.ex-market:where(:not(:root[data-room-viewport] *)){height:auto;min-height:0;max-height:none;flex:none}
+ .ex-preview .yg-public-heading:where(:not(:root[data-room-viewport] *)){height:12px;min-height:12px;gap:0}
+ .ex-preview .yg-public-heading strong:where(:not(:root[data-room-viewport] *)){font-size:10px;line-height:12px}
+ .ex-preview #yg-stock-limit:where(:not(:root[data-room-viewport] *)){display:none}
+ .ex-preview .ex-market-pair:where(:not(:root[data-room-viewport] *)){padding:0;gap:0}
+ .ex-preview .ex-market-pair>small:where(:not(:root[data-room-viewport] *)){font-size:7px;line-height:7px;height:7px}
+ .ex-preview .ex-market-pair>span:where(:not(:root[data-room-viewport] *)){height:15px;gap:0}
+ .ex-preview .ex-market-good:where(:not(:root[data-room-viewport] *)){display:flex;align-items:center;justify-content:center;gap:0}
+ .ex-preview .ex-market-good>img:where(:not(:root[data-room-viewport] *)){width:15px;height:15px;flex:none}
+ .ex-preview .ex-market-good>b:where(:not(:root[data-room-viewport] *)){font-size:9px;line-height:15px}
+}
+
+@container room-viewport (max-width:1150px) and (max-height:500px) and (orientation:landscape){
  /* The released table owns admission and seat/pile placement. Keep the
     preview's extra shared voice controls inside that same compact header. */
  #hyakki-digital-root.ex-preview .yg-header{--room-header-control-size:31px;--room-header-control-height:31px;--room-header-control-font-size:11px;--room-header-join-width:54px;height:46px;min-height:46px;max-height:46px;flex:0 0 46px}
@@ -244,6 +358,13 @@
  .ex-preview .ex-market-good>b{font-size:9px;line-height:15px}
 }
 @media(max-width:740px) and (max-height:500px) and (orientation:landscape){
+ .ex-workbench .ex-material-browser .ex-material-source>button:where(:not(:root[data-room-viewport] *)){display:flex;flex-direction:column;justify-content:center;gap:0}
+ .ex-workbench .ex-material-browser .ex-material-source>button>span:where(:not(:root[data-room-viewport] *)){font-size:9px;line-height:11px}
+ .ex-workbench .ex-material-browser .ex-material-source>button small:where(:not(:root[data-room-viewport] *)){display:none}
+ .ex-workbench .ex-work-footer>.ex-quote:where(:not(:root[data-room-viewport] *)){min-width:90px}
+ .ex-workbench .ex-work-footer>button:where(:not(:root[data-room-viewport] *)){font-size:10px;padding:2px 4px!important;min-width:44px}
+}
+@container room-viewport (max-width:740px) and (max-height:500px) and (orientation:landscape){
  .ex-workbench .ex-material-browser .ex-material-source>button{display:flex;flex-direction:column;justify-content:center;gap:0}
  .ex-workbench .ex-material-browser .ex-material-source>button>span{font-size:9px;line-height:11px}
  .ex-workbench .ex-material-browser .ex-material-source>button small{display:none}
@@ -253,6 +374,11 @@
 /* A large table gets a bounded material tray, not a stretched form filling
    the entire cloth. Phone and tablet object budgets stay independent. */
 @media(min-width:1300px) and (min-height:720px){
+ #hyakki-digital-root.ex-preview .yg-centre>.nm-action-ribbon:where(:not(:root[data-room-viewport] *)){position:absolute;top:0;left:0;right:0}
+ #hyakki-digital-root.ex-preview .ex-workbench:where(:not(:root[data-room-viewport] *)){max-width:980px;max-height:420px;height:min(100%,420px);flex:0 1 420px;align-self:center}
+ .ex-workbench .ex-material-source:where(:not(:root[data-room-viewport] *)){grid-template-columns:repeat(6,minmax(0,1fr))}
+}
+@container room-viewport (min-width:1300px) and (min-height:720px){
  #hyakki-digital-root.ex-preview .yg-centre>.nm-action-ribbon{position:absolute;top:0;left:0;right:0}
  #hyakki-digital-root.ex-preview .ex-workbench{max-width:980px;max-height:420px;height:min(100%,420px);flex:0 1 420px;align-self:center}
  .ex-workbench .ex-material-source{grid-template-columns:repeat(6,minmax(0,1fr))}
@@ -260,6 +386,25 @@
 /* In short windows the existing action ribbon owns the task title. The
    allocated table space always reserves a full choice row and action row. */
 @media(max-height:500px) and (orientation:landscape){
+ #hyakki-digital-root.ex-preview .ex-workbench:where(:not(:root[data-room-viewport] *)){grid-template-columns:64px minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:6px}
+ #hyakki-digital-root.ex-preview .ex-workbench[data-flow=auction]:where(:not(:root[data-room-viewport] *)){grid-template-columns:64px minmax(0,1fr) 64px!important}
+ #hyakki-digital-root.ex-preview .ex-auction-lot:where(:not(:root[data-room-viewport] *)){width:64px;height:94px;max-height:100%}
+ .ex-auction-lot>.yousei-card:where(:not(:root[data-room-viewport] *)){--hyakki-card-width:64px;--hyakki-card-height:94px}
+ #hyakki-digital-root.ex-preview .ex-task-source:where(:not(:root[data-room-viewport] *)){width:64px;height:94px}
+ .ex-task-source>.yousei-card:where(:not(:root[data-room-viewport] *)){--hyakki-card-width:64px;--hyakki-card-height:94px}
+ .ex-workbench .ex-task-copy:where(:not(:root[data-room-viewport] *)){grid-template-rows:minmax(44px,1fr) 44px;padding:3px;gap:2px;min-height:0}
+ .ex-workbench .ex-task-heading:where(:not(:root[data-room-viewport] *)){display:none}
+ .ex-workbench .ex-work-body:where(:not(:root[data-room-viewport] *)){grid-row:1;gap:4px}
+ .ex-workbench .ex-work-footer:where(:not(:root[data-room-viewport] *)){grid-row:2;min-height:44px;height:44px;max-height:44px;padding:0;flex-wrap:nowrap;gap:4px;border:0}
+ .ex-workbench .ex-work-footer>button:where(:not(:root[data-room-viewport] *)){min-width:44px;min-height:44px;flex:none;padding:3px 5px!important;font-size:11px;line-height:14px}
+ .ex-workbench .ex-work-footer>.ex-quote:where(:not(:root[data-room-viewport] *)){min-height:44px;height:44px;max-height:44px;min-width:90px;overflow:auto;padding:2px 4px}
+ .ex-workbench .ex-price-lines:where(:not(:root[data-room-viewport] *)){font-size:9px;line-height:11px;gap:1px 4px}
+ .ex-workbench .ex-price-lines>strong:where(:not(:root[data-room-viewport] *)){font-size:12px;line-height:14px;margin-left:0}
+ .ex-workbench .ex-material-browser .ex-material-source>button:where(:not(:root[data-room-viewport] *)){min-height:44px;height:44px;padding:2px!important}
+ .ex-workbench .ex-material-browser .ex-good-icon:where(:not(:root[data-room-viewport] *)){width:24px;height:24px}
+ .ex-workbench .ex-material-browser .ex-material-source>button>span:where(:not(:root[data-room-viewport] *)){font-size:11px;line-height:13px}
+}
+@container room-viewport (max-height:500px) and (orientation:landscape){
  #hyakki-digital-root.ex-preview .ex-workbench{grid-template-columns:64px minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:6px}
  #hyakki-digital-root.ex-preview .ex-workbench[data-flow=auction]{grid-template-columns:64px minmax(0,1fr) 64px!important}
  #hyakki-digital-root.ex-preview .ex-auction-lot{width:64px;height:94px;max-height:100%}
@@ -283,6 +428,21 @@
    Keep its position and height; budget its children instead of flex-shrinking
    the two-line name/money block under the decorative awning. Not deployed. */
 @media (min-height:621px) and (max-height:740px) and (orientation:landscape) {
+  #hyakki-digital-root.hy-night .nm-merchant:where(:not(:root[data-room-viewport] *)) { padding-top:8px; padding-bottom:2px; gap:2px; }
+  #hyakki-digital-root.hy-night .nm-merchant-overview:where(:not(:root[data-room-viewport] *)) { flex:0 0 28px; height:28px; min-height:28px; }
+  #hyakki-digital-root.hy-night .nm-portrait:where(:not(:root[data-room-viewport] *)) { width:28px; height:28px; }
+  #hyakki-digital-root.hy-night .nm-peer-copy:where(:not(:root[data-room-viewport] *)) { grid-template-rows:16px 11px; gap:1px 5px; }
+  #hyakki-digital-root.hy-night .nm-peer-copy>strong:where(:not(:root[data-room-viewport] *)) { font-size:12px; line-height:16px; }
+  #hyakki-digital-root.hy-night .nm-money:where(:not(:root[data-room-viewport] *)) { font-size:16px; line-height:16px; }
+  #hyakki-digital-root.hy-night .nm-peer-copy>small:where(:not(:root[data-room-viewport] *)),
+  #hyakki-digital-root.hy-night .nm-hand-count:where(:not(:root[data-room-viewport] *)) { font-size:9px; line-height:11px; }
+  #hyakki-digital-root.hy-night .nm-peer-goods:where(:not(:root[data-room-viewport] *)) { flex:0 0 18px; height:18px; min-height:18px; padding-top:0; align-items:center; }
+  #hyakki-digital-root.hy-night .nm-mini-good .yousei-good-icon:where(:not(:root[data-room-viewport] *)) { width:16px; height:16px; }
+  #hyakki-digital-root.hy-night .nm-peer-tools:where(:not(:root[data-room-viewport] *)) { flex:0 0 12px; height:12px; min-height:12px; }
+  #hyakki-digital-root.hy-night .nm-peer-tools>button:where(:not(:root[data-room-viewport] *)) { height:12px; min-height:12px; padding:0 3px; font-size:9px; line-height:10px; }
+  #hyakki-digital-root.hy-night .nm-peer-tools>small:where(:not(:root[data-room-viewport] *)) { line-height:12px; }
+}
+@container room-viewport (min-height:621px) and (max-height:740px) and (orientation:landscape) {
   #hyakki-digital-root.hy-night .nm-merchant { padding-top:8px; padding-bottom:2px; gap:2px; }
   #hyakki-digital-root.hy-night .nm-merchant-overview { flex:0 0 28px; height:28px; min-height:28px; }
   #hyakki-digital-root.hy-night .nm-portrait { width:28px; height:28px; }
@@ -302,11 +462,13 @@
 .ex-new-card{display:block!important;width:100%!important;height:100%!important;padding:0!important;border:0!important;box-shadow:none!important;background:none!important}
 .ex-print-face{display:block;width:100%;height:100%;background:#f3e5c4;border-radius:4px}
 .ex-materials{display:flex;align-items:stretch;gap:6px;min-height:0;overflow:hidden}.ex-materials>button{min-width:0;flex:1;padding:3px;display:flex;flex-direction:column;align-items:center;gap:3px;overflow:hidden}.ex-materials>button>.yousei-card{width:75px;height:112px;flex:none}.ex-material{min-width:0;flex:1;display:flex;flex-direction:column;gap:4px}.ex-material>span{display:flex;align-items:center;justify-content:space-around}.ex-material strong{display:flex;align-items:center;gap:4px}.ex-material strong>.yousei-good-icon{width:24px;height:24px}.ex-material button{padding:0!important;min-width:32px;min-height:32px}.ex-field-pair{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ex-field-pair>section{min-width:0}.ex-choice-list{min-width:0}.ex-material-page-label{display:flex;align-items:center;justify-content:center;gap:8px}.ex-quote>strong{display:block}.ex-role-stage .ex-candidate .yousei-card{width:100%;height:100%}.ex-candidate>.yousei-card{display:block}.ex-candidate>button{height:100%;padding:0}.ex-candidate>button:last-child:not(:first-child){position:absolute;right:3px;top:3px;width:44px;height:44px;padding:0}.ex-work-body .ex-choice-list .ex-materials>button{min-height:44px}.ex-role-dock{overflow:hidden}.ex-role-dock small{white-space:normal}
-@media(max-height:500px) and (orientation:landscape){.ex-materials>button>.yousei-card{width:44px;height:65px}.ex-material{gap:1px}.ex-material small{font-size:10px}.ex-material strong{font-size:11px}.ex-field-pair{gap:5px}.ex-field-pair h3{margin:0;font-size:11px}.ex-work-body p{margin:2px 0;font-size:11px}}
+@media(max-height:500px) and (orientation:landscape){.ex-materials>button>.yousei-card:where(:not(:root[data-room-viewport] *)){width:44px;height:65px}.ex-material:where(:not(:root[data-room-viewport] *)){gap:1px}.ex-material small:where(:not(:root[data-room-viewport] *)){font-size:10px}.ex-material strong:where(:not(:root[data-room-viewport] *)){font-size:11px}.ex-field-pair:where(:not(:root[data-room-viewport] *)){gap:5px}.ex-field-pair h3:where(:not(:root[data-room-viewport] *)){margin:0;font-size:11px}.ex-work-body p:where(:not(:root[data-room-viewport] *)){margin:2px 0;font-size:11px}}
+@container room-viewport (max-height:500px) and (orientation:landscape){.ex-materials>button>.yousei-card{width:44px;height:65px}.ex-material{gap:1px}.ex-material small{font-size:10px}.ex-material strong{font-size:11px}.ex-field-pair{gap:5px}.ex-field-pair h3{margin:0;font-size:11px}.ex-work-body p{margin:2px 0;font-size:11px}}
 
 /* Runtime selectors reuse the approved one-row material browser. */
 .ex-workbench .ex-material-browser{flex:none;min-height:44px;height:44px}.ex-workbench .ex-material-browser>.ex-material-source{grid-template-columns:repeat(4,minmax(0,1fr));min-height:44px}.ex-workbench .ex-field-pair .ex-material-source{grid-template-columns:repeat(2,minmax(0,1fr))}.ex-workbench .ex-material-browser .yousei-good-icon{width:25px;height:25px;flex:none}.ex-workbench .ex-material-source>button{height:44px;min-height:44px;box-sizing:border-box}.ex-workbench .ex-work-footer>.ex-quote{overflow:auto}.ex-workbench .ex-work-footer>.ex-quote>p{margin:0;line-height:12px;font-size:10px}.ex-workbench .ex-work-footer>.ex-quote>strong{font-size:13px;line-height:15px}.ex-workbench .ex-field-pair h3{margin:0 0 3px;font-size:12px}
-@media(max-width:700px) and (max-height:500px) and (orientation:landscape){.ex-workbench .ex-field-pair .ex-material-source{grid-template-columns:1fr}.ex-workbench .ex-material-browser{gap:2px}.ex-workbench .ex-material-browser>button{min-width:36px!important;width:36px!important}.ex-workbench .ex-work-footer>button{font-size:10px;min-width:40px;padding:2px 3px!important}}
+@media(max-width:700px) and (max-height:500px) and (orientation:landscape){.ex-workbench .ex-field-pair .ex-material-source:where(:not(:root[data-room-viewport] *)){grid-template-columns:1fr}.ex-workbench .ex-material-browser:where(:not(:root[data-room-viewport] *)){gap:2px}.ex-workbench .ex-material-browser>button:where(:not(:root[data-room-viewport] *)){min-width:36px!important;width:36px!important}.ex-workbench .ex-work-footer>button:where(:not(:root[data-room-viewport] *)){font-size:10px;min-width:40px;padding:2px 3px!important}}
+@container room-viewport (max-width:700px) and (max-height:500px) and (orientation:landscape){.ex-workbench .ex-field-pair .ex-material-source{grid-template-columns:1fr}.ex-workbench .ex-material-browser{gap:2px}.ex-workbench .ex-material-browser>button{min-width:36px!important;width:36px!important}.ex-workbench .ex-work-footer>button{font-size:10px;min-width:40px;padding:2px 3px!important}}
 
 /* Twelve public quantities keep the accepted peer-card envelope. Large tables
    use two six-item rows; short tables keep one native horizontal stock strip.
@@ -317,6 +479,14 @@
 #hyakki-digital-root.ex-preview.hy-night .nm-peer-goods[data-goods-count="12"] .yousei-good-icon{width:14px;height:14px;flex:none}
 #hyakki-digital-root.ex-preview.hy-night .hy-inline-card>.hy-source-reader{width:100%;height:100%;max-width:100%;max-height:100%;box-sizing:border-box}
 @media(min-height:621px) and (max-height:740px) and (orientation:landscape){
+ #hyakki-digital-root.ex-preview.hy-night .nm-merchant:has(.nm-peer-goods[data-goods-count="12"]):where(:not(:root[data-room-viewport] *)){padding-bottom:2px;gap:1px}
+ #hyakki-digital-root.ex-preview.hy-night .nm-merchant-overview:where(:not(:root[data-room-viewport] *)){height:24px;min-height:24px;flex-basis:24px}
+ #hyakki-digital-root.ex-preview.hy-night .nm-peer-goods[data-goods-count="12"]:where(:not(:root[data-room-viewport] *)){height:24px;min-height:24px;grid-template-rows:repeat(2,12px);padding:0;border:0}
+ #hyakki-digital-root.ex-preview.hy-night .nm-peer-goods[data-goods-count="12"] .yousei-good-icon:where(:not(:root[data-room-viewport] *)){width:12px;height:12px}
+ #hyakki-digital-root.ex-preview.hy-night .nm-peer-goods[data-goods-count="12"]>.nm-mini-good:where(:not(:root[data-room-viewport] *)){height:12px;min-height:0;line-height:12px}
+ #hyakki-digital-root.ex-preview.hy-night .nm-peer-tools:where(:not(:root[data-room-viewport] *)){min-height:10px;height:10px;flex-basis:10px}
+}
+@container room-viewport (min-height:621px) and (max-height:740px) and (orientation:landscape){
  #hyakki-digital-root.ex-preview.hy-night .nm-merchant:has(.nm-peer-goods[data-goods-count="12"]){padding-bottom:2px;gap:1px}
  #hyakki-digital-root.ex-preview.hy-night .nm-merchant-overview{height:24px;min-height:24px;flex-basis:24px}
  #hyakki-digital-root.ex-preview.hy-night .nm-peer-goods[data-goods-count="12"]{height:24px;min-height:24px;grid-template-rows:repeat(2,12px);padding:0;border:0}
@@ -325,10 +495,20 @@
  #hyakki-digital-root.ex-preview.hy-night .nm-peer-tools{min-height:10px;height:10px;flex-basis:10px}
 }
 @media(max-height:620px) and (orientation:landscape){
+ #hyakki-digital-root.ex-preview.hy-night .nm-peer-goods[data-goods-count="12"]:where(:not(:root[data-room-viewport] *)){display:flex;justify-content:flex-start;height:18px;min-height:18px;gap:3px;padding:0;border:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;overscroll-behavior-x:contain}
+ #hyakki-digital-root.ex-preview.hy-night .nm-peer-goods[data-goods-count="12"]>.nm-mini-good:where(:not(:root[data-room-viewport] *)){flex:0 0 auto;min-width:24px}
+}
+@container room-viewport (max-height:620px) and (orientation:landscape){
  #hyakki-digital-root.ex-preview.hy-night .nm-peer-goods[data-goods-count="12"]{display:flex;justify-content:flex-start;height:18px;min-height:18px;gap:3px;padding:0;border:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;overscroll-behavior-x:contain}
  #hyakki-digital-root.ex-preview.hy-night .nm-peer-goods[data-goods-count="12"]>.nm-mini-good{flex:0 0 auto;min-width:24px}
 }
 @media(max-width:1150px) and (max-height:500px) and (orientation:landscape){
+ #hyakki-digital-root.ex-preview.hy-night .yg-header .nm-merchant:has(.nm-peer-goods[data-goods-count="12"]):where(:not(:root[data-room-viewport] *)){padding-bottom:1px}
+ #hyakki-digital-root.ex-preview.hy-night .yg-header .nm-peer-goods[data-goods-count="12"]:where(:not(:root[data-room-viewport] *)){height:12px;min-height:12px}
+ #hyakki-digital-root.ex-preview.hy-night .yg-header .nm-peer-goods[data-goods-count="12"] .yousei-good-icon:where(:not(:root[data-room-viewport] *)){width:12px;height:12px}
+ #hyakki-digital-root.ex-preview.hy-night .yg-header .nm-peer-goods[data-goods-count="12"]>.nm-mini-good:where(:not(:root[data-room-viewport] *)){font-size:9px;line-height:12px;min-width:22px}
+}
+@container room-viewport (max-width:1150px) and (max-height:500px) and (orientation:landscape){
  #hyakki-digital-root.ex-preview.hy-night .yg-header .nm-merchant:has(.nm-peer-goods[data-goods-count="12"]){padding-bottom:1px}
  #hyakki-digital-root.ex-preview.hy-night .yg-header .nm-peer-goods[data-goods-count="12"]{height:12px;min-height:12px}
  #hyakki-digital-root.ex-preview.hy-night .yg-header .nm-peer-goods[data-goods-count="12"] .yousei-good-icon{width:12px;height:12px}
@@ -341,6 +521,12 @@
 /* User approved one opponent per phone card, including visible tools, without
    increasing its 44px card or 46px header. Desktop/tablet and old pack retain their composition. */
 @media(max-width:1150px) and (max-height:500px) and (orientation:landscape){
+ #hyakki-digital-root.ex-preview.hy-night .yg-header .nm-merchant:where(:not(:root[data-room-viewport] *)){flex:0 0 100%;min-width:0}
+ #hyakki-digital-root.ex-preview.hy-night .yg-header .ex-peer-index:where(:not(:root[data-room-viewport] *)){display:inline;margin-left:5px;color:#f2d496}
+ #hyakki-digital-root.ex-preview.hy-night .yg-header .nm-peer-goods .nm-mini-good.is-zero:where(:not(:root[data-room-viewport] *)){display:none}
+ #hyakki-digital-root.ex-preview.hy-night .yg-header .ex-peer-empty:where(:not(:root[data-room-viewport] *)){display:inline;font-size:9px;line-height:12px;color:#bcae91}
+}
+@container room-viewport (max-width:1150px) and (max-height:500px) and (orientation:landscape){
  #hyakki-digital-root.ex-preview.hy-night .yg-header .nm-merchant{flex:0 0 100%;min-width:0}
  #hyakki-digital-root.ex-preview.hy-night .yg-header .ex-peer-index{display:inline;margin-left:5px;color:#f2d496}
  #hyakki-digital-root.ex-preview.hy-night .yg-header .nm-peer-goods .nm-mini-good.is-zero{display:none}
@@ -358,7 +544,8 @@
 #hyakki-digital-root.ex-preview .ex-choice-object>button{height:44px;min-height:44px;min-width:0;padding:2px 3px;font-size:12px;line-height:15px;white-space:normal;overflow-wrap:anywhere}
 .ex-choice-object>button.is-selected{border-color:#f5d398;box-shadow:inset 0 0 0 2px #d9bc76}
 .ex-sr-only{position:absolute;width:1px;height:1px;clip-path:inset(50%);overflow:hidden;white-space:nowrap}
-@media(max-height:500px) and (orientation:landscape){.ex-choice-list>strong{font-size:10px;line-height:14px;margin-bottom:2px}.ex-workbench .ex-field-pair{gap:4px}.ex-workbench .ex-card-browser{gap:2px}.ex-workbench .ex-card-browser>button{width:44px!important;min-width:44px!important}.ex-workbench .ex-choice-object>button{font-size:10px!important;line-height:12px!important;padding:1px!important}}
+@media(max-height:500px) and (orientation:landscape){.ex-choice-list>strong:where(:not(:root[data-room-viewport] *)){font-size:10px;line-height:14px;margin-bottom:2px}.ex-workbench .ex-field-pair:where(:not(:root[data-room-viewport] *)){gap:4px}.ex-workbench .ex-card-browser:where(:not(:root[data-room-viewport] *)){gap:2px}.ex-workbench .ex-card-browser>button:where(:not(:root[data-room-viewport] *)){width:44px!important;min-width:44px!important}.ex-workbench .ex-choice-object>button:where(:not(:root[data-room-viewport] *)){font-size:10px!important;line-height:12px!important;padding:1px!important}}
+@container room-viewport (max-height:500px) and (orientation:landscape){.ex-choice-list>strong{font-size:10px;line-height:14px;margin-bottom:2px}.ex-workbench .ex-field-pair{gap:4px}.ex-workbench .ex-card-browser{gap:2px}.ex-workbench .ex-card-browser>button{width:44px!important;min-width:44px!important}.ex-workbench .ex-choice-object>button{font-size:10px!important;line-height:12px!important;padding:1px!important}}
 
 .ex-choice-object .ex-param-label{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .ex-choice-object small{display:block;font-size:10px;line-height:12px}
@@ -369,6 +556,15 @@
 #hyakki-digital-root.ex-preview .yg-table{container:expansion-table/size}
 @container expansion-table (height < 420px){
  @media(min-width:1151px),(min-height:501px) and (orientation:landscape){
+  #hyakki-digital-root.ex-preview #yg-public-stock:where(:not(:root[data-room-viewport] *)){align-self:start}
+  #hyakki-digital-root.ex-preview .ex-market-board:where(:not(:root[data-room-viewport] *)){gap:3px}
+  .ex-preview .ex-market-pair:where(:not(:root[data-room-viewport] *)){padding:2px;gap:1px}
+  .ex-preview .ex-market-pair>small:where(:not(:root[data-room-viewport] *)){font-size:10px;line-height:12px}
+  .ex-preview .ex-market-good>img:where(:not(:root[data-room-viewport] *)){width:24px;height:24px}
+  .ex-preview .ex-market-good>span:where(:not(:root[data-room-viewport] *)){font-size:10px;line-height:12px}
+  .ex-preview .ex-market-good>b:where(:not(:root[data-room-viewport] *)){font-size:12px;line-height:12px}
+ }
+ @container room-viewport ((min-width:1151px)) or ((min-height:501px) and (orientation:landscape)){
   #hyakki-digital-root.ex-preview #yg-public-stock{align-self:start}
   #hyakki-digital-root.ex-preview .ex-market-board{gap:3px}
   .ex-preview .ex-market-pair{padding:2px;gap:1px}
@@ -380,6 +576,9 @@
 }
 @container expansion-table (height < 300px){
  @media(min-width:1151px),(min-height:501px) and (orientation:landscape){
+  .ex-preview .ex-market-good>img:where(:not(:root[data-room-viewport] *)){width:20px;height:20px}
+ }
+ @container room-viewport ((min-width:1151px)) or ((min-height:501px) and (orientation:landscape)){
   .ex-preview .ex-market-good>img{width:20px;height:20px}
  }
 }
@@ -393,6 +592,15 @@
 #hyakki-digital-root.ex-preview .ex-candidate>button[data-ex-command=candidate]>.yousei-card{display:block!important;width:auto!important;height:100%!important;aspect-ratio:100/148;max-width:100%;padding:0;border:0;background:none;box-sizing:border-box;flex:none}
 #hyakki-digital-root.ex-preview .hy-compact-card>.yousei-card:has(>.ex-new-card){display:block!important;width:100%!important;height:auto!important;aspect-ratio:100/148;padding:0;border:0;background:none;box-sizing:border-box}
 @media(max-width:1150px) and (max-height:500px) and (orientation:landscape){
+ #hyakki-digital-root.ex-preview.hy-night .yg-header .nm-merchant:where(:not(:root[data-room-viewport] *)){display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:25px 12px;gap:1px 4px;height:44px;min-height:44px;max-height:44px}
+ #hyakki-digital-root.ex-preview.hy-night .yg-header .nm-merchant-overview:where(:not(:root[data-room-viewport] *)){grid-column:1/-1;grid-row:1}
+ #hyakki-digital-root.ex-preview.hy-night .yg-header .nm-peer-goods:where(:not(:root[data-room-viewport] *)){grid-column:1;grid-row:2;min-width:0}
+ #hyakki-digital-root.ex-preview.hy-night .yg-header .nm-peer-tools:where(:not(:root[data-room-viewport] *)){grid-column:2;grid-row:2;display:flex;align-items:center;gap:4px;width:100%;min-width:0;height:12px;min-height:12px;max-height:12px;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-width:none;border-left:1px solid #ad996c66;padding-left:4px;box-sizing:border-box}
+ #hyakki-digital-root.ex-preview.hy-night .yg-header .nm-peer-tools>button:where(:not(:root[data-room-viewport] *)){display:none}
+ #hyakki-digital-root.ex-preview.hy-night .yg-header .nm-peer-tools>.ex-peer-tool-label:where(:not(:root[data-room-viewport] *)){display:inline;flex:none;font-size:9px;line-height:12px;white-space:nowrap;color:#ebd6ac}
+ #hyakki-digital-root.ex-preview.hy-night .yg-header .nm-peer-tools>small:where(:not(:root[data-room-viewport] *)){font-size:9px;line-height:12px;white-space:nowrap}
+}
+@container room-viewport (max-width:1150px) and (max-height:500px) and (orientation:landscape){
  #hyakki-digital-root.ex-preview.hy-night .yg-header .nm-merchant{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:25px 12px;gap:1px 4px;height:44px;min-height:44px;max-height:44px}
  #hyakki-digital-root.ex-preview.hy-night .yg-header .nm-merchant-overview{grid-column:1/-1;grid-row:1}
  #hyakki-digital-root.ex-preview.hy-night .yg-header .nm-peer-goods{grid-column:1;grid-row:2;min-width:0}
@@ -415,10 +623,142 @@
 /* Short tablet/desktop cards may grow slightly. Exclude only the actual
    phone range (width<=1150 and height<=500), including its boundary pixels. */
 @media(min-height:501px) and (max-height:620px) and (orientation:landscape), (min-width:1151px) and (max-height:500px) and (orientation:landscape){
+ #hyakki-digital-root.ex-preview.hy-night #yg-peer:has(.ex-peer-role-skill):where(:not(:root[data-room-viewport] *)){height:68px}
+ #hyakki-digital-root.ex-preview.hy-night .yg-playfield:has(>#yg-peer .ex-peer-role-skill):where(:not(:root[data-room-viewport] *)){grid-template-rows:68px minmax(0,1fr) var(--nm-self-height)}
+ #hyakki-digital-root.ex-preview.hy-night .nm-merchant-overview:has(.ex-peer-role-skill):where(:not(:root[data-room-viewport] *)){min-height:44px;height:auto;flex-basis:auto}
+ #hyakki-digital-root.ex-preview.hy-night .nm-peer-copy>small:has(.ex-peer-role-skill):where(:not(:root[data-room-viewport] *)){flex-wrap:wrap;gap:0 3px;overflow:visible}
+ #hyakki-digital-root.ex-preview.hy-night .nm-peer-copy .ex-peer-role-name:where(:not(:root[data-room-viewport] *)){max-width:100%;flex:0 1 auto}
+ #hyakki-digital-root.ex-preview.hy-night .nm-peer-copy .ex-peer-role-skill:where(:not(:root[data-room-viewport] *)){flex:0 1 auto;white-space:normal;overflow-wrap:anywhere}
+}
+@container room-viewport ((min-height:501px) and (max-height:620px) and (orientation:landscape)) or ((min-width:1151px) and (max-height:500px) and (orientation:landscape)){
  #hyakki-digital-root.ex-preview.hy-night #yg-peer:has(.ex-peer-role-skill){height:68px}
  #hyakki-digital-root.ex-preview.hy-night .yg-playfield:has(>#yg-peer .ex-peer-role-skill){grid-template-rows:68px minmax(0,1fr) var(--nm-self-height)}
  #hyakki-digital-root.ex-preview.hy-night .nm-merchant-overview:has(.ex-peer-role-skill){min-height:44px;height:auto;flex-basis:auto}
  #hyakki-digital-root.ex-preview.hy-night .nm-peer-copy>small:has(.ex-peer-role-skill){flex-wrap:wrap;gap:0 3px;overflow:visible}
  #hyakki-digital-root.ex-preview.hy-night .nm-peer-copy .ex-peer-role-name{max-width:100%;flex:0 1 auto}
  #hyakki-digital-root.ex-preview.hy-night .nm-peer-copy .ex-peer-role-skill{flex:0 1 auto;white-space:normal;overflow-wrap:anywhere}
+}
+
+/* The order face and new source picker stay inside the existing task area. */
+.e2-entry,.e2-quality{display:flex;flex-wrap:wrap;gap:6px}
+.e2-quality button[aria-pressed="true"],.e2-setup button[aria-pressed="true"]{outline:2px solid #e9c487;outline-offset:-2px}
+.e2-orders{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,112px),1fr));gap:8px}
+.e2-orders>button{height:auto;white-space:normal;padding:0}
+.e2-orders--live{grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(4px,1vw,8px)}
+#hy-task-materials .e2-orders--live>button{min-width:0;min-height:44px;padding:3px}
+#hy-task-materials .e2-orders--live .e2-order-face{height:100%;box-sizing:border-box;gap:3px;padding:clamp(4px,.7vw,8px);line-height:1.25}
+.e2-orders--live>button.is-selected{outline:2px solid #e9c487;outline-offset:-2px}
+.e2-order-face{display:grid;grid-template-rows:auto 1fr auto;align-items:center;gap:5px;padding:8px;color:#38291c;background:#f0e2be;border:1px solid #986945;border-radius:5px;text-align:center}
+.e2-order-face>strong{line-height:1.18}
+.e2-order-recipe{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:3px;font-size:11px;line-height:1.1}
+.hy-source-description>.e2-order-recipe{justify-content:flex-start;color:#f1e1bb}
+.e2-order-unit{display:grid;justify-items:center;gap:2px;white-space:nowrap}
+.e2-order-category{display:grid;place-items:center;box-sizing:border-box;width:18px;height:18px;border:1px solid #9b7a50;border-radius:50%;color:#3d2f24;background:#e5cca0}
+.e2-order-category[data-category="other"]{border-style:dashed;background:#f4e4c1}
+.e2-order-unit b,.e2-order-bulk b{font-size:13px}
+.e2-order-bulk{flex-direction:column;gap:2px}
+.e2-order-alternatives{display:flex;align-items:center;gap:2px}
+.e2-order-alternatives .yousei-good-icon{width:19px;height:19px;flex:0 0 19px}
+.e2-order-reward{font-size:10px;color:#623c21;white-space:nowrap}
+.e2-order-reward>b{font-size:18px}
+#yg-scene-content .hy-decision-heading .hy-inline-secondary:has(>[data-e2-command="order-read"]){display:flex}
+.e2-offer-card>button[data-e2-command]{background:none;padding:0}
+.e2-offer-card>button[data-e2-command].is-selected{outline:2px solid #e9c487}
+.e2-setup{display:grid;gap:4px;align-content:center}
+
+.e2-offer-card{display:grid;justify-items:center;gap:4px;min-width:0}
+.e2-offer-entry{display:grid;gap:5px;padding:6px;border:1px solid #e6cd8e36;border-radius:6px}
+.e2-offer-entry+.e2-offer-entry{margin-top:5px}
+.e2-offer-terms{display:grid;gap:4px}
+.hy-inline-copy .e2-offer-terms{padding:4px 6px;border-radius:4px;background:#192e25;color:#fff2d6}
+.e2-offer-terms>div{display:flex;align-items:baseline;gap:6px;min-width:0}
+.e2-offer-terms>div>strong{flex:none}
+.e2-offer-terms>div>div{display:flex;align-items:center;flex-wrap:wrap;gap:3px;min-width:0}
+.e2-asset{display:inline-flex;align-items:center;gap:2px;padding:1px 4px;border-radius:4px;background:#c9ac681e}
+.e2-asset .yousei-good-icon{width:20px;height:20px}
+.e2-offer-controls{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-bottom:6px}
+.e2-offer-switches{display:flex;flex-wrap:wrap;gap:6px}
+.e2-next-note{color:#fff2d6}
+.e2-offer-silver{display:flex;align-items:center;gap:5px}
+.e2-offer-silver>b{min-width:2ch;text-align:center}
+.e2-offer-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));align-items:start;gap:6px}
+.e2-offer-cards .yousei-card{--hyakki-card-width:76px;--hyakki-card-height:104px;width:76px;height:104px}
+.e2-offer-cards .e2-offer-card>button{min-height:44px}
+.e2-exchange-card-request{display:grid;grid-template-columns:max-content minmax(0,1fr);align-items:center;gap:6px;max-width:100%}
+.e2-exchange-card-request select{min-height:44px;min-width:0;max-width:100%;color:#f2dfb7;background:#1f332a;border:1px solid #b28b55;border-radius:4px}
+#hyakki-digital-root.hy-night #hy-task-materials:has(.e2-live-exchange)>.yg-hand-heading{display:none}
+#hyakki-digital-root.hy-night #hy-task-materials .hy-material-steps:has(>.e2-live-exchange){display:block}
+/* On wide tables the absolute ribbon leaves an empty grid row. Give that
+   row to the ribbon while showing trade route choices so tall materials start below it. */
+@media(min-width:1300px) and (min-height:720px){
+  #hyakki-digital-root.ex-preview .yg-centre:has(>#hy-task-materials:not([hidden]) :is(.e2-live-exchange,.e2-orders--live))>.nm-action-ribbon:where(:not(:root[data-room-viewport] *)){position:relative;grid-row:1}
+}
+@container room-viewport (min-width:1300px) and (min-height:720px){
+  #hyakki-digital-root.ex-preview .yg-centre:has(>#hy-task-materials:not([hidden]) :is(.e2-live-exchange,.e2-orders--live))>.nm-action-ribbon{position:relative;grid-row:1}
+}
+.e2-offer-card-pairs{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,116px),1fr));gap:6px}
+.e2-offer-card-pairs .hy-material-step{min-width:0}
+.e2-offer-card-pairs h3{margin:0 0 4px;font-size:11px;line-height:1.15}
+/* On the narrowest tables, scroll complete order faces in one row.
+   Counterparty and payment stay side by side with their own card columns. */
+@container room-viewport (max-width:760px) and (max-height:500px) and (orientation:landscape){
+  #hy-task-materials .e2-orders--live{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(88px,1fr);overflow-x:auto;overscroll-behavior-x:contain}
+  #hy-task-materials .e2-orders--live>button{padding:2px}
+  #hy-task-materials .e2-orders--live .e2-order-face{height:auto;min-height:84px;gap:2px;padding:3px}
+  #hy-task-materials .e2-orders--live .e2-order-face>strong{font-size:12px}
+  #hy-task-materials .e2-orders--live .e2-order-reward>b{font-size:15px}
+}
+@container room-viewport (max-width:700px) and (max-height:500px) and (orientation:landscape){
+  #hy-task-materials .e2-offer-card-pairs{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+/* Tall setup forms must start at a reachable scroll position. */
+#hyakki-digital-root.hy-night[data-phase=waiting] #yg-playfield .yg-centre>#yg-scene-content:has(.e2-setup){
+  justify-content:safe center;align-content:safe center;overflow:auto;overscroll-behavior:contain;
+}
+
+@container room-viewport (max-height:500px) and (orientation:landscape){
+  #hy-task-materials .e2-offer-switches{display:flex;flex:1 0 100%;gap:4px}
+  #hy-task-materials .e2-offer-switches>.e2-quality{display:flex;flex:1 1 0;flex-wrap:nowrap;gap:3px}
+  #hy-task-materials .e2-offer-switches>.e2-quality>button{flex:1 1 0;min-width:44px;padding-inline:2px}
+}
+
+/* Prepare-room pack and module labels share the existing setup controls. */
+.hy-setup-fields .hy-pack-choices{display:grid;gap:2px;min-width:0;align-self:start}
+#hyakki-digital-root.hy-night .hy-setup-fields :is(.hy-pack-choices,.hy-pack-modules) .hy-expansion-toggle{
+  justify-content:flex-start;margin:0;padding:4px 8px;border-radius:6px;background:#20362a;color:#f0d7a5;
+}
+.hy-setup-fields .hy-pack-modules{grid-column:1/-1;min-width:0;text-align:left}
+.hy-setup-fields .hy-pack-modules summary{box-sizing:border-box;min-height:44px;padding:10px 8px;cursor:pointer}
+.hy-setup-fields .hy-pack-modules>div{display:flex;flex-wrap:wrap;gap:4px 8px}
+#hyakki-digital-root.hy-night[data-phase=waiting] #yg-playfield .yg-centre>#yg-scene-content:has(.hy-pack-choices){
+  justify-content:safe center;align-content:safe center;overflow:auto;overscroll-behavior:contain;
+}
+
+/* Edit either side from the persistent quote summary, outside the materials scroller. */
+#yg-scene-content .e2-offer-draft{gap:3px;padding:0;background:none}
+#yg-scene-content .e2-offer-draft>.e2-offer-row{
+  display:grid;grid-template-columns:4em minmax(0,1fr);align-items:center;gap:4px;
+  width:100%;min-width:0;min-height:32px;margin:0;padding:2px 6px;box-sizing:border-box;
+  border:1px solid #b99a6570;border-radius:4px;background:#20382d;color:#fff2d6;text-align:left;
+  font-size:inherit;line-height:1.25;white-space:normal;
+}
+#yg-scene-content .e2-offer-draft>button[aria-pressed="true"]{outline:2px solid #e9c487;outline-offset:-2px}
+.e2-offer-row-assets{display:flex;align-items:center;flex-wrap:wrap;gap:2px;min-width:0;overflow-wrap:anywhere}
+#yg-scene-content .e2-offer-draft .e2-asset{max-width:100%}
+@container room-viewport (max-width:1150px) and (max-height:500px) and (orientation:landscape){
+  #yg-scene-content .e2-offer-draft>.e2-offer-row{min-height:28px;padding:2px 4px}
+  #yg-scene-content .e2-offer-draft .e2-asset{padding:0 2px}
+  #yg-scene-content .e2-offer-draft .e2-asset .yousei-good-icon{width:15px;height:15px}
+}
+@container room-viewport (max-width:1150px) and (max-height:350px) and (orientation:landscape){
+  #yg-scene-content .e2-offer-draft>.e2-offer-row{min-height:24px}
+  .e2-offer-draft .e2-offer-row-assets{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain}
+  #yg-scene-content .e2-offer-draft .e2-asset{flex:none;max-width:none;white-space:nowrap}
+}
+#hyakki-digital-root.hy-night #yg-scene-content .hy-inline-copy:has(.e2-offer-draft){
+  grid-template-columns:minmax(0,1fr);
+}
+#hyakki-digital-root.hy-night #yg-scene-content .hy-inline-copy:has(.e2-offer-draft)>.hy-inline-actions{
+  grid-column:1;grid-row:3;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  width:100%;margin:0;position:static;align-self:start;
 }

@@ -1,4 +1,5 @@
 /** Browser-side intent and committed cues. Never receives the hidden deck. */
+import {EXPANSION_TWO_CONTENT_VERSION} from './content/expansion-two.mjs';
 const legacyFields = Object.freeze({
   peek: [], 'keep-peek': [], 'discard-peek': [], 'finish-draw': [], 'end-turn': [],
   buy: ['cardId'], sell: ['cardId'], 'buy-stall': ['cardId'],
@@ -8,8 +9,14 @@ const legacyFields = Object.freeze({
 });
 
 const configuredFields=Object.freeze({...legacyFields,peek:['inspect'],buy:['cardId','materials'],sell:['cardId','materials'],'use-role':['params'],'confirm-role':['openingId','candidateId','roleId'],'cancel-opening':['openingId']});
+const orderFields=Object.freeze({...configuredFields,'order-deliver':['position','generation','selection'],'order-replace':['position','generation']});
+const refiningFields=Object.freeze({...orderFields,sell:['cardId','materials','refinedMaterials'],'refine-stock':['ordinary']});
+const exchangeFields=Object.freeze({'offer-post':['provide','receive'],'offer-edit':['offerId','generation','receive'],
+  'offer-withdraw':['offerId','generation'],'offer-accept':['offerId','generation','cardId']});
 export function hyakkiCommand(game, type, fields = {}) {
-  const fieldsByAction=game?.version===3?configuredFields:legacyFields;
+  const fieldsByAction=Object.hasOwn(exchangeFields,type)&&game?.configuration?.modules?.exchange?exchangeFields
+    :game?.contentVersion===EXPANSION_TWO_CONTENT_VERSION
+    ?game.configuration?.modules?.refining?refiningFields:orderFields:game?.version===3?configuredFields:legacyFields;
   if (!game || !Object.hasOwn(fieldsByAction, type)) throw new TypeError('当前没有可提交的幽街操作。');
   const body = game.kind==='hyakki-opening-game'?{}:{matchId:game.matchId,turnId:game.turnId};
   if (game.pending) {

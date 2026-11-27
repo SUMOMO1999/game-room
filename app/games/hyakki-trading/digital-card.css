@@ -92,10 +92,18 @@ button.yousei-card { cursor: pointer; }
 .yousei-card-details ul { padding-inline-start: 20px; }
 .yousei-card-details li { margin-block: 10px; font-size: 16px; line-height: 1.65; }
 @media (max-width: 540px) {
+  .yousei-card-details:where(:not(:root[data-room-viewport] *)) { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .yousei-card-details__face:where(:not(:root[data-room-viewport] *)) { display: flex; justify-content: center; }
+}
+@container room-viewport (max-width: 540px) {
   .yousei-card-details { grid-template-columns: minmax(0, 1fr); gap: 16px; }
   .yousei-card-details__face { display: flex; justify-content: center; }
 }
 @media (max-height: 430px) and (min-width: 541px) {
+  .yousei-card-details:where(:not(:root[data-room-viewport] *)) { gap: 16px; }
+  .yousei-card-details__face:where(:not(:root[data-room-viewport] *)) { --hyakki-card-width: 132px; --hyakki-card-height: 192px; }
+}
+@container room-viewport (max-height: 430px) and (min-width: 541px) {
   .yousei-card-details { gap: 16px; }
   .yousei-card-details__face { --hyakki-card-width: 132px; --hyakki-card-height: 192px; }
 }

@@ -16,7 +16,7 @@ dialog.appearance-dialog,html[data-appearance] dialog.appearance-dialog{
   --ui-accent:var(--plum);--ui-on-accent:var(--appearance-on-accent);
   --ui-input-bg:var(--appearance-control-surface);--ui-radius:var(--appearance-control-radius);
   --ui-control-shadow:var(--appearance-control-shadow);--ui-inset:var(--appearance-control-inset);
-  width:min(640px,calc(100vw - 32px));max-width:none;
+  width:min(640px,calc(calc(100 * var(--room-vw,1vw)) - 32px));max-width:none;
   max-height:calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   margin:auto;padding:0;overflow:hidden;box-sizing:border-box;
   border:1px solid var(--line);border-radius:14px;
@@ -124,10 +124,22 @@ html[data-appearance=soft] .appearance-dialog .appearance-done:active{box-shadow
   html[data-appearance=glass] .appearance-dialog::backdrop{-webkit-backdrop-filter:none;backdrop-filter:none}
 }
 @media(max-width:520px){
+  .appearance-dialog .appearance-palettes:where(:not(:root[data-room-viewport] *)){grid-template-columns:repeat(3,minmax(0,1fr))}
+  .appearance-dialog .appearance-palette:where(:not(:root[data-room-viewport] *)){min-height:68px}
+}
+@container room-viewport (max-width:520px){
   .appearance-dialog .appearance-palettes{grid-template-columns:repeat(3,minmax(0,1fr))}
   .appearance-dialog .appearance-palette{min-height:68px}
 }
 @media(max-width:400px){
+  .appearance-dialog .appearance-header:where(:not(:root[data-room-viewport] *)),.appearance-dialog .appearance-body:where(:not(:root[data-room-viewport] *)),.appearance-dialog .appearance-actions:where(:not(:root[data-room-viewport] *)){padding-left:16px;padding-right:16px}
+  .appearance-dialog .appearance-backgrounds:where(:not(:root[data-room-viewport] *)){grid-template-columns:repeat(2,minmax(0,1fr))}
+  .appearance-dialog .appearance-colors:where(:not(:root[data-room-viewport] *)){grid-template-columns:minmax(0,1fr)}
+  .appearance-dialog .appearance-choice:where(:not(:root[data-room-viewport] *)){gap:6px;font-size:13px}
+  .appearance-dialog .appearance-style-swatch:where(:not(:root[data-room-viewport] *)){flex-basis:20px;width:20px;height:24px}
+  .appearance-dialog .appearance-actions button:where(:not(:root[data-room-viewport] *)){padding-left:10px;padding-right:10px}
+}
+@container room-viewport (max-width:400px){
   .appearance-dialog .appearance-header,.appearance-dialog .appearance-body,.appearance-dialog .appearance-actions{padding-left:16px;padding-right:16px}
   .appearance-dialog .appearance-backgrounds{grid-template-columns:repeat(2,minmax(0,1fr))}
   .appearance-dialog .appearance-colors{grid-template-columns:minmax(0,1fr)}
@@ -136,6 +148,11 @@ html[data-appearance=soft] .appearance-dialog .appearance-done:active{box-shadow
   .appearance-dialog .appearance-actions button{padding-left:10px;padding-right:10px}
 }
 @media(max-height:560px){
+  .appearance-dialog .appearance-header:where(:not(:root[data-room-viewport] *)){padding-top:10px;padding-bottom:10px}
+  .appearance-dialog .appearance-body:where(:not(:root[data-room-viewport] *)){padding-top:14px;padding-bottom:14px}
+  .appearance-dialog .appearance-actions:where(:not(:root[data-room-viewport] *)){padding-top:10px;padding-bottom:10px}
+}
+@container room-viewport (max-height:560px){
   .appearance-dialog .appearance-header{padding-top:10px;padding-bottom:10px}
   .appearance-dialog .appearance-body{padding-top:14px;padding-bottom:14px}
   .appearance-dialog .appearance-actions{padding-top:10px;padding-bottom:10px}

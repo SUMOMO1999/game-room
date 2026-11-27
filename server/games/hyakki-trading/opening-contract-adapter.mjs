@@ -5,7 +5,8 @@ import {createHyakkiAdapter} from './adapter.mjs';
 import {problem} from '../adapter-contract.mjs';
 import {createOpening,openingProblem,openingView,openingCommandProblem,applyOpeningAction,expireOpening,cancelExpiredOpening,setOpeningManualPause} from '../../../app/games/hyakki-trading/opening.mjs';
 import {waitingConfiguration,updateWaitingConfiguration} from '../../../app/games/hyakki-trading/opening-configuration.mjs';
-import {EXPANSION_PACK_ID,EXPANSION_CONTENT_VERSION,CONFIGURABLE_RULE_VERSION,expansionDefinitionForCopy} from '../../../app/games/hyakki-trading/content/expansion-one.mjs';
+import {EXPANSION_PACK_ID,CONFIGURABLE_RULE_VERSION} from '../../../app/games/hyakki-trading/content/expansion-one.mjs';
+import {EXPANSION_TWO_PACK_ID} from '../../../app/games/hyakki-trading/content/expansion-two.mjs';
 
 // Phase-1 contract adapter, deliberately absent from the application registry.
 // It exercises REAL room permissions, CAS, receipts, clocks and persistence.
@@ -26,8 +27,9 @@ function actionProblem(action){
     ||action.type==='confirm-role'&&(typeof action.candidateId!=='string'||typeof action.roleId!=='string'))return problem(400,'INVALID_OPENING_ACTION','请选择本次开局的本人候选。');
   return null;
 }
-export function createHyakkiOpeningContractAdapter({initializeGame}={}){
+export function createHyakkiOpeningContractAdapter({initializeGame,tradeRoutesContract=false}={}){
   const legacy=createHyakkiAdapter(),types=['confirm-role','cancel-opening'];
+  const acceptsPack=packId=>packId===EXPANSION_PACK_ID||(tradeRoutesContract&&packId===EXPANSION_TWO_PACK_ID);
   const completed=(result,context)=>{
     const wrapped=changed(result);
     return result.ok&&result.state.status==='completed'&&initializeGame
@@ -39,16 +41,16 @@ export function createHyakkiOpeningContractAdapter({initializeGame}={}){
     actionFields:type=>types.includes(type)?type==='confirm-role'?['openingId','candidateId','roleId']:['openingId']:legacy.actionFields(type),
     validateAction:action=>types.includes(action?.type)?actionProblem(action):legacy.validateAction(action),
     roomDefaults:()=>({turnClock:null,hyakkiConfig:waitingConfiguration({},{playerCount:2,newRoom:true})}),
-    gameOptions:(room,options)=>room.hyakkiConfig.packId===EXPANSION_PACK_ID
+    gameOptions:(room,options)=>acceptsPack(room.hyakkiConfig.packId)
       ?{openingId:options.matchId,hostId:room.hostId,configuration:room.hyakkiConfig,now:options.now,randomInt:options.serverRandomInt??randomInt}
       :legacy.gameOptions(room,options),
-    createGame:(players,options)=>options.configuration?.packId===EXPANSION_PACK_ID
+    createGame:(players,options)=>acceptsPack(options.configuration?.packId)
       ?wrap(createOpening(players.map(p=>p.id),options)):legacy.createGame(players,options),
     configure(room,action){
       if(!Object.hasOwn(room.hyakkiConfig,'packId'))return legacy.configure(room,action);
       try{
         const config=updateWaitingConfiguration(room.hyakkiConfig,action.hyakkiConfig,count(room)).configuration;
-        if(config.packId!==EXPANSION_PACK_ID)return {problem:problem(409,'CONTRACT_ONLY','此内部验证适配器只运行扩展开局，原版沿原适配器。')};
+        if(!acceptsPack(config.packId))return {problem:problem(409,'CONTRACT_ONLY','此适配器未启用该扩展开局。')};
         return {updates:{hyakkiConfig:config}};
       }catch(error){if(error instanceof RangeError)return {problem:problem(400,'INVALID_CONFIG',error.message)};throw error;}
     },
@@ -71,7 +73,9 @@ export function createHyakkiOpeningContractAdapter({initializeGame}={}){
     },
     privateView:(game,id,context)=>openingGame(game)?projection(game,id,context):legacy.privateView(game,id,context),
     spectatorView:(game,context)=>openingGame(game)?projection(game,null,context):legacy.spectatorView(game,context),
-    stateProblem:game=>openingGame(game)?openingGameProblem(game):legacy.stateProblem(game),
+    stateProblem:game=>openingGame(game)
+      ?openingGameProblem(game)||(!acceptsPack(game.opening.configuration.packId)?'此适配器未启用该扩展开局。':null)
+      :legacy.stateProblem(game),
     roomView:room=>Object.hasOwn(room.hyakkiConfig,'packId')
       ?{hyakkiConfig:copy(room.hyakkiConfig),exitPolicy:room.game?.opening.status==='selecting'?'cancel-opening':'cancel'}:legacy.roomView(room),
     playerSummary:(view,id)=>({handCount:view?.players.find(p=>p.id===id)?.handCount??0}),
@@ -107,7 +111,8 @@ export function createHyakkiOpeningContractAdapter({initializeGame}={}){
     roomStateProblem(room,hasRoles){
       if(!Object.hasOwn(room.hyakkiConfig??{},'packId'))return legacy.roomStateProblem(room,hasRoles);
       try{
-        if(!hasRoles||!same(waitingConfiguration(room.hyakkiConfig,{playerCount:room.game?.players.length??count(room)}),room.hyakkiConfig))return '扩展房间设置无效。';
+        if(!hasRoles||(room.hyakkiConfig.packId===EXPANSION_TWO_PACK_ID&&!acceptsPack(room.hyakkiConfig.packId))
+          ||!same(waitingConfiguration(room.hyakkiConfig,{playerCount:room.game?.players.length??count(room)}),room.hyakkiConfig))return '扩展房间设置无效。';
         if(!room.game)return room.phase==='waiting'&&room.turnClock===null?null:'等待房间状态无效。';
         const game=room.game,issue=openingGameProblem(game);if(issue)return issue;
         if(!['playing','paused'].includes(room.phase)||room.matchId!==game.matchId||room.matchStartedAt!==game.opening.createdAt

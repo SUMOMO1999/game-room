@@ -1,0 +1,1781 @@
+@font-face {
+  font-family: m-ink;
+  src: url('./xinwei.woff2') format('woff2');
+  font-display: swap;
+}
+@font-face {
+  font-family: m-script;
+  src: url('./xingkai.woff2') format('woff2');
+  font-display: swap;
+}
+:root {
+  --m-text: #fff1cf;
+  --m-gold: #e2c58d;
+  --m-ink: #332b20;
+  --m-edge: rgba(222, 195, 139, 0.5);
+  --m-card: clamp(78px, 8.4vw, 109px);
+  --m-hand: calc(var(--m-card) * 1.48);
+  --m-seat: clamp(88px, 9vw, 126px);
+  --m-seat-h: calc(var(--m-seat) * 1.56);
+  --m-gap: clamp(8px, 1.25vw, 20px);
+  --m-supply: clamp(178px, 17vw, 252px);
+}
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: #342d23;
+  color: var(--m-text);
+}
+[hidden],
+#window [hidden] {
+  display: none !important;
+}
+#loading {
+  position: fixed;
+  inset: 46% 0 auto;
+  text-align: center;
+  color: var(--m-text);
+  z-index: 99;
+}
+#hyakki-digital-root {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  pointer-events: none;
+  visibility: hidden;
+  z-index: 100;
+  overflow: hidden;
+}
+#hyakki-digital-root dialog[open] {
+  visibility: visible;
+  pointer-events: auto;
+  z-index: 101;
+  color: #f6eacd;
+  background: #23332c;
+}
+/* Platform dialogs retain their own sticky headings, scrolling bodies and footers. */
+#hyakki-digital-root dialog::backdrop {
+  background: #0e1413a8;
+}
+/* A previous wide frame must not enlarge Chrome's mobile layout viewport on rotation. */
+:root[data-room-viewport]:has(> body.merchant-table) {
+  max-width: 100vw;
+}
+#window.merchant-window {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  color: var(--m-text);
+  background:
+    linear-gradient(180deg, #16211ddc 0%, #16231c35 24%, #21180c42 66%, #151b17ca 100%),
+    var(--nm-background-image, url('../../../assets/hyakki-night-market.webp')) center 45% / cover no-repeat;
+  font-family:
+    system-ui,
+    -apple-system,
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
+}
+#window.merchant-window [role='button'],
+#window.merchant-window button {
+  cursor: pointer;
+}
+#window.merchant-window [role='button']:focus-visible,
+#window.merchant-window button:focus-visible {
+  outline: 2px solid #ffdd8a;
+  outline-offset: 2px;
+}
+#window.merchant-window #arena {
+  /* Hand, action row and goods share the space above the device's bottom edge. */
+  --m-hand-bottom: max(8px, env(safe-area-inset-bottom));
+  --m-hand-top-inset: calc(var(--m-hand-bottom) + var(--m-hand));
+  --m-controls-bottom: calc(var(--m-hand-top-inset) + 17px);
+  --m-actions-inset: calc(var(--m-controls-bottom) + var(--m-controls-height, 36px) + 8px);
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+#window.merchant-window #arena:before {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  inset: 37% 23% 24%;
+  background: radial-gradient(ellipse, #33281b48, transparent 70%);
+}
+#window.merchant-window
+  :is(#statusbg, #roundmenu, #historybar, #arenalog, #timer, .gameinfo, .touchinfo, #mebg) {
+  display: none !important;
+}
+#window.merchant-window #system {
+  position: absolute;
+  inset: max(8px, env(safe-area-inset-top)) max(var(--m-gap), env(safe-area-inset-right)) auto
+    max(var(--m-gap), env(safe-area-inset-left));
+  width: auto;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+  z-index: 22;
+}
+#window.merchant-window #system > div {
+  position: static;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  pointer-events: auto;
+  float: none;
+}
+#window.merchant-window #system > div > div,
+.m-pocket,
+.m-pile {
+  border: 1px solid #c6a76d75;
+  color: #fff0d2;
+  background: linear-gradient(#323e32df, #1b2922eb);
+  box-shadow: 0 2px 5px #10140d42;
+}
+#window.merchant-window #system > div > div {
+  position: static;
+  margin: 0;
+  padding: 5px 11px;
+  border-radius: 4px;
+  font:
+    17px/1.2 m-ink,
+    serif;
+}
+.m-table-title {
+  font:
+    clamp(18px, 2.2vw, 31px) / 1 m-ink,
+    serif;
+  letter-spacing: 0.1em;
+  color: #ffefc7;
+  padding-right: 9px;
+  text-shadow: 0 1px 4px #100e09;
+}
+.m-turn-bar {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #f8eac7;
+  font-size: 13px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 15;
+  text-shadow: 0 1px 4px black;
+}
+.m-turn-clock {
+  font-variant-numeric: tabular-nums;
+  color: #dccaaa;
+}
+#window.merchant-window #arena > .player {
+  container: merchant-seat / size;
+  --m-role-size: clamp(17px, 18.5cqw, 26px);
+  --m-compact-name-size: clamp(10px, 18cqw, 16px);
+  --m-nick-bottom: 28px;
+  --m-nick-size: 12px;
+  --m-gear-bottom: calc(var(--m-nick-bottom) + 1.1 * var(--m-nick-size) + 2px);
+  width: var(--m-seat) !important;
+  height: var(--m-seat-h) !important;
+  border: 2px solid #9f8056;
+  border-radius: 5px;
+  overflow: visible;
+  box-shadow: 0 2px 10px #17100780;
+  background: #c8b485;
+}
+#window.merchant-window #arena > .player:not([data-position='0']) {
+  top: max(60px, 9%);
+  bottom: auto;
+}
+#window.merchant-window #arena > .player[data-position='0'] {
+  top: auto;
+  bottom: max(9px, env(safe-area-inset-bottom));
+  left: max(var(--m-gap), env(safe-area-inset-left));
+}
+#window.merchant-window #arena[data-number='2'] > .player[data-position='1'] {
+  left: calc(50% - var(--m-seat) / 2);
+}
+#window.merchant-window #arena .player > .avatar {
+  display: block;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 3px;
+  background-size: cover;
+  background-position: center 22% !important;
+  box-shadow: none;
+}
+#window.merchant-window .player > .avatar:after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(0deg, #24231df2, #26231d00 42%),
+    linear-gradient(90deg, #31261651, transparent 47%);
+  border-radius: inherit;
+}
+#window.merchant-window #arena .player > .name {
+  display: block;
+  position: absolute;
+  top: 8%;
+  bottom: auto;
+  left: 5%;
+  width: auto;
+  max-height: 66%;
+  height: auto;
+  writing-mode: vertical-rl;
+  color: #fff4d0;
+  line-height: 1.04;
+  white-space: nowrap;
+  font:
+    var(--m-role-size) / 1.05 m-ink,
+    serif;
+  text-shadow:
+    0 1px 3px #231707,
+    0 0 3px #342615;
+}
+#window.merchant-window #arena .player > .nameol {
+  display: block;
+  z-index: 6;
+  inset: auto 5px var(--m-nick-bottom);
+  width: auto;
+  height: auto;
+  text-align: left;
+  font:
+    var(--m-nick-size)/1.1 system-ui,
+    sans-serif;
+  color: #fff2cf;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+#window.merchant-window #arena .player > .count {
+  display: block;
+  z-index: 7;
+  top: auto;
+  right: -5px;
+  bottom: -4px;
+  left: auto;
+  width: auto;
+  min-width: 20px;
+  height: 23px;
+  padding: 0 5px;
+  border: 1px solid #d4b681;
+  border-radius: 3px;
+  background: #493d28;
+  color: #fff4ce;
+  line-height: 22px;
+}
+#window.merchant-window .player > .m-wealth {
+  position: absolute;
+  z-index: 6;
+  bottom: 4px;
+  left: 6px;
+  font:
+    20px/1 m-ink,
+    serif;
+  color: #ffe29b;
+}
+#window.merchant-window .player > .m-stock-count {
+  display: none;
+}
+#window.merchant-window .player > .identity,
+#window.merchant-window .player > .hp,
+#window.merchant-window .player > .framebg,
+#window.merchant-window .player > .intro {
+  display: none !important;
+}
+#window.merchant-window #arena .player.m-turn {
+  border-color: #f4d590;
+  box-shadow:
+    0 0 0 1px #d99c3b,
+    0 0 14px #e9bd6559;
+}
+#window.merchant-window #arena .player.selectable {
+  outline: 3px solid #9bdfbc;
+  outline-offset: 3px;
+}
+#window.merchant-window #arena[data-number='3'] > .player[data-position='1'],
+#window.merchant-window #arena[data-number='4'] > .player[data-position='1'] {
+  left: auto;
+  right: 12%;
+}
+#window.merchant-window #arena[data-number='3'] > .player[data-position='2'],
+#window.merchant-window #arena[data-number='4'] > .player[data-position='3'] {
+  left: 12%;
+  right: auto;
+}
+#window.merchant-window #arena[data-number='4'] > .player[data-position='2'] {
+  left: calc(50% - var(--m-seat) / 2);
+}
+#window.merchant-window #arena[data-number='5'] > .player:not([data-position='0']),
+#window.merchant-window #arena[data-number='6'] > .player:not([data-position='0']) {
+  top: max(54px, calc(env(safe-area-inset-top) + 46px));
+}
+#window.merchant-window #arena[data-number='6'] > .player[data-position='1'],
+#window.merchant-window #arena[data-number='5'] > .player[data-position='1'] {
+  left: auto;
+  right: 4%;
+}
+#window.merchant-window #arena[data-number='6'] > .player[data-position='2'] {
+  left: calc(72% - var(--m-seat) / 2);
+}
+#window.merchant-window #arena[data-number='6'] > .player[data-position='3'] {
+  left: calc(50% - var(--m-seat) / 2);
+}
+#window.merchant-window #arena[data-number='6'] > .player[data-position='4'] {
+  left: calc(28% - var(--m-seat) / 2);
+}
+#window.merchant-window #arena[data-number='6'] > .player[data-position='5'],
+#window.merchant-window #arena[data-number='5'] > .player[data-position='4'] {
+  left: 4%;
+}
+#window.merchant-window #arena[data-number='5'] > .player[data-position='2'] {
+  left: calc(65% - var(--m-seat) / 2);
+}
+#window.merchant-window #arena[data-number='5'] > .player[data-position='3'] {
+  left: calc(35% - var(--m-seat) / 2);
+}
+#window.merchant-window #arena > #me {
+  position: absolute;
+  top: auto;
+  bottom: var(--m-hand-bottom);
+  left: calc(var(--m-seat) + 2 * var(--m-gap));
+  right: calc(var(--m-pocket, 190px) + 2 * var(--m-gap));
+  width: auto;
+  height: calc(var(--m-hand) + 17px);
+  pointer-events: none;
+  border: 0;
+  box-shadow: none;
+  background: none;
+  overflow: visible;
+}
+#window.merchant-window #arena > #me > #handcards1 {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  pointer-events: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  touch-action: pan-x;
+}
+#window.merchant-window #handcards2 {
+  display: none;
+}
+#window.merchant-window #arena #handcards1 > .handcards {
+  height: 100%;
+  inset: 0 auto 0 0;
+  min-width: 100%;
+}
+#window.merchant-window #arena .handcards > .m-card {
+  width: var(--m-card);
+  height: var(--m-hand);
+  top: auto !important;
+  bottom: 1px;
+  left: 0;
+  border: 0;
+  border-radius: 5px;
+  background: #f4e4c4;
+  overflow: hidden;
+  box-shadow:
+    0 2px 6px #160f0aaa,
+    0 0 0 1px #6c5230;
+  transition: transform 0.15s ease-out;
+}
+.m-card > .m-print,
+.m-sample > .m-print,
+.m-card-choice > .m-print,
+.m-print > .yousei-card {
+  display: block;
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  aspect-ratio: auto;
+  border: 0 !important;
+  padding: 0 !important;
+  border-radius: inherit;
+  background: transparent !important;
+  box-shadow: none !important;
+  pointer-events: none;
+}
+.m-print svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+/* Printed ink has its own contrast. The native theme's halo is for controls on the table. */
+#window.merchant-window .yousei-card,
+#window.merchant-window .ex-print-face {
+  text-shadow: none;
+}
+#window.merchant-window .m-card > div {
+  display: none !important;
+}
+#window.merchant-window .m-card.selected {
+  outline: 2px solid #ffe295;
+  outline-offset: -2px;
+  bottom: 13px !important;
+  filter: brightness(1.07);
+}
+#window.merchant-window .m-card.selectable {
+  outline: 2px solid #b6deb7;
+  outline-offset: -2px;
+}
+.m-piles {
+  position: absolute;
+  left: max(4px, env(safe-area-inset-left));
+  top: 47%;
+  transform: translateY(-50%);
+  display: grid;
+  gap: 8px;
+  z-index: 5;
+}
+.m-pile {
+  display: grid;
+  place-items: center;
+  gap: 1px;
+  width: 58px;
+  padding: 4px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  z-index: 4;
+  font:
+    17px m-ink,
+    serif;
+  text-shadow: 0 1px 4px black;
+}
+.m-pile small {
+  font:
+    12px system-ui,
+    sans-serif;
+}
+.m-pile > span, .m-pile > small { white-space: nowrap; }
+.m-cardback {
+  width: 36px;
+  aspect-ratio: 0.7;
+  display: block;
+  margin-bottom: 6px;
+  border: 2px solid #c29e62;
+  outline: 1px solid #322c20;
+  border-radius: 3px;
+  background: #35493b url('../../../assets/hyakki/v2/card-back.svg') center/cover;
+  box-shadow:
+    2px 2px #ae975f,
+    4px 4px #3b4837;
+}
+.m-discard-top {
+  position: relative;
+  display: block;
+  width: 36px;
+  aspect-ratio: .7;
+  margin-bottom: 5px;
+  border-radius: 3px;
+  border: 1px dashed #d4bd90;
+  background: #28261f66;
+}
+.m-discard-top[data-face] { border-style: solid; box-shadow: 2px 2px #554a38; }
+.m-discard-top .m-print { display: block; position: absolute; inset: 0; }
+.m-pocket {
+  position: absolute;
+  right: var(--m-gap);
+  bottom: max(12px, env(safe-area-inset-bottom));
+  width: var(--m-pocket, 190px);
+  max-height: var(--m-hand);
+  overflow: auto;
+  padding: 7px 9px;
+  border-radius: 4px;
+  text-align: left;
+  z-index: 5;
+  scrollbar-width: thin;
+}
+.m-pocket-title {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font:
+    18px m-ink,
+    serif;
+}
+.m-pocket-bins,
+.m-bins {
+  display: grid;
+  gap: 7px;
+  margin-top: 4px;
+}
+.m-rack {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.m-rack h3 {
+  font:
+    12px/1.1 system-ui,
+    sans-serif;
+  margin: 0 4px 0 0;
+  color: #e3ce9e;
+}
+.m-bin {
+  display: flex;
+  position: relative;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #cab07866;
+  color: #d1bb90;
+  border-radius: 3px;
+  font:
+    13px system-ui,
+    sans-serif;
+}
+.m-pocket .m-bin {
+  box-sizing: border-box;
+  padding: 0;
+  background: transparent;
+  width: 16px;
+  height: 21px;
+}
+.m-temp {
+  border-style: dashed;
+}
+.m-good-icon {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  border-radius: 3px;
+}
+.m-pocket .m-good-icon {
+  width: 16px;
+  height: 17px;
+}
+.m-bin em {
+  position: absolute;
+  right: 0;
+  top: -3px;
+  color: #ffe284;
+  font:
+    9px system-ui,
+    sans-serif;
+}
+#window.merchant-window #arena > .merchant-dialog {
+  --m-dtop: calc(max(60px, 9%) + var(--m-seat-h) + 10px);
+  position: absolute;
+  inset: var(--m-dtop) max(10%, calc((100% - 820px) / 2)) calc(var(--m-hand) + 68px) !important;
+  min-height: 0 !important;
+  height: auto !important;
+  width: auto !important;
+  max-height: none !important;
+  max-width: none;
+  margin: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: transparent;
+  box-shadow: none;
+  border: none;
+  pointer-events: none;
+  z-index: 8;
+  transform: none !important;
+  overflow: visible;
+  color: var(--m-text);
+}
+#window.merchant-window .merchant-dialog > .bar {
+  display: none;
+}
+#window.merchant-window .merchant-dialog > .content-container {
+  inset: auto;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  width: fit-content;
+  max-width: 100%;
+  height: auto !important;
+  max-height: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+  pointer-events: auto;
+  background: linear-gradient(140deg, #282d22ee, #201e19f5);
+  border: 1px solid #b49b6599;
+  border-radius: 6px;
+  box-shadow: 0 4px 20px #20160c66;
+  scrollbar-width: thin;
+  touch-action: pan-y;
+}
+#window.merchant-window .merchant-dialog .content {
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  width: fit-content;
+  max-width: 100%;
+  height: auto;
+  inset: auto;
+  padding: 12px 22px;
+  text-align: center;
+}
+.m-heading {
+  font:
+    clamp(20px, 2.2vw, 32px) / 1.2 m-ink,
+    serif;
+  letter-spacing: 0.04em;
+  margin: 0;
+  color: #ffebbf;
+}
+.m-note {
+  margin: 5px auto 4px;
+  font:
+    clamp(12px, 1.15vw, 16px) / 1.45 system-ui,
+    sans-serif;
+  max-width: 52em;
+  color: #eadcc0;
+  white-space: normal;
+}
+.m-body {
+  margin: 6px auto 0;
+}
+.m-body p {
+  margin: 4px 0;
+}
+.m-choices {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 7px;
+}
+#window.merchant-window .m-choice {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: auto;
+  width: auto;
+  min-width: 45px;
+  min-height: 31px;
+  padding: 5px 11px;
+  border: 1px solid #b59a67;
+  border-radius: 4px;
+  background: #424739e8;
+  color: #fff0d2;
+  font:
+    15px/1.3 system-ui,
+    sans-serif;
+}
+#window.merchant-window .m-choices.m-spread {
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  max-width: 100%;
+  overflow-x: auto;
+  touch-action: pan-x;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding: 3px;
+  box-sizing: border-box;
+}
+#window.merchant-window .m-choice.m-role-choice {
+  align-items: stretch;
+  flex-direction: column;
+  justify-content: end;
+  gap: 0;
+  flex: none;
+  width: clamp(98px, 12vw, 155px);
+  height: clamp(125px, 21vh, 202px);
+  padding: 0;
+  overflow: hidden;
+  background: #e6d7b8;
+}
+.m-role-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 14%;
+}
+.m-role-name,
+.m-role-ability {
+  position: relative;
+  display: block;
+  padding: 2px 4px;
+  color: #fff4d3;
+  background: #233024e8;
+}
+.m-role-name {
+  font:
+    clamp(18px, 2.1vw, 26px) / 1.1 m-ink,
+    serif;
+}
+.m-role-ability {
+  font:
+    12px system-ui,
+    sans-serif;
+  padding-bottom: 4px;
+}
+#window.merchant-window .m-choice.m-card-choice,
+.m-sample {
+  padding: 0;
+  position: relative;
+  display: inline-block;
+  flex: none;
+  width: var(--m-card);
+  height: var(--m-hand);
+  border: 0;
+  border-radius: 4px;
+  background: #efdfba;
+  overflow: hidden;
+}
+#window.merchant-window [aria-disabled='true'] {
+  opacity: 0.52;
+  cursor: default;
+}
+#window.merchant-window .m-choice.selected {
+  outline: 2px solid #f9de92;
+  outline-offset: -2px;
+  filter: brightness(1.08);
+}
+.m-page {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 3px;
+}
+.m-page button {
+  background: #374434;
+  color: #ffe8bb;
+  padding: 1px 14px;
+  border: 1px solid var(--m-edge);
+  border-radius: 4px;
+}
+#window.merchant-window #arena > #control {
+  position: absolute;
+  bottom: var(--m-controls-bottom);
+  left: var(--m-gap);
+  right: var(--m-gap);
+  top: auto;
+  width: auto;
+  height: auto;
+  min-height: 36px;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 18;
+}
+#window.merchant-window #control > .m-actions {
+  position: relative;
+  left: auto !important;
+  right: auto;
+  bottom: auto;
+  width: fit-content;
+  height: auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 0;
+  margin: 0;
+  transform: none !important;
+  background: none !important;
+  box-shadow: none !important;
+  border: 0;
+  pointer-events: auto;
+}
+#window.merchant-window #control > .m-actions > div {
+  position: static;
+  width: auto;
+  height: auto;
+  display: flex;
+  align-items: center;
+  min-height: 34px;
+  box-sizing: border-box;
+  padding: 4px 15px;
+  border: 1px solid #d0ae73;
+  border-radius: 4px;
+  background: linear-gradient(#414a38, #29362b);
+  box-shadow: 0 2px 4px #17140f55;
+  color: #fff0ce;
+  font:
+    clamp(16px, 1.7vw, 23px) / 1.1 m-ink,
+    serif;
+}
+#window.merchant-window #control > .m-actions > div.m-primary:not([aria-disabled='true']) {
+  background: linear-gradient(#ad643d, #834328);
+}
+.m-receipt,
+.m-toast {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 80%;
+  padding: 5px 12px;
+  color: #f7e6c0;
+  text-align: center;
+  border-radius: 4px;
+  background: #24291fd4;
+  font:
+    14px/1.4 system-ui,
+    sans-serif;
+  pointer-events: none;
+}
+.m-receipt {
+  bottom: calc(var(--m-hand) + 72px);
+}
+.m-toast {
+  bottom: 42%;
+  z-index: 32;
+}
+.m-ranks {
+  margin: 8px 0 4px;
+  padding: 0;
+  list-style: none;
+}
+.m-ranks li {
+  display: flex;
+  justify-content: space-between;
+  gap: 40px;
+  padding: 4px 9px;
+  border-bottom: 1px solid #ba9c604d;
+}
+.m-market-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(100px, 1fr));
+  gap: 7px 18px;
+  text-align: left;
+}
+.m-family h3,
+.m-bins h3 {
+  font:
+    16px m-ink,
+    serif;
+  color: #e2c791;
+  margin: 0;
+}
+.m-good-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 14px;
+  padding: 1px 0;
+}
+.m-good-row b {
+  margin-left: auto;
+  color: #ffe2a5;
+}
+.m-bins .m-bin {
+  min-width: 40px;
+  min-height: 40px;
+  padding: 3px;
+}
+.m-bins .m-rack {
+  gap: 4px;
+}
+.m-bins .m-bin small {
+  font-size: 10px;
+}
+.m-read {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+}
+.m-read-copy {
+  max-width: 34em;
+  font-size: 14px;
+}
+#window .m-form {
+  position: static;
+  display: block;
+  height: auto;
+  max-height: none;
+  overflow: visible;
+  width: auto;
+  margin: 0;
+  color: var(--m-text);
+}
+#window .m-form :is(div, section, article, header, footer, label, fieldset) {
+  position: static;
+  inset: auto;
+  transform: none;
+  transition: none;
+  height: auto;
+  max-height: none;
+  min-height: 0;
+  color: inherit;
+}
+#window .m-form div {
+  display: block;
+}
+#window .m-form button,
+#window .m-form select {
+  position: static;
+  min-height: 29px;
+  padding: 3px 7px;
+  margin: 2px;
+  border: 1px solid var(--m-edge);
+  border-radius: 3px;
+  color: #f8ebc8;
+  background: #344235;
+  font-size: 14px;
+}
+#window .m-form h2,
+#window .m-form h3,
+#window .m-form p {
+  margin: 3px 0;
+}
+#window .m-form .yousei-card {
+  display: inline-block;
+  width: 62px;
+  height: 92px;
+}
+@media (max-height: 550px) and (orientation: landscape) {
+  :root {
+    --m-card: clamp(57px, 15vh, 80px);
+    --m-seat: clamp(56px, 16.5vh, 85px);
+    --m-pocket: 136px;
+    --m-gap: 7px;
+  }
+  #window.merchant-window #system {
+    top: 4px;
+    height: 25px;
+    padding-block: 0;
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr) max-content;
+    grid-template-rows: minmax(0, 1fr);
+    column-gap: 4px;
+  }
+  #window.merchant-window #system > div > div {
+    font-size: 13px;
+    padding: 3px 7px;
+  }
+  .m-table-title {
+    font-size: 18px;
+  }
+  .m-turn-bar {
+    position: static;
+    transform: none;
+    justify-content: center;
+    min-width: 0;
+    gap: 4px;
+    font-size: 11px;
+  }
+  .m-turn-info {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .m-turn-clock { flex-shrink: 0; }
+  #window.merchant-window #arena > .player:not([data-position='0']) {
+    top: 32px !important;
+  }
+  #window.merchant-window #arena > .merchant-dialog {
+    --m-dtop: calc(34px + var(--m-seat-h));
+    inset-inline: 16% !important;
+    bottom: calc(var(--m-hand) + 51px) !important;
+  }
+  #window.merchant-window .merchant-dialog .content {
+    padding: 5px 10px;
+  }
+  .m-heading {
+    font-size: 18px;
+  }
+  .m-note {
+    font-size: 12px;
+    line-height: 1.25;
+    margin: 2px 0;
+  }
+  .m-role-ability {
+    font-size: 10px;
+  }
+  #window.merchant-window .m-choice.m-role-choice {
+    width: 81px;
+    height: 95px;
+  }
+  #window.merchant-window
+    #arena:has(.merchant-dialog[data-kind='opening'])
+    > .player:not([data-position='0']) {
+    opacity: 0.22;
+  }
+  #window.merchant-window #arena > .merchant-dialog[data-kind='opening'],
+  #window.merchant-window #arena > .merchant-dialog[data-kind='market'],
+  #window.merchant-window #arena > .merchant-dialog[data-kind='stock'],
+  #window.merchant-window #arena > .merchant-dialog[data-kind='reader'],
+  #window.merchant-window #arena > .merchant-dialog[data-kind='waiting'],
+  #window.merchant-window #arena > .merchant-dialog[data-kind='spread'] {
+    top: 38px !important;
+    bottom: calc(var(--m-hand) + 51px) !important;
+  }
+  #window.merchant-window #arena > #control {
+    min-height: 29px;
+  }
+  #window.merchant-window #control > .m-actions > div {
+    min-height: 29px;
+    padding: 3px 11px;
+    font-size: 15px;
+  }
+  .m-pocket {
+    padding: 4px 6px;
+  }
+  .m-pocket-title {
+    font-size: 14px;
+  }
+  .m-pocket .m-rack h3 {
+    font-size: 10px;
+  }
+  .m-pocket .m-bin {
+    width: 12px;
+    height: 16px;
+  }
+  .m-pocket .m-good-icon {
+    width: 12px;
+    height: 13px;
+  }
+  .m-receipt {
+    bottom: calc(var(--m-hand) + 49px);
+    font-size: 11px;
+  }
+  .m-read .m-sample {
+    min-width: var(--m-card);
+  }
+  .m-read-copy {
+    font-size: 12px;
+  }
+  .m-choices {
+    gap: 4px;
+    margin-top: 2px;
+  }
+  .m-market-grid {
+    gap: 2px 12px;
+  }
+  .m-good-row {
+    font-size: 12px;
+  }
+  .m-good-icon {
+    width: 16px;
+    height: 16px;
+  }
+}
+@media (max-width: 650px) and (orientation: portrait) {
+  :root {
+    --m-card: clamp(64px, 19vw, 99px);
+    --m-seat: clamp(64px, 19vw, 96px);
+    --m-pocket: 0px;
+    --m-gap: 6px;
+  }
+  #window.merchant-window #system > div > div {
+    font-size: 14px;
+    padding: 4px 6px;
+  }
+  .m-table-title {
+    font-size: 20px;
+    padding-right: 1px;
+  }
+  .m-turn-bar {
+    top: calc(100% + 5px);
+    font-size: 12px;
+  }
+  .m-turn-clock {
+    display: none;
+  }
+  #window.merchant-window #arena > .player:not([data-position='0']) {
+    top: 84px !important;
+  }
+  #window.merchant-window #arena[data-number='5'] > .player:not([data-position='0']),
+  #window.merchant-window #arena[data-number='6'] > .player:not([data-position='0']) {
+    width: 15vw !important;
+    height: 24vw !important;
+  }
+  #window.merchant-window #arena > .merchant-dialog {
+    inset: calc(92px + var(--m-seat-h)) 7px calc(var(--m-hand) + 112px) !important;
+  }
+  #window.merchant-window .merchant-dialog .content {
+    padding: 9px 12px;
+  }
+  .m-heading {
+    font-size: 22px;
+  }
+  .m-note {
+    font-size: 13px;
+  }
+  .m-choice.m-role-choice {
+    width: 26vw !important;
+    height: 36vw !important;
+  }
+  #window.merchant-window #arena {
+    --m-controls-bottom: calc(var(--m-hand-top-inset) + 58px);
+  }
+  #window.merchant-window #control > .m-actions > div {
+    min-height: 38px;
+    font-size: 17px;
+  }
+  .m-pocket {
+    bottom: calc(var(--m-hand-top-inset) + 6px);
+    right: 7px;
+    width: auto;
+    max-width: calc(100% - var(--m-seat) - 20px);
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .m-pocket-title {
+    font-size: 13px;
+  }
+  .m-pocket-bins {
+    display: flex;
+    margin: 0;
+  }
+  .m-pocket .m-rack h3 {
+    font-size: 9px;
+  }
+  .m-pocket .m-bin {
+    width: 10px;
+    height: 15px;
+  }
+  .m-pocket .m-good-icon {
+    width: 10px;
+    height: 12px;
+  }
+  .m-piles { top: var(--m-supply-top); transform: none; gap: 2px; }
+  .m-pile { width: 40px; min-height: 44px; padding: 2px; font-size: 12px; line-height: 1.1; }
+  .m-pile small { font-size: 10px; }
+  .m-pile .m-cardback, .m-discard-top { width: 12px; height: 16px; margin-bottom: 1px; border-width: 1px; }
+  .m-cardback {
+    width: 24px;
+  }
+  .m-market-grid {
+    grid-template-columns: repeat(2, minmax(90px, 1fr));
+  }
+  .m-read {
+    gap: 6px;
+  }
+  .m-read .m-sample {
+    min-width: 60px;
+  }
+  .m-read-copy {
+    font-size: 12px;
+  }
+  .m-receipt {
+    bottom: calc(var(--m-hand) + 114px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #window.merchant-window *,
+  #window.merchant-window *:before {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+#window.merchant-window .merchant-dialog .content {
+  flex: none;
+}
+#window.merchant-window #arena:has(.merchant-dialog[data-kind='opening']) > .player {
+  visibility: hidden;
+}
+#window.merchant-window #arena > .merchant-dialog[data-kind='opening'] {
+  top: 52px !important;
+  align-items: flex-end;
+}
+#window.merchant-window #arena .player > .name {
+  z-index: 5;
+}
+#window.merchant-window .handcards > .m-card {
+  touch-action: pan-x;
+}
+@media (max-height: 550px) and (orientation: landscape) {
+  #window.merchant-window .player > .m-wealth {
+    font-size: 14px;
+    left: 3px;
+    bottom: 3px;
+  }
+  #window.merchant-window #arena > .player {
+    --m-nick-bottom: 19px;
+    --m-nick-size: 10px;
+  }
+  #window.merchant-window #arena .player > .count {
+    min-width: 13px;
+    height: 16px;
+    padding: 0 3px;
+    line-height: 15px;
+    font-size: 12px;
+  }
+}
+
+@media (max-height: 550px) and (orientation: landscape) {
+  #window.merchant-window .m-role-name {
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  #window.merchant-window .m-role-ability {
+    font-size: 9px;
+    line-height: 1.2;
+    padding: 2px;
+  }
+  .m-piles { top: calc(36px + var(--m-far-height)); transform: none; gap: 3px; }
+  #window.merchant-window .m-pile {
+    grid-template-columns: 15px 1fr;
+    gap: 0 1px;
+    padding: 3px 1px;
+    width: 59px;
+    min-height: 40px;
+    font: 12px/1.15 m-ink, serif;
+    background: #24281ed9;
+    border: 1px solid #ab956e82;
+    border-radius: 3px;
+  }
+  .m-pile .m-cardback, .m-discard-top { grid-row: span 2; width: 13px; height: 18px; margin: 0; border-width: 1px; }
+  .m-pile small { font-size: 10px; }
+}
+@media (min-height: 551px) {
+  #window.merchant-window #arena > .merchant-dialog[data-kind='opening'] {
+    bottom: calc(50% - 79px) !important;
+  }
+  #window.merchant-window #arena:has(> .merchant-dialog[data-kind='opening']) {
+    --m-controls-bottom: calc(50% - 125px);
+  }
+}
+
+.m-spread > .m-choice:first-child {
+  margin-inline-start: auto;
+}
+.m-spread > .m-choice:last-child {
+  margin-inline-end: auto;
+}
+#window.merchant-window #arena > .m-card.m-played {
+  width: var(--m-card);
+  height: var(--m-hand);
+  border-radius: 5px;
+  pointer-events: none;
+  transition: none !important;
+  z-index: 4;
+}
+@media (max-height: 550px) and (orientation: landscape) {
+  #window.merchant-window #arena > .merchant-dialog[data-kind='closing'] {
+    top: 38px !important;
+  }
+  .m-ranks {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(94px, 1fr));
+    gap: 1px 14px;
+  }
+  .m-ranks li {
+    justify-content: space-between;
+    gap: 10px;
+    padding: 3px;
+  }
+}
+
+#window.merchant-window #arena .player.m-chosen {
+  outline-color: #ffdf87;
+  box-shadow: 0 0 16px #d8b76890;
+}
+
+#window.merchant-window .merchant-dialog[data-kind='decision'] .content:has(.m-body > .m-sample) {
+  display: grid;
+  grid-template-columns: var(--m-card) minmax(0, auto);
+  align-items: center;
+  gap: 3px 14px;
+  text-align: left;
+}
+#window.merchant-window .merchant-dialog[data-kind='decision'] .content:has(.m-body > .m-sample) > .m-body {
+  grid-column: 1;
+  grid-row: 1/3;
+  margin: 0;
+}
+#window.merchant-window
+  .merchant-dialog[data-kind='decision']
+  .content:has(.m-body > .m-sample)
+  > .m-heading {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: end;
+}
+#window.merchant-window .merchant-dialog[data-kind='decision'] .content:has(.m-body > .m-sample) > .m-note {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: start;
+  margin: 3px 0;
+}
+
+#window.merchant-window .m-choice.selected:is(.m-role-choice, .m-card-choice)::after {
+  content: '✓';
+  position: absolute;
+  right: 1px;
+  top: 1px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 0 3px 0 7px;
+  background: #e7bf70;
+  color: #302616;
+  font: bold 13px/1 system-ui;
+  pointer-events: none;
+}
+
+/* The native control can wrap on a narrow phone. Reserve the current bar height for every dialog. */
+#window.merchant-window #arena.merchant-arena > .merchant-dialog {
+  bottom: var(--m-actions-inset, calc(var(--m-hand) + 70px)) !important;
+}
+#window.merchant-window #arena.merchant-arena > .m-receipt {
+  bottom: var(--m-actions-inset, calc(var(--m-hand) + 70px));
+}
+html,
+body,
+#window.merchant-window,
+#window.merchant-window #arena.merchant-arena {
+  overflow: clip;
+}
+
+#window.merchant-window #control > .m-actions {
+  opacity: 1 !important;
+  transition: none !important;
+}
+#window.merchant-window #arena > .player.m-chosen::after {
+  content: '✓';
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 7;
+  padding: 2px 5px;
+  background: #f0cd80;
+  color: #352917;
+  border-radius: 0 2px 0 6px;
+  font: bold 13px system-ui;
+  pointer-events: none;
+}
+
+/* Follow the engine's text-equipment layout: each tool lies over its owner's art. */
+#window.merchant-window #arena > .player > .equips {
+  position: absolute;
+  display: grid;
+  inset: auto 1px var(--m-gear-bottom) calc(5% + var(--m-role-size) + 3px);
+  width: auto;
+  height: auto;
+  z-index: 8;
+  overflow: hidden;
+  transform: none;
+  pointer-events: none;
+}
+#window.merchant-window #arena .equips > .m-equipped {
+  position: relative;
+  inset: auto;
+  margin: 0;
+  height: 22px;
+  transform: none;
+  box-shadow: none;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  width: 100%;
+  min-width: 0;
+  padding: 0 2px;
+  border: 0;
+  border-bottom: 1px solid #ead4a039;
+  border-radius: 0;
+  background: linear-gradient(90deg, #201c16de, #211d16b8 73%, #211d166b);
+  color: #fff4d7;
+  text-align: left;
+  font: 600 13px/1.1 system-ui, sans-serif;
+  text-shadow: 0 1px 2px #201b14;
+  pointer-events: auto;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+#window.merchant-window .m-equipped > div {
+  display: none;
+}
+.m-equipped img {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  object-fit: cover;
+  border-radius: 2px;
+}
+.m-gear-name {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+#window.merchant-window #arena .equips > .m-equipped.m-spent {
+  color: #e2d9c9;
+}
+.m-equipped.m-spent img {
+  filter: grayscale(1);
+}
+.m-gear-state {
+  flex: none;
+  margin-left: auto;
+  color: #f6d8a3;
+  font: 10px/1 system-ui;
+}
+#window.merchant-window #arena .equips > .m-equipped.m-material {
+  box-shadow: inset 0 0 0 1px #9bdfbc;
+}
+#window.merchant-window .m-equipped:is([aria-pressed='true'], :focus-visible) {
+  outline: 2px solid #ffdc87;
+  outline-offset: -2px;
+}
+/* On a small portrait, several tools share a single band so the face stays tappable. */
+@container merchant-seat (max-width: 99px) or (max-height: 149px) {
+  #window.merchant-window #arena .player > .name {
+    inset: 2px 2px auto;
+    writing-mode: horizontal-tb;
+    text-align: center;
+    max-height: none;
+    font-size: var(--m-compact-name-size);
+  }
+  #window.merchant-window #arena > .player > .equips {
+    inset: auto 1px var(--m-gear-bottom);
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+  }
+  #window.merchant-window #arena .equips > .m-equipped {
+    height: clamp(20px, 19cqh, 26px);
+    justify-content: center;
+    font-size: 11px;
+    padding-inline: 1px;
+    gap: 1px;
+  }
+  .m-equipped img {
+    width: min(18px, 100%);
+    height: 17px;
+  }
+  .m-equipped:not(:only-child) .m-gear-name {
+    display: none;
+  }
+  .m-equipped .m-gear-state {
+    position: absolute;
+    inset: auto 0 0 auto;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #302a20;
+    color: #ffdeb1;
+    font-size: 0;
+    text-align: center;
+  }
+  .m-equipped .m-gear-state::after {
+    content: '✓';
+    font: bold 9px/10px system-ui;
+  }
+}
+@container merchant-seat (max-width: 70px) {
+  .m-equipped:only-child .m-gear-name {
+    display: none;
+  }
+}
+
+/* The public stock uses the same six families and counts as its detailed view. */
+.m-supply {
+  position: absolute;
+  z-index: 5;
+  box-sizing: border-box;
+  right: max(var(--m-gap), env(safe-area-inset-right));
+  top: calc(max(60px, 9%) + var(--m-seat-h) + 10px);
+  width: var(--m-supply);
+  padding: 8px 11px;
+  color: #f7ecd1;
+  border: 1px solid #b397677d;
+  border-radius: 4px;
+  background: linear-gradient(125deg, #26362ceb, #1e2821f2);
+  box-shadow: 0 2px 7px #17140d44;
+  text-shadow: none;
+}
+/* On a tall landscape table the shelf sits below the system controls.
+   Its edge belongs with the player's stall; the toolbar keeps its safe inset. */
+@media (orientation: landscape) and (min-height: 551px) {
+  .m-supply { right: var(--m-gap); }
+}
+.m-supply h2 {
+  margin: 0 0 5px;
+  color: #f5d9a2;
+  font: 19px/1.1 m-ink, serif;
+}
+.m-supply .m-market-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px 10px;
+}
+.m-supply .m-family {
+  border-top: 1px solid #c5ab734a;
+  padding-top: 3px;
+}
+.m-supply .m-family h3 {
+  color: #d9bc87;
+  font: 600 12px/1.25 system-ui, sans-serif;
+}
+.m-supply .m-good-row {
+  width: 100%;
+  min-width: 0;
+  appearance: none;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  text-shadow: none;
+  text-align: left;
+  line-height: 1.2;
+  gap: 3px;
+  white-space: nowrap;
+}
+.m-supply .m-good-row:disabled {
+  opacity: 1;
+  -webkit-text-fill-color: currentColor;
+  cursor: default;
+}
+.m-supply .m-good-row:enabled {
+  background: #395545;
+  outline: 1px solid #9bdfbc;
+  cursor: pointer;
+}
+.m-supply .m-good-row[aria-pressed='true'] {
+  background: #594b2b;
+  outline: 2px solid #ffdc87;
+}
+.m-supply .m-good-icon {
+  width: 18px;
+  height: 18px;
+}
+#window.merchant-window #arena[data-supply] > .merchant-dialog {
+  left: max(65px, calc((100% - 820px) / 2)) !important;
+  right: max(calc(var(--m-supply) + 2 * var(--m-gap)), calc((100% - 820px) / 2)) !important;
+}
+#window.merchant-window #arena[data-supply] > #control {
+  left: max(65px, calc((100% - 820px) / 2));
+  right: max(calc(var(--m-supply) + 2 * var(--m-gap)), calc((100% - 820px) / 2));
+}
+
+@media (max-height: 550px) and (orientation: landscape) {
+  :root {
+    --m-supply: clamp(155px, 20vw, 205px);
+  }
+  #window.merchant-window #arena[data-supply] > .player:not([data-position='0']) {
+    left: calc((100% - var(--m-supply) - var(--m-gap)) * var(--m-seat-centre) - var(--m-seat) / 2);
+    right: auto;
+  }
+  .m-supply {
+    top: auto;
+    bottom: calc(var(--m-hand) + 24px);
+    padding: 5px 6px;
+  }
+  .m-supply h2 {
+    margin-bottom: 2px;
+    font-size: 15px;
+  }
+  .m-supply .m-market-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .m-supply .m-family {
+    display: grid;
+    grid-template-columns: 23px 1fr 1fr;
+    align-items: center;
+    column-gap: 4px;
+    min-height: 19px;
+    padding: 0;
+  }
+  .m-supply .m-family h3,
+  .m-supply .m-good-row {
+    font-size: 11px;
+  }
+  .m-supply .m-good-icon {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+#window.merchant-window #arena > .merchant-dialog[data-kind='auction'] {
+  container: merchant-bid / size;
+}
+/* A shallow table can fit hand-sized lots alongside the auction text. */
+@container merchant-bid (max-height: 254px) and (min-aspect-ratio: 2) {
+  #window.merchant-window .merchant-dialog[data-kind='auction'] .content {
+    display: grid;
+    grid-template-columns: minmax(70px, max-content) minmax(0, 1fr);
+    align-items: center;
+    gap: 1px 8px;
+    padding: 4px 6px;
+  }
+  .merchant-dialog[data-kind='auction'] .m-heading {
+    grid-area: 1 / 1;
+    align-self: end;
+    font-size: 16px;
+  }
+  .merchant-dialog[data-kind='auction'] .m-note {
+    grid-area: 2 / 1;
+    align-self: start;
+  }
+  .merchant-dialog[data-kind='auction'] .m-spread {
+    grid-area: 1 / 2 / 3 / 3;
+    margin: 0;
+  }
+  .merchant-dialog[data-kind='auction'] .m-page {
+    grid-area: 3 / 2;
+  }
+  #window.merchant-window .merchant-dialog[data-kind='auction'] .m-card-choice {
+    width: min(var(--m-card), calc((100cqh - 18px) / 1.48));
+    height: auto;
+    aspect-ratio: 1 / 1.48;
+  }
+}
+@media (max-width: 650px) and (orientation: portrait) {
+  #window.merchant-window #arena > #me {
+    right: var(--m-gap);
+  }
+  #arena[data-supply] {
+    --m-supply-top: calc(84px + var(--m-peer-height, var(--m-seat-h)) + 10px);
+  }
+  #arena:is([data-number='5'],[data-number='6']) {
+    --m-peer-height: 24vw;
+  }
+  #window.merchant-window #arena:is([data-number='5'],[data-number='6']) > .player:not([data-position='0']) {
+    left: calc(100% * var(--m-seat-centre) - 7.5vw);
+    right: auto;
+  }
+  #window.merchant-window #arena .player:not([data-position='0']) > .m-wealth {
+    left: 2px;
+    font-size: 14px;
+  }
+  #window.merchant-window #arena > .player:not([data-position='0']) {
+    --m-nick-bottom: 20px;
+    --m-nick-size: 10px;
+  }
+  #window.merchant-window #arena .player:not([data-position='0']) > .count {
+    min-width: 14px;
+    height: 16px;
+    padding-inline: 3px;
+    font: 600 12px/16px system-ui;
+  }
+  .m-supply {
+    top: var(--m-supply-top);
+    right: var(--m-gap);
+    left: 46px;
+    width: auto;
+    padding: 5px 7px;
+  }
+  .m-supply h2 {
+    margin-bottom: 2px;
+    font-size: 16px;
+  }
+  .m-supply .m-market-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 3px 7px;
+  }
+  .m-supply .m-family {
+    padding-top: 1px;
+  }
+  .m-supply .m-family h3,
+  .m-supply .m-good-row {
+    font-size: 11px;
+  }
+  .m-supply .m-good-icon {
+    width: 14px;
+    height: 14px;
+  }
+  #window.merchant-window #arena[data-supply] > .merchant-dialog {
+    top: calc(var(--m-supply-top) + var(--m-supply-height) + 5px) !important;
+    left: 6px !important;
+    right: 6px !important;
+  }
+  #window.merchant-window #arena[data-supply] > #control {
+    left: calc(max(83px, var(--m-seat)) + 2 * var(--m-gap));
+    right: var(--m-gap);
+  }
+}
+@media (max-height: 365px) and (orientation: landscape) {
+  #arena[data-supply] {
+    --m-peer-height: 24vh;
+  }
+  #window.merchant-window #arena[data-supply] > .player:not([data-position='0']) {
+    height: var(--m-peer-height) !important;
+  }
+  #window.merchant-window #arena[data-supply] > .merchant-dialog[data-kind='auction'] {
+    top: calc(35px + var(--m-peer-height)) !important;
+  }
+}
+/* On short phones the bid controls fit immediately below public stock. This
+   leaves the centre tall enough for full hand-sized lots, even with six seats. */
+@media (max-height: 430px) and (orientation: landscape) {
+  #arena:has(> .merchant-dialog[data-kind='auction']) > .m-supply {
+    top: 35px;
+    bottom: auto;
+  }
+  #window.merchant-window #arena[data-supply]:has(> .merchant-dialog[data-kind='auction']) > #control {
+    inset: calc(39px + var(--m-supply-height)) max(var(--m-gap), env(safe-area-inset-right)) auto auto;
+    width: var(--m-supply);
+    min-height: 0;
+  }
+  #window.merchant-window #arena:has(> .merchant-dialog[data-kind='auction']) #control > .m-actions {
+    display: grid;
+    width: 100%;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 3px;
+  }
+  #window.merchant-window #arena:has(> .merchant-dialog[data-kind='auction']) #control .m-actions > div {
+    justify-content: center;
+    padding-inline: 7px;
+  }
+  #arena:has(> .merchant-dialog[data-kind='auction']) #control [data-command='pass-bid'] {
+    grid-column: 1 / -1;
+  }
+  #window.merchant-window #arena.merchant-arena[data-supply] > .merchant-dialog[data-kind='auction'] {
+    bottom: calc(var(--m-hand) + var(--m-gap) + 12px) !important;
+  }
+  #window.merchant-window .merchant-dialog[data-kind='auction'] .content {
+    padding-block: 2px;
+  }
+  #window.merchant-window .merchant-dialog[data-kind='auction'] .m-card-choice {
+    width: min(var(--m-card), calc((100cqh - 12px) / 1.48));
+  }
+  #arena:has(> .merchant-dialog[data-kind='auction']) > .m-pocket {
+    max-height: min(var(--m-hand), calc(100% - var(--m-supply-height) - 117px));
+  }
+}
+@media (max-width: 650px) and (max-height: 760px) and (orientation: portrait) {
+  .m-supply .m-market-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .m-supply .m-family {
+    display: grid;
+    grid-template-columns: max-content 1fr 1fr;
+    align-items: center;
+    gap: 4px;
+  }
+  #window.merchant-window .merchant-dialog[data-kind='auction'] .content {
+    padding: 4px 8px;
+  }
+  .merchant-dialog[data-kind='auction'] .m-heading,
+  .merchant-dialog[data-kind='auction'] .m-note {
+    display: inline;
+    margin: 0 3px;
+  }
+  .merchant-dialog[data-kind='auction'] .m-heading {
+    font-size: 18px;
+  }
+  #window.merchant-window #arena:has(.merchant-dialog[data-kind='auction']) #control .m-actions > div {
+    padding-inline: 7px;
+  }
+}

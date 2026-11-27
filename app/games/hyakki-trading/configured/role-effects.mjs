@@ -1,7 +1,9 @@
-import {getRole,GOODS,CATEGORIES} from '../content/expansion-one.mjs';
+import {GOODS,CATEGORIES} from '../content/expansion-one.mjs';
+import {getRole,unrestrictedRoleExchange} from './material.mjs';
 import {requireRule,player,opponent,goodsCount,createPending,completePending,legalResponseCards,setChoice,
-  drawCards,availableCards,removeCard,discardCards,addSilver,emit,emptyGoods,definition,canReceive,moveGoods,refreshTemporary} from './model.mjs';
-import {goodsVector,categoryCounts,receiptPlan} from '../trade-contract.mjs';
+  drawCards,availableCards,removeCard,discardCards,addSilver,emit,emptyGoods,definition,canReceive,moveGoods,bankStock,refreshTemporary} from './model.mjs';
+import {goodsVector,categoryCounts,receiptPlan,applyGoodsReceipt} from '../trade-contract.mjs';
+import {APPRAISAL_JOB,APPRAISER,checkedUnitQuality,qualityFields} from './refining.mjs';
 
 const exact=(value,keys)=>value&&typeof value==='object'&&!Array.isArray(value)
   &&Object.keys(value).length===keys.length&&keys.every(k=>Object.hasOwn(value,k));
@@ -12,24 +14,24 @@ const optionsGoods=(state,cat)=>GOODS.filter(g=>state.bankGoods[g.id]>0&&(!cat||
 const recoverable=state=>state.discard.filter(id=>definition(id).category==='tool');
 const resetTools=owner=>owner.tools.filter(t=>t.exhausted).map(t=>t.cardId);
 function exchangeDefault(state,owner){
-  for(const from of GOODS)if(owner.goods[from.id]>0)for(const to of GOODS)if(to.id!==from.id&&to.category===from.category&&state.bankGoods[to.id]>0)
+  for(const from of GOODS)if(owner.goods[from.id]>0)for(const to of GOODS)if(to.id!==from.id&&(unrestrictedRoleExchange(state.configuration)||to.category===from.category)&&state.bankGoods[to.id]>0)
     return {give:one(from.id),receive:one(to.id)};
   return null;
 }
 function checkedExchange(state,owner,selection){
-  requireRule(exact(selection,['give','receive']),'请选择同类交换的具体货物。');
+  requireRule(subset(selection,qualityFields(owner,['give','receive'],'giveRefined')),'请选择交出和换入的具体货物。');
   const give=goodsVector(selection.give),receive=goodsVector(selection.receive),a=Object.keys(categoryCounts(give)),b=Object.keys(categoryCounts(receive)),n=goodsCount(give);
-  requireRule(n>=1&&n<=2&&goodsCount(receive)===n&&a.length===1&&b.length===1&&a[0]===b[0]
-    &&GOODS.some(g=>give[g.id]!==receive[g.id]),'须交换同类等量1～2件，并改变至少一种货的数量。');
-  return receiptPlan(owner,state.bankGoods,{give,receive});
+  requireRule(n>=1&&n<=2&&goodsCount(receive)===n&&(unrestrictedRoleExchange(state.configuration)||a.length===1&&b.length===1&&a[0]===b[0])
+    &&GOODS.some(g=>give[g.id]!==receive[g.id]),unrestrictedRoleExchange(state.configuration)?'须等量交换1～2件，并改变至少一种货的数量。':'须交换同类等量1～2件，并改变至少一种货的数量。');
+  return receiptPlan(owner,state.bankGoods,{give,receive,giveRefined:selection.giveRefined});
 }
-const paramsKeys=code=>['R23','R24'].includes(code)?['targetId']:code==='R09'?['give','receive']:code==='R14'?['cardId']
-  :code==='R17'?['categoryId']:['R18','R20'].includes(code)?['goodId']:code==='R22'?['cardId','toolCardId']:[];
-export const roleActionCost=state=>getRole(player(state,state.turnPlayerId).roleId).sourceCode==='R22'?0:1;
+const paramsKeys=(code,owner)=>['R23','R24'].includes(code)?['targetId']:code==='R09'?qualityFields(owner,['give','receive'],'giveRefined'):code==='R14'?['cardId']
+  :code==='R17'?['categoryId']:code==='R18'?['goodId']:code==='R20'?qualityFields(owner,['goodId']):code==='R22'?['cardId','toolCardId']:[];
+export const roleActionCost=state=>getRole(player(state,state.turnPlayerId).roleId,state.configuration).sourceCode==='R22'?0:1;
 export function roleProblem(state,actorId,params={}){
-  const owner=player(state,actorId),code=getRole(owner.roleId).sourceCode;
+  const owner=player(state,actorId),code=getRole(owner.roleId,state.configuration).sourceCode;
   if(!active.includes(code))return '此角色没有当前可发动的能力。';
-  if(!subset(params,paramsKeys(code)))return '角色选择参数无效。';
+  if(!subset(params,paramsKeys(code,owner)))return '角色选择参数无效。';
   if(state.turnUsage.roleUsed)return '本回合已使用过角色能力。';
   if(['R23','R24'].includes(code)){
     if(state.turnUsage.monitorUsed)return '本回合已使用过【监】。';
@@ -39,7 +41,7 @@ export function roleProblem(state,actorId,params={}){
     if(!Number.isSafeInteger(owner.silver+2))return '银两超出可保存范围。';
   }
   if(code==='R09'){
-    if(!exchangeDefault(state,owner))return '需要自己的库存及同类其他货种。';
+    if(!exchangeDefault(state,owner))return unrestrictedRoleExchange(state.configuration)?'需要自己的库存及公共货栈的其他货物。':'需要自己的库存及同类其他货种。';
     if(Object.keys(params).length)checkedExchange(state,owner,params);
   }
   if(code==='R14'&&(owner.silver<1||!recoverable(state).length||params.cardId!==undefined&&!recoverable(state).includes(params.cardId)))return '需要1两及弃牌区的道具。';
@@ -47,13 +49,14 @@ export function roleProblem(state,actorId,params={}){
   if(code==='R17'&&(!exact(params,['categoryId'])||!CATEGORIES.some(c=>c.id===params.categoryId)||!optionsGoods(state,params.categoryId).length||!canReceive(owner,1,1)))return '请选择有货的一类，并留出1两和货位。';
   if(code==='R18'&&(!optionsGoods(state).length||!canReceive(owner,1,2)||params.goodId!==undefined&&!optionsGoods(state).includes(params.goodId)))return '需要2两、货源和可负担的货位。';
   if(code==='R20'&&(!goodsCount(owner.goods)||!Number.isSafeInteger(owner.silver+2)||params.goodId!==undefined&&!(owner.goods[params.goodId]>0)))return '需要自己的1件货物。';
+  if(code==='R20'&&params.refined!==undefined)checkedUnitQuality(owner,params.goodId,params.refined);
   if(code==='R22'&&(state.actionsUsed>=state.actionLimit||!owner.hand.length||!resetTools(owner).length
     ||Object.keys(params).length&&(!exact(params,['cardId','toolCardId'])||!owner.hand.includes(params.cardId)||!resetTools(owner).includes(params.toolCardId))))return '须保留至少1行动，弃1手牌并选择自己横置的道具。';
   return null;
 }
 export function beginRole(state,actorId,params={},ctx){
   const issue=roleProblem(state,actorId,params);requireRule(!issue,issue);
-  const owner=player(state,actorId),code=getRole(owner.roleId).sourceCode;
+  const owner=player(state,actorId),code=getRole(owner.roleId,state.configuration).sourceCode;
   state.turnUsage.roleUsed=true;
   if(['R23','R24'].includes(code)){
     state.turnUsage.monitorUsed=true;createPending(state,{kind:'role',ownerId:actorId,code,data:{targetId:params.targetId}});
@@ -83,7 +86,7 @@ export function continueRole(state,ctx={},params={}){
     const available=optionsGoods(state,pending.code==='R17'?params.categoryId:null),at=available.length===1?0:ctx.randomInt(available.length);
     requireRule(Number.isSafeInteger(at)&&at>=0&&at<available.length,'角色随机结果无效。');
     const fee=pending.code==='R17'?1:0,plan=receiptPlan(owner,state.bankGoods,{receive:one(available[at]),cost:fee});
-    addSilver(owner,-fee-plan.temporaryFee);owner.goods=plan.goods;owner.temporaryOccupied=plan.temporaryOccupied;state.bankGoods=plan.bankGoods;
+    addSilver(owner,-fee-plan.temporaryFee);applyGoodsReceipt(owner,plan);state.bankGoods=plan.bankGoods;
     completePending(state);return;
   }
   if(pending.code==='R09')setChoice(state,{kind:'role-class-exchange',actorId:owner.id,visibility:'public',options:[{ownGoods:{...owner.goods},bankGoods:{...state.bankGoods},minimum:1,maximum:2}],defaultSelection:exchangeDefault(state,owner)});
@@ -99,10 +102,11 @@ export function continueRole(state,ctx={},params={}){
 export function beginAfterActions(state,ctx){
   requireRule(!state.pending&&state.afterActions.length,'没有待完成的交易后义务。');
   const job=state.afterActions.shift();
-  requireRule(job.kind==='accountant-draw-discard'&&player(state,job.playerId).roleId==='yousei.role.r11','交易后义务无效。');
+  const owner=player(state,job.playerId),appraisal=job.kind===APPRAISAL_JOB;
+  requireRule(appraisal?owner.roleId===APPRAISER:job.kind==='accountant-draw-discard'&&owner.roleId==='yousei.role.r11','交易后义务无效。');
   if(!availableCards(state))return;
-  const owner=player(state,job.playerId),[card]=drawCards(state,1,ctx);owner.hand.push(card);
-  createPending(state,{kind:'role',ownerId:owner.id,code:'R11'});
+  const [card]=drawCards(state,1,ctx);owner.hand.push(card);
+  createPending(state,{kind:'role',ownerId:owner.id,code:appraisal?'E2R04':'R11'});
   state.pending.stage='discard';
   setChoice(state,{kind:'accountant-discard',actorId:owner.id,options:owner.hand.map(cardId=>({cardId})),defaultSelection:{cardId:owner.hand[0]}});
   emit(state,{type:'role-triggered',actorSeatId:owner.id,roleId:owner.roleId});
@@ -110,20 +114,23 @@ export function beginAfterActions(state,ctx){
 export function chooseRole(state,selection){
   const p=state.pending,owner=player(state,p?.ownerId);
   requireRule(p?.kind==='role'&&p.choice&&!p.response&&!p.receipt,'没有当前角色选择。');
-  if(p.code==='R11'){
+  if(['R11','E2R04'].includes(p.code)){
     requireRule(p.stage==='discard'&&p.choice.kind==='accountant-discard'&&exact(selection,['cardId'])&&owner.hand.includes(selection.cardId),'请选择自己要弃的1张手牌。');
     removeCard(owner.hand,selection.cardId);discardCards(state,[selection.cardId]);
   }else if(p.code==='R09'){
-    const plan=checkedExchange(state,owner,selection);addSilver(owner,-plan.temporaryFee);owner.goods=plan.goods;owner.temporaryOccupied=plan.temporaryOccupied;state.bankGoods=plan.bankGoods;
+    const plan=checkedExchange(state,owner,selection);addSilver(owner,-plan.temporaryFee);applyGoodsReceipt(owner,plan);state.bankGoods=plan.bankGoods;
   }else if(p.code==='R14'){
     requireRule(exact(selection,['cardId'])&&recoverable(state).includes(selection.cardId),'请选择弃牌区道具。');
     addSilver(owner,-1);removeCard(state.discard,selection.cardId);owner.hand.push(selection.cardId);
   }else if(['R18','R20'].includes(p.code)){
-    requireRule(exact(selection,['goodId'])&&p.choice.options.some(x=>x.goodId===selection.goodId),'请选择当前可用的1件货物。');
+    requireRule(subset(selection,paramsKeys(p.code,owner))&&p.choice.options.some(x=>x.goodId===selection.goodId),'请选择当前可用的1件货物。');
     if(p.code==='R18'){
       const plan=receiptPlan(owner,state.bankGoods,{receive:one(selection.goodId),cost:2});addSilver(owner,-2-plan.temporaryFee);
-      owner.goods=plan.goods;owner.temporaryOccupied=plan.temporaryOccupied;state.bankGoods=plan.bankGoods;
-    }else{moveGoods(owner.goods,state.bankGoods,one(selection.goodId));refreshTemporary(owner);addSilver(owner,2);}
+      applyGoodsReceipt(owner,plan);state.bankGoods=plan.bankGoods;
+    }else{
+      moveGoods(owner,bankStock(state),one(selection.goodId),checkedUnitQuality(owner,selection.goodId,selection.refined));
+      refreshTemporary(owner);addSilver(owner,2);
+    }
   }else if(p.code==='R22'){
     requireRule(exact(selection,['cardId','toolCardId'])&&owner.hand.includes(selection.cardId)&&resetTools(owner).includes(selection.toolCardId),'请选择手牌与自己的横置道具。');
     removeCard(owner.hand,selection.cardId);discardCards(state,[selection.cardId]);owner.tools.find(t=>t.cardId===selection.toolCardId).exhausted=false;

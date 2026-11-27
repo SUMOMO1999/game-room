@@ -2,6 +2,56 @@
 const OFFLINE_PAGE = "<!doctype html>\n<html lang=\"zh-CN\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\"><meta name=\"theme-color\" content=\"#f5f3ec\"><title>暂时离线 · 棋牌室</title><style>html{font-family:system-ui,sans-serif;color:#15171b;background:#f5f3ec}body{margin:0;min-height:100dvh;display:grid;place-items:center;padding:24px;box-sizing:border-box}main{width:min(100%,380px)}.mark{display:grid;place-items:center;width:54px;height:68px;border-radius:8px;background:#fffaf0;border:1px solid #dedacb;font-size:40px;font-weight:700;color:#315b50}h1{font-size:25px;font-weight:500;margin:27px 0 15px}p{font-size:14px;line-height:1.9;color:#707b70}a{display:inline-block;color:#fffaf0;background:#315b50;border-radius:8px;padding:13px 20px;margin-top:15px;text-decoration:none}a:focus-visible{outline:2px solid #005bd7;outline-offset:4px}</style></head><body><main><span class=\"mark\" aria-hidden=\"true\">3</span><h1>暂时连不上棋牌室。</h1><p>朋友局需要网络连接。联网后返回大厅，再恢复你的座位。</p><a href=\"./\">重试进入大厅 →</a></main></body></html>\n";
 self.addEventListener('install', (event) => event.waitUntil(self.skipWaiting()));
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
+
+// This code runs only in the offline response for the game entry. The live
+// game never polls for connectivity or reloads as a result of this probe.
+function returnToNonameWhenOnline() {
+  const entry = new URL(location.href);
+  entry.searchParams.set('recoverNoname', '1');
+  const retry = document.querySelector('a');
+  let timer, pending = false, delay = 1000;
+  async function check() {
+    clearTimeout(timer);
+    if (pending || document.hidden) return;
+    pending = true;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    try {
+      const response = await fetch(entry, {method:'HEAD', credentials:'same-origin',
+        cache:'no-store', redirect:'error', signal:controller.signal});
+      if (!document.hidden && response.ok && response.headers.get('content-type')?.startsWith('text/html')) {
+        location.replace(entry.href);
+        return;
+      }
+    } catch { /* The network may become available before the next online event. */ }
+    finally { clearTimeout(timeout); pending = false; }
+    timer = setTimeout(check, delay);
+    delay = Math.min(delay * 2, 15000);
+  }
+  function wake() { delay = 1000; void check(); }
+  retry.addEventListener('click', event => { event.preventDefault(); wake(); });
+  window.addEventListener('online', wake);
+  window.addEventListener('pageshow', wake);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) wake(); });
+  wake();
+}
+
+async function offlineNoname() {
+  const script = '(' + returnToNonameWhenOnline.toString() + ')();';
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(script));
+  const hash = btoa(String.fromCharCode(...new Uint8Array(digest)));
+  const html = OFFLINE_PAGE.replace('暂时离线 · 棋牌室','等待联网 · 三国杀')
+    .replace('暂时连不上棋牌室。','暂时连不上三国杀。')
+    .replace('朋友局需要网络连接。联网后返回大厅，再恢复你的座位。','联网后会自动打开三国杀，回到你的牌桌。')
+    .replace('href="./">重试进入大厅 →','href="./noname.html?recoverNoname=1">重新连接 →')
+    .replace('</body>', '<script>' + script + '</script></body>');
+  return new Response(html, {status:503, headers:{
+    'Content-Type':'text/html; charset=utf-8', 'Cache-Control':'no-store',
+    'Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; connect-src 'self'; script-src 'sha256-" + hash + "'; base-uri 'self'; frame-ancestors 'none'",
+    'X-Content-Type-Options':'nosniff',
+  }});
+}
+
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   const mount = new URL('./', self.location.href).pathname;
@@ -11,6 +61,13 @@ self.addEventListener('fetch', (event) => {
       || !['/', '/game/'].includes(mount) || url.origin !== self.location.origin || !url.pathname.startsWith(mount)
       || /%(?:2f|5c|2e)/i.test(url.pathname) || logicalPath === '/api' || logicalPath.startsWith('/api/')
       || logicalPath === '/auth' || logicalPath.startsWith('/auth/')) return;
+  if (logicalPath === '/noname.html') {
+    // WebKit's worker can still report offline after the page regains its
+    // connection. A successful probe retries using the normal browser network.
+    if (url.searchParams.get('recoverNoname') === '1') return;
+    event.respondWith(fetch(request, {cache:'no-store'}).catch(offlineNoname));
+    return;
+  }
   const offlinePage = mount === '/' ? OFFLINE_PAGE : OFFLINE_PAGE.replace('href="./"', 'href="/game/"');
   event.respondWith(fetch(request, { cache: 'no-store' }).catch(() => new Response(offlinePage, {
     status: 503,

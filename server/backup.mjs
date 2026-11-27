@@ -12,13 +12,16 @@ import { validateCanvasRecord, validateCanvasCollection } from './games/draw-and
 import { SCORE_SCOPES, SCORE_FOREVER, scoreRecordId, validateScoreState } from './game-scores.mjs';
 import { HYAKKI_EVENT_SCOPES, HYAKKI_EVENT_FOREVER, hyakkiEventRecordId, validateHyakkiEventState } from './games/hyakki-trading/event-store.mjs';
 
+import { NONAME_RECOVERY_SCOPES, validateRoomBackup } from './noname/retained-rooms.mjs';
+
 // Explicit recovery boundary. Session/token/PKCE/presence records never enter the delivered artifact.
 export const LEGACY_RECOVERY_SCOPES = Object.freeze(['game-profiles', 'room-invites', 'rooms', 'room-memberships', 'room-registry', 'room-requests']);
 export const CHAT_RECOVERY_SCOPES = Object.freeze([...LEGACY_RECOVERY_SCOPES, 'room-chat']);
 export const HISTORY_RECOVERY_SCOPES = Object.freeze([...CHAT_RECOVERY_SCOPES, 'game-history', 'history-index']);
 export const DRAWING_RECOVERY_SCOPES = Object.freeze([...HISTORY_RECOVERY_SCOPES, 'wordbank-packs', 'wordbank-releases', 'wordbank-index', 'draw-canvases']);
 export const SCORE_RECOVERY_SCOPES = Object.freeze([...DRAWING_RECOVERY_SCOPES, 'game-score-ledger', 'game-score-balances', 'game-score-meta']);
-export const RECOVERY_SCOPES = Object.freeze([...SCORE_RECOVERY_SCOPES, HYAKKI_EVENT_SCOPES.events, HYAKKI_EVENT_SCOPES.meta]);
+export const HYAKKI_RECOVERY_SCOPES = Object.freeze([...SCORE_RECOVERY_SCOPES, HYAKKI_EVENT_SCOPES.events, HYAKKI_EVENT_SCOPES.meta]);
+export const RECOVERY_SCOPES = Object.freeze([...HYAKKI_RECOVERY_SCOPES, ...NONAME_RECOVERY_SCOPES]);
 const EPHEMERAL_SCOPES = new Set(['sessions', 'transactions', 'room-presence']);
 const SELECT = 'SELECT key,revision,expires_ms AS expiresAt,version AS v,payload FROM game_records ORDER BY key';
 const SCHEMA = 'CREATE TABLE game_records (key TEXT PRIMARY KEY,revision TEXT NOT NULL,expires_ms REAL NOT NULL,version INTEGER NOT NULL,payload TEXT NOT NULL); CREATE TABLE game_metadata (name TEXT PRIMARY KEY,value TEXT NOT NULL);';
@@ -55,12 +58,17 @@ function checkedRows(db, key, { artifact = false, checkedAt = Date.now(), gameRe
   const rows = db.prepare(SELECT).all();
   const wordbankState = { packs: [], releases: [], index: [] }, canvases = [];
   const drawingRooms=[], drawingSummaries=[], scoreRows=[], scoreRooms=[], scoreSummaries=[];
+  const nonameRows = [];
   const hyakkiRows = [], hyakkiRooms = [], hyakkiSummaries = [];
   for (const row of rows) {
     if (!/^[A-Za-z0-9-]+:[a-f0-9]{64}$/.test(row.key) || typeof row.revision !== 'string') throw new Error('Invalid backup record');
     const scope = scopeOf(row);
     if (!RECOVERY_SCOPES.includes(scope) && (!EPHEMERAL_SCOPES.has(scope) || artifact)) throw new Error('Unrecognized recovery scope');
     const value = decryptStoredRecord(key, row.key, row);
+    if (NONAME_RECOVERY_SCOPES.includes(scope)) {
+      if (row.expiresAt !== Number.MAX_SAFE_INTEGER) throw Error('Invalid retained room lifetime');
+      nonameRows.push({key:row.key,scope,value});
+    }
     if (Object.values(HYAKKI_EVENT_SCOPES).includes(scope)) {
       const id = hyakkiEventRecordId(scope, value);
       if (recordKey(scope, id) !== row.key || row.expiresAt !== HYAKKI_EVENT_FOREVER) throw new Error('Hyakki event identity or retention mismatch');
@@ -122,6 +130,7 @@ function checkedRows(db, key, { artifact = false, checkedAt = Date.now(), gameRe
           || row.expiresAt !== Math.max(...value.entries.map((entry) => entry.endedAt + 180 * 86400000))) throw new Error('History index identity or retention mismatch');
     }
   }
+  validateRoomBackup(nonameRows,recordKey);
   validateDrawAndGuessWordbankState(wordbankState);
   if (canvases.length) validateCanvasCollection(canvases);
   validateDrawingRecoveryReferences({rooms:drawingRooms,canvases,wordbankState,summaries:drawingSummaries});
@@ -285,7 +294,7 @@ export function verifyBackup({ sourcePath, key, gameRegistry } = {}) {
       || manifest.format !== 1 || manifest.keyId !== encryptionKeyId(key)
       || manifest.recordCount !== rows.length || manifest.digest !== digestRows(rows)
       || manifest.authSessionsIncluded !== false
-      || ![RECOVERY_SCOPES, SCORE_RECOVERY_SCOPES, DRAWING_RECOVERY_SCOPES, HISTORY_RECOVERY_SCOPES, CHAT_RECOVERY_SCOPES, LEGACY_RECOVERY_SCOPES].some((scopes) => JSON.stringify(manifest.scopes) === JSON.stringify(scopes))
+      || ![RECOVERY_SCOPES, HYAKKI_RECOVERY_SCOPES, SCORE_RECOVERY_SCOPES, DRAWING_RECOVERY_SCOPES, HISTORY_RECOVERY_SCOPES, CHAT_RECOVERY_SCOPES, LEGACY_RECOVERY_SCOPES].some((scopes) => JSON.stringify(manifest.scopes) === JSON.stringify(scopes))
       || rows.some((row) => !manifest.scopes.includes(scopeOf(row)))) throw new Error('Backup manifest verification failed');
     return { manifest, rows, chatIncluded: manifest.scopes.includes('room-chat'),
       historyIncluded: manifest.scopes.includes('game-history') && manifest.scopes.includes('history-index'),

@@ -1,7 +1,7 @@
 // Versioned v3 expansion engine derived from the accepted 1f51a0 rules.
 // Existing v1/v2 saves keep their original rules and material boundaries.
 import { requireRule, player, clockwiseIds, goodsCount, goodsEntries, moveGoods, ordinaryCapacity,
-  addSilver, discardCards, receiveGoods, completePending, emit, definition } from './model.mjs';
+  bankStock, addSilver, discardCards, receiveGoods, completePending, emit, definition } from './model.mjs';
 
 export const AUCTION_PENDING_CONTRACT = Object.freeze({
   stages: Object.freeze(['bidding', 'settling', 'delivering']),
@@ -67,7 +67,7 @@ export function continueAuction(state, ctx) {
   requireRule(pending.stage === 'settling', '拍卖步骤无效。');
   auction.currentBidderId = null;
   if (!auction.highestBidderId) {
-    moveGoods(pending.goods, state.bankGoods, { ...pending.goods });
+    moveGoods(pending, bankStock(state), { ...pending.goods });
     discardCards(state, pending.poolCards.splice(0)); completePending(state); return;
   }
   const winner = player(state, auction.highestBidderId);

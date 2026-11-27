@@ -1,7 +1,10 @@
 /** Selecting a card by dragging is local UI state; this owner never dispatches a game action. */
-export function mountHandDrag({ root, getContext, onDrop, onBlocked = () => {} }) {
+export function mountHandDrag({ root, getContext, onDrop, onBlocked = () => {}, surface }) {
   const document = root.ownerDocument, window = document.defaultView;
-  const hand = root.querySelector('#yg-hand'), table = root.querySelector('.yg-centre');
+  const hand = surface?.hand ?? root.querySelector('#yg-hand');
+  const table = surface?.table ?? root.querySelector('.yg-centre');
+  const cardSelector = surface?.cardSelector ?? '.yg-hand-card[data-entity-id]';
+  const cardId = card => card.dataset.entityId ?? card.dataset.instance;
   const target = document.createElement('div');
   target.className = 'hy-hand-drop';
   target.textContent = '松手选牌，再决定如何使用';
@@ -17,7 +20,7 @@ export function mountHandDrag({ root, getContext, onDrop, onBlocked = () => {} }
   function current(candidate) {
     const context = getContext();
     return context && context.scope === candidate.scope && context.cardIds.includes(candidate.cardId)
-      && !root.querySelector('dialog[open]') ? context : null;
+      && !document.querySelector('dialog[open]') ? context : null;
   }
   function reset(suppress = false) {
     const previous = gesture;
@@ -29,21 +32,28 @@ export function mountHandDrag({ root, getContext, onDrop, onBlocked = () => {} }
     root.classList.remove('hy-hand-dragging');
   }
   function inside(x, y) {
-    const rect = table.getBoundingClientRect();
+    const rect = (surface ? target : target.parentElement).getBoundingClientRect();
     return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
   }
   function moveGhost(x, y) {
-    ghost.style.left = `${x}px`; ghost.style.top = `${y}px`;
+    if (surface) {
+      const left = gesture.bounds.left + x - gesture.startX;
+      const top = gesture.bounds.top + y - gesture.startY;
+      ghost.style.transform = `translate3d(${left}px, ${top}px, 0)`;
+    } else {
+      ghost.style.left = `${x}px`; ghost.style.top = `${y}px`;
+    }
     target.classList.toggle('is-over', inside(x, y));
   }
   listen(hand, 'pointerdown', event => {
     if (destroyed || !event.isPrimary || event.button !== 0) return;
-    const card = event.target.closest('.yg-hand-card[data-entity-id]'), context = getContext();
-    if (!card || !context?.cardIds.includes(card.dataset.entityId) || root.querySelector('dialog[open]')) return;
+    const card = event.target.closest(cardSelector), context = getContext();
+    if (!card || !context?.cardIds.includes(cardId(card)) || document.querySelector('dialog[open]')) return;
     suppressUntil = 0;
     reset();
-    gesture = { pointerId: event.pointerId, cardId: card.dataset.entityId, scope: context.scope,
-      startX: event.clientX, startY: event.clientY, mode: 'pending', card };
+    gesture = { pointerId: event.pointerId, cardId: cardId(card), scope: context.scope,
+      startX: event.clientX, startY: event.clientY, mode: 'pending', card,
+      bounds: surface ? card.getBoundingClientRect() : null };
   });
   listen(window, 'pointermove', event => {
     if (!gesture || event.pointerId !== gesture.pointerId) return;
@@ -64,9 +74,14 @@ export function mountHandDrag({ root, getContext, onDrop, onBlocked = () => {} }
       gesture.mode = 'dragging';
       hand.setPointerCapture(event.pointerId);
       ghost = document.createElement('div'); ghost.className = 'hy-hand-ghost'; ghost.setAttribute('aria-hidden', 'true');
+      if (surface) {
+        ghost.classList.add('m-print');
+        ghost.style.width = `${gesture.bounds.width}px`;
+        ghost.style.height = `${gesture.bounds.height}px`;
+      }
       const face = gesture.card.querySelector('.yousei-card').cloneNode(true);
       face.removeAttribute('id'); face.setAttribute('tabindex', '-1');
-      ghost.append(face); root.append(ghost);
+      ghost.append(face); (surface?.table ?? root).append(ghost);
       target.textContent=context.label??'松手选牌，再决定如何使用';
       target.hidden = false; root.classList.add('hy-hand-dragging');
     }
@@ -80,7 +95,9 @@ export function mountHandDrag({ root, getContext, onDrop, onBlocked = () => {} }
     reset(saved.mode !== 'pending');
     if (accepted) onDrop(saved.cardId);
   });
-  listen(window, 'pointercancel', () => reset(gesture && gesture.mode !== 'pending'));
+  listen(window, 'pointercancel', event => {
+    if (gesture?.pointerId === event.pointerId) reset(gesture.mode !== 'pending');
+  });
   listen(hand, 'lostpointercapture', event => {
     // Touch starts with implicit capture on the card. Moving capture to the hand
     // releases that old child capture; its bubbling event is not a cancelled drag.
@@ -90,10 +107,10 @@ export function mountHandDrag({ root, getContext, onDrop, onBlocked = () => {} }
   listen(window, 'resize', () => reset(gesture?.mode === 'dragging'));
   listen(document, 'visibilitychange', () => { if (document.hidden) reset(true); });
   listen(document, 'keydown', event => { if (event.key === 'Escape' && gesture) { event.preventDefault(); reset(true); } }, true);
-  listen(root, 'dragstart', event => { if (event.target.closest('#yg-hand')) event.preventDefault(); });
+  listen(root, 'dragstart', event => { if (event.target.closest(cardSelector)) event.preventDefault(); });
   // Capture before the page click owner, including the synthetic click after touch release.
   listen(document, 'click', event => {
-    if (hand.contains(event.target) && event.detail !== 0 && window.performance.now() < suppressUntil) {
+    if (hand.contains(event.target) && (!surface || event.target.closest(cardSelector)) && event.detail !== 0 && window.performance.now() < suppressUntil) {
       event.preventDefault(); event.stopImmediatePropagation();
     }
   }, true);

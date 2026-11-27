@@ -132,7 +132,7 @@ export async function api(path, { method = 'GET', token, body, signal } = {}) {
 }
 
 export class RoomClient {
-  constructor(code, membership, { onView, onConnection, onError, onChat = () => {}, onPreview = null, onCanvas = null, onVoice = null }) {
+  constructor(code, membership, { onView, onConnection, onError, onChat = () => {}, onPreview = null, onCanvas = null, onVoice = null, keepBackgroundStream = false }) {
     this.code = normalizeCode(code); this.membership = membership;
     this.onView = onView; this.onConnection = onConnection; this.onError = onError; this.onChat = onChat;
     this.onPreview = typeof onPreview==='function'?onPreview:null;this.previewPacket=null;this.previewTimer=null;this.previewSequences=new Map();this.previewGeneration=0;
@@ -142,6 +142,22 @@ export class RoomClient {
     this.generation = 0; this.streamGeneration = 0; this.accountEpoch = accountGeneration();
     this.requests = new Set();
     this.actionIntent = null; this.actionInFlight = false;
+    this.keepBackgroundStream = keepBackgroundStream;
+    this.streamLastActivityAt = 0; this.foregroundRecoveryNeeded = false;
+    this.autoReconnectBlocked = false; this.lifecycleRemovers = [];
+    if (keepBackgroundStream && globalThis.document?.addEventListener && globalThis.window?.addEventListener) {
+      const resume = () => {
+        if (this.stopped || document.hidden || this.autoReconnectBlocked) return;
+        // Keep a healthy transport across task switching. Only a missing,
+        // expired or suspended read is replaced; no business action is retried.
+        if (!this.controller || this.controller.signal.aborted || this.foregroundRecoveryNeeded
+            || this.streamLastActivityAt && Date.now() - this.streamLastActivityAt >= STREAM_IDLE_MS) this.connect();
+      };
+      for (const [target, event] of [[document, 'visibilitychange'], [window, 'pageshow'], [window, 'focus'], [window, 'online']]) {
+        target.addEventListener(event, resume);
+        this.lifecycleRemovers.push(() => target.removeEventListener(event, resume));
+      }
+    }
     this.unsubscribeAccount = onAccountChange((account) => {
       if (this.stopped || this.accountEpoch === accountGeneration()) return;
       this.stop(); this.view = null; this.onConnection('offline');
@@ -301,13 +317,14 @@ export class RoomClient {
     this.controller?.abort(); clearTimeout(this.retryTimer); this.retryTimer = null;
     const controller = new AbortController(); this.controller = controller;
     const streamGeneration = ++this.streamGeneration;
+    this.foregroundRecoveryNeeded = false; this.streamLastActivityAt = 0; this.autoReconnectBlocked = false;
     const epoch = this.epoch();
     this.onConnection('connecting');
     this.readStream(controller, epoch, streamGeneration).catch(error => {
       if ((controller.signal.aborted && !streamTimeout(error)) || !this.live(epoch) || streamGeneration !== this.streamGeneration) return;
       this.onConnection('offline');
       this.resetPreview();
-      if ([401, 503, 404,429].includes(error.status)) { this.onError(error); return; }
+      if ([401, 503, 404,429].includes(error.status)) { this.autoReconnectBlocked = true; this.onError(error); return; }
       this.retryTimer = setTimeout(() => { if (this.live(epoch)) this.connect(); }, 2000);
     });
   }
@@ -349,6 +366,12 @@ export class RoomClient {
       clearTimeout(idleTimer);
       idleTimer = setTimeout(() => {
         if (!valid()) return;
+        if (this.keepBackgroundStream && globalThis.document?.hidden) {
+          // Mobile browsers may suspend JS and reads together. Do not close
+          // an otherwise retained stream merely because this tab is hidden.
+          this.foregroundRecoveryNeeded = true;
+          return;
+        }
         // Reject before aborting, so this transport timeout uses the ordinary
         // read-only reconnect path instead of looking like intentional stop().
         rejectRead?.(Object.assign(new Error('房间连接暂时没有回应，正在重新连接。'), { code: 'STREAM_IDLE_TIMEOUT' }));
@@ -370,7 +393,10 @@ export class RoomClient {
         if (done) throw new Error('房间连接已断开。');
         // Fragments count as transport activity; empty chunks do not extend
         // the deadline. A ping is not an identity verification or a game view.
-        if (value?.byteLength) renewDeadline();
+        if (value?.byteLength) {
+          this.streamLastActivityAt = Date.now(); this.foregroundRecoveryNeeded = false;
+          renewDeadline();
+        }
         pending += decoder.decode(value, { stream: true });
         let separator;
         while ((separator = /\r?\n\r?\n/.exec(pending))) {
@@ -418,5 +444,6 @@ export class RoomClient {
     for (const controller of this.requests) controller.abort();
     clearTimeout(this.retryTimer); this.retryTimer = null;
     this.unsubscribeAccount?.();
+    this.lifecycleRemovers.splice(0).forEach(remove => remove());
   }
 }

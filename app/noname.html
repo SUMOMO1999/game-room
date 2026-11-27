@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="zh-CN"><head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#181816"><title>三国杀 · 棋牌室</title>
+  <link rel="icon" href="./favicon.svg"><link rel="stylesheet" href="./noname.css">
+  <script type="module" src="./game-viewport.mjs"></script>
+  <script type="module" src="./noname-launch.mjs"></script>
+</head><body>
+  <main>
+    <section id="notice"><p id="message" role="status">正在打开三国杀…</p><button id="retry" hidden>重新连接</button><a href="./">棋牌室大厅</a></section>
+    <iframe id="native" title="无名杀原版" allow="autoplay; fullscreen" allowfullscreen referrerpolicy="no-referrer" hidden></iframe>
+  </main>
+  <footer id="voice" aria-label="同桌语音" hidden>
+    <span id="join"></span><span id="mic"></span><span id="status"></span><span data-room-rotation-slot></span><span id="voice-actions"></span>
+  </footer>
+</body></html>

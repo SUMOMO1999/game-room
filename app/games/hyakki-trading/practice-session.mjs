@@ -17,7 +17,7 @@ export function randomStream(seed) {
 /** Per-operation Web Locks plus a saved-text comparison prevent two pages from
  * overwriting one another. Without locks, practice remains explicitly unsaved. */
 export async function createPracticeSession(runtime, { storage, key = 'game-room:hyakki-trading:practice:v1', withLock, seed,
-  actionLimit = 5, goodsPerType, goodsSupplyMode, playerCount = 2, packId, closingTarget, requestId = () => globalThis.crypto.randomUUID().replaceAll('-', ''),
+  actionLimit = 5, goodsPerType, goodsSupplyMode, playerCount = 2, packId, closingTarget, modules, requestId = () => globalThis.crypto.randomUUID().replaceAll('-', ''),
   now = () => globalThis.performance?.now() ?? Date.now(), canRun = () => true,
   onChange = () => {}, setTimer = setTimeout, clearTimer = clearTimeout, botDelayMs = 2000 } = {}) {
   const {fresh, decode:decodeHyakkiPractice, encode:encodeHyakkiPractice, currentDecision, clock, privateView,
@@ -36,7 +36,7 @@ export async function createPracticeSession(runtime, { storage, key = 'game-room
   if (!storageAvailable) storage = null;
   if (typeof lock !== 'function') lock = callback => Promise.resolve().then(callback);
   let saved = null, storedText = null, logicalNow = 0, requiresRestart = false, conflict = false;
-  let active = false, destroyed = false, timer = null, anchor = null, botDueAt = null, epoch = 0;
+  let active = false, destroyed = false, timer = null, anchor = null, botDueAt = null, offerDueAt = null, epoch = 0;
   let queue = Promise.resolve();
   const runAllowed = () => { try { return Boolean(canRun()); } catch { return false; } };
   function disableStorage(note) {
@@ -78,10 +78,26 @@ export async function createPracticeSession(runtime, { storage, key = 'game-room
   function clearScheduled() { if (timer !== null) clearTimer(timer); timer = null; }
   function planComputer() {
     botDueAt = saved?.game.status === 'playing' && PRACTICE_BOTS.includes(actor(saved.game)) ? logicalNow + botDelayMs : null;
+    offerDueAt = saved && runtime.unreviewedOffers?.(saved).length ? offerDueAt ?? logicalNow + botDelayMs : null;
   }
-  function commit(result, random) {
+  function commit(result, random, reviewedOffers = []) {
     const game = successful(result);
-    write(runtime.transition(saved, game, random.state, logicalNow)); planComputer();
+    const next=runtime.transition(saved,game,random.state,logicalNow);
+    write(reviewedOffers.length?runtime.rememberOfferReviews(next,reviewedOffers):next);planComputer();
+  }
+  function reviewOffersDue() {
+    if(offerDueAt===null||logicalNow<offerDueAt)return false;
+    offerDueAt=null;
+    const keys=runtime.unreviewedOffers(saved);
+    if(!keys.length)return false;
+    const selected=runtime.reviewOffers(saved.game,keys,logicalNow);
+    if(!selected){
+      write(runtime.rememberOfferReviews({...saved,logicalNow},keys));
+      return false;
+    }
+    const {actorId,command,reviewed}=selected,random=randomStream(saved.rngState);
+    commit(applyGameAction(saved.game,actorId,command,{now:logicalNow,randomInt:random.randomInt}),random,reviewed);
+    return true;
   }
   function expireDue() {
     if (saved.game.status !== 'playing' || clock(saved.game).deadlineAt === null || clock(saved.game).deadlineAt > logicalNow) return false;
@@ -106,7 +122,7 @@ export async function createPracticeSession(runtime, { storage, key = 'game-room
     clearScheduled();
     if (!active || destroyed || conflict || requiresRestart || saved?.game.status !== 'playing') return;
     if (!runAllowed()) { active = false; anchor = null; return; }
-    const deadlines = [clock(saved.game).deadlineAt, botDueAt].filter(value => value !== null);
+    const deadlines = [clock(saved.game).deadlineAt, botDueAt, offerDueAt].filter(value => value !== null);
     if (!deadlines.length) return;
     const generation = epoch;
     const scheduled = setTimer(() => {
@@ -118,6 +134,7 @@ export async function createPracticeSession(runtime, { storage, key = 'game-room
         if (generation !== epoch || !active || !runAllowed()) return;
         verifyUnchanged(); collectElapsed();
         if (expireDue()) return; // Never replay a queue of overdue decisions.
+        if(reviewOffersDue())return;
         if (botDueAt !== null && logicalNow >= botDueAt && PRACTICE_BOTS.includes(actor(saved.game))) {
           const computerId = actor(saved.game);
           const command = chooseHyakkiPracticeAction(privateView(saved.game, computerId), computerId, { now: logicalNow });
@@ -144,7 +161,7 @@ export async function createPracticeSession(runtime, { storage, key = 'game-room
     if (raw !== null) {
       saved = decodeHyakkiPractice(raw);
       if (!saved) { requiresRestart = true; storageNote = '练习存档损坏或版本不受支持，原存档未改变。请重新开始练习。'; }
-    } else write(fresh({ actionLimit, goodsPerType, goodsSupplyMode, playerCount, packId, closingTarget, seed, requestId }));
+    } else write(fresh({ actionLimit, goodsPerType, goodsSupplyMode, playerCount, packId, closingTarget, modules, seed, requestId }));
     logicalNow = saved?.logicalNow ?? 0; planComputer();
   });
   async function action(type, fields = {}) {
@@ -171,7 +188,7 @@ export async function createPracticeSession(runtime, { storage, key = 'game-room
     return operation(() => {
       verifyUnchanged(); if (conflict) throw failure('PRACTICE_CONFLICT', storageNote);
       const candidate = fresh({ ...options, actionLimit: limit, goodsPerType: stock, goodsSupplyMode: mode, playerCount: count, seed, requestId }); write(candidate);
-      logicalNow = 0; requiresRestart = false; epoch++; anchor = now(); planComputer();
+      logicalNow = 0; offerDueAt=null; requiresRestart = false; epoch++; anchor = now(); planComputer();
       storageNote = storageAvailable ? saveNote : '本局仍可练习，但无法保存进度。'; return snapshot();
     });
   }
@@ -179,7 +196,7 @@ export async function createPracticeSession(runtime, { storage, key = 'game-room
     return operation(() => {
       if (!storageAvailable) throw failure('PRACTICE_STORAGE_UNAVAILABLE', '无法读取本机存档，可重新开始练习。');
       const raw = read(); if (!storageAvailable) throw failure('PRACTICE_STORAGE_UNAVAILABLE', '无法读取本机存档，可重新开始练习。');
-      storedText = raw; saved = decodeHyakkiPractice(raw); logicalNow = saved?.logicalNow ?? 0;
+      storedText = raw; saved = decodeHyakkiPractice(raw); logicalNow = saved?.logicalNow ?? 0; offerDueAt=null;
       conflict = false; requiresRestart = !saved; active = false; anchor = null; epoch++; planComputer();
       storageNote = saved ? '已载入保存的练习，请继续。' : '练习存档缺失或无效，请重新开始。'; return snapshot();
     });
