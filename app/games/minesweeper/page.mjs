@@ -6,7 +6,7 @@ import { active, levels, newGame, numbers, play, progress, validGame, validLevel
 import { acquireLevel, assignOwner, clearBests, openSaves, readLevel, saveLevel } from './save.mjs';
 
 const $ = id => document.getElementById(id);
-const board = $('board'), scroll = $('board-scroll'), popup = $('popup');
+const board = $('board'), scroll = $('board-scroll'), layout = $('mine-layout'), popup = $('popup');
 const prefKey = 'sumomo-minesweeper:';
 function preference(name, value) {
   try { return value === undefined ? localStorage.getItem(prefKey + name) : localStorage.setItem(prefKey + name, value); }
@@ -45,6 +45,9 @@ function updateMode(flag) {
 function buildGrid() {
   const { rows, columns } = levels[level], fragment = document.createDocumentFragment();
   buttons = [];
+  layout.dataset.level = level;
+  layout.style.setProperty('--board-rows', rows);
+  layout.style.setProperty('--board-columns', columns);
   board.setAttribute('aria-rowcount', rows);
   board.setAttribute('aria-colcount', columns);
   for (let y = 0; y < rows; y++) {
@@ -108,7 +111,7 @@ function render() {
   $('difficulty').value = level;
   $('question-pref').checked = questions;
   $('mine-count').textContent = digits(victory ? 0 : specs.count - flags.size);
-  $('restart').textContent = victory ? '☀' : done ? '☹' : '☺';
+  $('restart-face').textContent = victory ? '☀︎' : done ? '☹︎' : '☺︎';
   $('restart').disabled = readOnly;
   $('again').disabled = readOnly;
   $('result').hidden = !done;
@@ -118,7 +121,7 @@ function render() {
   $('take-over').hidden = !readOnly || !db;
   $('save-note').textContent = broken ? '存档无法恢复，可明确重开。' :
     readOnly ? '另一标签页正在玩，此页只读。' : '仅本次游玩，进度无法保存。';
-  $('turn-hint').hidden = !turnHint.matches;
+  $('turn-hint').hidden = !turnHint.matches || level === 'beginner';
   board.setAttribute('aria-busy', String(pending));
   showClock();
 }
@@ -235,7 +238,7 @@ const cancelInput = connectBoard({
   preview(button, pressed) {
     if (readOnly || broken || !active(game) || !['covered', 'question'].includes(button.dataset.state)) return;
     button.toggleAttribute('data-pressed', pressed);
-    $('restart').textContent = pressed ? '◉' : '☺';
+    $('restart-face').textContent = pressed ? '◉' : '☺︎';
   },
 });
 $('restart').onclick = $('again').onclick = restart;

@@ -1,42 +1,180 @@
 :root {
   color-scheme: dark;
   font-family: system-ui, sans-serif;
-  background: #192d29;
-  color: #f6ecd9;
-  --brass: #e3c184;
-  --cell: 31px;
+  --table: var(--theme-base, #192d29);
+  --surface: var(--theme-surface, #203a31);
+  --control: var(--theme-control, #25443b);
+  --edge: var(--theme-border, #ac9970);
+  --accent: var(--theme-accent, #e3c184);
+  --ink: var(--theme-ink, #f6ecd9);
+  --muted: var(--theme-muted, #ced9c9);
+  --cell-min: 31px;
+  background: var(--table);
+  color: var(--ink);
+  overscroll-behavior: none;
 }
+
 *, *::before, *::after { box-sizing: border-box; }
-body { margin: 0; }
+body {
+  margin: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 52% 36%, var(--theme-glow, #305449) 0%, transparent 74%),
+    repeating-linear-gradient(135deg, #ffffff02 0 1px, transparent 1px 5px),
+    var(--table);
+}
 [hidden] { display: none !important; }
-.mine-screen { height: 100dvh; display: flex; flex-direction: column; min-height: 0; margin: auto; width: min(100%, 1060px); gap: 6px;
-  padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); }
-.mine-header, .mine-header nav, .mine-modes, .mine-result { display: flex; align-items: center; gap: 8px; }
+
+.mine-screen {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100dvh;
+  gap: clamp(7px, 1.4vmin, 16px);
+  margin-inline: auto;
+  max-width: 1800px;
+  padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right))
+    max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+}
+.mine-header, .mine-header nav { display: flex; align-items: center; gap: 8px; }
 .mine-header { justify-content: space-between; }
-.mine-header h1 { font-size: 24px; margin: 0; display: flex; align-items: baseline; gap: 8px; }
-.mine-header small, .mine-modes small { color: #cdd9c5; font-size: 12px; }
-.mine-header a, .mine-header button, .mine-modes button, .mine-result button, .mine-dialog button, #take-over {
-  color: inherit; font: inherit; font-weight: 650; white-space: nowrap; min-height: 36px; padding: 5px 12px;
-  border: 1px solid #ac9970; border-radius: 8px; background: #25443b; text-decoration: none; cursor: pointer; }
-.mine-header a { display: grid; place-items: center; }
-.mine-controls { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; align-self: center; width: min(100%, 385px);
-  padding: 4px 12px; border: 1px solid #bca470; border-radius: 10px; background: #182522; }
-.mine-meter { display: grid; gap: 0; min-width: 66px; text-align: center; }
-.mine-meter span { font-size: 11px; color: #dfcfaf; }
-.mine-meter output, .mine-meter time { line-height: 1.15; font: 700 25px ui-monospace, monospace; color: #ff9c82; font-variant-numeric: tabular-nums; }
-.mine-face { min-width: 44px; min-height: 42px; border-radius: 50%; border: 1px solid #b99758; background: var(--brass);
-  color: #32281a; font: 700 30px/1 system-ui; cursor: pointer; }
-.mine-modes { justify-content: center; }
-.mine-modes [aria-pressed="true"] { background: var(--brass); border-color: #f4deb5; color: #292016; }
-.mine-scroll { flex: 0 1 auto; min-height: 0; width: fit-content; max-width: 100%; align-self: center; overflow: auto;
-  border: 3px solid #9f8558; border-radius: 6px; background: #a99e87; overscroll-behavior: contain; }
+.mine-header h1 {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  font-size: clamp(20px, 3.4vmin, 29px);
+}
+.mine-header small,
+.mine-timing-note { color: var(--muted); font-size: 12px; font-weight: 500; }
+
+.mine-play { container-type: size; min-width: 0; min-height: 0; }
+.mine-layout {
+  --board-rows: 9;
+  --board-columns: 9;
+  --frame: 4px;
+  --frame-trim: calc(2 * var(--frame) + 1px);
+  --layout-gap: clamp(8px, 2vmin, 24px);
+  --natural-height: calc((100cqw - var(--frame-trim)) * var(--board-rows) / var(--board-columns) + var(--frame-trim));
+  display: grid;
+  grid-template: "above" 1fr "panel" auto "board" minmax(0, var(--natural-height)) "below" 1fr / minmax(0, 1fr);
+  height: 100%;
+}
+.mine-panel {
+  grid-area: panel;
+  display: grid;
+  justify-self: center;
+  width: min(100%, 384px);
+  min-width: 0;
+  margin-bottom: var(--layout-gap);
+  gap: 7px;
+  padding: 7px;
+  border: 1px solid var(--edge);
+  border-radius: 13px;
+  background: linear-gradient(150deg, #ffffff08, transparent 66%), var(--surface);
+  box-shadow: 0 4px 12px #0002;
+  text-align: center;
+}
+.mine-controls {
+  display: grid;
+  grid-template: "remaining restart time" auto / minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+}
+.mine-remaining { grid-area: remaining; }
+.mine-time { grid-area: time; }
+.mine-meter {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  padding: 4px;
+  border-radius: 7px;
+  background: var(--table);
+}
+.mine-meter span { color: var(--muted); font-size: 11px; }
+.mine-meter output, .mine-meter time {
+  color: var(--accent);
+  font: 700 clamp(19px, 3.3cqw, 30px)/1 ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+.mine-modes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+.mine-timing-note { line-height: 1; }
+.mine-panel:has(> :is(.mine-result, #save-message):not([hidden])) > .mine-timing-note { display: none; }
+.mine-header a, .mine-header button, .mine-restart, .mine-modes button, .mine-result button, .mine-dialog button, #take-over {
+  min-height: 36px;
+  padding: 5px 10px;
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  color: inherit;
+  background: var(--control);
+  font: inherit;
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.mine-header a { display: grid; place-items: center; text-decoration: none; }
+.mine-restart {
+  grid-area: restart;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+#restart-face { font: 700 22px/1 system-ui; }
+.mine-modes [aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--table);
+}
+.mine-screen :is(button, a):not(.mine-cell):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.mine-stage {
+  grid-area: board;
+  container-type: size;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+}
+.mine-scroll {
+  /* Fit the whole board while cells are large enough to play. Excess rows or columns scroll here. */
+  --cell: max(var(--cell-min), min(
+    calc((100cqw - var(--frame-trim)) / var(--board-columns)),
+    calc((100cqh - var(--frame-trim)) / var(--board-rows))
+  ));
+  max-width: 100%;
+  max-height: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: var(--frame) solid color-mix(in srgb, var(--edge) 70%, var(--table));
+  border-radius: 11px;
+  background: #b8a588;
+  box-shadow: 0 5px 0 color-mix(in srgb, var(--table) 60%, #000), 0 12px 26px #0005;
+}
 #board { width: max-content; touch-action: pan-x pan-y pinch-zoom; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .mine-row { display: flex; }
-.mine-cell { display: grid; place-content: center; width: var(--cell); height: var(--cell); padding: 0; flex: none; border: 1px solid #837b67;
-  background: #e3d8bc; box-shadow: inset 2px 2px #fcf5df, inset -2px -2px #b0a084; color: #24372b;
-  font: 750 calc(var(--cell) * .62)/1 system-ui; cursor: pointer; }
-.mine-cell[data-state="open"], .mine-cell[data-state="hit"], .mine-cell[data-state="mine"], .mine-cell[data-pressed] {
-  box-shadow: none; background: #cfc5ad; }
+.mine-cell {
+  display: grid;
+  place-content: center;
+  width: var(--cell);
+  height: var(--cell);
+  padding: 0;
+  flex: none;
+  border: 1px solid #ad9979;
+  border-radius: 2px;
+  background: linear-gradient(145deg, #f4ead1, #ddcca7);
+  box-shadow: inset 1px 1px #fff9e9, inset -1px -1px #c2ac86;
+  color: #24372b;
+  font: 750 clamp(17px, calc(var(--cell) * .58), 54px)/1 system-ui;
+  cursor: pointer;
+}
+.mine-cell:is([data-state="open"], [data-state="hit"], [data-state="mine"], [data-pressed]) {
+  border-color: #bdaf92;
+  box-shadow: none;
+  background: #d7cbb3;
+}
 .mine-cell[data-state="hit"] { background: #a93839; color: white; }
 .mine-cell[data-state="wrong"], .mine-cell[data-state="flag"] { color: #872237; }
 .mine-cell[data-number="1"] { color: #154d96; }
@@ -48,32 +186,58 @@ body { margin: 0; }
 .mine-cell[data-number="7"] { color: #221e1d; }
 .mine-cell[data-number="8"] { color: #53464c; }
 .mine-cell:focus-visible { outline: 3px solid #163c67; outline-offset: -3px; z-index: 1; }
-.mine-result { justify-content: center; text-align: center; }
-#save-message, #turn-hint { margin: 0; color: #f4dfb7; text-align: center; font-size: 12px; }
+
+.mine-result { display: flex; align-items: center; justify-content: center; gap: 7px; flex-wrap: wrap; }
+.mine-result strong { font-size: 13px; }
+.mine-result button:disabled { display: none; }
+#save-message, #turn-hint { margin: 0; color: var(--muted); font-size: 12px; }
 #save-message button { margin-inline-start: 6px; }
-dialog { width: min(410px, 94vw); max-height: 90dvh; padding: 0; border: 1px solid #ac9970; border-radius: 14px; color: inherit; background: #234036; }
+dialog { width: min(410px, 94vw); max-height: 90dvh; padding: 0; border: 1px solid var(--edge); border-radius: 14px; color: inherit; background: var(--surface); }
 dialog::backdrop { background: #0e231fc9; }
 .mine-dialog { display: grid; gap: 12px; padding: 15px; }
 .mine-dialog header, .mine-dialog-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .mine-dialog header { justify-content: space-between; }
 .mine-dialog h2, .mine-dialog p { margin: 0; }
 .mine-dialog label { display: flex; align-items: center; gap: 7px; min-width: 0; }
-.mine-dialog select { max-width: 100%; color: inherit; font: inherit; background: #192d29; padding: 5px; }
+.mine-dialog select { max-width: 100%; color: inherit; font: inherit; background: var(--table); padding: 5px; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+
 @media (pointer: coarse) {
-  :root { --cell: 34px; }
-  .mine-header a, .mine-header button, .mine-modes button, .mine-result button, .mine-dialog button, #take-over { min-height: 44px; min-width: 44px; }
-  .mine-face { min-height: 44px; }
+  :root { --cell-min: 33px; }
+  .mine-header a, .mine-header button, .mine-restart, .mine-modes button, .mine-result button, .mine-dialog button, #take-over { min-height: 44px; min-width: 44px; }
 }
 
-/* Inherit the shared tabletop palette. The board keeps semantic mine and number colors. */
-:root[data-game-theme] { background: var(--theme-base); color: var(--theme-ink); }
-:root[data-game-theme] :is(.mine-header small, .mine-modes small, #save-message, #turn-hint) { color: var(--theme-muted); }
-:root[data-game-theme] :is(.mine-header a, .mine-header button, .mine-modes button, .mine-result button, .mine-dialog button, :where(#take-over), .mine-dialog select) {
-  color: var(--theme-ink); background: var(--theme-control); border-color: var(--theme-border);
+@media (min-width: 560px) and (min-aspect-ratio: 6/5) {
+  .mine-layout:not([data-level="expert"]) {
+    --panel-width: clamp(138px, 24cqw, 216px);
+    --natural-width: calc((100cqh - var(--frame-trim)) * var(--board-columns) / var(--board-rows) + var(--frame-trim));
+    --min-board-width: calc(var(--board-columns) * var(--cell-min) + var(--frame-trim));
+    grid-template: "panel board" minmax(0, 1fr) /
+      var(--panel-width) minmax(0, min(calc(100cqw - var(--panel-width) - var(--layout-gap)), max(var(--natural-width), var(--min-board-width))));
+    column-gap: var(--layout-gap);
+    justify-content: center;
+  }
+  .mine-layout:not([data-level="expert"]) .mine-panel {
+    width: 100%;
+    max-height: 100%;
+    align-self: center;
+    margin: 0;
+    padding: 9px;
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+  .mine-layout:not([data-level="expert"]) .mine-controls {
+    grid-template: "remaining time" auto "restart restart" auto / minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .mine-layout[data-level="expert"] .mine-panel {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    align-items: center;
+    width: min(100%, 536px);
+  }
+  .mine-layout[data-level="expert"] .mine-panel > :not(.mine-controls, .mine-modes) { grid-column: 1 / -1; }
 }
-:root[data-game-theme] :is(.mine-face, .mine-modes [aria-pressed="true"]) {
-  color: var(--theme-base); background: var(--theme-accent); border-color: var(--theme-accent);
+
+@media (max-width: 360px) {
+  .mine-screen { padding-inline: max(6px, env(safe-area-inset-left)) max(6px, env(safe-area-inset-right)); }
+  .mine-layout { --frame: 3px; }
 }
-:root[data-game-theme] :is(.mine-scroll, .mine-controls, dialog) { border-color: var(--theme-border); }
-:root[data-game-theme] #popup { color: var(--theme-ink); background: var(--theme-surface); }

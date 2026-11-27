@@ -24,20 +24,30 @@
         <a id="exit" data-practice-exit href="./">棋牌室</a>
       </nav>
     </header>
-    <div class="mine-controls">
-      <div class="mine-meter"><span>估计剩余雷</span><output id="mine-count" aria-label="估计剩余雷"></output></div>
-      <button type="button" id="restart" class="mine-face" aria-label="重新开始" title="重新开始（F2）">☺</button>
-      <div class="mine-meter"><span>用时</span><time id="elapsed" aria-label="已用秒数">000</time></div>
+    <div class="mine-play">
+      <div id="mine-layout" class="mine-layout">
+        <div class="mine-panel">
+          <div class="mine-controls">
+            <div class="mine-meter mine-remaining"><span>估计剩雷</span><output id="mine-count" aria-label="估计剩余雷"></output></div>
+            <button type="button" id="restart" class="mine-restart" aria-label="重新开始" title="重新开始（F2）">
+              <span id="restart-face" aria-hidden="true">☺︎</span>重开
+            </button>
+            <div class="mine-meter mine-time"><span>用时</span><time id="elapsed" aria-label="已用秒数">000</time></div>
+          </div>
+          <div class="mine-modes" role="group" aria-label="棋盘操作模式">
+            <button type="button" id="reveal-mode" aria-pressed="true">开格</button>
+            <button type="button" id="flag-mode" aria-pressed="false">标记</button>
+          </div>
+          <small class="mine-timing-note">离开仍计时</small>
+          <div id="result" class="mine-result" hidden><strong id="result-text" role="status"></strong><button type="button" id="again">再来一局</button></div>
+          <section id="save-message" hidden><span id="save-note"></span><button type="button" id="take-over" hidden>接管此局</button></section>
+          <p id="turn-hint" hidden>棋盘可滑动查看。</p>
+        </div>
+        <div class="mine-stage">
+          <div id="board-scroll" class="mine-scroll"><div id="board" role="grid" aria-label="扫雷棋盘" aria-busy="true"></div></div>
+        </div>
+      </div>
     </div>
-    <div class="mine-modes" role="group" aria-label="棋盘操作模式">
-      <button type="button" id="reveal-mode" aria-pressed="true">开格</button>
-      <button type="button" id="flag-mode" aria-pressed="false">标记</button>
-      <small>离开仍计时</small>
-    </div>
-    <p id="turn-hint" hidden>横屏可看更多棋盘，也可滑动棋盘继续。</p>
-    <section id="save-message" hidden><span id="save-note"></span><button type="button" id="take-over" hidden>接管此局</button></section>
-    <div id="board-scroll" class="mine-scroll"><div id="board" role="grid" aria-label="扫雷棋盘" aria-busy="true"></div></div>
-    <div id="result" class="mine-result" hidden><strong id="result-text" role="status"></strong><button type="button" id="again">再来一局</button></div>
     <p id="feedback" class="visually-hidden" role="status"></p>
   </main>
   <dialog id="settings-panel" aria-labelledby="settings-title">
