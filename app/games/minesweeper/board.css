@@ -65,3 +65,15 @@ dialog::backdrop { background: #0e231fc9; }
   .mine-header a, .mine-header button, .mine-modes button, .mine-result button, .mine-dialog button, #take-over { min-height: 44px; min-width: 44px; }
   .mine-face { min-height: 44px; }
 }
+
+/* Inherit the shared tabletop palette. The board keeps semantic mine and number colors. */
+:root[data-game-theme] { background: var(--theme-base); color: var(--theme-ink); }
+:root[data-game-theme] :is(.mine-header small, .mine-modes small, #save-message, #turn-hint) { color: var(--theme-muted); }
+:root[data-game-theme] :is(.mine-header a, .mine-header button, .mine-modes button, .mine-result button, .mine-dialog button, #take-over, .mine-dialog select) {
+  color: var(--theme-ink); background: var(--theme-control); border-color: var(--theme-border);
+}
+:root[data-game-theme] :is(.mine-face, .mine-modes [aria-pressed="true"]) {
+  color: var(--theme-base); background: var(--theme-accent); border-color: var(--theme-accent);
+}
+:root[data-game-theme] :is(.mine-scroll, .mine-controls, dialog) { border-color: var(--theme-border); }
+:root[data-game-theme] #popup { color: var(--theme-ink); background: var(--theme-surface); }
