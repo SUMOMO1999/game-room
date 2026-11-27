@@ -2,7 +2,9 @@ import { gamePresentation } from './games/catalog.mjs';
 
 // Presentation only. The server chooses and persists the room's game type.
 export function gameDetails(gameType = 'rummikub') {
-  return gamePresentation(gameType).route;
+  const route = gamePresentation(gameType).route;
+  if (!route) throw new TypeError('该游戏只提供单人模式。');
+  return route;
 }
 export function gameName(gameType = 'rummikub') { return gameDetails(gameType).name; }
 export function roomHref(code, gameType = 'rummikub') {

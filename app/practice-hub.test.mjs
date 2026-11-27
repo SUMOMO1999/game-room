@@ -32,33 +32,33 @@ test('practice hub renders one game per directory registration and retains every
   const { ids, document } = fixture(), dispose = mountPracticeHub({ document });
   const cards = ids.get('hub-games').children;
   assert.deepEqual(cards.map(card => card.dataset.game), presentationCatalog.list().map(game => game.gameType));
-  assert.equal(cards.length, 7);
+  assert.equal(cards.length, 8);
   for (const game of presentationCatalog.list()) {
     const card = cards.find(card => card.dataset.game === game.gameType);
     assert.equal(descendants(card).filter(node => node.className === 'hub-primary')[0].href, `./${game.practicePage}`);
   }
   const parks = cards.find(card => card.dataset.game === 'parks');
   assert.deepEqual(descendants(parks).filter(node => node.tagName === 'a').map(node => node.href), ['./parks-practice.html', './parks-tutorial.html', './parks-practice.html?mode=solo', './parks-catalog.html']);
-  assert.equal(ids.get('hub-count').textContent, '7 款游戏');
+  assert.equal(ids.get('hub-count').textContent, '8 款游戏');
   dispose(); assert.equal(ids.get('hub-search').listeners.size, 0);
 });
 
-test('an eighth metadata registration reaches the same consumer without changing navigation or assuming known illustrations', () => {
+test('another metadata registration reaches the same consumer without changing navigation or assuming known illustrations', () => {
   const next = definition(presentationCatalog.get('rummikub'));
   Object.assign(next, { gameType: 'new-board-game', name: '新桌游', page: 'new-board.html', practicePage: 'new-practice.html', assets: [] });
   delete next.practiceSummary; delete next.practiceLinks;
   const catalog = createPresentationCatalog([...presentationCatalog.list().map(definition), next]);
   const { ids, document } = fixture(); mountPracticeHub({ document, catalog });
   const cards = ids.get('hub-games').children, last = cards.at(-1);
-  assert.equal(cards.length, 8); assert.equal(last.dataset.game, 'new-board-game');
+  assert.equal(cards.length, 9); assert.equal(last.dataset.game, 'new-board-game');
   assert.equal(descendants(last).find(node => node.className === 'hub-primary').href, './new-practice.html');
   assert.equal(descendants(last).find(node => node.className === 'hub-summary').textContent, '熟悉玩法与操作，再约朋友一起玩。');
   assert.equal(descendants(last).find(node => node.className === 'hub-art').innerHTML.includes('<svg'), true);
   const search = ids.get('hub-search'); search.value = '新桌游'; search.listeners.get('input')();
   assert.deepEqual(cards.filter(card => !card.hidden).map(card => card.dataset.game), ['new-board-game']);
-  assert.equal(ids.get('hub-count').textContent, '1 / 8 款');
+  assert.equal(ids.get('hub-count').textContent, '1 / 9 款');
   search.value = '没有这款'; search.listeners.get('input')(); assert.equal(ids.get('hub-empty').hidden, false);
-  search.value = ''; search.listeners.get('input')(); assert.equal(cards.filter(card => !card.hidden).length, 8); assert.equal(ids.get('hub-empty').hidden, true);
+  search.value = ''; search.listeners.get('input')(); assert.equal(cards.filter(card => !card.hidden).length, cards.length); assert.equal(ids.get('hub-empty').hidden, true);
 });
 
 test('practice descriptions and supplementary links stay immutable browser metadata with local safe routes', () => {

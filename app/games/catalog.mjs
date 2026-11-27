@@ -82,6 +82,11 @@ const entries = [
       ...['parks-atlas-01','parks-atlas-02','parks-atlas-03','parks-atlas-04','parks-atlas-05','parks-atlas-06','parks-atlas-07',
         'gear-atlas-01','gear-atlas-02','park-arches','park-grand-teton','park-acadia','park-black-canyon-of-the-gunnison','gear-flint-and-tinder','gear-camp-mug']
         .flatMap(name=>[`assets/parks/v2/${name}.webp`,`assets/parks/v2/${name}-thumb.webp`])] },
+  { gameType: 'minesweeper', name: '扫雷', page: null, minPlayers: 1, maxPlayers: 1,
+    practicePage: 'minesweeper.html', practiceSummary: '三档棋盘，首格安全，打开全部安全格。',
+    createHint: null, availabilityFlag: null, scoreKind: null, timeout: null,
+    assets: ['minesweeper.html', ...['board.css', 'page.mjs', 'board-input.mjs', 'rules.mjs', 'save.mjs']
+      .map(file => 'games/minesweeper/' + file)] },
 ];
 
 function safePage(page) { return typeof page === 'string' && /^[a-z][a-z0-9-]*\.html$/.test(page); }
@@ -95,9 +100,10 @@ export function createPresentationCatalog(definitions) {
   for (const item of definitions) {
     const practiceSummary = item?.practiceSummary ?? '熟悉玩法与操作，再约朋友一起玩。';
     const practiceLinks = item?.practiceLinks ?? [];
+    const solo = item?.page === null;
     if (!item || Object.keys(item).some(field => !fields.has(field))
       || !/^[a-z][a-z0-9-]*$/.test(item.gameType) || catalog.has(item.gameType)
-      || typeof item.name !== 'string' || !item.name.trim() || !safePage(item.page)
+      || typeof item.name !== 'string' || !item.name.trim() || (!solo && !safePage(item.page))
       || !Number.isSafeInteger(item.minPlayers) || !Number.isSafeInteger(item.maxPlayers)
       || item.minPlayers < 1 || item.maxPlayers < item.minPlayers
       || item.practicePage !== null && !safePage(item.practicePage)
@@ -106,20 +112,22 @@ export function createPresentationCatalog(definitions) {
       || practiceLinks.some(link => !link || Object.keys(link).some(field => !['label', 'page'].includes(field))
         || typeof link.label !== 'string' || !link.label.trim() || link.label.length > 30 || !safePracticeLink(link.page))
       || new Set(practiceLinks.map(link => link.page)).size !== practiceLinks.length
-      || !['points', 'outcome', 'score'].includes(item.scoreKind)
-      || typeof item.createHint !== 'string' || !item.createHint.trim()
-      || ![null, 'drawingEnabled', 'poker414Enabled', 'hyakkiEnabled','parksEnabled'].includes(item.availabilityFlag)
-      || !item.timeout || typeof item.timeout.action !== 'string' || !item.timeout.action
-      || typeof item.timeout.hint !== 'string' || !item.timeout.hint
-      || Object.keys(item.timeout).some(field => !['action', 'hint'].includes(field))
+      || (solo ? !safePage(item.practicePage) || item.minPlayers !== 1 || item.maxPlayers !== 1
+        || item.scoreKind !== null || item.timeout !== null || item.createHint !== null || item.availabilityFlag !== null
+        : !['points', 'outcome', 'score'].includes(item.scoreKind)
+          || typeof item.createHint !== 'string' || !item.createHint.trim()
+          || ![null, 'drawingEnabled', 'poker414Enabled', 'hyakkiEnabled','parksEnabled'].includes(item.availabilityFlag)
+          || !item.timeout || typeof item.timeout.action !== 'string' || !item.timeout.action
+          || typeof item.timeout.hint !== 'string' || !item.timeout.hint
+          || Object.keys(item.timeout).some(field => !['action', 'hint'].includes(field)))
       || !Array.isArray(item.assets) || !item.assets.every(path => typeof path === 'string')) {
       throw new TypeError('游戏公开目录定义无效。');
     }
-    const route = Object.freeze({ name: item.name, page: item.page,
+    const route = solo ? null : Object.freeze({ name: item.name, page: item.page,
       minPlayers: item.minPlayers, maxPlayers: item.maxPlayers });
     catalog.set(item.gameType, Object.freeze({ ...item, route, practiceSummary,
       practiceLinks: Object.freeze(practiceLinks.map(link => Object.freeze({ ...link }))),
-      timeout: Object.freeze({ ...item.timeout }), assets: Object.freeze([...item.assets]) }));
+      timeout: solo ? null : Object.freeze({ ...item.timeout }), assets: Object.freeze([...item.assets]) }));
   }
   return Object.freeze({
     has: gameType => typeof gameType === 'string' && catalog.has(gameType),
@@ -135,4 +143,4 @@ export const presentationCatalog = createPresentationCatalog(entries);
 export const gamePresentation = (gameType = 'rummikub') => presentationCatalog.get(gameType);
 export const gamePresentations = () => presentationCatalog.list();
 export const creatableGamePresentations = (capabilities = {}) => presentationCatalog.list()
-  .filter(game => game.availabilityFlag === null || capabilities[game.availabilityFlag] === true);
+  .filter(game => game.route && (game.availabilityFlag === null || capabilities[game.availabilityFlag] === true));

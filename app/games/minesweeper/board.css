@@ -1,0 +1,67 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, sans-serif;
+  background: #192d29;
+  color: #f6ecd9;
+  --brass: #e3c184;
+  --cell: 31px;
+}
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; }
+[hidden] { display: none !important; }
+.mine-screen { height: 100dvh; display: flex; flex-direction: column; min-height: 0; margin: auto; width: min(100%, 1060px); gap: 6px;
+  padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); }
+.mine-header, .mine-header nav, .mine-modes, .mine-result { display: flex; align-items: center; gap: 8px; }
+.mine-header { justify-content: space-between; }
+.mine-header h1 { font-size: 24px; margin: 0; display: flex; align-items: baseline; gap: 8px; }
+.mine-header small, .mine-modes small { color: #cdd9c5; font-size: 12px; }
+.mine-header a, .mine-header button, .mine-modes button, .mine-result button, .mine-dialog button, #take-over {
+  color: inherit; font: inherit; font-weight: 650; white-space: nowrap; min-height: 36px; padding: 5px 12px;
+  border: 1px solid #ac9970; border-radius: 8px; background: #25443b; text-decoration: none; cursor: pointer; }
+.mine-header a { display: grid; place-items: center; }
+.mine-controls { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; align-self: center; width: min(100%, 385px);
+  padding: 4px 12px; border: 1px solid #bca470; border-radius: 10px; background: #182522; }
+.mine-meter { display: grid; gap: 0; min-width: 66px; text-align: center; }
+.mine-meter span { font-size: 11px; color: #dfcfaf; }
+.mine-meter output, .mine-meter time { line-height: 1.15; font: 700 25px ui-monospace, monospace; color: #ff9c82; font-variant-numeric: tabular-nums; }
+.mine-face { min-width: 44px; min-height: 42px; border-radius: 50%; border: 1px solid #b99758; background: var(--brass);
+  color: #32281a; font: 700 30px/1 system-ui; cursor: pointer; }
+.mine-modes { justify-content: center; }
+.mine-modes [aria-pressed="true"] { background: var(--brass); border-color: #f4deb5; color: #292016; }
+.mine-scroll { flex: 0 1 auto; min-height: 0; width: fit-content; max-width: 100%; align-self: center; overflow: auto;
+  border: 3px solid #9f8558; border-radius: 6px; background: #a99e87; overscroll-behavior: contain; }
+#board { width: max-content; touch-action: pan-x pan-y pinch-zoom; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.mine-row { display: flex; }
+.mine-cell { display: grid; place-content: center; width: var(--cell); height: var(--cell); padding: 0; flex: none; border: 1px solid #837b67;
+  background: #e3d8bc; box-shadow: inset 2px 2px #fcf5df, inset -2px -2px #b0a084; color: #24372b;
+  font: 750 calc(var(--cell) * .62)/1 system-ui; cursor: pointer; }
+.mine-cell[data-state="open"], .mine-cell[data-state="hit"], .mine-cell[data-state="mine"], .mine-cell[data-pressed] {
+  box-shadow: none; background: #cfc5ad; }
+.mine-cell[data-state="hit"] { background: #a93839; color: white; }
+.mine-cell[data-state="wrong"], .mine-cell[data-state="flag"] { color: #872237; }
+.mine-cell[data-number="1"] { color: #154d96; }
+.mine-cell[data-number="2"] { color: #205a29; }
+.mine-cell[data-number="3"] { color: #8b2628; }
+.mine-cell[data-number="4"] { color: #422878; }
+.mine-cell[data-number="5"] { color: #683015; }
+.mine-cell[data-number="6"] { color: #15585f; }
+.mine-cell[data-number="7"] { color: #221e1d; }
+.mine-cell[data-number="8"] { color: #53464c; }
+.mine-cell:focus-visible { outline: 3px solid #163c67; outline-offset: -3px; z-index: 1; }
+.mine-result { justify-content: center; text-align: center; }
+#save-message, #turn-hint { margin: 0; color: #f4dfb7; text-align: center; font-size: 12px; }
+#save-message button { margin-inline-start: 6px; }
+dialog { width: min(410px, 94vw); max-height: 90dvh; padding: 0; border: 1px solid #ac9970; border-radius: 14px; color: inherit; background: #234036; }
+dialog::backdrop { background: #0e231fc9; }
+.mine-dialog { display: grid; gap: 12px; padding: 15px; }
+.mine-dialog header, .mine-dialog-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mine-dialog header { justify-content: space-between; }
+.mine-dialog h2, .mine-dialog p { margin: 0; }
+.mine-dialog label { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.mine-dialog select { max-width: 100%; color: inherit; font: inherit; background: #192d29; padding: 5px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+@media (pointer: coarse) {
+  :root { --cell: 34px; }
+  .mine-header a, .mine-header button, .mine-modes button, .mine-result button, .mine-dialog button, #take-over { min-height: 44px; min-width: 44px; }
+  .mine-face { min-height: 44px; }
+}
