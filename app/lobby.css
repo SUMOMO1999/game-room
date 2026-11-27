@@ -105,6 +105,7 @@
 .game-picker-heading a{font-size:12px;min-height:36px;display:inline-flex;align-items:center}
 .lobby-games{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
 .lobby-game{display:flex;align-items:center;gap:4px;text-align:left;min-width:0;min-height:108px;padding:12px 10px;border:1px solid #d5dacd;background:#eeeee5;border-radius:10px;transition:background .15s,border-color .15s,transform .15s}
+a.lobby-game{color:inherit;text-decoration:none}
 .lobby-game:hover{background:#e6eadd;border-color:#9aaf9c;transform:translateY(-2px)}
 .lobby-game[aria-pressed=true]{background:#dfe9de;border-color:var(--green);box-shadow:inset 0 0 0 1px var(--green)}
 .lobby-game-art{display:block;width:clamp(64px,6.6vw,96px);flex:none}
