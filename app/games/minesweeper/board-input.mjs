@@ -1,4 +1,4 @@
-export function connectBoard({ board, scroll, act, move, identity, preview, onFocus, isMarkMode, columns }) {
+export function connectBoard({ board, act, move, identity, preview, onFocus, isMarkMode, columns }) {
   let press, lastTap;
   const cell = event => event.target.closest?.('[data-cell]');
   const index = node => Number(node.dataset.cell);
@@ -83,7 +83,7 @@ export function connectBoard({ board, scroll, act, move, identity, preview, onFo
   board.addEventListener('pointerdown', event => { mouseAllowed = event.pointerType === 'mouse'; }, true);
   board.addEventListener('mousedown', event => { if (!mouseAllowed) event.stopImmediatePropagation(); }, true);
   board.addEventListener('dblclick', event => { if (!mouseAllowed) event.stopImmediatePropagation(); }, true);
-  for (const [target, name] of [[window, 'pointercancel'], [window, 'blur'], [window, 'resize'], [scroll, 'scroll'], [document, 'visibilitychange']]) {
+  for (const [target, name] of [[window, 'pointercancel'], [window, 'blur'], [window, 'resize'], [document, 'visibilitychange']]) {
     target.addEventListener(name, () => { cancel(); lastTap = null; });
   }
   board.addEventListener('pointerleave', event => { if (event.pointerType === 'mouse') cancel(); });

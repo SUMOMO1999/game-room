@@ -6,7 +6,7 @@ import { active, levels, newGame, numbers, play, progress, validGame, validLevel
 import { acquireLevel, assignOwner, clearBests, openSaves, readLevel, saveLevel } from './save.mjs';
 
 const $ = id => document.getElementById(id);
-const board = $('board'), scroll = $('board-scroll'), layout = $('mine-layout'), popup = $('popup');
+const board = $('board'), layout = $('mine-layout'), popup = $('popup');
 const prefKey = 'sumomo-minesweeper:';
 function preference(name, value) {
   try { return value === undefined ? localStorage.getItem(prefKey + name) : localStorage.setItem(prefKey + name, value); }
@@ -232,7 +232,7 @@ function restart() {
 }
 
 const cancelInput = connectBoard({
-  board, scroll, act, identity: () => game?.id + ':' + game?.revision,
+  board, act, identity: () => game?.id + ':' + game?.revision,
   move: index => setFocus(index, true), onFocus: index => setFocus(index),
   columns: () => levels[level].columns, isMarkMode: () => markMode,
   preview(button, pressed) {
