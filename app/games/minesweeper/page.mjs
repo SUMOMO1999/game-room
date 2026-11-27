@@ -23,7 +23,6 @@ let buttons = [], focus = 0, drawnLevel;
 let baseWall = Date.now(), baseMonotonic = performance.now(), lastSeen = baseWall, clockOK = true;
 const channel = typeof BroadcastChannel === 'function' ? new BroadcastChannel('sumomo-minesweeper-v1') : null;
 const digits = value => (value < 0 ? '−' : '') + String(Math.abs(value)).padStart(3, '0');
-const turnHint = matchMedia('(orientation: portrait) and (max-width: 650px)');
 
 function announce(text) { $('feedback').textContent = text; }
 function now() {
@@ -121,7 +120,6 @@ function render() {
   $('take-over').hidden = !readOnly || !db;
   $('save-note').textContent = broken ? '存档无法恢复，可明确重开。' :
     readOnly ? '另一标签页正在玩，此页只读。' : '仅本次游玩，进度无法保存。';
-  $('turn-hint').hidden = !turnHint.matches || level === 'beginner';
   board.setAttribute('aria-busy', String(pending));
   showClock();
 }
@@ -235,6 +233,7 @@ const cancelInput = connectBoard({
   board, act, identity: () => game?.id + ':' + game?.revision,
   move: index => setFocus(index, true), onFocus: index => setFocus(index),
   columns: () => levels[level].columns, isMarkMode: () => markMode,
+  isTurned: () => getComputedStyle(document.documentElement).getPropertyValue('--view-angle').trim() === '90deg',
   preview(button, pressed) {
     if (readOnly || broken || !active(game) || !['covered', 'question'].includes(button.dataset.state)) return;
     button.toggleAttribute('data-pressed', pressed);
@@ -268,7 +267,7 @@ $('question-pref').onchange = async event => {
   }
   render();
 };
-$('rules').onclick = () => dialog('玩法', '数字表示相邻八格的雷数。打开全部安全格获胜，首次开格一定安全。右键、F 或长按标记。双击、同时按左右键或空格可快速打开数字旁未插旗的格子。误旗也可能踩雷。', [['关闭']]);
+$('rules').onclick = () => dialog('玩法', '数字表示相邻八格的雷数。打开全部安全格获胜，首次开格一定安全。右键、F 或长按标记。双击、同时按左右键或空格可快速打开数字旁未插旗的格子。误旗也可能踩雷。离开页面后仍计时。', [['关闭']]);
 $('bests').onclick = async () => {
   const list = document.createElement('ul');
   for (const [key, spec] of Object.entries(levels)) {
@@ -294,7 +293,6 @@ document.addEventListener('keydown', event => {
   event.preventDefault();
   restart();
 });
-turnHint.addEventListener('change', render);
 channel?.addEventListener('message', async event => {
   if (!db || !readOnly || event.data !== level || pending) return;
   const target = level;

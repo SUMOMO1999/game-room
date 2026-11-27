@@ -1,5 +1,6 @@
-export function connectBoard({ board, act, move, identity, preview, onFocus, isMarkMode, columns }) {
+export function connectBoard({ board, act, move, identity, preview, onFocus, isMarkMode, columns, isTurned }) {
   let press, lastTap;
+  const logicalArrowsWhenTurned = { ArrowLeft: 'ArrowDown', ArrowRight: 'ArrowUp', ArrowUp: 'ArrowLeft', ArrowDown: 'ArrowRight' };
   const cell = event => event.target.closest?.('[data-cell]');
   const index = node => Number(node.dataset.cell);
   const at = (event, node) => node.contains(document.elementFromPoint(event.clientX, event.clientY));
@@ -96,7 +97,8 @@ export function connectBoard({ board, act, move, identity, preview, onFocus, isM
     const action = { Enter: 'reveal', f: 'mark', F: 'mark', ' ': 'chord' }[event.key];
     if (Object.hasOwn(step, event.key)) {
       event.preventDefault();
-      move(target + step[event.key]);
+      const direction = isTurned() ? logicalArrowsWhenTurned[event.key] : event.key;
+      move(target + step[direction]);
     } else if (action) {
       event.preventDefault();
       if (!event.repeat) act(action, target);
