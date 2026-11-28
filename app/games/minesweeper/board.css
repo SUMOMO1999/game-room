@@ -53,20 +53,24 @@ body {
 }
 .mine-screen {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
   height: 100%;
   gap: clamp(5px, 1.2vmin, 12px);
   margin-inline: auto;
   max-width: 1800px;
   padding: 8px 10px 10px;
 }
-.mine-header {
+.mine-footer {
+  display: grid;
+  gap: 5px;
+}
+.mine-footer-controls {
   display: grid;
   grid-template: "title navigation" auto "toolbar toolbar" auto / minmax(0, 1fr) auto;
   align-items: center;
   gap: 5px 8px;
 }
-.mine-header h1 {
+.mine-footer h1 {
   grid-area: title;
   display: flex;
   align-items: baseline;
@@ -75,16 +79,15 @@ body {
   font-size: clamp(18px, 3.4vmin, 26px);
   white-space: nowrap;
 }
-.mine-header small { color: var(--muted); font-size: 12px; font-weight: 500; }
-.mine-header nav, .mine-toolbar, .mine-modes {
+.mine-footer small { color: var(--muted); font-size: 12px; font-weight: 500; }
+.mine-footer nav, .mine-toolbar, .mine-modes {
   display: flex;
   align-items: center;
   gap: 5px;
 }
-.mine-header nav { grid-area: navigation; justify-self: end; }
+.mine-footer nav { grid-area: navigation; justify-self: end; }
 .mine-toolbar { grid-area: toolbar; justify-content: center; }
 .mine-status {
-  grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
@@ -108,7 +111,7 @@ body {
   font: 700 clamp(16px, 2.4cqw, 24px)/1 ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
 }
-.mine-header :is(a, button), .mine-dialog button {
+.mine-footer :is(a, button), .mine-dialog button {
   min-height: 36px;
   padding: 5px 10px;
   border: 1px solid var(--edge);
@@ -120,7 +123,7 @@ body {
   white-space: nowrap;
   cursor: pointer;
 }
-.mine-header a { display: grid; place-items: center; text-decoration: none; }
+.mine-footer a { display: grid; place-items: center; text-decoration: none; }
 .mine-restart {
   display: flex;
   align-items: center;
@@ -234,7 +237,7 @@ dialog::backdrop { background: #0e231fc9; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 
 @media (pointer: coarse) {
-  .mine-header :is(a, button), .mine-dialog button { min-height: 44px; min-width: 44px; }
+  .mine-footer :is(a, button), .mine-dialog button { min-height: 44px; min-width: 44px; }
 }
 
 @media (max-width: 650px) and (max-aspect-ratio: 4/5) and (any-pointer: coarse) {
@@ -246,23 +249,23 @@ dialog::backdrop { background: #0e231fc9; }
 }
 
 @container mine-view (min-width: 480px) {
-  .mine-header { grid-template: "title toolbar navigation" auto / auto minmax(0, 1fr) auto; }
+  .mine-footer-controls { grid-template: "title toolbar navigation" auto / auto minmax(0, 1fr) auto; }
 }
 
 @container mine-view (max-width: 600px) {
-  .mine-header { column-gap: 5px; }
-  .mine-header h1 { font-size: 16px; gap: 4px; }
-  .mine-header small { font-size: 10px; }
-  .mine-header :is(a, button) { padding-inline: 6px; font-size: 14px; }
+  .mine-footer-controls { column-gap: 5px; }
+  .mine-footer h1 { font-size: 16px; gap: 4px; }
+  .mine-footer small { font-size: 10px; }
+  .mine-footer :is(a, button) { padding-inline: 6px; font-size: 14px; }
   .mine-meter { min-width: 44px; padding-inline: 3px; }
-  .mine-header nav, .mine-toolbar, .mine-modes { gap: 4px; }
+  .mine-footer nav, .mine-toolbar, .mine-modes { gap: 4px; }
   #restart-face { font-size: 16px; }
 }
 
 @container mine-view (max-height: 440px) {
   .mine-screen { gap: 4px; padding: 4px 6px 6px; }
   .mine-stage { --frame: 3px; }
-  .mine-header :is(a, button) { min-height: 34px; padding-block: 4px; }
+  .mine-footer :is(a, button) { min-height: 34px; padding-block: 4px; }
 }
 
 @container mine-view (max-width: 360px) {

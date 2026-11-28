@@ -18,32 +18,34 @@
 <body>
   <div class="mine-viewport">
     <div class="mine-view">
-      <main class="mine-screen">
-        <header class="mine-header">
-          <h1>扫雷 <small id="difficulty-name"></small></h1>
-          <nav aria-label="游戏工具">
-            <button id="settings" type="button" data-room-settings data-settings-dialog="settings-panel" data-settings-close="settings-close">设置</button>
-            <a id="exit" data-practice-exit href="./">棋牌室</a>
-          </nav>
-          <div class="mine-toolbar" role="group" aria-label="棋盘操作">
-            <div class="mine-meter"><span>剩雷</span><output id="mine-count" aria-label="估计剩余雷"></output></div>
-            <div class="mine-meter"><span>用时</span><time id="elapsed" aria-label="已用秒数">000</time></div>
-            <button type="button" id="restart" class="mine-restart" aria-label="重新开始" title="重新开始（F2）">
-              <span id="restart-face" aria-hidden="true">☺︎</span>重开
-            </button>
-            <div class="mine-modes" role="group" aria-label="棋盘操作模式">
-              <button type="button" id="reveal-mode" aria-pressed="true">开格</button>
-              <button type="button" id="flag-mode" aria-pressed="false">标记</button>
-            </div>
-          </div>
+      <main class="mine-screen" aria-labelledby="mine-title">
+        <div id="mine-layout" class="mine-stage">
+          <div id="board-frame" class="mine-board-frame"><div id="board" role="grid" aria-label="扫雷棋盘" aria-busy="true"></div></div>
+        </div>
+        <footer class="mine-footer">
           <div class="mine-status">
             <div id="result" class="mine-result" hidden><strong id="result-text" role="status"></strong><button type="button" id="again">再来一局</button></div>
             <section id="save-message" hidden><span id="save-note"></span><button type="button" id="take-over" hidden>接管此局</button></section>
           </div>
-        </header>
-        <div id="mine-layout" class="mine-stage">
-          <div id="board-frame" class="mine-board-frame"><div id="board" role="grid" aria-label="扫雷棋盘" aria-busy="true"></div></div>
-        </div>
+          <div class="mine-footer-controls">
+            <h1 id="mine-title">扫雷 <small id="difficulty-name"></small></h1>
+            <nav aria-label="游戏工具">
+              <button id="settings" type="button" data-room-settings data-settings-dialog="settings-panel" data-settings-close="settings-close">设置</button>
+              <a id="exit" data-practice-exit href="./">棋牌室</a>
+            </nav>
+            <div class="mine-toolbar" role="group" aria-label="棋盘操作">
+              <div class="mine-meter"><span>剩雷</span><output id="mine-count" aria-label="估计剩余雷"></output></div>
+              <div class="mine-meter"><span>用时</span><time id="elapsed" aria-label="已用秒数">000</time></div>
+              <button type="button" id="restart" class="mine-restart" aria-label="重新开始" title="重新开始（F2）">
+                <span id="restart-face" aria-hidden="true">☺︎</span>重开
+              </button>
+              <div class="mine-modes" role="group" aria-label="棋盘操作模式">
+                <button type="button" id="reveal-mode" aria-pressed="true">开格</button>
+                <button type="button" id="flag-mode" aria-pressed="false">标记</button>
+              </div>
+            </div>
+          </div>
+        </footer>
         <p id="feedback" class="visually-hidden" role="status"></p>
       </main>
     </div>
